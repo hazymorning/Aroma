@@ -35,7 +35,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
@@ -84,6 +83,7 @@ import app.aroma.core.model.ShoppingItem
 import app.aroma.core.model.ShoppingList
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
+import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
@@ -190,7 +190,7 @@ fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: M
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        AromaSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
     when (dialog) {
         ShoppingDialog.Create -> {

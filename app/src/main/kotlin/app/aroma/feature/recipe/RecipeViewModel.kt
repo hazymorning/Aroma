@@ -9,7 +9,9 @@ import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.session.SessionManager
+import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -42,6 +44,7 @@ class RecipeViewModel(
     private val shopping: ShoppingRepository,
     private val mealPlans: MealPlanRepository,
     private val sessions: SessionManager,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(RecipeUiState())
     val state: StateFlow<RecipeUiState> = mutableState.asStateFlow()
@@ -52,6 +55,10 @@ class RecipeViewModel(
     /** Null while the lists are loading. */
     private val mutableLists = MutableStateFlow<List<ShoppingListInfo>?>(null)
     val shoppingLists: StateFlow<List<ShoppingListInfo>?> = mutableLists.asStateFlow()
+
+    /** The list used last, offered first. */
+    private val mutablePreferredList = MutableStateFlow<String?>(null)
+    val preferredListId: StateFlow<String?> = mutablePreferredList.asStateFlow()
 
     init {
         load()
@@ -109,6 +116,7 @@ class RecipeViewModel(
 
     fun loadShoppingLists() =
         viewModelScope.launch {
+            mutablePreferredList.value = settings.settings.first().lastShoppingList
             runCatching { shopping.lists().first { !it.isRefreshing }.data }
                 .onSuccess { mutableLists.value = it }
                 .onFailure {
@@ -128,14 +136,24 @@ class RecipeViewModel(
                     .orEmpty()
             val chosen: List<JsonObject> = raw.filterIndexed { index, _ -> index in ingredientIndexes }
             shopping.addRecipe(list.id, recipe.id, state.value.scale, chosen)
+            settings.setLastShoppingList(list.id)
             mutableEvents.emit(RecipeEvent.AddedToList(list.name))
+            confirm(QuickAction.Shop)
         }
 
     fun plan(date: LocalDate, type: MealType) =
         act { recipe ->
             mealPlans.add(date, type, recipe.id, title = "", note = "")
             mutableEvents.emit(RecipeEvent.Planned(date))
+            confirm(QuickAction.Plan)
         }
+
+    /** Shows a check on the action's button for a moment. */
+    private suspend fun confirm(action: QuickAction) {
+        mutableState.update { it.copy(confirmed = action) }
+        delay(CONFIRM_MILLIS)
+        mutableState.update { if (it.confirmed == action) it.copy(confirmed = null) else it }
+    }
 
     fun delete() =
         act { recipe ->
@@ -153,5 +171,9 @@ class RecipeViewModel(
                 runCatching { recipes.refreshRatings() }
             }
         }
+    }
+
+    private companion object {
+        const val CONFIRM_MILLIS = 1500L
     }
 }

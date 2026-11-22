@@ -311,4 +311,8 @@
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_sign_out_title">Sign out?</string>
     <string name="settings_sign_out_message">Saved recipes and unsynced shopping changes are removed from this device.</string>
+    <string name="home_rate_open">Open recipe</string>
+    <string name="home_rate_dismiss">Don’t ask</string>
+    <string name="recipe_action_plan">Plan</string>
+    <string name="recipe_action_shop">Shop</string>
 </resources>

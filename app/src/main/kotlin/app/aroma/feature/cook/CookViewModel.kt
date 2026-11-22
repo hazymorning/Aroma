@@ -2,6 +2,7 @@ package app.aroma.feature.cook
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
@@ -23,6 +24,8 @@ class CookViewModel(
     private val recipes: RecipeRepository,
     private val timers: CookingTimers,
     settings: SettingsRepository,
+    private val reminder: RatingReminder,
+    private val userId: String?,
 ) : ViewModel() {
     val keepScreenOn: StateFlow<Boolean> =
         settings.settings
@@ -68,8 +71,19 @@ class CookViewModel(
 
     fun rate(stars: Int) {
         val recipe = base.value.recipe ?: return
-        base.update { it.copy(rating = stars.toDouble()) }
-        viewModelScope.launch { runCatching { recipes.rate(recipe.id, recipe.slug, stars) } }
+        base.update { it.copy(rating = stars.toDouble(), ratedHere = true) }
+        viewModelScope.launch {
+            runCatching { recipes.rate(recipe.id, recipe.slug, stars) }
+            reminder.clear(recipe.id)
+        }
+    }
+
+    /** The last step is done: unless it was rated already, Home asks later how it tasted. */
+    fun finished() {
+        val recipe = base.value.recipe ?: return
+        val user = userId ?: return
+        if (base.value.ratedHere || recipes.ratings.value[recipe.id]?.rating != null) return
+        viewModelScope.launch { reminder.cooked(recipe, user) }
     }
 
     fun markCooked() {

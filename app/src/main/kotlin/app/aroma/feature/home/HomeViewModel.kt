@@ -2,18 +2,23 @@ package app.aroma.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.aroma.core.model.RecipeImage
+import app.aroma.data.AromaError
 import app.aroma.data.Loadable
 import app.aroma.data.isConnectivity
+import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -23,7 +28,8 @@ import java.time.LocalTime
 class HomeViewModel(
     private val recipes: RecipeRepository,
     private val mealPlans: MealPlanRepository,
-    sessions: SessionManager,
+    private val sessions: SessionManager,
+    private val reminder: RatingReminder,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val mutableState =
@@ -39,6 +45,57 @@ class HomeViewModel(
 
     init {
         load(refreshing = false)
+        watchReminder()
+    }
+
+    /** Asks for a rating of the last recipe cooked, until it has one from anywhere. */
+    private fun watchReminder() {
+        viewModelScope.launch {
+            combine(reminder.pending, recipes.ratings) { cooked, ratings -> cooked to ratings }
+                .collect { (cooked, ratings) ->
+                    val session = sessions.current
+                    val due = cooked?.takeIf { session != null && it.userId == session.userId }
+                    if (due != null && ratings[due.recipeId]?.rating != null) {
+                        reminder.clear(due.recipeId)
+                        return@collect
+                    }
+                    mutableState.update { state ->
+                        state.copy(
+                            toRate =
+                                due?.let {
+                                    RateReminder(
+                                        recipeId = it.recipeId,
+                                        slug = it.slug,
+                                        name = it.name,
+                                        image = it.imageVersion?.let { version -> RecipeImage(session!!.serverUrl, it.recipeId, version) },
+                                        stars = state.toRate?.takeIf { shown -> shown.recipeId == it.recipeId }?.stars,
+                                    )
+                                },
+                        )
+                    }
+                }
+        }
+    }
+
+    fun rateCooked(stars: Int) {
+        val toRate = state.value.toRate ?: return
+        mutableState.update { it.copy(toRate = toRate.copy(stars = stars)) }
+        viewModelScope.launch {
+            try {
+                recipes.rate(toRate.recipeId, toRate.slug, stars)
+            } catch (_: AromaError) {
+                mutableState.update { it.copy(toRate = toRate) }
+                return@launch
+            }
+            // Long enough to see the stars fill before the card goes.
+            delay(THANKS_MILLIS)
+            reminder.clear(toRate.recipeId)
+        }
+    }
+
+    fun dismissReminder() {
+        val toRate = state.value.toRate ?: return
+        viewModelScope.launch { reminder.clear(toRate.recipeId) }
     }
 
     fun refresh() = load(refreshing = true)
@@ -86,6 +143,8 @@ class HomeViewModel(
         }
 
     companion object {
+        private const val THANKS_MILLIS = 700L
+
         fun greetingFor(time: LocalTime): Greeting =
             when (time.hour) {
                 in 5..10 -> Greeting.Morning

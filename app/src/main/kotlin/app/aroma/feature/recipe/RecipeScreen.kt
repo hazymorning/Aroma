@@ -34,7 +34,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -74,6 +74,7 @@ import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
 import app.aroma.ui.components.OfflineNotice
+import app.aroma.ui.components.PillButton
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PlaceholderLines
 import app.aroma.ui.components.RatingStars
@@ -95,7 +96,11 @@ data class RecipeUiState(
     val isLoading: Boolean = true,
     val isOffline: Boolean = false,
     val error: AromaError? = null,
+    val confirmed: QuickAction? = null,
 )
+
+/** The two actions under the title; [RecipeUiState.confirmed] marks one that just went through. */
+enum class QuickAction { Plan, Shop }
 
 data class RecipeActions(
     val onBack: () -> Unit = {},
@@ -154,6 +159,7 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
             collapsed = collapsed || recipe == null,
             isFavorite = state.isFavorite,
             hasRecipe = recipe != null,
+            canShop = recipe?.ingredients?.isNotEmpty() == true,
             sourceUrl = recipe?.sourceUrl,
             actions = actions,
         )
@@ -203,6 +209,7 @@ private fun RecipeTopBar(
     collapsed: Boolean,
     isFavorite: Boolean,
     hasRecipe: Boolean,
+    canShop: Boolean,
     sourceUrl: String?,
     actions: RecipeActions,
 ) {
@@ -243,10 +250,17 @@ private fun RecipeTopBar(
             Box {
                 BarButton(R.drawable.ic_more_vert, stringResource(R.string.action_more), collapsed) { menuOpen = true }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    MenuItem(R.string.recipe_add_to_plan, R.drawable.ic_calendar_add_on) {
+                    MenuItem(R.string.recipe_add_to_plan, R.drawable.ic_calendar_month) {
                         menuOpen = false
                         actions.onAddToMealPlan()
                     }
+                    if (canShop) {
+                        MenuItem(R.string.recipe_add_to_list, R.drawable.ic_shopping_basket) {
+                            menuOpen = false
+                            actions.onAddToShoppingList()
+                        }
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 4.dp))
                     MenuItem(R.string.action_edit, R.drawable.ic_edit) {
                         menuOpen = false
                         actions.onEdit()
@@ -318,7 +332,7 @@ private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actio
         Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp)) {
             if (state.isOffline) OfflineNotice(Modifier.padding(bottom = 12.dp))
             Text(recipe.name, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RatingStars(rating = state.userRating ?: recipe.rating, starSize = 18, onRate = actions.onRate)
                 recipe.sourceUrl?.let { url ->
@@ -333,13 +347,22 @@ private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actio
             }
         }
     }
+    item(key = "actions") {
+        RecipeQuickActions(
+            canShop = recipe.ingredients.isNotEmpty(),
+            confirmed = state.confirmed,
+            onPlan = actions.onAddToMealPlan,
+            onShop = actions.onAddToShoppingList,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp),
+        )
+    }
     if (recipe.description.isNotBlank()) {
         item(key = "description") {
             Text(
                 text = rememberRichText(recipe.description),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp),
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp),
             )
         }
     }
@@ -370,6 +393,37 @@ private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actio
     }
     if (recipe.nutrition.isNotEmpty()) {
         item(key = "nutrition") { Nutrition(recipe) }
+    }
+}
+
+/** Plan and shop, the two things people do with a recipe besides cooking it, right under its name. */
+@Composable
+private fun RecipeQuickActions(
+    canShop: Boolean,
+    confirmed: QuickAction?,
+    onPlan: () -> Unit,
+    onShop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        PillButton(
+            icon = R.drawable.ic_calendar_month,
+            label = stringResource(R.string.recipe_action_plan),
+            onClick = onPlan,
+            confirmed = confirmed == QuickAction.Plan,
+            modifier = Modifier.weight(1f),
+        )
+        if (canShop) {
+            PillButton(
+                icon = R.drawable.ic_shopping_basket,
+                label = stringResource(R.string.recipe_action_shop),
+                onClick = onShop,
+                confirmed = confirmed == QuickAction.Shop,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
     }
 }
 
@@ -451,18 +505,6 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
             onToggle = actions.onToggleIngredient,
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp),
         )
-        FilledTonalButton(
-            onClick = actions.onAddToShoppingList,
-            modifier =
-                Modifier
-                    .padding(start = 20.dp, end = 20.dp, top = 16.dp)
-                    .fillMaxWidth()
-                    .height(52.dp),
-        ) {
-            Icon(painterResource(R.drawable.ic_add_shopping_cart), contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Text(stringResource(R.string.recipe_add_to_list))
-        }
         if (recipe.tools.isNotEmpty()) {
             Text(
                 text = stringResource(R.string.recipe_tools, recipe.tools.joinToString(", ") { it.name }),
@@ -598,6 +640,27 @@ private fun RecipeLoading() {
                 .width(260.dp)
                 .height(32.dp),
         )
+        Placeholder(
+            Modifier
+                .padding(start = 20.dp, top = 16.dp)
+                .width(150.dp)
+                .height(20.dp),
+        )
+        Row(
+            Modifier
+                .padding(start = 20.dp, end = 20.dp, top = 20.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            repeat(2) {
+                Placeholder(
+                    Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = CircleShape,
+                )
+            }
+        }
         PlaceholderLines(4, Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp))
     }
 }

@@ -19,6 +19,7 @@ import app.aroma.feature.home.Greeting
 import app.aroma.feature.home.HomeActions
 import app.aroma.feature.home.HomeScreen
 import app.aroma.feature.home.HomeUiState
+import app.aroma.feature.home.RateReminder
 import app.aroma.feature.login.LoginActions
 import app.aroma.feature.login.LoginScreen
 import app.aroma.feature.login.LoginStep
@@ -72,6 +73,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                         recent = sample.recipes,
                         favorites = sample.recipes.reversed(),
                         cookbooks = sample.cookbooks,
+                        toRate = sample.recipes.first().let { RateReminder(it.id, it.slug, it.name, it.image) },
                         isLoading = false,
                     ),
                 actions = HomeActions(),

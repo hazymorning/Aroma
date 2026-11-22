@@ -21,8 +21,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -105,7 +107,7 @@ fun LoginDestination() {
 
 @Composable
 fun HomeDestination(nav: NavController) {
-    val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, sessions) }
+    val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, sessions, ratingReminder) }
     val state by vm.state.collectAsStateWithLifecycle()
     HomeScreen(
         state = state,
@@ -119,6 +121,8 @@ fun HomeDestination(nav: NavController) {
                 onOpenMealPlan = { nav.navigateToTab(Tab.MealPlan) },
                 onOpenCookbook = { nav.navigate(CookbookRoute(it.slug, it.name, it.description)) },
                 onRefresh = vm::refresh,
+                onRateCooked = vm::rateCooked,
+                onDismissReminder = vm::dismissReminder,
             ),
     )
 }
@@ -174,9 +178,11 @@ fun CookbookDestination(route: CookbookRoute, nav: NavController) {
 
 @Composable
 fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostState) {
-    val vm = aromaViewModel { RecipeViewModel(slug, recipes, shopping, mealPlans, sessions) }
+    val vm = aromaViewModel { RecipeViewModel(slug, recipes, shopping, mealPlans, sessions, settings) }
     val state by vm.state.collectAsStateWithLifecycle()
     val lists by vm.shoppingLists.collectAsStateWithLifecycle()
+    val preferredList by vm.preferredListId.collectAsStateWithLifecycle()
+    val haptics = LocalHapticFeedback.current
     val context = LocalContext.current
     val resources = LocalResources.current
     val locale = currentLocale()
@@ -186,12 +192,14 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
         vm.events.collect { event ->
             when (event) {
                 is RecipeEvent.AddedToList -> {
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                     snackbar.showSnackbar(
                         resources.getString(R.string.recipe_added_to_list, event.listName),
                     )
                 }
 
                 is RecipeEvent.Planned -> {
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                     snackbar.showSnackbar(
                         resources.getString(
                             R.string.recipe_planned,
@@ -247,6 +255,8 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 recipe = recipe,
                 scale = state.scale,
                 lists = lists,
+                preferredListId = preferredList,
+                onScale = vm::setScale,
                 onAdd = { list, indexes ->
                     vm.addToList(list, indexes)
                     sheet = null
@@ -270,7 +280,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
 
 @Composable
 fun CookDestination(slug: String, scale: Double, nav: NavController) {
-    val vm = aromaViewModel { CookViewModel(slug, scale, recipes, timers, settings) }
+    val vm = aromaViewModel { CookViewModel(slug, scale, recipes, timers, settings, ratingReminder, sessions.current?.userId) }
     val state by vm.state.collectAsStateWithLifecycle()
     val keepScreenOn by vm.keepScreenOn.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -296,6 +306,7 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
                 onDismissTimer = vm::dismissTimer,
                 onRate = vm::rate,
                 onMarkCooked = vm::markCooked,
+                onFinished = vm::finished,
                 onAllowExactAlarms = {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         val request = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${context.packageName}".toUri())

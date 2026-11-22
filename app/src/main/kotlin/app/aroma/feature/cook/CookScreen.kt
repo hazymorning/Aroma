@@ -35,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,6 +87,7 @@ data class CookUiState(
     val scale: Double = 1.0,
     val timers: List<CookTimerUi> = emptyList(),
     val rating: Double? = null,
+    val ratedHere: Boolean = false,
     val markedCooked: Boolean = false,
     val markFailed: Boolean = false,
     val exactAlarmHint: Boolean = false,
@@ -100,6 +102,7 @@ data class CookActions(
     val onDismissTimer: (Long) -> Unit = {},
     val onRate: (Int) -> Unit = {},
     val onMarkCooked: () -> Unit = {},
+    val onFinished: () -> Unit = {},
     val onAllowExactAlarms: () -> Unit = {},
     val onRetry: () -> Unit = {},
 )
@@ -108,6 +111,9 @@ data class CookActions(
 fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Modifier, initialPage: Int = 0) {
     val steps = state.recipe?.steps.orEmpty()
     val pager = rememberPagerState(initialPage = initialPage) { steps.size + 1 }
+    LaunchedEffect(pager.settledPage, steps.size) {
+        if (steps.isNotEmpty() && pager.settledPage == steps.size) actions.onFinished()
+    }
     var showIngredients by rememberSaveable { mutableStateOf(false) }
     val locale = currentLocale()
     val rows =

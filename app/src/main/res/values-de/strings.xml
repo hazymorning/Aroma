@@ -308,4 +308,8 @@
     <string name="settings_sign_out">Abmelden</string>
     <string name="settings_sign_out_title">Abmelden?</string>
     <string name="settings_sign_out_message">Gespeicherte Rezepte und noch nicht übertragene Änderungen an Einkaufslisten werden von diesem Gerät entfernt.</string>
+    <string name="home_rate_open">Rezept öffnen</string>
+    <string name="home_rate_dismiss">Nicht mehr fragen</string>
+    <string name="recipe_action_plan">Einplanen</string>
+    <string name="recipe_action_shop">Einkaufen</string>
 </resources>

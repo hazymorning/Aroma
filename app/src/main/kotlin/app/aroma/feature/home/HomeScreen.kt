@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,17 +47,28 @@ import app.aroma.R
 import app.aroma.core.model.Cookbook
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.MealPlanEntry
+import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeCard
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.components.mealTypeLabel
 
 enum class Greeting { Morning, Afternoon, Evening }
+
+/** A recipe cooked lately that still waits for the user's rating; [stars] once tapped. */
+data class RateReminder(
+    val recipeId: String,
+    val slug: String,
+    val name: String,
+    val image: RecipeImage?,
+    val stars: Int? = null,
+)
 
 data class HomeUiState(
     val greeting: Greeting = Greeting.Afternoon,
@@ -64,6 +77,7 @@ data class HomeUiState(
     val recent: List<RecipeSummary> = emptyList(),
     val favorites: List<RecipeSummary> = emptyList(),
     val cookbooks: List<Cookbook> = emptyList(),
+    val toRate: RateReminder? = null,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val isOffline: Boolean = false,
@@ -79,6 +93,8 @@ data class HomeActions(
     val onOpenMealPlan: () -> Unit = {},
     val onOpenCookbook: (Cookbook) -> Unit = {},
     val onRefresh: () -> Unit = {},
+    val onRateCooked: (Int) -> Unit = {},
+    val onDismissReminder: () -> Unit = {},
 )
 
 @Composable
@@ -100,6 +116,11 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
             }
             if (state.isOffline) {
                 item(key = "offline") { OfflineNotice(Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) }
+            }
+            state.toRate?.let { toRate ->
+                item(key = "rate") {
+                    RateCard(toRate, actions, Modifier.animateItem())
+                }
             }
             when {
                 state.isLoading -> {
@@ -142,6 +163,65 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                         item(key = "cookbooks") { CookbookRow(state.cookbooks, actions.onOpenCookbook) }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Asks, without a notification, how the last recipe cooked turned out. */
+@Composable
+private fun RateCard(toRate: RateReminder, actions: HomeActions, modifier: Modifier = Modifier) {
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+    ) {
+        Row(Modifier.padding(start = 16.dp, top = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.Top) {
+            RecipeImage(
+                image = toRate.image,
+                size = ImageSize.Thumbnail,
+                shape = MaterialTheme.shapes.medium,
+                fallbackIconSize = 24.dp,
+                modifier =
+                    Modifier
+                        .size(64.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable(onClickLabel = stringResource(R.string.home_rate_open)) { actions.onOpenRecipe(toRate.slug) },
+            )
+            Column(
+                Modifier
+                    .weight(1f)
+                    .padding(start = 16.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.cook_rate_question),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = toRate.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                RatingStars(
+                    rating = toRate.stars?.toDouble(),
+                    starSize = 26,
+                    onRate = actions.onRateCooked,
+                    modifier = Modifier.offset(x = (-6).dp),
+                )
+            }
+            IconButton(onClick = actions.onDismissReminder) {
+                Icon(
+                    painterResource(R.drawable.ic_close),
+                    contentDescription = stringResource(R.string.home_rate_dismiss),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
     }

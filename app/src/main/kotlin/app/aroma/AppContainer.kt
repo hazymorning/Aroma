@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import app.aroma.data.JsonCache
 import app.aroma.data.local.AromaDatabase
+import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.remote.MealieClientFactory
 import app.aroma.data.repository.AuthRepository
 import app.aroma.data.repository.MealPlanRepository
@@ -33,6 +34,7 @@ class AppContainer(context: Context) {
     private val cache = JsonCache(database.cache())
 
     val settings = SettingsRepository(dataStore)
+    val ratingReminder = RatingReminder(dataStore)
     val sessions = SessionManager(SessionStore(dataStore, KeystoreCipher()))
 
     val clients =

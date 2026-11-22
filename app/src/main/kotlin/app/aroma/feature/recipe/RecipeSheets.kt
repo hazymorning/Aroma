@@ -41,6 +41,7 @@ import app.aroma.core.model.MealType
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.ui.components.AromaFilterChip
+import app.aroma.ui.components.Stepper
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.mealTypeLabel
 import java.time.LocalDate
@@ -58,11 +59,13 @@ fun AddToListSheet(
     onAdd: (ShoppingListInfo, Set<Int>) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    preferredListId: String? = null,
+    onScale: (Double) -> Unit = {},
 ) {
     val locale = currentLocale()
     var selected by rememberSaveable { mutableStateOf(recipe.ingredients.indices.toSet()) }
     var listId by rememberSaveable { mutableStateOf<String?>(null) }
-    val list = lists?.firstOrNull { it.id == listId } ?: lists?.firstOrNull()
+    val list = lists?.firstOrNull { it.id == (listId ?: preferredListId) } ?: lists?.firstOrNull()
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = modifier) {
         Column(Modifier.navigationBarsPadding()) {
             Text(
@@ -70,6 +73,15 @@ fun AddToListSheet(
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(horizontal = 24.dp),
             )
+            // The row on the recipe sits above the servings, so they can be chosen here as well.
+            Row(Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp)) {
+                Stepper(
+                    label = servingsLabel(recipe.servings, scale, locale),
+                    onDecrease = { onScale(Servings.step(recipe.servings, scale, -1)) },
+                    onIncrease = { onScale(Servings.step(recipe.servings, scale, +1)) },
+                    canDecrease = Servings.canDecrease(recipe.servings, scale),
+                )
+            }
             if (lists != null && lists.size > 1) {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),

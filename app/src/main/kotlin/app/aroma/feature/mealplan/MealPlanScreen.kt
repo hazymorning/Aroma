@@ -272,7 +272,7 @@ private fun EntryRow(entry: MealPlanEntry, actions: MealPlanActions) {
                 if (entry.recipe != null) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.recipe_add_to_list)) },
-                        leadingIcon = { Icon(painterResource(R.drawable.ic_add_shopping_cart), contentDescription = null) },
+                        leadingIcon = { Icon(painterResource(R.drawable.ic_shopping_basket), contentDescription = null) },
                         onClick = {
                             menuOpen = false
                             actions.onShopEntry(entry)

@@ -14,7 +14,6 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +34,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import app.aroma.ui.components.AromaSnackbarHost
 
 @Composable
 fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: Modifier = Modifier) {
@@ -63,7 +63,7 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
                 BottomBar(destination, nav)
             }
         },
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { AromaSnackbarHost(snackbar) },
         contentWindowInsets = WindowInsets(0),
         modifier = modifier,
     ) { padding ->
