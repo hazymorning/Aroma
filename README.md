@@ -22,6 +22,19 @@ Kochi zeigt deine Rezepte, deinen Wochenplan und deine Einkaufslisten so, dass m
 - Android 8.0 oder neuer
 - Mealie 2.0 oder neuer (geprüft mit 2.0.0, 2.8.0 und 3.31.0)
 
+## Installation
+
+Die APK gibt es unter [Releases](https://github.com/hazymorning/Mealie-Client/releases). Herunterladen,
+öffnen und die Installation erlauben; Android fragt beim ersten Mal, ob der Browser oder Dateimanager
+Apps installieren darf. Neuere Versionen werden einfach darüber installiert, deine Anmeldung bleibt erhalten.
+Was sich geändert hat, steht im [Changelog](CHANGELOG.md).
+
+Alle Release-APKs sind mit diesem Zertifikat signiert (SHA-256):
+
+```
+F0:6F:0F:44:A3:15:B8:82:63:29:86:F6:62:55:00:E0:A4:24:AB:A8:9C:E4:96:35:83:FD:29:F6:BF:CD:A8:F4
+```
+
 ## Anmeldung
 
 Gib die Adresse ein, unter der du Mealie im Browser öffnest; `https://` kann weggelassen werden.
@@ -44,8 +57,9 @@ Benötigt JDK 21 und das Android SDK.
 
 Die APK liegt danach unter `app/build/outputs/apk/debug/`.
 
-Für eine signierte Release-Version die Umgebungsvariablen `KOCHI_KEYSTORE`, `KOCHI_KEYSTORE_PASSWORD`,
-`KOCHI_KEY_ALIAS` und `KOCHI_KEY_PASSWORD` setzen und `./gradlew assembleRelease` ausführen.
+Für eine signierte Release-Version `KOCHI_KEYSTORE` (Pfad zum Keystore) und `KOCHI_KEYSTORE_PASSWORD`
+setzen und `./gradlew assembleRelease` ausführen. Alias und Schlüsselpasswort lassen sich mit
+`KOCHI_KEY_ALIAS` (Standard `kochi`) und `KOCHI_KEY_PASSWORD` (Standard: das Keystore-Passwort) ändern.
 
 ## Tests und Qualität
 
@@ -90,6 +104,8 @@ a cooking mode with timers detected in the instructions, a seven-day meal plan, 
 grouped by Mealie labels with a large-text shopping mode, offline access with queued shopping list
 changes, and importing recipes from a link or the Android share sheet. It runs on Android 8.0 and
 newer and works with Mealie 2.0 and newer. The app is available in English and German.
+Download the APK from [Releases](https://github.com/hazymorning/Mealie-Client/releases); release builds
+are signed with the certificate listed above.
 
 Sign in with your server address and Mealie username and password. Kochi then creates an API token
 named "Kochi (device name)" so you stay signed in, and deletes it again when you sign out. LDAP

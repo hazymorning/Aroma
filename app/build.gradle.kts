@@ -26,11 +26,12 @@ android {
     signingConfigs {
         val keystore = providers.environmentVariable("KOCHI_KEYSTORE").orNull
         if (keystore != null) {
+            val password = providers.environmentVariable("KOCHI_KEYSTORE_PASSWORD").get()
             create("release") {
                 storeFile = file(keystore)
-                storePassword = providers.environmentVariable("KOCHI_KEYSTORE_PASSWORD").get()
-                keyAlias = providers.environmentVariable("KOCHI_KEY_ALIAS").get()
-                keyPassword = providers.environmentVariable("KOCHI_KEY_PASSWORD").get()
+                storePassword = password
+                keyAlias = providers.environmentVariable("KOCHI_KEY_ALIAS").getOrElse("kochi")
+                keyPassword = providers.environmentVariable("KOCHI_KEY_PASSWORD").getOrElse(password)
             }
         }
     }

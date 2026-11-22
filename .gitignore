@@ -10,3 +10,4 @@ captures/
 .DS_Store
 *.keystore
 *.jks
+*.p12
