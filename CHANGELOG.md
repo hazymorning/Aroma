@@ -12,8 +12,6 @@ Die erste Version zum Ausprobieren.
 - Rezepte per Link oder über „Teilen“ importieren, selbst anlegen und bearbeiten
 - Hell, dunkel oder Material You, auf Deutsch und Englisch
 
-The first version for testing: recipes with search, filters and cookbooks, scalable ingredients,
-a cooking mode with timers, a seven-day meal plan, shopping lists that work offline, and importing
-and editing recipes.
+The first version for testing: recipes with search, filters and cookbooks, scalable ingredients, a cooking mode with timers, a seven-day meal plan, shopping lists that work offline, and importing and editing recipes.
 
 Benötigt Android 8.0 und Mealie 2.0 oder neuer. / Requires Android 8.0 and Mealie 2.0 or newer.
