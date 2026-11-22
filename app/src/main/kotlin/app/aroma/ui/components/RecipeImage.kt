@@ -27,7 +27,10 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 
-/** Recipe photo with a calm fallback for recipes without an image or while offline. */
+/**
+ * Recipe photo with a calm fallback for recipes without an image or while offline. With
+ * [placeholder], a smaller copy already in memory (from a list card) shows until [size] arrives.
+ */
 @Composable
 fun RecipeImage(
     image: RecipeImage?,
@@ -35,6 +38,7 @@ fun RecipeImage(
     modifier: Modifier = Modifier,
     shape: Shape = RectangleShape,
     fallbackIconSize: Dp = 32.dp,
+    placeholder: ImageSize? = null,
 ) {
     var failed by remember(image) { mutableStateOf(false) }
     Box(
@@ -58,6 +62,9 @@ fun RecipeImage(
                     ImageRequest
                         .Builder(LocalContext.current)
                         .data(image.url(size))
+                        // Keyed by URL alone, so a card's copy can stand in on the next screen.
+                        .memoryCacheKey(image.url(size))
+                        .placeholderMemoryCacheKey(placeholder?.let(image::url))
                         .crossfade(true)
                         .build(),
                 contentDescription = null,

@@ -315,4 +315,5 @@
     <string name="home_rate_dismiss">Don’t ask</string>
     <string name="recipe_action_plan">Plan</string>
     <string name="recipe_action_shop">Shop</string>
+    <string name="login_http_hint">If your server has no https, enter its address with http:// in front.</string>
 </resources>

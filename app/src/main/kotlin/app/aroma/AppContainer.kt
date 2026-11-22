@@ -17,8 +17,10 @@ import app.aroma.data.session.KeystoreCipher
 import app.aroma.data.session.SessionManager
 import app.aroma.data.session.SessionStore
 import app.aroma.data.settings.SettingsRepository
+import app.aroma.data.sync.OfflineRecipesWorker
 import app.aroma.data.sync.ShoppingSyncWorker
 import app.aroma.timer.CookingTimers
+import coil3.SingletonImageLoader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -55,4 +57,22 @@ class AppContainer(context: Context) {
             }
         }
     val timers = CookingTimers(appContext, scope)
+
+    /**
+     * Signs out and removes the account's traces from this device, as the sign-out dialog
+     * promises: cached recipes and photos, offline copies, timers and the rating reminder.
+     * Runs in the app's scope: the screen that asked goes away as soon as the session ends.
+     */
+    fun signOut() =
+        scope.launch {
+            OfflineRecipesWorker.schedule(appContext, enabled = false)
+            timers.dismissAll()
+            settings.forgetAccount()
+            ratingReminder.clear()
+            SingletonImageLoader.get(appContext).run {
+                memoryCache?.clear()
+                diskCache?.clear()
+            }
+            auth.signOut()
+        }
 }

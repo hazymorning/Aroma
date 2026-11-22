@@ -23,10 +23,13 @@ import app.aroma.data.remote.dto.UnitDto
 import app.aroma.data.remote.toModel
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
@@ -64,9 +67,10 @@ class ShoppingRepository(
 
     /** The cached list; local edits show up here immediately. */
     fun observe(listId: String): Flow<ShoppingList?> =
-        cacheDao.observe(key(listId)).map { entry ->
-            entry?.let { parse(MealieJson.parseToJsonElement(it.json).jsonObject) }
-        }
+        cacheDao
+            .observe(key(listId))
+            .map { entry -> entry?.let { parse(MealieJson.parseToJsonElement(it.json).jsonObject) } }
+            .flowOn(Dispatchers.Default)
 
     fun pendingCount(listId: String): Flow<Int> = pending.countFor(listId)
 
@@ -207,7 +211,7 @@ class ShoppingRepository(
     private suspend fun edit(listId: String, transform: (JsonObject) -> Pair<JsonObject, List<Change>>) {
         editLock.withLock {
             val entry = cacheDao.get(key(listId)) ?: throw AromaError.NotFound()
-            val (list, changes) = transform(MealieJson.parseToJsonElement(entry.json).jsonObject)
+            val (list, changes) = withContext(Dispatchers.Default) { transform(MealieJson.parseToJsonElement(entry.json).jsonObject) }
             store(listId, list)
             val now = System.currentTimeMillis()
             changes.forEach { change ->

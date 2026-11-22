@@ -74,7 +74,12 @@ object Markdown {
                     if (closeText > i && closeUrl > closeText) {
                         val start = out.length
                         out.append(line, i + 1, closeText)
-                        spans += StyledText.Span.Link(start, out.length, line.substring(closeText + 2, closeUrl).trim())
+                        val target = line.substring(closeText + 2, closeUrl).trim()
+                        // Recipe text comes from other people and websites: only web links open,
+                        // never file:, intent: or other schemes that start apps or crash.
+                        if (target.startsWith("https://", ignoreCase = true) || target.startsWith("http://", ignoreCase = true)) {
+                            spans += StyledText.Span.Link(start, out.length, target)
+                        }
                         i = closeUrl + 1
                         continue
                     }

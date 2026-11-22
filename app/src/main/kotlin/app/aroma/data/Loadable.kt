@@ -3,8 +3,10 @@ package app.aroma.data
 import app.aroma.data.local.CacheDao
 import app.aroma.data.local.CacheEntity
 import app.aroma.data.remote.MealieJson
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.serialization.KSerializer
 
 /** Data plus how fresh it is: [error] is set when the newest copy could not be fetched. */
@@ -23,9 +25,12 @@ class JsonCache(private val dao: CacheDao) {
         dao.put(CacheEntity(key, MealieJson.encodeToString(serializer, value), System.currentTimeMillis()))
     }
 
-    /** Emits the cached copy first (if any), then the fresh one. Fails only when there is nothing to show. */
+    /**
+     * Emits the cached copy first (if any), then the fresh one. Fails only when there is nothing
+     * to show. Decoding runs off the main thread, so screens stay smooth while lists arrive.
+     */
     fun <T> stream(key: String, serializer: KSerializer<T>, fetch: suspend () -> T): Flow<Loadable<T>> =
-        flow {
+        flow<Loadable<T>> {
             val cached = read(key, serializer)
             if (cached != null) emit(Loadable(cached, isRefreshing = true))
             val fresh =
@@ -39,5 +44,5 @@ class JsonCache(private val dao: CacheDao) {
                 }
             write(key, serializer, fresh)
             emit(Loadable(fresh))
-        }
+        }.flowOn(Dispatchers.Default)
 }

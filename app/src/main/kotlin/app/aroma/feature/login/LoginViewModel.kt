@@ -32,12 +32,17 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
             mutableState.update { it.copy(server = server, step = LoginStep.Credentials, useToken = !server.allowPasswordLogin) }
         }
 
-    /** On success the session changes and the app leaves the login screen by itself. */
+    /**
+     * On success the session changes and the app leaves the login screen by itself. This view
+     * model lives as long as the activity, so the password and token go right away: after a
+     * sign-out the login screen must not offer them again.
+     */
     fun signIn() =
         work {
             val current = state.value
             val server = current.server ?: return@work
             if (current.useToken) auth.signInWithToken(server, current.token) else auth.signIn(server, current.username, current.password)
+            mutableState.update { LoginUiState(serverInput = it.serverInput) }
         }
 
     private fun work(block: suspend () -> Unit) {

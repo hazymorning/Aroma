@@ -2,6 +2,7 @@ package app.aroma.feature.editor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.aroma.core.format.SharedLink
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
@@ -84,7 +85,7 @@ class AddRecipeViewModel(
         val current = state.value
         val request =
             ImportRequest(
-                url = current.url,
+                url = SharedLink.clean(current.url),
                 text = if (current.usesAi) current.text else "",
                 useAi = current.usesAi,
                 translateTo = Locale.getDefault().toLanguageTag().takeIf { current.usesAi && current.translate },

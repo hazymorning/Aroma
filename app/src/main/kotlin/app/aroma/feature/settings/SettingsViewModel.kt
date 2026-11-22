@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import app.aroma.BuildConfig
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.User
-import app.aroma.data.repository.AuthRepository
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.session.SessionManager
 import app.aroma.data.settings.AppLanguage
@@ -24,9 +23,9 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val appContext: Context,
     private val settings: SettingsRepository,
-    private val auth: AuthRepository,
     sessions: SessionManager,
     recipes: RecipeRepository,
+    private val signOutAndForget: () -> Unit,
 ) : ViewModel() {
     private val language = MutableStateFlow(settings.language)
 
@@ -69,9 +68,5 @@ class SettingsViewModel(
         settings.setLanguage(value)
     }
 
-    fun signOut() =
-        viewModelScope.launch {
-            OfflineRecipesWorker.schedule(appContext, enabled = false)
-            auth.signOut()
-        }
+    fun signOut() = signOutAndForget()
 }

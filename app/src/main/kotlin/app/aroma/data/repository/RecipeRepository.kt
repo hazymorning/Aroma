@@ -30,12 +30,15 @@ import app.aroma.data.remote.dto.RecipeSummaryDto
 import app.aroma.data.remote.toModel
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MediaType.Companion.toMediaType
@@ -96,7 +99,8 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     }
 
     private suspend fun offlinePage(query: RecipeQuery, server: String): RecipePage {
-        val local = dao.search(query.search.trim(), limit = 500).map { decodeSummary(it).toModel(server) }
+        val stored = dao.search(query.search.trim(), limit = 500)
+        val local = withContext(Dispatchers.Default) { stored.map { decodeSummary(it).toModel(server) } }
         val favorites = ratings.value.filterValues { it.isFavorite }.keys
         val filtered =
             local.filter { recipe ->
@@ -154,7 +158,7 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                     return@flow
                 }
             emit(Loadable(fresh.toModel(server)))
-        }
+        }.flowOn(Dispatchers.Default)
 
     private suspend fun fetchAndStore(slug: String): RecipeDto {
         val dto = sessions.api().recipe(slug)

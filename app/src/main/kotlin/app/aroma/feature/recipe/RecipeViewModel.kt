@@ -94,11 +94,14 @@ class RecipeViewModel(
         }
     }
 
-    /** Recipe name plus a link to it in Mealie (or to the original page). */
+    /**
+     * Recipe name plus the original page, which anyone can open. Only recipes without one get a
+     * link into Mealie, which hands out the server's address and opens for its own users only.
+     */
     fun shareText(): String? {
         val recipe = state.value.recipe ?: return null
         val session = sessions.current
-        val link = session?.groupSlug?.let { group -> "${session.serverUrl}/g/$group/r/${recipe.slug}" } ?: recipe.sourceUrl
+        val link = recipe.sourceUrl ?: session?.groupSlug?.let { group -> "${session.serverUrl}/g/$group/r/${recipe.slug}" }
         return listOfNotNull(recipe.name, link).joinToString("\n")
     }
 

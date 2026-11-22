@@ -48,6 +48,7 @@ import app.aroma.feature.editor.EditorActions
 import app.aroma.feature.editor.EditorScreen
 import app.aroma.feature.editor.EditorViewModel
 import app.aroma.feature.editor.RecipeImporter
+import app.aroma.feature.editor.readPickedPhoto
 import app.aroma.feature.home.HomeActions
 import app.aroma.feature.home.HomeScreen
 import app.aroma.feature.home.HomeViewModel
@@ -450,17 +451,11 @@ fun EditorDestination(slug: String, nav: NavController) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
     val picker =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             if (uri != null) {
-                val type = context.contentResolver.getType(uri).orEmpty()
-                val extension =
-                    when {
-                        type.endsWith("png") -> "png"
-                        type.endsWith("webp") -> "webp"
-                        else -> "jpg"
-                    }
-                context.contentResolver.openInputStream(uri)?.use { vm.setImage(uri, it.readBytes(), extension) }
+                scope.launch { readPickedPhoto(context, uri)?.let { vm.setImage(uri, it.bytes, it.extension) } }
             }
         }
     LaunchedEffect(vm) {
@@ -486,7 +481,7 @@ fun EditorDestination(slug: String, nav: NavController) {
 @Composable
 fun SettingsDestination(nav: NavController) {
     val context = LocalContext.current
-    val vm = aromaViewModel { SettingsViewModel(context.applicationContext, settings, auth, sessions, recipes) }
+    val vm = aromaViewModel { SettingsViewModel(context.applicationContext, settings, sessions, recipes, ::signOut) }
     val state by vm.state.collectAsStateWithLifecycle()
     SettingsScreen(
         state = state,

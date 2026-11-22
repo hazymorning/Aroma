@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.ServerInfo
 import app.aroma.data.AromaError
+import app.aroma.data.remote.ServerAddress
 import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.rememberSyncedTextFieldState
 import app.aroma.ui.components.titleRes
@@ -127,7 +129,20 @@ private fun ServerStep(state: LoginUiState, actions: LoginActions) {
             shape = MaterialTheme.shapes.medium,
             modifier = Modifier.fillMaxWidth(),
         )
-        ErrorMessage(state.error)
+        // Plain http is only tried at home; a server elsewhere without https has to be typed with it.
+        val onlyHttpsTried = remember(state.serverInput) { ServerAddress.candidates(state.serverInput).singleOrNull()?.isHttps == true }
+        val httpHint = state.error.let { it is AromaError.Certificate || it is AromaError.Offline } && onlyHttpsTried
+        ErrorMessage(
+            state.error,
+            hint =
+                if (httpHint &&
+                    !state.serverInput.startsWith("https", ignoreCase = true)
+                ) {
+                    stringResource(R.string.login_http_hint)
+                } else {
+                    null
+                },
+        )
         PrimaryButton(
             stringResource(R.string.action_continue),
             state.isWorking,
@@ -249,7 +264,7 @@ private fun VisibilityToggle(visible: Boolean, onToggle: () -> Unit) {
 }
 
 @Composable
-private fun ErrorMessage(error: AromaError?) {
+private fun ErrorMessage(error: AromaError?, hint: String? = null) {
     if (error == null) return
     Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.errorContainer) {
         Column(
@@ -268,6 +283,14 @@ private fun ErrorMessage(error: AromaError?) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
+            if (hint != null) {
+                Text(
+                    hint,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
         }
     }
 }

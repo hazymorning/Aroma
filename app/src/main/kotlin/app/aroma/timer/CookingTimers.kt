@@ -75,6 +75,11 @@ class CookingTimers(private val context: Context, private val scope: CoroutineSc
         mutableTimers.update { list -> list.filterNot { it.id == id } }
     }
 
+    fun dismissAll() {
+        mutableTimers.value.forEach(::cancelAlarm)
+        mutableTimers.value = emptyList()
+    }
+
     private fun ensureTicking() {
         if (ticker?.isActive == true) return
         ticker =

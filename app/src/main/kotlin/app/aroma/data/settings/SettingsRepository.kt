@@ -56,6 +56,13 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setOfflineRecipes(enabled: Boolean) = dataStore.edit { it[Keys.offlineRecipes] = enabled }
 
+    /** Forgets what belonged to the signed-out account; look and feel stay as they are. */
+    suspend fun forgetAccount() =
+        dataStore.edit {
+            it.remove(Keys.offlineRecipes)
+            it.remove(Keys.lastShoppingList)
+        }
+
     suspend fun setImportWithAi(enabled: Boolean) = dataStore.edit { it[Keys.importWithAi] = enabled }
 
     suspend fun setTranslateImports(enabled: Boolean) = dataStore.edit { it[Keys.translateImports] = enabled }

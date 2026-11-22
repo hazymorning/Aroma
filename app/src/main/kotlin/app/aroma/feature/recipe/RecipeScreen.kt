@@ -190,6 +190,7 @@ private fun Hero(recipe: Recipe) {
         RecipeImage(
             image = recipe.image,
             size = ImageSize.Original,
+            placeholder = ImageSize.Medium,
             shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp),
             fallbackIconSize = 48.dp,
             modifier = Modifier.fillMaxSize(),

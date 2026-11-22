@@ -34,6 +34,13 @@ class MarkdownTest {
     }
 
     @Test
+    fun `links to anything but web pages stay plain text`() {
+        val parsed = Markdown.parse("[Video](file:///sdcard/x.mp4) und [App](intent://scan#Intent;end)")
+        assertEquals("Video und App", parsed.text)
+        assertTrue(parsed.spans.isEmpty())
+    }
+
+    @Test
     fun `bare urls become links`() {
         val parsed = Markdown.parse("Video: https://example.com/v")
         assertEquals(listOf(Span.Link(7, 28, "https://example.com/v")), parsed.spans)
