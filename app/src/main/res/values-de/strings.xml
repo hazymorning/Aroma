@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation -->
+    <string name="nav_home">Start</string>
+    <string name="nav_recipes">Rezepte</string>
+    <string name="nav_meal_plan">Wochenplan</string>
+    <string name="nav_shopping">Einkauf</string>
+
+    <!-- Common actions -->
+    <string name="action_back">Zurück</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_close">Schließen</string>
+    <string name="action_continue">Weiter</string>
+    <string name="action_decrease">Weniger</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_done">Fertig</string>
+    <string name="action_edit">Bearbeiten</string>
+    <string name="action_favorite">Zu Favoriten hinzufügen</string>
+    <string name="action_increase">Mehr</string>
+    <string name="action_more">Weitere Optionen</string>
+    <string name="action_plan">Planen</string>
+    <string name="action_retry">Erneut versuchen</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_share">Teilen</string>
+    <string name="action_show_all">Alle</string>
+    <string name="action_unfavorite">Aus Favoriten entfernen</string>
+
+    <!-- Durations -->
+    <string name="duration_seconds">%1$d Sek.</string>
+    <string name="duration_minutes">%1$d Min.</string>
+    <string name="duration_hours">%1$d Std.</string>
+    <string name="duration_hours_minutes">%1$d Std. %2$d Min.</string>
+
+    <!-- Errors -->
+    <string name="error_offline_title">Keine Verbindung</string>
+    <string name="error_offline_message">Kochi erreicht deinen Mealie-Server gerade nicht. Prüfe deine Verbindung und versuche es noch einmal.</string>
+    <string name="error_host_title">Server nicht gefunden</string>
+    <string name="error_host_message">Unter dieser Adresse ist nichts zu finden. Prüfe sie auf Tippfehler.</string>
+    <string name="error_certificate_title">Verbindung nicht vertrauenswürdig</string>
+    <string name="error_certificate_message">Das Zertifikat des Servers ließ sich nicht prüfen. Falls du ein eigenes Zertifikat nutzt, installiere es zuerst auf diesem Gerät.</string>
+    <string name="error_auth_title">Abgemeldet</string>
+    <string name="error_session_message">Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.</string>
+    <string name="error_credentials_message">Benutzername oder Passwort stimmt nicht.</string>
+    <string name="error_forbidden_title">Nicht erlaubt</string>
+    <string name="error_forbidden_message">Dein Mealie-Konto hat dafür keine Berechtigung.</string>
+    <string name="error_not_found_title">Nicht gefunden</string>
+    <string name="error_not_found_message">Vielleicht wurde es inzwischen gelöscht oder verschoben.</string>
+    <string name="error_not_mealie_title">Kein Mealie-Server</string>
+    <string name="error_not_mealie_message">Unter dieser Adresse antwortet zwar ein Server, aber nicht Mealie.</string>
+    <string name="error_version_title">Mealie ist zu alt</string>
+    <string name="error_version_message">Kochi braucht Mealie 2.0 oder neuer. Bitte aktualisiere deinen Server.</string>
+    <string name="error_import_title">Import hat nicht geklappt</string>
+    <string name="error_import_message">Mealie hat auf dieser Seite kein Rezept gefunden.</string>
+    <string name="error_generic_title">Da ist etwas schiefgelaufen</string>
+    <string name="error_generic_message">Der Server hat mit einem Fehler geantwortet. Versuche es gleich noch einmal.</string>
+
+    <string name="offline_notice">Offline. Du siehst deine gespeicherte Kopie.</string>
+
+    <!-- Home -->
+    <string name="greeting_morning">Guten Morgen</string>
+    <string name="greeting_afternoon">Guten Tag</string>
+    <string name="greeting_evening">Guten Abend</string>
+    <string name="home_open_profile">Profil und Einstellungen</string>
+    <string name="home_today">Heute</string>
+    <string name="home_open_plan">Wochenplan</string>
+    <string name="home_today_empty">Für heute ist noch nichts geplant.</string>
+    <string name="home_recent">Neu hinzugefügt</string>
+    <string name="home_favorites">Favoriten</string>
+    <string name="home_cookbooks">Kochbücher</string>
+    <string name="search_recipes_hint">Rezepte durchsuchen</string>
+
+    <!-- Meal types -->
+    <string name="meal_breakfast">Frühstück</string>
+    <string name="meal_lunch">Mittagessen</string>
+    <string name="meal_dinner">Abendessen</string>
+    <string name="meal_side">Beilage</string>
+    <string name="meal_snack">Snack</string>
+    <string name="meal_drink">Getränk</string>
+    <string name="meal_dessert">Nachtisch</string>
+
+    <!-- Recipe -->
+    <string name="recipe_start_cooking">Jetzt kochen</string>
+    <string name="recipe_add_to_plan">Zum Wochenplan hinzufügen</string>
+    <string name="recipe_open_source">Original öffnen</string>
+    <string name="recipe_delete_title">Rezept löschen?</string>
+    <string name="recipe_delete_message">„%1$s“ wird für alle in deinem Haushalt aus Mealie entfernt.</string>
+    <string name="recipe_ingredients">Zutaten</string>
+    <string name="recipe_steps">Zubereitung</string>
+    <string name="recipe_notes">Notizen</string>
+    <string name="recipe_nutrition">Nährwerte</string>
+    <string name="recipe_prep_time">Vorbereitung</string>
+    <string name="recipe_cook_time">Kochzeit</string>
+    <string name="recipe_total_time">Gesamt</string>
+    <string name="recipe_add_to_list">Auf die Einkaufsliste</string>
+    <string name="recipe_tools">Du brauchst: %1$s</string>
+    <string name="recipe_multiplier">Menge ×%1$s</string>
+    <plurals name="servings">
+        <item quantity="one">%1$s Portion</item>
+        <item quantity="other">%1$s Portionen</item>
+    </plurals>
+
+    <string name="rating_description">Bewertet mit %1$.1f von 5</string>
+    <plurals name="rating_set">
+        <item quantity="one">Mit %1$d Stern bewerten</item>
+        <item quantity="other">Mit %1$d Sternen bewerten</item>
+    </plurals>
+
+    <string name="nutrition_calories">Kalorien</string>
+    <string name="nutrition_protein">Eiweiß</string>
+    <string name="nutrition_fat">Fett</string>
+    <string name="nutrition_saturated_fat">Gesättigte Fettsäuren</string>
+    <string name="nutrition_carbohydrates">Kohlenhydrate</string>
+    <string name="nutrition_sugar">Zucker</string>
+    <string name="nutrition_fiber">Ballaststoffe</string>
+    <string name="nutrition_sodium">Natrium</string>
+    <string name="nutrition_cholesterol">Cholesterin</string>
+
+    <string name="action_clear">Leeren</string>
+    <string name="action_undo">Rückgängig</string>
+    <string name="select_all">Alle auswählen</string>
+    <string name="select_none">Keine auswählen</string>
+    <string name="share_import_label">Zu Kochi hinzufügen</string>
+
+    <!-- Login -->
+    <string name="login_tagline">Deine Mealie-Rezepte, schön aufgeräumt.</string>
+    <string name="login_server_label">Server-Adresse</string>
+    <string name="login_server_hint">Die Adresse, unter der du Mealie im Browser öffnest.</string>
+    <string name="login_server_found">Mealie %1$s gefunden</string>
+    <string name="login_unencrypted">Unverschlüsselte Verbindung (http). Im Heimnetz in Ordnung, nicht in öffentlichen Netzen.</string>
+    <string name="login_change_server">Ändern</string>
+    <string name="login_username_label">E-Mail oder Benutzername</string>
+    <string name="login_password_label">Passwort</string>
+    <string name="login_token_label">API-Token</string>
+    <string name="login_token_hint">Erstellst du in Mealie unter Profil, API-Tokens.</string>
+    <string name="login_sign_in">Anmelden</string>
+    <string name="login_use_token">Stattdessen mit API-Token anmelden</string>
+    <string name="login_use_password">Stattdessen mit Passwort anmelden</string>
+    <string name="login_password_disabled">Auf diesem Server ist die Anmeldung per Passwort abgeschaltet, daher brauchst du ein API-Token.</string>
+    <string name="login_show_secret">Anzeigen</string>
+    <string name="login_hide_secret">Verbergen</string>
+
+    <!-- Recipe library -->
+    <string name="recipes_add">Rezept hinzufügen</string>
+    <string name="recipes_categories">Kategorien</string>
+    <string name="recipes_tags">Schlagwörter</string>
+    <string name="recipes_tools">Utensilien</string>
+    <string name="recipes_clear_filters">Filter zurücksetzen</string>
+    <string name="recipes_empty_title">Noch keine Rezepte</string>
+    <string name="recipes_empty_message">Importiere dein erstes Rezept von einer Webseite oder schreib selbst eins.</string>
+    <string name="recipes_no_results_title">Nichts gefunden</string>
+    <string name="recipes_no_results_message">Probier einen anderen Suchbegriff oder entferne ein paar Filter.</string>
+    <plurals name="recipe_count">
+        <item quantity="one">%1$d Rezept</item>
+        <item quantity="other">%1$d Rezepte</item>
+    </plurals>
+    <string name="sort_title">Sortieren nach</string>
+    <string name="sort_newest">Neueste</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_rating">Bewertung</string>
+    <string name="sort_last_made">Zuletzt gekocht</string>
+    <string name="sort_random">Überrasch mich</string>
+
+    <!-- Recipe -->
+    <string name="recipe_added_to_list">Auf „%1$s“ gesetzt</string>
+    <string name="recipe_planned">Für %1$s eingeplant</string>
+    <plurals name="add_ingredients">
+        <item quantity="one">%1$d Zutat hinzufügen</item>
+        <item quantity="other">%1$d Zutaten hinzufügen</item>
+    </plurals>
+
+    <!-- Cooking mode -->
+    <string name="cook_close">Kochmodus verlassen</string>
+    <string name="cook_step_of">Schritt %1$d von %2$d</string>
+    <string name="cook_step_ingredients">Für diesen Schritt</string>
+    <string name="cook_start_timer">Timer %1$s</string>
+    <string name="cook_previous">Zurück</string>
+    <string name="cook_next">Weiter</string>
+    <string name="cook_timer_done">Fertig</string>
+    <string name="cook_timer_pause">Timer anhalten</string>
+    <string name="cook_timer_resume">Timer fortsetzen</string>
+    <string name="cook_timer_stop">Timer beenden</string>
+    <string name="cook_finished_title">Guten Appetit</string>
+    <string name="cook_rate_question">Wie hat es geschmeckt?</string>
+    <string name="cook_mark_cooked">Als heute gekocht markieren</string>
+    <string name="cook_marked">Als heute gekocht gespeichert</string>
+    <string name="cook_mark_failed">Das hat nicht geklappt. Versuche es bitte noch einmal.</string>
+    <string name="cook_exact_alarm_hint">Erlaube genaue Wecker, damit Timer auch bei ausgeschaltetem Bildschirm pünktlich klingeln.</string>
+    <string name="cook_exact_alarm_allow">Erlauben</string>
+    <string name="timer_channel">Timer</string>
+    <string name="timer_channel_description">Klingelt, wenn ein Koch-Timer abgelaufen ist.</string>
+    <string name="timer_finished_title">Timer abgelaufen</string>
+
+    <!-- Meal plan -->
+    <string name="plan_previous_week">Vorherige Woche</string>
+    <string name="plan_next_week">Nächste Woche</string>
+    <string name="plan_this_week">Heute</string>
+    <string name="plan_add_for">Mahlzeit für %1$s planen</string>
+    <string name="plan_day_empty">Noch nichts geplant</string>
+    <string name="plan_remove">Aus dem Plan entfernen</string>
+    <string name="plan_tomorrow">Morgen</string>
+    <string name="plan_day">Tag</string>
+    <string name="plan_meal">Mahlzeit</string>
+    <string name="plan_for_day">Für %1$s planen</string>
+    <string name="plan_mode_recipe">Rezept</string>
+    <string name="plan_mode_note">Notiz</string>
+    <string name="plan_note_title">Was gibt es?</string>
+    <string name="plan_note_text">Notiz (optional)</string>
+    <string name="plan_tap_recipe">Tippe auf ein Rezept, um es einzuplanen.</string>
+
+    <!-- Shopping -->
+    <string name="shopping_mode_on">Einkaufsmodus starten</string>
+    <string name="shopping_mode_off">Einkaufsmodus beenden</string>
+    <string name="shopping_mode_hint">Einkaufsmodus: große Schrift, der Bildschirm bleibt an. Tippe auf einen Artikel, um ihn abzuhaken.</string>
+    <string name="shopping_add_hint">Artikel hinzufügen</string>
+    <string name="shopping_add">Hinzufügen</string>
+    <string name="shopping_switch_list">Liste wechseln</string>
+    <string name="shopping_create_list">Neue Liste</string>
+    <string name="shopping_rename_list">Liste umbenennen</string>
+    <string name="shopping_delete_list">Liste löschen</string>
+    <string name="shopping_delete_list_title">Liste löschen?</string>
+    <string name="shopping_delete_list_message">„%1$s“ und alle Einträge werden für deinen ganzen Haushalt gelöscht.</string>
+    <string name="shopping_edit_item">Artikel bearbeiten</string>
+    <string name="shopping_item_deleted">Artikel entfernt</string>
+    <string name="shopping_other">Sonstiges</string>
+    <string name="shopping_in_cart">Erledigt (%1$d)</string>
+    <string name="shopping_clear_checked">Alle entfernen</string>
+    <string name="shopping_for_recipe">für %1$s</string>
+    <string name="shopping_checked">Abgehakt</string>
+    <string name="shopping_unchecked">Nicht abgehakt</string>
+    <string name="shopping_empty_title">Die Liste ist leer</string>
+    <string name="shopping_empty_message">Füge oben Artikel hinzu oder setze die Zutaten eines Rezepts auf die Liste.</string>
+    <string name="shopping_done_title">Alles erledigt</string>
+    <string name="shopping_done_message">Alles auf der Liste liegt im Korb.</string>
+    <string name="shopping_no_lists_title">Noch keine Einkaufsliste</string>
+    <string name="shopping_no_lists_message">Lege eine Liste an, um Artikel hinzuzufügen.</string>
+    <plurals name="shopping_pending">
+        <item quantity="one">%1$d Änderung wird übertragen, sobald du online bist.</item>
+        <item quantity="other">%1$d Änderungen werden übertragen, sobald du online bist.</item>
+    </plurals>
+
+    <!-- Cookbooks -->
+    <string name="cookbook_empty_title">Dieses Kochbuch ist leer</string>
+    <string name="cookbook_empty_message">Rezepte erscheinen hier, sobald sie in Mealie zu den Filtern des Kochbuchs passen.</string>
+
+    <!-- Add and edit -->
+    <string name="add_from_web">Von einer Webseite</string>
+    <string name="add_from_web_hint">Mealie liest Zutaten, Schritte und Foto direkt von der Seite.</string>
+    <string name="add_url_label">Link zum Rezept</string>
+    <string name="add_paste">Einfügen</string>
+    <string name="add_import">Importieren</string>
+    <string name="add_importing">Mealie liest die Seite. Das kann ein paar Sekunden dauern.</string>
+    <string name="add_manual">Selbst schreiben</string>
+    <string name="add_manual_hint">Beginne mit einem Namen, Zutaten und Schritte folgen danach.</string>
+    <string name="add_create">Rezept anlegen</string>
+    <string name="editor_title">Rezept bearbeiten</string>
+    <string name="editor_name">Name</string>
+    <string name="editor_description">Beschreibung</string>
+    <string name="editor_servings">Portionen</string>
+    <string name="editor_prep_minutes">Vorber. (Min.)</string>
+    <string name="editor_cook_minutes">Kochen (Min.)</string>
+    <string name="editor_total_minutes">Gesamt (Min.)</string>
+    <string name="editor_ingredients_hint">Eine Zutat pro Zeile. Zeilen, die mit # beginnen, werden zu Zwischenüberschriften.</string>
+    <string name="editor_step">Schritt %1$d</string>
+    <string name="editor_remove_step">Schritt %1$d entfernen</string>
+    <string name="editor_add_step">Schritt hinzufügen</string>
+    <string name="editor_change_photo">Foto ändern</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_server_line">%1$s · Mealie %2$s</string>
+    <string name="settings_appearance">Darstellung</string>
+    <string name="settings_theme">Design</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Hell</string>
+    <string name="settings_theme_dark">Dunkel</string>
+    <string name="settings_dynamic_color">Farben vom Hintergrundbild</string>
+    <string name="settings_dynamic_color_hint">Nutzt Material You statt Kochis Salbeitönen.</string>
+    <string name="settings_language">Sprache</string>
+    <string name="settings_language_system">System</string>
+    <string name="settings_language_german">Deutsch</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_cooking">Kochen</string>
+    <string name="settings_keep_screen_on">Bildschirm anlassen</string>
+    <string name="settings_keep_screen_on_hint">Solange der Kochmodus geöffnet ist.</string>
+    <string name="settings_offline">Offline</string>
+    <string name="settings_offline_all">Alle Rezepte auf diesem Gerät speichern</string>
+    <string name="settings_offline_all_hint">Geöffnete Rezepte werden immer gespeichert. Damit lädst du auch alle anderen.</string>
+    <plurals name="settings_offline_count">
+        <item quantity="one">%1$d Rezept auf diesem Gerät gespeichert</item>
+        <item quantity="other">%1$d Rezepte auf diesem Gerät gespeichert</item>
+    </plurals>
+    <string name="settings_about">Über Kochi</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_licenses">Open-Source-Lizenzen</string>
+    <string name="settings_sign_out">Abmelden</string>
+    <string name="settings_sign_out_title">Abmelden?</string>
+    <string name="settings_sign_out_message">Gespeicherte Rezepte und noch nicht übertragene Änderungen an Einkaufslisten werden von diesem Gerät entfernt.</string>
+</resources>
