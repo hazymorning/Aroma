@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      mealie:
+        image: ghcr.io/mealie-recipes/mealie:v3.31.0
+        ports:
+          - 9000:9000
+        env:
+          ALLOW_SIGNUP: "false"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Robolectric downloads large Android jars at test time; Maven Central asks clients to cache them.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Wait for Mealie
+        run: |
+          for attempt in $(seq 1 60); do
+            curl -sf http://localhost:9000/api/app/about && exit 0
+            sleep 3
+          done
+          exit 1
+
+      - name: Formatting
+        run: ./gradlew spotlessCheck
+
+      - name: Lint
+        run: ./gradlew :app:lintDebug
+
+      # Runs all unit tests, records the screenshots and exercises the API against the Mealie container.
+      - name: Tests and screenshots
+        run: ./gradlew :app:recordRoborazziDebug
+        env:
+          MEALIE_TEST_URL: http://localhost:9000
+          MEALIE_TEST_USER: changeme@example.com
+          MEALIE_TEST_PASSWORD: MyPassword
+
+      - name: Build APK
+        run: ./gradlew :app:assembleDebug
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kochi-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screenshots
+          path: app/build/outputs/roborazzi
