@@ -39,9 +39,17 @@ jobs:
       - name: Restore signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.AROMA_KEYSTORE_BASE64 }}
+          HAS_PASSWORD: ${{ secrets.AROMA_KEYSTORE_PASSWORD != '' }}
+          SAVED_AS_VARIABLES: ${{ vars.AROMA_KEYSTORE_BASE64 != '' || vars.AROMA_KEYSTORE_PASSWORD != '' }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::Signing needs the repository secrets AROMA_KEYSTORE_BASE64 and AROMA_KEYSTORE_PASSWORD"
+          missing=""
+          [ -n "$KEYSTORE_BASE64" ] || missing="$missing AROMA_KEYSTORE_BASE64"
+          [ "$HAS_PASSWORD" = true ] || missing="$missing AROMA_KEYSTORE_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing (Settings > Secrets and variables > Actions > Secrets > Repository secrets)"
+            if [ "$SAVED_AS_VARIABLES" = true ]; then
+              echo "::error::They exist as variables; a signing key has to be stored as a secret instead"
+            fi
             exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/aroma-release.p12"
