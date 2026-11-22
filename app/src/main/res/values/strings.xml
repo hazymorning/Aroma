@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Kochi</string>
+    <string name="app_name" translatable="false">Aroma</string>
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -35,7 +35,7 @@
 
     <!-- Errors -->
     <string name="error_offline_title">No connection</string>
-    <string name="error_offline_message">Kochi can’t reach your Mealie server right now. Check your connection and try again.</string>
+    <string name="error_offline_message">Aroma can’t reach your Mealie server right now. Check your connection and try again.</string>
     <string name="error_host_title">Server not found</string>
     <string name="error_host_message">This address doesn’t lead anywhere. Check it for typos.</string>
     <string name="error_certificate_title">Connection not trusted</string>
@@ -50,7 +50,7 @@
     <string name="error_not_mealie_title">No Mealie server</string>
     <string name="error_not_mealie_message">There is a server at this address, but it doesn’t answer like Mealie.</string>
     <string name="error_version_title">Mealie is too old</string>
-    <string name="error_version_message">Kochi needs Mealie 2.0 or newer. Please update your server.</string>
+    <string name="error_version_message">Aroma needs Mealie 2.0 or newer. Please update your server.</string>
     <string name="error_import_title">Import didn’t work</string>
     <string name="error_import_message">Mealie couldn’t find a recipe on this page.</string>
     <string name="error_generic_title">Something went wrong</string>
@@ -121,7 +121,7 @@
     <string name="action_undo">Undo</string>
     <string name="select_all">Select all</string>
     <string name="select_none">Select none</string>
-    <string name="share_import_label">Add to Kochi</string>
+    <string name="share_import_label">Add to Aroma</string>
 
     <!-- Login -->
     <string name="login_tagline">Your Mealie recipes, beautifully organized.</string>
@@ -277,7 +277,7 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_dynamic_color">Colors from your wallpaper</string>
-    <string name="settings_dynamic_color_hint">Uses Material You instead of Kochi’s sage tones.</string>
+    <string name="settings_dynamic_color_hint">Uses Material You instead of Aroma’s sage tones.</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_system">System</string>
     <string name="settings_language_german">Deutsch</string>

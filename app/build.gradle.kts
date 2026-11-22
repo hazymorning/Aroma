@@ -10,13 +10,13 @@ plugins {
 }
 
 android {
-    namespace = "app.kochi"
+    namespace = "app.aroma"
     compileSdk {
         version = release(37) { minorApiLevel = 2 }
     }
 
     defaultConfig {
-        applicationId = "app.kochi"
+        applicationId = "app.aroma"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -24,14 +24,14 @@ android {
     }
 
     signingConfigs {
-        val keystore = providers.environmentVariable("KOCHI_KEYSTORE").orNull
+        val keystore = providers.environmentVariable("AROMA_KEYSTORE").orNull
         if (keystore != null) {
-            val password = providers.environmentVariable("KOCHI_KEYSTORE_PASSWORD").get()
+            val password = providers.environmentVariable("AROMA_KEYSTORE_PASSWORD").get()
             create("release") {
                 storeFile = file(keystore)
                 storePassword = password
-                keyAlias = providers.environmentVariable("KOCHI_KEY_ALIAS").getOrElse("kochi")
-                keyPassword = providers.environmentVariable("KOCHI_KEY_PASSWORD").getOrElse(password)
+                keyAlias = providers.environmentVariable("AROMA_KEY_ALIAS").getOrElse("aroma")
+                keyPassword = providers.environmentVariable("AROMA_KEY_PASSWORD").getOrElse(password)
             }
         }
     }

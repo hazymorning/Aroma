@@ -38,19 +38,19 @@ jobs:
 
       - name: Restore signing key
         env:
-          KEYSTORE_BASE64: ${{ secrets.KOCHI_KEYSTORE_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.AROMA_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::Signing needs the repository secrets KOCHI_KEYSTORE_BASE64 and KOCHI_KEYSTORE_PASSWORD"
+            echo "::error::Signing needs the repository secrets AROMA_KEYSTORE_BASE64 and AROMA_KEYSTORE_PASSWORD"
             exit 1
           fi
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/kochi-release.p12"
-          echo "KOCHI_KEYSTORE=$RUNNER_TEMP/kochi-release.p12" >> "$GITHUB_ENV"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/aroma-release.p12"
+          echo "AROMA_KEYSTORE=$RUNNER_TEMP/aroma-release.p12" >> "$GITHUB_ENV"
 
       - name: Build
         run: ./gradlew :app:assembleRelease
         env:
-          KOCHI_KEYSTORE_PASSWORD: ${{ secrets.KOCHI_KEYSTORE_PASSWORD }}
+          AROMA_KEYSTORE_PASSWORD: ${{ secrets.AROMA_KEYSTORE_PASSWORD }}
 
       # Never publish an APK that is not signed with the release certificate.
       - name: Check signature
@@ -59,15 +59,15 @@ jobs:
           "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | tee signature.txt
           grep -q "certificate SHA-256 digest: $CERTIFICATE" signature.txt
         env:
-          CERTIFICATE: f06f0f44a315b882632986f6625500e0a424aba89ce4963583fd29f6bfcda8f4
+          CERTIFICATE: 493b8d5e419ca8c6615ff26504bc22cb56895ce6fc68f1f95b5fd53ccf07028f
 
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          apk="Kochi-$VERSION.apk"
+          apk="Aroma-$VERSION.apk"
           cp app/build/outputs/apk/release/app-release.apk "$apk"
           awk -v heading="## $VERSION " 'index($0, heading) == 1 { found = 1; next } /^## / { found = 0 } found' CHANGELOG.md > notes.md
           checksum=$(sha256sum "$apk" | cut -d " " -f 1)
           printf '\nSHA-256 %s: %s\n' "\`$apk\`" "\`$checksum\`" >> notes.md
-          gh release create "v$VERSION" "$apk" --title "Kochi $VERSION" --notes-file notes.md --target "$GITHUB_SHA"
+          gh release create "v$VERSION" "$apk" --title "Aroma $VERSION" --notes-file notes.md --target "$GITHUB_SHA"

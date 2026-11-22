@@ -33,7 +33,7 @@
 
     <!-- Errors -->
     <string name="error_offline_title">Keine Verbindung</string>
-    <string name="error_offline_message">Kochi erreicht deinen Mealie-Server gerade nicht. Prüfe deine Verbindung und versuche es noch einmal.</string>
+    <string name="error_offline_message">Aroma erreicht deinen Mealie-Server gerade nicht. Prüfe deine Verbindung und versuche es noch einmal.</string>
     <string name="error_host_title">Server nicht gefunden</string>
     <string name="error_host_message">Unter dieser Adresse ist nichts zu finden. Prüfe sie auf Tippfehler.</string>
     <string name="error_certificate_title">Verbindung nicht vertrauenswürdig</string>
@@ -48,7 +48,7 @@
     <string name="error_not_mealie_title">Kein Mealie-Server</string>
     <string name="error_not_mealie_message">Unter dieser Adresse antwortet zwar ein Server, aber nicht Mealie.</string>
     <string name="error_version_title">Mealie ist zu alt</string>
-    <string name="error_version_message">Kochi braucht Mealie 2.0 oder neuer. Bitte aktualisiere deinen Server.</string>
+    <string name="error_version_message">Aroma braucht Mealie 2.0 oder neuer. Bitte aktualisiere deinen Server.</string>
     <string name="error_import_title">Import hat nicht geklappt</string>
     <string name="error_import_message">Mealie hat auf dieser Seite kein Rezept gefunden.</string>
     <string name="error_generic_title">Da ist etwas schiefgelaufen</string>
@@ -119,7 +119,7 @@
     <string name="action_undo">Rückgängig</string>
     <string name="select_all">Alle auswählen</string>
     <string name="select_none">Keine auswählen</string>
-    <string name="share_import_label">Zu Kochi hinzufügen</string>
+    <string name="share_import_label">Zu Aroma hinzufügen</string>
 
     <!-- Login -->
     <string name="login_tagline">Deine Mealie-Rezepte, schön aufgeräumt.</string>
@@ -274,7 +274,7 @@
     <string name="settings_theme_light">Hell</string>
     <string name="settings_theme_dark">Dunkel</string>
     <string name="settings_dynamic_color">Farben vom Hintergrundbild</string>
-    <string name="settings_dynamic_color_hint">Nutzt Material You statt Kochis Salbeitönen.</string>
+    <string name="settings_dynamic_color_hint">Nutzt Material You statt Aromas Salbeitönen.</string>
     <string name="settings_language">Sprache</string>
     <string name="settings_language_system">System</string>
     <string name="settings_language_german">Deutsch</string>
@@ -289,7 +289,7 @@
         <item quantity="one">%1$d Rezept auf diesem Gerät gespeichert</item>
         <item quantity="other">%1$d Rezepte auf diesem Gerät gespeichert</item>
     </plurals>
-    <string name="settings_about">Über Kochi</string>
+    <string name="settings_about">Über Aroma</string>
     <string name="settings_version">Version</string>
     <string name="settings_licenses">Open-Source-Lizenzen</string>
     <string name="settings_sign_out">Abmelden</string>
