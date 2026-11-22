@@ -2,29 +2,27 @@ package app.aroma.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -35,6 +33,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.aroma.ui.components.AromaSnackbarHost
+import app.aroma.ui.components.LocalBottomBarInset
 
 @Composable
 fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: Modifier = Modifier) {
@@ -52,25 +51,19 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
         }
     }
 
-    Scaffold(
-        bottomBar = {
-            // Grows and shrinks instead of popping in, so the screen above changes height smoothly.
-            AnimatedVisibility(
-                visible = showBar,
-                enter = expandVertically(tween(BAR_DURATION), expandFrom = Alignment.Top) + fadeIn(tween(BAR_DURATION)),
-                exit = shrinkVertically(tween(BAR_DURATION), shrinkTowards = Alignment.Top) + fadeOut(tween(BAR_DURATION)),
-            ) {
-                BottomBar(destination, nav)
-            }
-        },
-        snackbarHost = { AromaSnackbarHost(snackbar) },
-        contentWindowInsets = WindowInsets(0),
-        modifier = modifier,
-    ) { padding ->
+    // The bar floats over the page instead of taking space from it, so showing and hiding it never
+    // resizes the screen underneath, and tab pages scroll on below it.
+    val navigationInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val barInset = FloatingBarHeight + FloatingBarGap + navigationInset
+    Box(modifier.fillMaxSize()) {
+        // Only tab pages lie under the bar, so only they keep its space free.
+        val underBar: @Composable (@Composable () -> Unit) -> Unit = { page ->
+            CompositionLocalProvider(LocalBottomBarInset provides barInset, content = page)
+        }
         NavHost(
             nav,
             startDestination = HomeRoute,
-            modifier = Modifier.padding(bottom = padding.calculateBottomPadding()),
+            modifier = Modifier.fillMaxSize(),
             enterTransition = Transitions.enter,
             exitTransition = Transitions.exit,
             popEnterTransition = Transitions.popEnter,
@@ -78,10 +71,10 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
             predictivePopEnterTransition = Transitions.predictivePopEnter,
             predictivePopExitTransition = Transitions.predictivePopExit,
         ) {
-            composable<HomeRoute> { HomeDestination(nav) }
-            composable<RecipesRoute> { RecipesDestination(it.toRoute(), nav) }
-            composable<MealPlanRoute> { MealPlanDestination(nav, snackbar) }
-            composable<ShoppingRoute> { ShoppingDestination() }
+            composable<HomeRoute> { underBar { HomeDestination(nav) } }
+            composable<RecipesRoute> { entry -> underBar { RecipesDestination(entry.toRoute(), nav) } }
+            composable<MealPlanRoute> { underBar { MealPlanDestination(nav, snackbar) } }
+            composable<ShoppingRoute> { underBar { ShoppingDestination() } }
             composable<RecipeRoute> { RecipeDestination(it.toRoute<RecipeRoute>().slug, nav, snackbar) }
             composable<CookRoute> { entry ->
                 val route = entry.toRoute<CookRoute>()
@@ -93,6 +86,27 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
             composable<SettingsRoute> { SettingsDestination(nav) }
             composable<LicensesRoute> { LicensesDestination(nav) }
         }
+        AnimatedVisibility(
+            visible = showBar,
+            enter = fadeIn(tween(BAR_DURATION)) + slideInVertically(tween(BAR_DURATION, easing = Transitions.Settle)) { it / 2 },
+            exit = fadeOut(tween(BAR_DURATION / 2)) + slideOutVertically(tween(BAR_DURATION)) { it / 2 },
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(start = 24.dp, end = 24.dp, bottom = FloatingBarGap),
+        ) {
+            FloatingBar(
+                selected = Tab.entries.firstOrNull { destination?.isTab(it) == true },
+                onSelect = nav::navigateToTab,
+            )
+        }
+        AromaSnackbarHost(
+            snackbar,
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = if (showBar) barInset else navigationInset),
+        )
     }
 }
 
@@ -106,28 +120,5 @@ fun NavController.navigateToTab(tab: Tab) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
-    }
-}
-
-@Composable
-private fun BottomBar(destination: NavDestination?, nav: NavController) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-        Tab.entries.forEach { tab ->
-            val selected = destination?.isTab(tab) == true
-            NavigationBarItem(
-                selected = selected,
-                onClick = { if (!selected) nav.navigateToTab(tab) },
-                icon = { Icon(painterResource(if (selected) tab.selectedIcon else tab.icon), contentDescription = null) },
-                label = { Text(stringResource(tab.label)) },
-                colors =
-                    NavigationBarItemDefaults.colors(
-                        indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
-            )
-        }
     }
 }

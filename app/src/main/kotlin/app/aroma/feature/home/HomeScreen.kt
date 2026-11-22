@@ -51,7 +51,9 @@ import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
+import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeCard
@@ -106,7 +108,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + PageEndSpace),
         ) {
             item(key = "header") {
                 HomeHeader(state.greeting, state.firstName, actions.onOpenSettings)

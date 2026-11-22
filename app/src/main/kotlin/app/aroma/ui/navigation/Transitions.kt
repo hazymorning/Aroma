@@ -25,7 +25,7 @@ internal object Transitions {
     private const val FADE_IN = 210
 
     /** Material's emphasized decelerate curve: quick start, long soft landing. */
-    private val Settle = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+    val Settle = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 
     private fun drift(fullWidth: Int) = fullWidth / 12
 

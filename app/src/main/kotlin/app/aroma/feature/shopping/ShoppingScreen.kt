@@ -85,8 +85,10 @@ import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
+import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.PillTextField
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.currentLocale
@@ -155,7 +157,10 @@ fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: M
     }
     Box(modifier.fillMaxSize()) {
         PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
-            LazyColumn(contentPadding = PaddingValues(bottom = 32.dp), modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + PageEndSpace),
+                modifier = Modifier.fillMaxSize(),
+            ) {
                 item(key = "header") {
                     Header(state, actions, shoppingMode, onShoppingMode = { shoppingMode = it }) { dialog = it }
                 }
@@ -190,7 +195,12 @@ fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: M
                 }
             }
         }
-        AromaSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        AromaSnackbarHost(
+            snackbar,
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = LocalBottomBarInset.current),
+        )
     }
     when (dialog) {
         ShoppingDialog.Create -> {

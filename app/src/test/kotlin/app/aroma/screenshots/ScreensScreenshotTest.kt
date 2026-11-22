@@ -41,6 +41,7 @@ import app.aroma.feature.settings.SettingsUiState
 import app.aroma.feature.shopping.ShoppingActions
 import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingUiState
+import app.aroma.ui.navigation.Tab
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
@@ -64,20 +65,22 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
     fun home() {
         applyLocale()
         snapshot("home_${variant.suffix}", variant.dark) {
-            HomeScreen(
-                state =
-                    HomeUiState(
-                        greeting = Greeting.Evening,
-                        firstName = "Mara",
-                        today = sample.mealPlan.take(1),
-                        recent = sample.recipes,
-                        favorites = sample.recipes.reversed(),
-                        cookbooks = sample.cookbooks,
-                        toRate = sample.recipes.first().let { RateReminder(it.id, it.slug, it.name, it.image) },
-                        isLoading = false,
-                    ),
-                actions = HomeActions(),
-            )
+            TabFrame(Tab.Home) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            greeting = Greeting.Evening,
+                            firstName = "Mara",
+                            today = sample.mealPlan.take(1),
+                            recent = sample.recipes,
+                            favorites = sample.recipes.reversed(),
+                            cookbooks = sample.cookbooks,
+                            toRate = sample.recipes.first().let { RateReminder(it.id, it.slug, it.name, it.image) },
+                            isLoading = false,
+                        ),
+                    actions = HomeActions(),
+                )
+            }
         }
     }
 
@@ -96,25 +99,27 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
     fun recipes() {
         applyLocale()
         snapshot("recipes_${variant.suffix}", variant.dark) {
-            RecipesScreen(
-                state =
-                    RecipesUiState(
-                        recipes = sample.recipes,
-                        total = sample.recipes.size,
-                        isLoading = false,
-                        categories = sample.recipe.categories,
-                        tags = sample.recipe.tags,
-                        tools = sample.recipe.tools,
-                        filter =
-                            RecipeFilter(
-                                tags =
-                                    sample.recipe.tags
-                                        .take(1)
-                                        .toSet(),
-                            ),
-                    ),
-                actions = RecipesActions(),
-            )
+            TabFrame(Tab.Recipes) {
+                RecipesScreen(
+                    state =
+                        RecipesUiState(
+                            recipes = sample.recipes,
+                            total = sample.recipes.size,
+                            isLoading = false,
+                            categories = sample.recipe.categories,
+                            tags = sample.recipe.tags,
+                            tools = sample.recipe.tools,
+                            filter =
+                                RecipeFilter(
+                                    tags =
+                                        sample.recipe.tags
+                                            .take(1)
+                                            .toSet(),
+                                ),
+                        ),
+                    actions = RecipesActions(),
+                )
+            }
         }
     }
 
@@ -127,10 +132,12 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                 MealPlanDay(day, sample.mealPlan.filter { it.date == day })
             }
         snapshot("mealplan_${variant.suffix}", variant.dark) {
-            MealPlanScreen(
-                state = MealPlanUiState(today = sample.today, weekStart = sample.today, days = days, isLoading = false),
-                actions = MealPlanActions(),
-            )
+            TabFrame(Tab.MealPlan) {
+                MealPlanScreen(
+                    state = MealPlanUiState(today = sample.today, weekStart = sample.today, days = days, isLoading = false),
+                    actions = MealPlanActions(),
+                )
+            }
         }
     }
 
@@ -138,19 +145,21 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
     fun shopping() {
         applyLocale()
         snapshot("shopping_${variant.suffix}", variant.dark) {
-            ShoppingScreen(
-                state =
-                    ShoppingUiState(
-                        lists =
-                            listOf(
-                                ShoppingListInfo(sample.shoppingList.id, sample.shoppingList.name),
-                                ShoppingListInfo("2", "Drogerie"),
-                            ),
-                        list = sample.shoppingList,
-                        isLoading = false,
-                    ),
-                actions = ShoppingActions(),
-            )
+            TabFrame(Tab.Shopping) {
+                ShoppingScreen(
+                    state =
+                        ShoppingUiState(
+                            lists =
+                                listOf(
+                                    ShoppingListInfo(sample.shoppingList.id, sample.shoppingList.name),
+                                    ShoppingListInfo("2", "Drogerie"),
+                                ),
+                            list = sample.shoppingList,
+                            isLoading = false,
+                        ),
+                    actions = ShoppingActions(),
+                )
+            }
         }
     }
 

@@ -80,6 +80,7 @@ android {
         warningsAsErrors = true
         checkDependencies = false
         disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
+        lintConfig = file("lint.xml")
     }
 }
 

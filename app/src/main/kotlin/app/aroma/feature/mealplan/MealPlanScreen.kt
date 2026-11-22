@@ -48,7 +48,9 @@ import app.aroma.core.model.ImageSize
 import app.aroma.core.model.MealPlanEntry
 import app.aroma.data.AromaError
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
+import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.currentLocale
@@ -85,7 +87,7 @@ data class MealPlanActions(
 fun MealPlanScreen(state: MealPlanUiState, actions: MealPlanActions, modifier: Modifier = Modifier) {
     val locale = currentLocale()
     PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = modifier.fillMaxSize()) {
-        LazyColumn(contentPadding = PaddingValues(bottom = 32.dp), modifier = Modifier.fillMaxSize()) {
+        LazyColumn(contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + PageEndSpace), modifier = Modifier.fillMaxSize()) {
             item(key = "header") { Header(state, actions, locale) }
             when {
                 state.isLoading -> {

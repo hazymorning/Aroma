@@ -4,11 +4,13 @@
     android:height="24dp"
     android:autoMirrored="false"
     android:tint="?attr/colorControlNormal"
-    android:viewportWidth="960"
-    android:viewportHeight="960">
-    <group android:translateY="960">
-        <path
-            android:fillColor="@android:color/white"
-            android:pathData="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560h-80v80q0 17-11.5 28.5T640-640H320q-17 0-28.5-11.5T280-680v-80h-80v560Zm308.5-571.5Q520-783 520-800t-11.5-28.5Q497-840 480-840t-28.5 11.5Q440-817 440-800t11.5 28.5Q463-760 480-760t28.5-11.5Z" />
-    </group>
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M8.5,5.2 H7.5 C6.4,5.2 5.5,6.1 5.5,7.2 V18.5 C5.5,19.6 6.4,20.5 7.5,20.5 H16.5 C17.6,20.5 18.5,19.6 18.5,18.5 V7.2 C18.5,6.1 17.6,5.2 16.5,5.2 H15.5 M10,3.5 H14 C14.83,3.5 15.5,4.17 15.5,5 V5.4 C15.5,6.23 14.83,6.9 14,6.9 H10 C9.17,6.9 8.5,6.23 8.5,5.4 V5 C8.5,4.17 9.17,3.5 10,3.5 Z"
+        android:fillColor="#00000000"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

@@ -48,6 +48,7 @@ import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PillTextField
@@ -116,6 +117,8 @@ fun RecipesScreen(state: RecipesUiState, actions: RecipesActions, modifier: Modi
             canLoadMore = state.canLoadMore,
             onLoadMore = actions.onLoadMore,
             modifier = Modifier.fillMaxSize(),
+            // Room for the add button, which sits above the bar.
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = LocalBottomBarInset.current + 96.dp),
             header = {
                 item(span = { GridItemSpan(maxLineSpan) }, key = "header") {
                     Header(state, actions, searchFocus) { sheet = it }
@@ -164,7 +167,7 @@ fun RecipesScreen(state: RecipesUiState, actions: RecipesActions, modifier: Modi
             modifier =
                 Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(20.dp),
+                    .padding(end = 20.dp, bottom = LocalBottomBarInset.current + 16.dp),
         ) {
             Icon(painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.recipes_add))
         }
