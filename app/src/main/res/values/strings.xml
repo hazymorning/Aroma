@@ -54,6 +54,7 @@
     <string name="error_import_title">Import didn’t work</string>
     <string name="error_import_message">Mealie couldn’t find a recipe on this page.</string>
     <string name="error_import_unreachable">Mealie couldn’t open this page. Check the link or try again later.</string>
+    <string name="error_import_no_answer">Mealie took too long to answer. If the recipe still arrives, you’ll find it under Recipes.</string>
     <string name="error_generic_title">Something went wrong</string>
     <string name="error_generic_message">The server answered with an error. Please try again in a moment.</string>
 
@@ -261,7 +262,8 @@
     <string name="add_progress_waiting">Importing the recipe</string>
     <string name="add_progress_rebuilding">Turning the post into a recipe with AI</string>
     <string name="add_progress_tidying">Sorting the post into ingredients and steps</string>
-    <string name="add_progress_ai_hint">With AI this can take up to a minute.</string>
+    <string name="add_progress_still_working">Mealie is still working on the recipe</string>
+    <string name="add_progress_ai_hint">With AI this can take a minute or two.</string>
     <string name="add_untitled">Imported recipe</string>
     <string name="add_manual">Write it yourself</string>
     <string name="add_manual_hint">Start with a name, then add ingredients and steps.</string>

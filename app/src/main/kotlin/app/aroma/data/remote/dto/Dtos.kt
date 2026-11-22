@@ -48,6 +48,7 @@ data class OrganizerDto(val id: String, val name: String = "", val slug: String 
 data class RecipeSummaryDto(
     val id: String,
     val slug: String,
+    val userId: String? = null,
     val name: String = "",
     val description: String? = null,
     val image: String? = null,

@@ -22,15 +22,51 @@ fun AromaError.titleRes(): Int =
 @StringRes
 fun AromaError.messageRes(): Int =
     when (this) {
-        is AromaError.Offline -> R.string.error_offline_message
-        is AromaError.HostNotFound -> R.string.error_host_message
-        is AromaError.Certificate -> R.string.error_certificate_message
-        is AromaError.Unauthorized -> R.string.error_session_message
-        is AromaError.InvalidCredentials -> R.string.error_credentials_message
-        is AromaError.Forbidden -> R.string.error_forbidden_message
-        is AromaError.NotFound -> R.string.error_not_found_message
-        is AromaError.NotMealie -> R.string.error_not_mealie_message
-        is AromaError.UnsupportedVersion -> R.string.error_version_message
-        is AromaError.ImportFailed -> if (pageUnreachable) R.string.error_import_unreachable else R.string.error_import_message
-        is AromaError.Server, is AromaError.Unknown -> R.string.error_generic_message
+        is AromaError.Offline -> {
+            R.string.error_offline_message
+        }
+
+        is AromaError.HostNotFound -> {
+            R.string.error_host_message
+        }
+
+        is AromaError.Certificate -> {
+            R.string.error_certificate_message
+        }
+
+        is AromaError.Unauthorized -> {
+            R.string.error_session_message
+        }
+
+        is AromaError.InvalidCredentials -> {
+            R.string.error_credentials_message
+        }
+
+        is AromaError.Forbidden -> {
+            R.string.error_forbidden_message
+        }
+
+        is AromaError.NotFound -> {
+            R.string.error_not_found_message
+        }
+
+        is AromaError.NotMealie -> {
+            R.string.error_not_mealie_message
+        }
+
+        is AromaError.UnsupportedVersion -> {
+            R.string.error_version_message
+        }
+
+        is AromaError.ImportFailed -> {
+            when (reason) {
+                AromaError.ImportFailed.Reason.NoRecipe -> R.string.error_import_message
+                AromaError.ImportFailed.Reason.PageUnreachable -> R.string.error_import_unreachable
+                AromaError.ImportFailed.Reason.NoAnswer -> R.string.error_import_no_answer
+            }
+        }
+
+        is AromaError.Server, is AromaError.Unknown -> {
+            R.string.error_generic_message
+        }
     }

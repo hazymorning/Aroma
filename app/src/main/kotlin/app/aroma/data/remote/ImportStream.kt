@@ -8,6 +8,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.ResponseBody
+import java.io.EOFException
 
 /**
  * Reads the server-sent events of Mealie's streaming import endpoints: any number of
@@ -43,7 +44,8 @@ internal object ImportStream {
                         }
                     }
                 }
-                handle(event, data.toString(), onProgress) ?: throw AromaError.ImportFailed()
+                // Mealie always ends with done or error; a stream that stops before was cut on the way.
+                handle(event, data.toString(), onProgress) ?: throw AromaError.Offline(EOFException("Import stream ended early"))
             }
         }
 
@@ -64,7 +66,7 @@ internal object ImportStream {
             "error" -> {
                 val message = payload.text("message")
                 throw when (message) {
-                    UNREACHABLE -> AromaError.ImportFailed(pageUnreachable = true)
+                    UNREACHABLE -> AromaError.ImportFailed(AromaError.ImportFailed.Reason.PageUnreachable)
                     null, in ErrorCodes -> AromaError.ImportFailed()
                     else -> AromaError.ImportFailed(detail = message)
                 }

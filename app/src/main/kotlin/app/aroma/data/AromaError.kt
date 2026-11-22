@@ -31,7 +31,18 @@ sealed class AromaError(message: String? = null, cause: Throwable? = null) : Exc
      * Mealie could not turn the source into a recipe. [detail] is Mealie's own explanation when it
      * sent one in words rather than as an error code.
      */
-    class ImportFailed(val detail: String? = null, val pageUnreachable: Boolean = false) : AromaError(detail)
+    class ImportFailed(val reason: Reason = Reason.NoRecipe, val detail: String? = null) : AromaError(detail ?: reason.name) {
+        enum class Reason {
+            /** Mealie read the page but found no recipe on it. */
+            NoRecipe,
+
+            /** Mealie could not load the page. */
+            PageUnreachable,
+
+            /** The connection dropped and no recipe turned up while Aroma waited for it. */
+            NoAnswer,
+        }
+    }
 
     class Server(val code: Int) : AromaError("HTTP $code")
 

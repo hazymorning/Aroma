@@ -107,6 +107,7 @@ class LiveImportTest {
             val recipe = env.recipes.recipeJson(slug)
             assertEquals(6, recipe.ingredientNotes().size)
             assertEquals(4, recipe["recipeInstructions"]!!.jsonArray.size)
+            assertEquals("the rebuilt recipe still links to the post", POST_URL, recipe.text("orgURL"))
             assertTrue(steps.first() == ImportStep.Rebuilding && steps.drop(1).all { it is ImportStep.Server })
             assertGone(preview)
         }

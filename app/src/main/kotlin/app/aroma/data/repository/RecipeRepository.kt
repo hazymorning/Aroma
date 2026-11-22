@@ -266,15 +266,40 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         } catch (error: Throwable) {
             val failure = error.toAromaError()
             throw when {
-                failure is AromaError.Server && failure.code in 400..499 -> AromaError.ImportFailed()
+                failure is AromaError.Server && failure.code in 400..499 -> {
+                    AromaError.ImportFailed()
+                }
 
-                // Mealie 2 answers 500 when it cannot load the page at all.
-                failure is AromaError.Server -> AromaError.ImportFailed(pageUnreachable = true)
+                // Mealie 2 answers 500 when it cannot load the page at all. Other 5xx codes come
+                // from a proxy in front of Mealie and stay as they are: Mealie may still finish.
+                failure is AromaError.Server && failure.code == 500 -> {
+                    AromaError.ImportFailed(
+                        AromaError.ImportFailed.Reason.PageUnreachable,
+                    )
+                }
 
-                else -> failure
+                else -> {
+                    failure
+                }
             }
         }
     }
+
+    /** The newest recipes' ids, so that one Mealie adds later can be told apart from them. */
+    suspend fun newestRecipeIds(): Set<String> = mealieCall { newest().mapTo(mutableSetOf()) { it.id } }
+
+    /** The slug of the newest recipe the signed-in user added that is not among [known], or null. */
+    suspend fun addedSince(known: Set<String>): String? =
+        mealieCall {
+            val user = userId()
+            newest().firstOrNull { it.id !in known && (it.userId == null || it.userId == user) }?.slug
+        }
+
+    private suspend fun newest(): List<RecipeSummaryDto> =
+        sessions
+            .api()
+            .recipes(page = 1, perPage = NEWEST_WINDOW, orderBy = "created_at", orderDirection = "desc")
+            .items
 
     suspend fun create(name: String): String = mealieCall { sessions.api().createRecipe(CreateRecipeDto(name.trim())) }
 
@@ -346,6 +371,9 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
 
     companion object {
         const val PAGE_SIZE = 30
+
+        /** Enough of the newest recipes to spot one added meanwhile, even if others arrive at the same time. */
+        private const val NEWEST_WINDOW = 10
     }
 }
 

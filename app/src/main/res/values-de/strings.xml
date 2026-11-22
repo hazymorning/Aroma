@@ -52,6 +52,7 @@
     <string name="error_import_title">Import hat nicht geklappt</string>
     <string name="error_import_message">Mealie hat auf dieser Seite kein Rezept gefunden.</string>
     <string name="error_import_unreachable">Mealie konnte diese Seite nicht öffnen. Prüfe den Link oder versuche es später noch einmal.</string>
+    <string name="error_import_no_answer">Mealie hat zu lange nicht geantwortet. Kommt das Rezept noch an, findest du es unter Rezepte.</string>
     <string name="error_generic_title">Da ist etwas schiefgelaufen</string>
     <string name="error_generic_message">Der Server hat mit einem Fehler geantwortet. Versuche es gleich noch einmal.</string>
 
@@ -258,7 +259,8 @@
     <string name="add_progress_waiting">Rezept wird importiert</string>
     <string name="add_progress_rebuilding">KI macht aus dem Beitrag ein Rezept</string>
     <string name="add_progress_tidying">Beitrag wird in Zutaten und Schritte gegliedert</string>
-    <string name="add_progress_ai_hint">Mit KI kann das bis zu einer Minute dauern.</string>
+    <string name="add_progress_still_working">Mealie arbeitet noch am Rezept</string>
+    <string name="add_progress_ai_hint">Mit KI kann das ein, zwei Minuten dauern.</string>
     <string name="add_untitled">Importiertes Rezept</string>
     <string name="add_manual">Selbst schreiben</string>
     <string name="add_manual_hint">Beginne mit einem Namen, Zutaten und Schritte folgen danach.</string>

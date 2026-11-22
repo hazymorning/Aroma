@@ -36,6 +36,12 @@ class SocialCaptionTest {
     }
 
     @Test
+    fun `a post imported a second time, which Mealie numbers, still yields its caption`() {
+        assertEquals(gnocchi, SocialCaption.extract("Koch mit mir on Instagram: \"$gnocchi\" (1)", ""))
+        assertEquals("Kekse (2)", SocialCaption.extract("Lena auf Instagram: „Kekse (2)“", ""))
+    }
+
+    @Test
     fun `German quotes and site names are removed, plain text stays as it is`() {
         assertEquals("Ofenkürbis mit Feta", SocialCaption.extract("Lena auf Instagram: „Ofenkürbis mit Feta“", ""))
         assertEquals("Ofenkürbis mit Feta", SocialCaption.extract("Ofenkürbis mit Feta | TikTok", ""))

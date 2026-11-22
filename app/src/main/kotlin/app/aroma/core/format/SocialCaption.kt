@@ -7,7 +7,8 @@ package app.aroma.core.format
  * the parts of a recipe.
  */
 object SocialCaption {
-    private val Quoted = Regex("""^[^\n]{0,200}?:\s*["“„«](.*)["”“»]\s*\.?\s*$""", RegexOption.DOT_MATCHES_ALL)
+    // Mealie numbers a name it already has, so a post imported twice ends in " (1)" after the quote.
+    private val Quoted = Regex("""^[^\n]{0,200}?:\s*["“„«](.*)["”“»]\s*\.?(\s+\(\d+\))?\s*$""", RegexOption.DOT_MATCHES_ALL)
     private val SiteSuffix = Regex("""\s+[|·•–-]\s+(Instagram|TikTok|Facebook|YouTube|Pinterest|Threads)\s*$""", RegexOption.IGNORE_CASE)
 
     /** The post's own text from a link preview's title and description, whichever holds more of it. */

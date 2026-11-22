@@ -31,8 +31,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -81,6 +83,12 @@ data class AddRecipeActions(
 
 @Composable
 fun AddRecipeScreen(state: AddRecipeUiState, actions: AddRecipeActions, modifier: Modifier = Modifier) {
+    // An import can wait minutes for Mealie; a sleeping phone would cut the connection meanwhile.
+    val view = LocalView.current
+    DisposableEffect(view, state.working) {
+        view.keepScreenOn = state.working != null
+        onDispose { view.keepScreenOn = false }
+    }
     Column(
         modifier
             .fillMaxSize()
@@ -241,6 +249,7 @@ private fun stepText(step: ImportStep?): String =
         is ImportStep.Server -> step.message.trimEnd('.', '…', ' ')
         ImportStep.Rebuilding -> stringResource(R.string.add_progress_rebuilding)
         ImportStep.Tidying -> stringResource(R.string.add_progress_tidying)
+        ImportStep.StillWorking -> stringResource(R.string.add_progress_still_working)
         ImportStep.Waiting, null -> stringResource(R.string.add_progress_waiting)
     }
 
