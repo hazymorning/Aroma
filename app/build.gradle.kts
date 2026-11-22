@@ -65,7 +65,13 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            all { it.systemProperty("robolectric.pixelCopyRenderMode", "hardware") }
+            all { test ->
+                test.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+                // The live tests read these; another server must mean another test run, not a cached one.
+                listOf("MEALIE_TEST_URL", "MEALIE_TEST_USER").forEach { name ->
+                    test.inputs.property(name, providers.environmentVariable(name).orElse(""))
+                }
+            }
         }
     }
 

@@ -20,6 +20,8 @@ data class AppSettings(
     val keepScreenOn: Boolean = true,
     val offlineRecipes: Boolean = false,
     val lastShoppingList: String? = null,
+    val importWithAi: Boolean = true,
+    val translateImports: Boolean = false,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -29,6 +31,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val keepScreenOn = booleanPreferencesKey("keep_screen_on")
         val offlineRecipes = booleanPreferencesKey("offline_recipes")
         val lastShoppingList = stringPreferencesKey("last_shopping_list")
+        val importWithAi = booleanPreferencesKey("import_with_ai")
+        val translateImports = booleanPreferencesKey("translate_imports")
     }
 
     val settings: Flow<AppSettings> =
@@ -39,6 +43,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 keepScreenOn = prefs[Keys.keepScreenOn] ?: true,
                 offlineRecipes = prefs[Keys.offlineRecipes] ?: false,
                 lastShoppingList = prefs[Keys.lastShoppingList],
+                importWithAi = prefs[Keys.importWithAi] ?: true,
+                translateImports = prefs[Keys.translateImports] ?: false,
             )
         }
 
@@ -49,6 +55,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setKeepScreenOn(enabled: Boolean) = dataStore.edit { it[Keys.keepScreenOn] = enabled }
 
     suspend fun setOfflineRecipes(enabled: Boolean) = dataStore.edit { it[Keys.offlineRecipes] = enabled }
+
+    suspend fun setImportWithAi(enabled: Boolean) = dataStore.edit { it[Keys.importWithAi] = enabled }
+
+    suspend fun setTranslateImports(enabled: Boolean) = dataStore.edit { it[Keys.translateImports] = enabled }
 
     suspend fun setLastShoppingList(id: String?) =
         dataStore.edit { prefs ->

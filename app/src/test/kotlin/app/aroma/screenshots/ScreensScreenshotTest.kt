@@ -10,9 +10,11 @@ import app.aroma.feature.cook.CookScreen
 import app.aroma.feature.cook.CookTimerUi
 import app.aroma.feature.cook.CookUiState
 import app.aroma.feature.cookbook.CookbookScreen
+import app.aroma.feature.editor.AddMode
 import app.aroma.feature.editor.AddRecipeActions
 import app.aroma.feature.editor.AddRecipeScreen
 import app.aroma.feature.editor.AddRecipeUiState
+import app.aroma.feature.editor.ImportStep
 import app.aroma.feature.home.Greeting
 import app.aroma.feature.home.HomeActions
 import app.aroma.feature.home.HomeScreen
@@ -246,6 +248,46 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         applyLocale()
         snapshot("add_${variant.suffix}", variant.dark) {
             AddRecipeScreen(state = AddRecipeUiState(url = "https://example.com/leek-fritters"), actions = AddRecipeActions())
+        }
+    }
+
+    @Test
+    fun addRecipeWithAi() {
+        applyLocale()
+        snapshot("add_ai_${variant.suffix}", variant.dark) {
+            AddRecipeScreen(
+                state =
+                    AddRecipeUiState(
+                        url = "https://www.instagram.com/p/AromaTest01/",
+                        aiAvailable = true,
+                        text =
+                            if (variant.locale ==
+                                "de"
+                            ) {
+                                "Zutaten: 500 g Gnocchi, 250 g Kirschtomaten …"
+                            } else {
+                                "Ingredients: 500 g gnocchi, 250 g cherry tomatoes …"
+                            },
+                    ),
+                actions = AddRecipeActions(),
+            )
+        }
+    }
+
+    @Test
+    fun addRecipeImporting() {
+        applyLocale()
+        snapshot("add_importing_${variant.suffix}", variant.dark) {
+            AddRecipeScreen(
+                state =
+                    AddRecipeUiState(
+                        url = "https://www.instagram.com/p/AromaTest01/",
+                        aiAvailable = true,
+                        working = AddMode.Import,
+                        step = ImportStep.Server(if (variant.locale == "de") "Lese Quelle mit KI..." else "Reading source with AI..."),
+                    ),
+                actions = AddRecipeActions(),
+            )
         }
     }
 

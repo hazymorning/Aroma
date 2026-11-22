@@ -33,6 +33,7 @@ class MealieClientFactory(private val userAgent: String, private val cache: Cach
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
             .addInterceptor(HeadersInterceptor())
+            .addInterceptor(ImportTimeouts)
             .apply { if (cache != null) cache(cache) }
             .build()
 
@@ -59,6 +60,18 @@ class MealieClientFactory(private val userAgent: String, private val cache: Cach
             }
             return chain.proceed(builder.build())
         }
+    }
+}
+
+/** An import can wait minutes for an AI provider; every other request keeps the short timeouts. */
+private object ImportTimeouts : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        if ("/api/recipes/create/" !in request.url.encodedPath) return chain.proceed(request)
+        return chain
+            .withReadTimeout(5, TimeUnit.MINUTES)
+            .withWriteTimeout(2, TimeUnit.MINUTES)
+            .proceed(request)
     }
 }
 

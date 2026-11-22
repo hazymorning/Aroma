@@ -1,7 +1,10 @@
 package app.aroma.feature.editor
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +25,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -40,6 +44,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.data.AromaError
+import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.titleRes
 
@@ -47,15 +52,28 @@ enum class AddMode { Import, Create }
 
 data class AddRecipeUiState(
     val url: String = "",
+    val text: String = "",
     val name: String = "",
+    val aiAvailable: Boolean = false,
+    val useAi: Boolean = true,
+    val translate: Boolean = false,
     val working: AddMode? = null,
+    val step: ImportStep? = null,
     val error: AromaError? = null,
-)
+) {
+    /** AI is only offered when the server has a provider set up for the group. */
+    val usesAi: Boolean get() = aiAvailable && useAi
+
+    val canImport: Boolean get() = working == null && (url.isNotBlank() || (usesAi && text.isNotBlank()))
+}
 
 data class AddRecipeActions(
     val onBack: () -> Unit = {},
     val onUrlChange: (String) -> Unit = {},
     val onPaste: () -> Unit = {},
+    val onTextChange: (String) -> Unit = {},
+    val onUseAiChange: (Boolean) -> Unit = {},
+    val onTranslateChange: (Boolean) -> Unit = {},
     val onImport: () -> Unit = {},
     val onNameChange: (String) -> Unit = {},
     val onCreate: () -> Unit = {},
@@ -89,28 +107,26 @@ fun AddRecipeScreen(state: AddRecipeUiState, actions: AddRecipeActions, modifier
                 onValueChange = actions.onUrlChange,
                 label = { Text(stringResource(R.string.add_url_label)) },
                 singleLine = true,
+                enabled = state.working == null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go, autoCorrectEnabled = false),
                 keyboardActions = KeyboardActions(onGo = { actions.onImport() }),
                 trailingIcon = {
-                    IconButton(onClick = actions.onPaste) {
+                    IconButton(onClick = actions.onPaste, enabled = state.working == null) {
                         Icon(painterResource(R.drawable.ic_content_paste), contentDescription = stringResource(R.string.add_paste))
                     }
                 },
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
             )
-            WorkingButton(
-                label = stringResource(R.string.add_import),
-                working = state.working == AddMode.Import,
-                enabled = state.url.isNotBlank() && state.working == null,
-                onClick = actions.onImport,
-            )
+            if (state.aiAvailable) AiOptions(state, actions)
             if (state.working == AddMode.Import) {
-                Text(
-                    text = stringResource(R.string.add_importing),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                ImportProgress(step = state.step, usesAi = state.usesAi)
+            } else {
+                WorkingButton(
+                    label = stringResource(R.string.add_import),
+                    working = false,
+                    enabled = state.canImport,
+                    onClick = actions.onImport,
                 )
             }
         }
@@ -138,34 +154,122 @@ fun AddRecipeScreen(state: AddRecipeUiState, actions: AddRecipeActions, modifier
                 tonal = true,
             )
         }
-        state.error?.let { error ->
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.errorContainer,
-                modifier =
-                    Modifier
-                        .padding(20.dp)
-                        .fillMaxWidth(),
-            ) {
+        state.error?.let { ImportError(it) }
+        Spacer(Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun AiOptions(state: AddRecipeUiState, actions: AddRecipeActions) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            SwitchRow(
+                title = stringResource(R.string.add_ai_title),
+                subtitle = stringResource(R.string.add_ai_hint),
+                checked = state.useAi,
+                onChange = actions.onUseAiChange,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+            )
+            AnimatedVisibility(visible = state.useAi) {
                 Column(
-                    Modifier
-                        .padding(16.dp)
-                        .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+                    Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text(
-                        stringResource(error.titleRes()),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    OutlinedTextField(
+                        value = state.text,
+                        onValueChange = actions.onTextChange,
+                        label = { Text(stringResource(R.string.add_ai_text_label)) },
+                        placeholder = { Text(stringResource(R.string.add_ai_text_hint)) },
+                        minLines = 3,
+                        maxLines = 8,
+                        enabled = state.working == null,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    Text(
-                        stringResource(error.messageRes()),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    SwitchRow(
+                        title = stringResource(R.string.add_ai_translate),
+                        subtitle = null,
+                        checked = state.translate,
+                        onChange = actions.onTranslateChange,
+                        contentPadding = PaddingValues(vertical = 6.dp),
                     )
                 }
             }
         }
-        Spacer(Modifier.height(32.dp))
+    }
+}
+
+/** What Mealie is doing right now, so a slow import never looks like a frozen screen. */
+@Composable
+private fun ImportProgress(step: ImportStep?, usesAi: Boolean) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            Modifier
+                .padding(16.dp)
+                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            LinearProgressIndicator(
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.16f),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Crossfade(targetState = stepText(step), label = "importStep") { text ->
+                Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            }
+            Text(
+                text = stringResource(if (usesAi) R.string.add_progress_ai_hint else R.string.add_importing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
+    }
+}
+
+@Composable
+private fun stepText(step: ImportStep?): String =
+    when (step) {
+        is ImportStep.Server -> step.message.trimEnd('.', '…', ' ')
+        ImportStep.Rebuilding -> stringResource(R.string.add_progress_rebuilding)
+        ImportStep.Tidying -> stringResource(R.string.add_progress_tidying)
+        ImportStep.Waiting, null -> stringResource(R.string.add_progress_waiting)
+    }
+
+@Composable
+private fun ImportError(error: AromaError) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+        modifier =
+            Modifier
+                .padding(20.dp)
+                .fillMaxWidth(),
+    ) {
+        Column(
+            Modifier
+                .padding(16.dp)
+                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        ) {
+            Text(
+                stringResource(error.titleRes()),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Text(
+                (error as? AromaError.ImportFailed)?.detail ?: stringResource(error.messageRes()),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
     }
 }
 

@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +45,7 @@ import app.aroma.feature.editor.AddRecipeViewModel
 import app.aroma.feature.editor.EditorActions
 import app.aroma.feature.editor.EditorScreen
 import app.aroma.feature.editor.EditorViewModel
+import app.aroma.feature.editor.RecipeImporter
 import app.aroma.feature.home.HomeActions
 import app.aroma.feature.home.HomeScreen
 import app.aroma.feature.home.HomeViewModel
@@ -386,7 +388,8 @@ fun ShoppingDestination() {
 
 @Composable
 fun AddRecipeDestination(sharedUrl: String?, nav: NavController) {
-    val vm = aromaViewModel { AddRecipeViewModel(recipes, sharedUrl) }
+    val untitled = stringResource(R.string.add_untitled)
+    val vm = aromaViewModel { AddRecipeViewModel(recipes, RecipeImporter(recipes, untitled), settings, sharedUrl) }
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
@@ -419,6 +422,9 @@ fun AddRecipeDestination(sharedUrl: String?, nav: NavController) {
                         if (!text.isNullOrBlank()) vm.onUrlChange(text.trim())
                     }
                 },
+                onTextChange = vm::onTextChange,
+                onUseAiChange = vm::onUseAiChange,
+                onTranslateChange = vm::onTranslateChange,
                 onImport = vm::import,
                 onNameChange = vm::onNameChange,
                 onCreate = vm::create,

@@ -31,6 +31,6 @@ fun AromaError.messageRes(): Int =
         is AromaError.NotFound -> R.string.error_not_found_message
         is AromaError.NotMealie -> R.string.error_not_mealie_message
         is AromaError.UnsupportedVersion -> R.string.error_version_message
-        is AromaError.ImportFailed -> R.string.error_import_message
+        is AromaError.ImportFailed -> if (pageUnreachable) R.string.error_import_unreachable else R.string.error_import_message
         is AromaError.Server, is AromaError.Unknown -> R.string.error_generic_message
     }

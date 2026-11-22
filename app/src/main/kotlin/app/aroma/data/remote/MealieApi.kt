@@ -8,6 +8,7 @@ import app.aroma.data.remote.dto.CookbookDto
 import app.aroma.data.remote.dto.CreateMealPlanDto
 import app.aroma.data.remote.dto.CreateRecipeDto
 import app.aroma.data.remote.dto.CreateShoppingListDto
+import app.aroma.data.remote.dto.GroupDto
 import app.aroma.data.remote.dto.ImportRecipeDto
 import app.aroma.data.remote.dto.LastMadeDto
 import app.aroma.data.remote.dto.MealPlanEntryDto
@@ -22,6 +23,7 @@ import app.aroma.data.remote.dto.TokenDto
 import app.aroma.data.remote.dto.UserDto
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MultipartBody
+import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.Field
@@ -35,6 +37,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 /** The parts of the Mealie API Aroma uses. Paths are relative so servers below a sub path work. */
 interface MealieApi {
@@ -110,6 +113,36 @@ interface MealieApi {
     suspend fun importRecipe(
         @Body body: ImportRecipeDto,
     ): String
+
+    /** Same as [importRecipe], reporting each step as a server-sent event (Mealie 3 and newer). */
+    @Streaming
+    @POST("api/recipes/create/url/stream")
+    suspend fun importRecipeStream(
+        @Body body: ImportRecipeDto,
+    ): ResponseBody
+
+    /** Builds a recipe from a link, text or both with the group's AI provider (Mealie 3 and newer). */
+    @Multipart
+    @POST("api/recipes/create/ai")
+    suspend fun importRecipeWithAi(
+        @Part parts: List<MultipartBody.Part>,
+    ): String
+
+    @Multipart
+    @Streaming
+    @POST("api/recipes/create/ai/stream")
+    suspend fun importRecipeWithAiStream(
+        @Part parts: List<MultipartBody.Part>,
+    ): ResponseBody
+
+    @GET("api/groups/self")
+    suspend fun group(): GroupDto
+
+    @Streaming
+    @GET("api/media/recipes/{id}/images/original.webp")
+    suspend fun recipeImage(
+        @Path("id") id: String,
+    ): ResponseBody
 
     @Multipart
     @PUT("api/recipes/{slug}/image")

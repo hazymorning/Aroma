@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -27,7 +26,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,6 +47,7 @@ import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.User
 import app.aroma.data.settings.AppLanguage
 import app.aroma.data.settings.ThemeMode
+import app.aroma.ui.components.SwitchRow
 
 data class SettingsUiState(
     val user: User? = null,
@@ -271,27 +270,6 @@ private fun <T> Choice(options: List<T>, selected: T, label: @Composable (T) -> 
                 icon = {},
             ) { Text(label(option), maxLines = 1) }
         }
-    }
-}
-
-@Composable
-private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            if (subtitle != null) {
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

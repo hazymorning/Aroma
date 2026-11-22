@@ -15,6 +15,8 @@ import app.aroma.data.local.RecipeDao
 import app.aroma.data.local.RecipeDetailEntity
 import app.aroma.data.local.RecipeSummaryEntity
 import app.aroma.data.mealieCall
+import app.aroma.data.remote.ImportStream
+import app.aroma.data.remote.MealieApi
 import app.aroma.data.remote.MealieJson
 import app.aroma.data.remote.dto.CookbookDto
 import app.aroma.data.remote.dto.CreateRecipeDto
@@ -39,7 +41,10 @@ import kotlinx.serialization.json.JsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
+import retrofit2.HttpException
 import java.time.Instant
+import kotlin.coroutines.cancellation.CancellationException
 
 class RecipeRepository(private val sessions: SessionManager, private val dao: RecipeDao, private val cache: JsonCache) {
     private val mutableRatings = MutableStateFlow<Map<String, UserRating>>(emptyMap())
@@ -203,13 +208,73 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         dao.deleteSummary(slug)
     }
 
-    suspend fun importFromUrl(url: String): String =
+    /** Imports a recipe from a link. [onProgress] gets Mealie's description of each step where the server reports them. */
+    suspend fun importFromUrl(url: String, onProgress: (String) -> Unit = {}): String {
+        val body = ImportRecipeDto(url.trim())
+        return importing(onProgress, stream = { importRecipeStream(body) }, plain = { importRecipe(body) })
+    }
+
+    /** Lets the group's AI provider build a recipe from a link, a text or both, optionally translated. */
+    suspend fun importWithAi(url: String?, text: String?, translateTo: String?, onProgress: (String) -> Unit = {}): String {
+        val parts =
+            buildList {
+                text?.takeIf { it.isNotBlank() }?.let { add(MultipartBody.Part.createFormData("content", it.trim())) }
+                url?.takeIf { it.isNotBlank() }?.let { add(MultipartBody.Part.createFormData("url", it.trim())) }
+                translateTo?.let { add(MultipartBody.Part.createFormData("translateLanguage", it)) }
+            }
+        return importing(onProgress, stream = { importRecipeWithAiStream(parts) }, plain = { importRecipeWithAi(parts) })
+    }
+
+    /** Whether the server may read recipes with AI: Mealie 3 with an AI provider set up for the group. */
+    suspend fun canImportWithAi(): Boolean =
         try {
-            sessions.api().importRecipe(ImportRecipeDto(url.trim()))
+            sessions
+                .api()
+                .group()
+                .aiProviderSettings
+                ?.aiEnabled == true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            false
+        }
+
+    /** The recipe's photo as stored by Mealie, or null if it has none. */
+    suspend fun imageBytes(recipeId: String): ByteArray? =
+        try {
+            sessions.api().recipeImage(recipeId).use { it.bytes() }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+
+    /** Uses the streaming endpoint where the server has one and maps rejected sources to [AromaError.ImportFailed]. */
+    private suspend fun importing(
+        onProgress: (String) -> Unit,
+        stream: suspend MealieApi.() -> ResponseBody,
+        plain: suspend MealieApi.() -> String,
+    ): String {
+        val api = sessions.api()
+        return try {
+            try {
+                ImportStream.slugFrom(api.stream(), onProgress)
+            } catch (missing: HttpException) {
+                if (missing.code() != 404 && missing.code() != 405) throw missing
+                api.plain()
+            }
         } catch (error: Throwable) {
             val failure = error.toAromaError()
-            throw if (failure is AromaError.Server && failure.code in 400..499) AromaError.ImportFailed() else failure
+            throw when {
+                failure is AromaError.Server && failure.code in 400..499 -> AromaError.ImportFailed()
+
+                // Mealie 2 answers 500 when it cannot load the page at all.
+                failure is AromaError.Server -> AromaError.ImportFailed(pageUnreachable = true)
+
+                else -> failure
+            }
         }
+    }
 
     suspend fun create(name: String): String = mealieCall { sessions.api().createRecipe(CreateRecipeDto(name.trim())) }
 

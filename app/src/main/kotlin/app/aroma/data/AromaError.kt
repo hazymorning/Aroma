@@ -27,7 +27,11 @@ sealed class AromaError(message: String? = null, cause: Throwable? = null) : Exc
 
     class UnsupportedVersion(val version: String) : AromaError(version)
 
-    class ImportFailed : AromaError()
+    /**
+     * Mealie could not turn the source into a recipe. [detail] is Mealie's own explanation when it
+     * sent one in words rather than as an error code.
+     */
+    class ImportFailed(val detail: String? = null, val pageUnreachable: Boolean = false) : AromaError(detail)
 
     class Server(val code: Int) : AromaError("HTTP $code")
 

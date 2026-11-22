@@ -51,6 +51,7 @@
     <string name="error_version_message">Aroma braucht Mealie 2.0 oder neuer. Bitte aktualisiere deinen Server.</string>
     <string name="error_import_title">Import hat nicht geklappt</string>
     <string name="error_import_message">Mealie hat auf dieser Seite kein Rezept gefunden.</string>
+    <string name="error_import_unreachable">Mealie konnte diese Seite nicht öffnen. Prüfe den Link oder versuche es später noch einmal.</string>
     <string name="error_generic_title">Da ist etwas schiefgelaufen</string>
     <string name="error_generic_message">Der Server hat mit einem Fehler geantwortet. Versuche es gleich noch einmal.</string>
 
@@ -249,6 +250,16 @@
     <string name="add_paste">Einfügen</string>
     <string name="add_import">Importieren</string>
     <string name="add_importing">Mealie liest die Seite. Das kann ein paar Sekunden dauern.</string>
+    <string name="add_ai_title">Mit KI auslesen</string>
+    <string name="add_ai_hint">Mealies KI liest das Rezept. Hilft bei Seiten ohne Rezeptdaten und bei Beiträgen von Instagram, TikTok &amp; Co.</string>
+    <string name="add_ai_text_label">Rezepttext (optional)</string>
+    <string name="add_ai_text_hint">Zum Beispiel die Bildunterschrift eines Beitrags</string>
+    <string name="add_ai_translate">Ins Deutsche übersetzen</string>
+    <string name="add_progress_waiting">Rezept wird importiert</string>
+    <string name="add_progress_rebuilding">KI macht aus dem Beitrag ein Rezept</string>
+    <string name="add_progress_tidying">Beitrag wird in Zutaten und Schritte gegliedert</string>
+    <string name="add_progress_ai_hint">Mit KI kann das bis zu einer Minute dauern.</string>
+    <string name="add_untitled">Importiertes Rezept</string>
     <string name="add_manual">Selbst schreiben</string>
     <string name="add_manual_hint">Beginne mit einem Namen, Zutaten und Schritte folgen danach.</string>
     <string name="add_create">Rezept anlegen</string>

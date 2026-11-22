@@ -184,7 +184,7 @@ object RecipeDraft {
         return seconds?.takeIf { it > 0 }?.let { (it / 60).toString() }.orEmpty()
     }
 
-    private fun formatNumber(value: Double): String = if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
+    internal fun formatNumber(value: Double): String = if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
 
     private fun JsonObject.toIngredient() = MealieJson.decodeFromJsonElement(IngredientDto.serializer(), this).toModel()
 

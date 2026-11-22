@@ -176,6 +176,13 @@ data class RatingUpdateDto(val rating: Double? = null, val isFavorite: Boolean? 
 @Serializable
 data class ImportRecipeDto(val url: String, val includeTags: Boolean = true)
 
+/** Only what Aroma needs from the group: whether an AI provider is set up (Mealie 3 and newer). */
+@Serializable
+data class GroupDto(val aiProviderSettings: AiProviderSettingsDto? = null)
+
+@Serializable
+data class AiProviderSettingsDto(val aiEnabled: Boolean = false)
+
 @Serializable
 data class CreateRecipeDto(val name: String)
 
