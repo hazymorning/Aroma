@@ -1,5 +1,11 @@
 package app.aroma.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -16,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -34,7 +41,7 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val destination = backStack?.destination
-    val showBar = Tab.entries.any { destination?.isTab(it) == true }
+    val showBar = destination?.isTab() == true
     val snackbar = remember { SnackbarHostState() }
 
     val sharedUrlConsume by rememberUpdatedState(onSharedUrlConsume)
@@ -46,12 +53,31 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
     }
 
     Scaffold(
-        bottomBar = { if (showBar) BottomBar(destination, nav) },
+        bottomBar = {
+            // Grows and shrinks instead of popping in, so the screen above changes height smoothly.
+            AnimatedVisibility(
+                visible = showBar,
+                enter = expandVertically(tween(BAR_DURATION), expandFrom = Alignment.Top) + fadeIn(tween(BAR_DURATION)),
+                exit = shrinkVertically(tween(BAR_DURATION), shrinkTowards = Alignment.Top) + fadeOut(tween(BAR_DURATION)),
+            ) {
+                BottomBar(destination, nav)
+            }
+        },
         snackbarHost = { SnackbarHost(snackbar) },
         contentWindowInsets = WindowInsets(0),
         modifier = modifier,
     ) { padding ->
-        NavHost(nav, startDestination = HomeRoute, modifier = Modifier.padding(bottom = padding.calculateBottomPadding())) {
+        NavHost(
+            nav,
+            startDestination = HomeRoute,
+            modifier = Modifier.padding(bottom = padding.calculateBottomPadding()),
+            enterTransition = Transitions.enter,
+            exitTransition = Transitions.exit,
+            popEnterTransition = Transitions.popEnter,
+            popExitTransition = Transitions.popExit,
+            predictivePopEnterTransition = Transitions.predictivePopEnter,
+            predictivePopExitTransition = Transitions.predictivePopExit,
+        ) {
             composable<HomeRoute> { HomeDestination(nav) }
             composable<RecipesRoute> { RecipesDestination(it.toRoute(), nav) }
             composable<MealPlanRoute> { MealPlanDestination(nav, snackbar) }
@@ -69,6 +95,8 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
         }
     }
 }
+
+private const val BAR_DURATION = 260
 
 private fun NavDestination.isTab(tab: Tab): Boolean = hasRoute(tab.route::class)
 
