@@ -77,6 +77,7 @@ import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.contactShadow
 import app.aroma.ui.theme.extras
+import app.aroma.ui.theme.isDarkScheme
 import app.aroma.ui.theme.tabular
 import kotlin.math.floor
 
@@ -337,7 +338,7 @@ fun SegmentedControl(options: List<String>, selectedIndex: Int, onSelect: (Int) 
                     .width(segment)
                     .fillMaxHeight()
                     .contactShadow(CircleShape)
-                    .background(if (isDark()) MaterialTheme.colorScheme.surfaceContainerHighest else extras.raised, CircleShape),
+                    .background(if (isDarkScheme) MaterialTheme.colorScheme.surfaceContainerHighest else extras.raised, CircleShape),
             )
         }
         Row(Modifier.fillMaxSize().selectableGroup()) {
@@ -366,9 +367,6 @@ fun SegmentedControl(options: List<String>, selectedIndex: Int, onSelect: (Int) 
         }
     }
 }
-
-@Composable
-private fun isDark(): Boolean = app.aroma.ui.theme.isDarkScheme
 
 /**
  * The shopping check: a fine ring that fills with sage, then draws its check stroke. The row it
