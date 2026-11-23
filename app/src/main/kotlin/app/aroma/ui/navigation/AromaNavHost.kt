@@ -6,13 +6,18 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -22,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
@@ -34,13 +40,20 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.LocalBottomBarInset
+import app.aroma.ui.components.LocalScrollToTop
+import app.aroma.ui.theme.Motion
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: Modifier = Modifier) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val destination = backStack?.destination
-    val showBar = destination?.isTab() == true
+    // Hidden while typing, so it never rides on top of the keyboard.
+    val showBar = destination?.isTab() == true && !WindowInsets.isImeVisible
+    val reselected = remember { MutableSharedFlow<Tab>(extraBufferCapacity = 1) }
     val snackbar = remember { SnackbarHostState() }
 
     val sharedUrlConsume by rememberUpdatedState(onSharedUrlConsume)
@@ -57,8 +70,9 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
     val barInset = FloatingBarHeight + FloatingBarGap + navigationInset
     Box(modifier.fillMaxSize()) {
         // Only tab pages lie under the bar, so only they keep its space free.
-        val underBar: @Composable (@Composable () -> Unit) -> Unit = { page ->
-            CompositionLocalProvider(LocalBottomBarInset provides barInset, content = page)
+        val underBar: @Composable (Tab, @Composable () -> Unit) -> Unit = { tab, page ->
+            val scrollToTop = remember(tab) { reselected.filter { it == tab }.map { } }
+            CompositionLocalProvider(LocalBottomBarInset provides barInset, LocalScrollToTop provides scrollToTop, content = page)
         }
         NavHost(
             nav,
@@ -71,10 +85,10 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
             predictivePopEnterTransition = Transitions.predictivePopEnter,
             predictivePopExitTransition = Transitions.predictivePopExit,
         ) {
-            composable<HomeRoute> { underBar { HomeDestination(nav) } }
-            composable<RecipesRoute> { entry -> underBar { RecipesDestination(entry.toRoute(), nav) } }
-            composable<MealPlanRoute> { underBar { MealPlanDestination(nav, snackbar) } }
-            composable<ShoppingRoute> { underBar { ShoppingDestination() } }
+            composable<HomeRoute> { underBar(Tab.Home) { HomeDestination(nav) } }
+            composable<RecipesRoute> { entry -> underBar(Tab.Recipes) { RecipesDestination(entry.toRoute(), nav) } }
+            composable<MealPlanRoute> { underBar(Tab.MealPlan) { MealPlanDestination(nav, snackbar) } }
+            composable<ShoppingRoute> { underBar(Tab.Shopping) { ShoppingDestination() } }
             composable<RecipeRoute> { RecipeDestination(it.toRoute<RecipeRoute>().slug, nav, snackbar) }
             composable<CookRoute> { entry ->
                 val route = entry.toRoute<CookRoute>()
@@ -86,10 +100,25 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
             composable<SettingsRoute> { SettingsDestination(nav) }
             composable<LicensesRoute> { LicensesDestination(nav) }
         }
+        // Content dissolves into the paper before it reaches the bar, instead of running into its edge.
         AnimatedVisibility(
             visible = showBar,
-            enter = fadeIn(tween(BAR_DURATION)) + slideInVertically(tween(BAR_DURATION, easing = Transitions.Settle)) { it / 2 },
-            exit = fadeOut(tween(BAR_DURATION / 2)) + slideOutVertically(tween(BAR_DURATION)) { it / 2 },
+            enter = fadeIn(tween(Motion.STATE)),
+            exit = fadeOut(tween(Motion.STATE)),
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            val page = MaterialTheme.colorScheme.background
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(barInset + 24.dp)
+                    .background(Brush.verticalGradient(0f to page.copy(alpha = 0f), 0.45f to page.copy(alpha = 0.85f), 1f to page)),
+            )
+        }
+        AnimatedVisibility(
+            visible = showBar,
+            enter = fadeIn(tween(200)) + slideInVertically(tween(260, easing = Transitions.Settle)) { it / 2 },
+            exit = fadeOut(tween(140)) + slideOutVertically(tween(180)) { it / 2 },
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)
@@ -99,18 +128,17 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
             FloatingBar(
                 selected = Tab.entries.firstOrNull { destination?.isTab(it) == true },
                 onSelect = nav::navigateToTab,
+                onReselect = { reselected.tryEmit(it) },
             )
         }
         AromaSnackbarHost(
             snackbar,
             Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = if (showBar) barInset else navigationInset),
+                .padding(bottom = if (showBar) barInset + 8.dp else navigationInset + 16.dp),
         )
     }
 }
-
-private const val BAR_DURATION = 260
 
 private fun NavDestination.isTab(tab: Tab): Boolean = hasRoute(tab.route::class)
 

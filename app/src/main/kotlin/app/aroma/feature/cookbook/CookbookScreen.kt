@@ -76,7 +76,7 @@ fun CookbookScreen(
                 state.recipes.isEmpty() -> {
                     item(span = { GridItemSpan(maxLineSpan) }, key = "empty") {
                         MessageState(
-                            icon = R.drawable.ic_auto_stories,
+                            icon = R.drawable.ic_recipes,
                             title = stringResource(R.string.cookbook_empty_title),
                             body = stringResource(R.string.cookbook_empty_message),
                         )

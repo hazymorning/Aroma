@@ -268,13 +268,13 @@ private fun EntryRow(entry: MealPlanEntry, actions: MealPlanActions) {
         }
         Box {
             IconButton(onClick = { menuOpen = true }) {
-                Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.action_more))
+                Icon(painterResource(R.drawable.ic_more_horiz), contentDescription = stringResource(R.string.action_more))
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 if (entry.recipe != null) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.recipe_add_to_list)) },
-                        leadingIcon = { Icon(painterResource(R.drawable.ic_shopping_basket), contentDescription = null) },
+                        leadingIcon = { Icon(painterResource(R.drawable.ic_basket), contentDescription = null) },
                         onClick = {
                             menuOpen = false
                             actions.onShopEntry(entry)

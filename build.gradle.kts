@@ -18,8 +18,8 @@ spotless {
             "ktlint_function_naming_ignore_when_annotated_with" to "Composable",
             "ktlint_class_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than" to "4",
             "ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than" to "5",
-            // The floating tab bar's height, which tab pages keep free below their content.
-            "compose_allowed_composition_locals" to "LocalBottomBarInset",
+            // The floating bar's height and reselection for tab pages, and the theme's extra colours.
+            "compose_allowed_composition_locals" to "LocalBottomBarInset,LocalAromaExtras,LocalScrollToTop",
         )
     kotlin {
         target("app/src/**/*.kt")

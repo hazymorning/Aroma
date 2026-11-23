@@ -74,11 +74,11 @@ import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.PillButton
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PlaceholderLines
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
+import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.Stepper
 import app.aroma.ui.components.TagChip
 import app.aroma.ui.components.currentLocale
@@ -249,14 +249,14 @@ private fun RecipeTopBar(
             )
             Spacer(Modifier.width(8.dp))
             Box {
-                BarButton(R.drawable.ic_more_vert, stringResource(R.string.action_more), collapsed) { menuOpen = true }
+                BarButton(R.drawable.ic_more_horiz, stringResource(R.string.action_more), collapsed) { menuOpen = true }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    MenuItem(R.string.recipe_add_to_plan, R.drawable.ic_calendar_month) {
+                    MenuItem(R.string.recipe_add_to_plan, R.drawable.ic_plan) {
                         menuOpen = false
                         actions.onAddToMealPlan()
                     }
                     if (canShop) {
-                        MenuItem(R.string.recipe_add_to_list, R.drawable.ic_shopping_basket) {
+                        MenuItem(R.string.recipe_add_to_list, R.drawable.ic_basket) {
                             menuOpen = false
                             actions.onAddToShoppingList()
                         }
@@ -407,17 +407,17 @@ private fun RecipeQuickActions(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        PillButton(
-            icon = R.drawable.ic_calendar_month,
-            label = stringResource(R.string.recipe_action_plan),
+        SecondaryButton(
+            icon = R.drawable.ic_plan,
+            text = stringResource(R.string.recipe_action_plan),
             onClick = onPlan,
             confirmed = confirmed == QuickAction.Plan,
             modifier = Modifier.weight(1f),
         )
         if (canShop) {
-            PillButton(
-                icon = R.drawable.ic_shopping_basket,
-                label = stringResource(R.string.recipe_action_shop),
+            SecondaryButton(
+                icon = R.drawable.ic_basket,
+                text = stringResource(R.string.recipe_action_shop),
                 onClick = onShop,
                 confirmed = confirmed == QuickAction.Shop,
                 modifier = Modifier.weight(1f),

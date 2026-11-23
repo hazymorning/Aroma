@@ -41,13 +41,13 @@ private val balancedLines =
         trim = LineHeightStyle.Trim.None,
     )
 
-private fun serifDisplay(size: Int, lineHeight: Int, weight: FontWeight = FontWeight.Medium) =
+private fun serifDisplay(size: Int, lineHeight: Int, tracking: Double, weight: FontWeight = FontWeight.Normal) =
     TextStyle(
         fontFamily = SerifDisplay,
         fontWeight = weight,
         fontSize = size.sp,
         lineHeight = lineHeight.sp,
-        letterSpacing = (-0.01).em,
+        letterSpacing = tracking.em,
         lineHeightStyle = balancedLines,
         lineBreak = LineBreak.Simple,
         hyphens = Hyphens.Auto,
@@ -79,21 +79,39 @@ private fun sans(size: Int, lineHeight: Int, weight: FontWeight, letterSpacing: 
 /** Recipe titles on cards, a step below [Typography.titleLarge]. */
 val CardTitle = serifText(18, 23)
 
+/**
+ * Small tracked capitals where a magazine would put a label: section names, meal types, step
+ * counters. Set in upper case by the Kicker composable; the only place Figtree SemiBold appears.
+ */
+val KickerStyle = sans(11, 16, FontWeight.SemiBold, letterSpacing = 1.2)
+
+/** The serif lead under a title: recipe and cookbook descriptions, the login tagline. */
+val Standfirst = serifText(18, 27, FontWeight.Normal)
+
+/** Recipe steps: a touch larger than body text, for reading at arm's length. */
+val Reading = sans(17, 27, FontWeight.Normal)
+
+/** The step text in cook mode. */
+val CookStep = serifText(26, 36, FontWeight.Normal)
+
+/** Lining figures of equal width, so times, amounts and counters do not jitter. */
+fun TextStyle.tabular(): TextStyle = copy(fontFeatureSettings = "tnum, lnum")
+
 val AromaTypography =
     Typography(
-        displayLarge = serifDisplay(48, 54),
-        displayMedium = serifDisplay(40, 46),
-        displaySmall = serifDisplay(34, 40),
-        headlineLarge = serifDisplay(30, 36),
-        headlineMedium = serifDisplay(26, 32),
+        displayLarge = serifDisplay(56, 60, -0.03),
+        displayMedium = serifDisplay(40, 46, -0.02),
+        displaySmall = serifDisplay(36, 42, -0.02),
+        headlineLarge = serifDisplay(32, 38, -0.015),
+        headlineMedium = serifDisplay(26, 32, -0.01),
         headlineSmall = serifText(22, 28),
         titleLarge = serifText(20, 26),
-        titleMedium = sans(16, 22, FontWeight.SemiBold),
-        titleSmall = sans(14, 20, FontWeight.SemiBold),
+        titleMedium = sans(16, 22, FontWeight.Medium),
+        titleSmall = sans(14, 20, FontWeight.Medium),
         bodyLarge = sans(16, 24, FontWeight.Normal),
-        bodyMedium = sans(14, 20, FontWeight.Normal),
-        bodySmall = sans(12, 16, FontWeight.Normal, letterSpacing = 0.1),
-        labelLarge = sans(14, 20, FontWeight.SemiBold, letterSpacing = 0.1),
-        labelMedium = sans(12, 16, FontWeight.SemiBold, letterSpacing = 0.2),
-        labelSmall = sans(11, 16, FontWeight.Medium, letterSpacing = 0.3),
+        bodyMedium = sans(14, 21, FontWeight.Normal),
+        bodySmall = sans(13, 18, FontWeight.Normal, letterSpacing = 0.1),
+        labelLarge = sans(15, 20, FontWeight.Medium, letterSpacing = 0.1),
+        labelMedium = sans(13, 18, FontWeight.Medium, letterSpacing = 0.1),
+        labelSmall = sans(12, 16, FontWeight.Medium, letterSpacing = 0.1),
     )

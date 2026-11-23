@@ -1,5 +1,7 @@
 package app.aroma.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -10,10 +12,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +31,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import app.aroma.core.format.IngredientLine
+import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.tabular
 
 /** An ingredient as shown in a list, optionally starting a new section. */
 data class IngredientRow(val section: String?, val line: IngredientLine, val linkedRecipe: String? = null)
@@ -44,7 +48,10 @@ fun IngredientList(
     checked: Set<Int> = emptySet(),
     onToggle: ((Int) -> Unit)? = null,
 ) {
-    val measureStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+    val measureStyle =
+        MaterialTheme.typography.bodyLarge
+            .copy(fontWeight = FontWeight.Medium)
+            .tabular()
     val textMeasurer = rememberTextMeasurer()
     val measures = remember(rows) { rows.map { measureText(it.line) } }
     BoxWithConstraints(modifier.fillMaxWidth()) {
@@ -57,14 +64,9 @@ fun IngredientList(
         Column {
             rows.forEachIndexed { index, row ->
                 if (!row.section.isNullOrBlank()) {
-                    Text(
-                        text = row.section,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = if (index == 0) 4.dp else 20.dp, bottom = 4.dp),
-                    )
+                    Kicker(row.section, Modifier.padding(top = if (index == 0) 0.dp else 24.dp, bottom = 8.dp))
                 } else if (index > 0) {
-                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                    Hairline()
                 }
                 IngredientRowItem(
                     measure = measures[index],
@@ -93,20 +95,24 @@ private fun IngredientRowItem(
             Modifier
         }
     val decoration = if (checked) TextDecoration.LineThrough else TextDecoration.None
+    val fade by animateFloatAsState(if (checked) 0.4f else 1f, tween(Motion.STATE), label = "ingredientChecked")
     Row(
         modifier =
             rowModifier
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
-                .alpha(if (checked) 0.45f else 1f)
-                .padding(vertical = 11.dp),
+                .alpha(fade)
+                .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.Start,
     ) {
         if (measureWidth.value > 0f) {
             Text(
                 text = measure,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold, textDecoration = decoration),
+                style =
+                    MaterialTheme.typography.bodyLarge
+                        .copy(fontWeight = FontWeight.Medium, textDecoration = decoration)
+                        .tabular(),
                 modifier = Modifier.width(measureWidth),
             )
             Spacer(Modifier.width(16.dp))

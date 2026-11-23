@@ -291,7 +291,7 @@ private fun FinishPage(state: CookUiState, actions: CookActions) {
         Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(88.dp)) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    painterResource(R.drawable.ic_restaurant),
+                    painterResource(R.drawable.ic_plate),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(40.dp),

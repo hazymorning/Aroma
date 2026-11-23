@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.aroma.core.model.RecipeSummary
+import app.aroma.ui.theme.ScreenMargin
 
 /**
  * Two-column grid (more on wide screens) that asks for the next page shortly
@@ -39,7 +41,7 @@ fun RecipeGrid(
     isLoadingMore: Boolean = false,
     canLoadMore: Boolean = false,
     onLoadMore: () -> Unit = {},
-    contentPadding: PaddingValues = PaddingValues(start = 20.dp, end = 20.dp, bottom = 96.dp),
+    contentPadding: PaddingValues = PaddingValues(start = ScreenMargin, end = ScreenMargin, bottom = 32.dp),
     header: LazyGridScope.() -> Unit = {},
 ) {
     val nearEnd by remember(state) {
@@ -59,8 +61,8 @@ fun RecipeGrid(
         columns = GridCells.Adaptive(minSize = 160.dp),
         state = state,
         contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(32.dp),
         modifier = modifier,
     ) {
         header()
@@ -70,7 +72,11 @@ fun RecipeGrid(
         if (isLoadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "more") {
                 Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(strokeWidth = 3.dp, color = MaterialTheme.colorScheme.primary)
+                    CircularProgressIndicator(
+                        strokeWidth = 1.5.dp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
             }
         }
@@ -84,7 +90,7 @@ fun LazyGridScope.recipeGridPlaceholders(count: Int = 6) {
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f),
-            shape = MaterialTheme.shapes.large,
+            shape = MaterialTheme.shapes.medium,
         )
     }
 }

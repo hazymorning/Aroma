@@ -400,7 +400,7 @@ private fun EmptyToday(onPlan: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Icon(
-                painterResource(R.drawable.ic_calendar_month),
+                painterResource(R.drawable.ic_plan),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
             )
@@ -454,7 +454,7 @@ private fun CookbookRow(cookbooks: List<Cookbook>, onOpen: (Cookbook) -> Unit) {
                 ) {
                     Column(Modifier.padding(20.dp)) {
                         Icon(
-                            painterResource(R.drawable.ic_auto_stories),
+                            painterResource(R.drawable.ic_recipes),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                         )

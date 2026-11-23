@@ -179,7 +179,7 @@ fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: M
                     list == null -> {
                         item(key = "noLists") {
                             MessageState(
-                                icon = R.drawable.ic_shopping_basket,
+                                icon = R.drawable.ic_basket,
                                 title = stringResource(R.string.shopping_no_lists_title),
                                 body = stringResource(R.string.shopping_no_lists_message),
                                 actionLabel = stringResource(R.string.shopping_create_list),
@@ -278,13 +278,13 @@ private fun Header(
             if (state.list != null) {
                 FilledTonalIconToggleButton(checked = shoppingMode, onCheckedChange = onShoppingMode) {
                     Icon(
-                        painterResource(R.drawable.ic_shopping_basket),
+                        painterResource(R.drawable.ic_basket),
                         contentDescription = stringResource(if (shoppingMode) R.string.shopping_mode_off else R.string.shopping_mode_on),
                     )
                 }
                 Box {
                     IconButton(onClick = { moreMenu = true }) {
-                        Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.action_more))
+                        Icon(painterResource(R.drawable.ic_more_horiz), contentDescription = stringResource(R.string.action_more))
                     }
                     DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
                         DropdownMenuItem(text = { Text(stringResource(R.string.shopping_create_list)) }, onClick = {
@@ -381,7 +381,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.listContent(
     if (groups.sections.isEmpty() && groups.checked.isEmpty()) {
         item(key = "empty") {
             MessageState(
-                icon = R.drawable.ic_shopping_basket,
+                icon = R.drawable.ic_basket,
                 title = stringResource(R.string.shopping_empty_title),
                 body = stringResource(R.string.shopping_empty_message),
                 modifier = Modifier.fillMaxWidth(),

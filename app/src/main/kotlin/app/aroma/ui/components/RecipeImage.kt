@@ -37,7 +37,7 @@ fun RecipeImage(
     size: ImageSize,
     modifier: Modifier = Modifier,
     shape: Shape = RectangleShape,
-    fallbackIconSize: Dp = 32.dp,
+    fallbackIconSize: Dp = 28.dp,
     placeholder: ImageSize? = null,
 ) {
     var failed by remember(image) { mutableStateOf(false) }
@@ -45,14 +45,14 @@ fun RecipeImage(
         modifier =
             modifier
                 .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                .background(MaterialTheme.colorScheme.surfaceContainer),
         contentAlignment = Alignment.Center,
     ) {
         if (image == null || failed) {
             Icon(
-                painter = painterResource(R.drawable.ic_restaurant_menu),
+                painter = painterResource(R.drawable.ic_plate),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
+                tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
                 modifier = Modifier.size(fallbackIconSize),
             )
         }
@@ -65,7 +65,7 @@ fun RecipeImage(
                         // Keyed by URL alone, so a card's copy can stand in on the next screen.
                         .memoryCacheKey(image.url(size))
                         .placeholderMemoryCacheKey(placeholder?.let(image::url))
-                        .crossfade(true)
+                        .crossfade(220)
                         .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,

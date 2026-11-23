@@ -1,5 +1,6 @@
 package app.aroma.ui.components
 
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,8 +32,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.data.AromaError
+import app.aroma.ui.theme.ScreenMargin
 
-/** Centered message for empty lists, missing results and errors. */
+/**
+ * A message for empty lists, missing results and errors, set like text on the page: a line glyph,
+ * a serif title and a quiet explanation on the left margin. [primaryAction] makes the action the
+ * filled button, for when it is the only way forward.
+ */
 @Composable
 fun MessageState(
     icon: Int,
@@ -42,41 +47,29 @@ fun MessageState(
     body: String? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    primaryAction: Boolean = false,
 ) {
-    Column(
-        modifier = modifier.padding(horizontal = 40.dp, vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painterResource(icon),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(30.dp),
-            )
-        }
-        Spacer(Modifier.height(20.dp))
-        Text(title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+    Column(modifier = modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 32.dp, bottom = 24.dp)) {
+        Icon(
+            painterResource(icon),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(32.dp),
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(title, style = MaterialTheme.typography.headlineSmall)
         if (body != null) {
             Spacer(Modifier.height(8.dp))
             Text(
                 text = body,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
                 modifier = Modifier.widthIn(max = 320.dp),
             )
         }
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(24.dp))
-            FilledTonalButton(onClick = onAction) { Text(actionLabel) }
+            if (primaryAction) PrimaryButton(actionLabel, onAction) else SecondaryButton(actionLabel, onAction)
         }
     }
 }
@@ -100,24 +93,24 @@ fun Placeholder(modifier: Modifier = Modifier, shape: Shape = MaterialTheme.shap
     val alpha by transition.animateFloat(
         initialValue = 0.55f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Reverse),
         label = "placeholderAlpha",
     )
     Box(
         modifier
             .graphicsLayer { this.alpha = alpha }
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            .background(MaterialTheme.colorScheme.surfaceContainer),
     )
 }
 
 @Composable
 fun PlaceholderLines(lines: Int, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         repeat(lines) { index ->
             Placeholder(
                 Modifier
-                    .height(14.dp)
+                    .height(12.dp)
                     .widthIn(min = 120.dp, max = if (index == lines - 1) 180.dp else 320.dp),
                 shape = MaterialTheme.shapes.extraSmall,
             )

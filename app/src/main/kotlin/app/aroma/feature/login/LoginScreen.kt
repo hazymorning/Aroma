@@ -227,7 +227,7 @@ private fun CredentialsStep(state: LoginUiState, actions: LoginActions) {
 private fun ServerCard(server: ServerInfo, onChange: () -> Unit) {
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
         Row(Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(painterResource(R.drawable.ic_check_circle_filled), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(painterResource(R.drawable.ic_check), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Column(
                 Modifier
                     .weight(1f)

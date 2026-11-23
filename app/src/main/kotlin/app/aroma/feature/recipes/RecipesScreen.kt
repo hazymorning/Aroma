@@ -149,7 +149,7 @@ fun RecipesScreen(state: RecipesUiState, actions: RecipesActions, modifier: Modi
                     state.recipes.isEmpty() -> {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "empty") {
                             MessageState(
-                                icon = R.drawable.ic_menu_book,
+                                icon = R.drawable.ic_recipes,
                                 title = stringResource(R.string.recipes_empty_title),
                                 body = stringResource(R.string.recipes_empty_message),
                                 actionLabel = stringResource(R.string.recipes_add),

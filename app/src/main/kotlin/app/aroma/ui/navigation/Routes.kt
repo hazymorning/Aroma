@@ -48,8 +48,8 @@ enum class Tab(
     val icon: Int,
     val selectedIcon: Int,
 ) {
-    Home(HomeRoute, R.string.nav_home, R.drawable.ic_home, R.drawable.ic_home_filled),
-    Recipes(RecipesRoute(), R.string.nav_recipes, R.drawable.ic_menu_book, R.drawable.ic_menu_book_filled),
-    MealPlan(MealPlanRoute, R.string.nav_meal_plan, R.drawable.ic_calendar_month, R.drawable.ic_calendar_month_filled),
-    Shopping(ShoppingRoute, R.string.nav_shopping, R.drawable.ic_shopping_basket, R.drawable.ic_shopping_basket_filled),
+    Home(HomeRoute, R.string.nav_home, R.drawable.ic_home, R.drawable.ic_home_selected),
+    Recipes(RecipesRoute(), R.string.nav_recipes, R.drawable.ic_recipes, R.drawable.ic_recipes_selected),
+    MealPlan(MealPlanRoute, R.string.nav_meal_plan, R.drawable.ic_plan, R.drawable.ic_plan_selected),
+    Shopping(ShoppingRoute, R.string.nav_shopping, R.drawable.ic_basket, R.drawable.ic_basket_selected),
 }
