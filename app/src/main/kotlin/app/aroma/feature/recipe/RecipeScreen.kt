@@ -1,17 +1,13 @@
 package app.aroma.feature.recipe
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,7 +41,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,6 +89,7 @@ import app.aroma.ui.components.CardGroup
 import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.FloatingAction
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.IngredientList
@@ -103,7 +99,6 @@ import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.OnPhotoButton
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PlaceholderLine
-import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.QuietPress
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
@@ -120,13 +115,11 @@ import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.ChipHeight
 import app.aroma.ui.theme.ControlHeight
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.SectionSpace
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.extras
-import app.aroma.ui.theme.floatingShadow
 import app.aroma.ui.theme.tabular
 import java.net.URI
 import java.util.Locale
@@ -202,9 +195,8 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
         derivedStateOf { listState.bottomOf(TITLE_KEY)?.let { it <= barBottom } ?: (listState.firstVisibleItemIndex > 0) }
     }
     val canCook = recipe?.steps?.isNotEmpty() == true
-    // The cook button rises once the photo is gone, so on opening it never sits on the servings;
-    // a recipe too short to scroll that far shows it right away.
-    val cookShown by remember(listState) { derivedStateOf { !barOverPhoto || !listState.canScrollForward } }
+    // Folded to its glyph while reading on down the page; whole again at the top or once the page heads back up.
+    val cookUnfolded by remember(listState) { derivedStateOf { !listState.canScrollBackward || !listState.lastScrolledForward } }
     val locale = currentLocale()
     // What each step uses, scaled and in the chosen measures like the list above it.
     val stepUses =
@@ -259,7 +251,20 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
             // One rework at a time: the next only once the page showed how the last ended.
             onRework = { reworkOpen = true }.takeIf { state.aiAvailable && state.rework == null },
         )
-        CookButton(visible = canCook && cookShown, onClick = actions.onStartCooking)
+        // There with the recipe, from its first frame, and moving only with the page.
+        if (canCook) {
+            FloatingAction(
+                text = stringResource(R.string.recipe_start_cooking),
+                icon = R.drawable.ic_cooking,
+                onClick = actions.onStartCooking,
+                expanded = cookUnfolded,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .navigationBarsPadding()
+                        .padding(end = ScreenMargin, bottom = Space.m),
+            )
+        }
     }
     if (rateOpen && recipe != null) {
         RatingSheet(rating = state.userRating, onRate = actions.onRate, onDismiss = { rateOpen = false })
@@ -271,7 +276,7 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
 
 private fun LazyListState.bottomOf(key: Any): Int? = layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.let { it.offset + it.size }
 
-/** Room below the last section: clear of the cook button when there is one. */
+/** Room below the last section, so it can scroll clear above the cook button when there is one. */
 @Composable
 private fun endSpace(canCook: Boolean) =
     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
@@ -407,50 +412,6 @@ private fun MoreMenu(
                 AromaMenuItem(stringResource(R.string.recipe_open_source), R.drawable.ic_open_in_new, { choose { actions.onOpenUrl(url) } })
             }
             AromaMenuItem(stringResource(R.string.action_delete), R.drawable.ic_delete, { choose(onDelete) }, destructive = true)
-        }
-    }
-}
-
-/**
- * The cook button floats over the page like the tab bar does on the tab pages, and rises a moment
- * after the recipe is there. The page fades into paper behind it, so text never runs into its edge.
- */
-@Composable
-private fun BoxScope.CookButton(visible: Boolean, onClick: () -> Unit) {
-    // Starts hidden even when the recipe is already there, so the button always rises into place.
-    val shown = remember { MutableTransitionState(false) }
-    SideEffect { shown.targetState = visible }
-    AnimatedVisibility(
-        visibleState = shown,
-        enter = fadeIn(tween(Motion.EXPAND, delayMillis = Motion.STATE)),
-        exit = fadeOut(tween(Motion.STATE)),
-        modifier =
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
-    ) {
-        Box(contentAlignment = Alignment.BottomCenter) {
-            val page = MaterialTheme.colorScheme.background
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Brush.verticalGradient(0f to page.copy(alpha = 0f), 0.45f to page.copy(alpha = 0.85f), 1f to page))
-                    .navigationBarsPadding()
-                    .height(ControlHeight + Space.m + Space.l),
-            )
-            PrimaryButton(
-                text = stringResource(R.string.recipe_start_cooking),
-                onClick = onClick,
-                leadingIcon = R.drawable.ic_cooking,
-                modifier =
-                    Modifier
-                        .animateEnterExit(
-                            enter = slideInVertically(tween(Motion.EXPAND, delayMillis = Motion.STATE, easing = Settle)) { it / 3 },
-                            exit = ExitTransition.None,
-                        ).navigationBarsPadding()
-                        .padding(bottom = Space.m)
-                        .floatingShadow(CircleShape),
-            )
         }
     }
 }

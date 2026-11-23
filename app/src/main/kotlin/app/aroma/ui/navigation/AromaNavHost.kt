@@ -1,11 +1,8 @@
 package app.aroma.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -16,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -32,6 +30,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -47,7 +46,6 @@ import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.LocalScrollToTop
 import app.aroma.ui.theme.ControlHeight
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -174,18 +172,19 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
             composable<LicensesRoute> { LicensesDestination(nav) }
         }
         // Content dissolves into the paper before it reaches the bar, instead of running into its edge.
+        // Both come and go in step with the tab pages they belong to.
         AnimatedVisibility(
             visible = showBar,
-            enter = fadeIn(tween(Motion.STATE)),
-            exit = fadeOut(tween(Motion.STATE)),
+            enter = Transitions.arrive,
+            exit = Transitions.leave,
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             BarFade(barInset)
         }
         AnimatedVisibility(
             visible = showBar,
-            enter = fadeIn(tween(Motion.STATE)) + slideInVertically(tween(Motion.EXPAND, easing = Settle)) { it / 2 },
-            exit = fadeOut(tween(Motion.PRESS)) + slideOutVertically(tween(Motion.STATE)) { it / 2 },
+            enter = Transitions.barEnter,
+            exit = Transitions.barExit,
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)
@@ -199,21 +198,24 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
             )
         }
         UpdateMessages(appContainer().updates, snackbar)
+        // A message still showing as the page changes glides to its place on the new page.
+        val snackbarLift by animateDpAsState(
+            when {
+                showBar -> barInset + Space.xs
+
+                // Above the recipe's floating cook button.
+                destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + Space.m + ControlHeight + Space.xs
+
+                else -> navigationInset + Space.m
+            },
+            tween(Motion.EXPAND, easing = Motion.Glide),
+            label = "snackbarLift",
+        )
         AromaSnackbarHost(
             snackbar,
             Modifier
                 .align(Alignment.BottomCenter)
-                .padding(
-                    bottom =
-                        when {
-                            showBar -> barInset + Space.xs
-
-                            // Above the recipe's floating cook button.
-                            destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + Space.m + ControlHeight + Space.xs
-
-                            else -> navigationInset + Space.m
-                        },
-                ),
+                .offset { IntOffset(0, -snackbarLift.roundToPx()) },
         )
     }
 }

@@ -20,7 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -150,7 +150,7 @@ private fun IngredientRowItem(
                 .then(modifier)
                 .fillMaxWidth()
                 .heightIn(min = TouchTarget)
-                .alpha(fade)
+                .graphicsLayer { alpha = fade }
                 .padding(vertical = Space.s),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.Start,

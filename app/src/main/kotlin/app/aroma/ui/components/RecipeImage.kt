@@ -1,5 +1,6 @@
 package app.aroma.ui.components
 
+import android.provider.Settings
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import app.aroma.ui.theme.Motion
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import kotlin.math.roundToInt
 
 /**
  * Recipe photo with a calm fallback for recipes without an image or while offline. With
@@ -44,6 +46,7 @@ fun RecipeImage(
     placeholder: ImageSize? = null,
 ) {
     var failed by remember(image) { mutableStateOf(false) }
+    val crossfade = (Motion.EXPAND * systemAnimationScale()).roundToInt()
     Box(
         modifier =
             modifier
@@ -68,7 +71,7 @@ fun RecipeImage(
                         // Keyed by URL alone, so a card's copy can stand in on the next screen.
                         .memoryCacheKey(image.url(size))
                         .placeholderMemoryCacheKey(placeholder?.let(image::url))
-                        .crossfade(Motion.EXPAND)
+                        .crossfade(crossfade)
                         .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
@@ -78,4 +81,14 @@ fun RecipeImage(
             )
         }
     }
+}
+
+/**
+ * How fast the system runs animations, 0 with them turned off. Compose's own animations follow it by
+ * themselves; Coil times its crossfade on its own clock, so the photo is told.
+ */
+@Composable
+private fun systemAnimationScale(): Float {
+    val resolver = LocalContext.current.contentResolver
+    return remember(resolver) { Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) }
 }

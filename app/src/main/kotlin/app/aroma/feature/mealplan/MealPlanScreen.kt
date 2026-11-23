@@ -1,11 +1,7 @@
 package app.aroma.feature.mealplan
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -22,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -31,7 +26,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -40,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -77,6 +75,7 @@ import app.aroma.ui.components.SheetAction
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.SwipeToRemove
+import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
@@ -126,7 +125,8 @@ data class MealPlanActions(
 
 @Composable
 fun MealPlanScreen(state: MealPlanUiState, actions: MealPlanActions, modifier: Modifier = Modifier) {
-    val listState = rememberLazyListState()
+    // Another week is another page, not an edit of this one: it shows at once, from its top.
+    val listState = key(state.weekStart) { rememberLazyListState() }
     ScrollToTopOnReselect(listState)
     // By id, so the sheets survive rotation and close by themselves once their entry is gone.
     var sheetEntryId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -275,14 +275,14 @@ private fun LazyListScope.daySection(day: MealPlanDay, today: LocalDate, actions
             part = CardPart.of(0, parts),
             modifier =
                 Modifier
-                    .settling(this)
+                    .animateRow(this)
                     .padding(top = Space.s),
         ) {
             PlanDayHeader(day.date, today, isEmpty = day.entries.isEmpty(), onAdd = { actions.onAdd(day.date) })
         }
     }
     itemsIndexed(day.entries, key = { _, entry -> "entry-${entry.id}" }) { index, entry ->
-        SoftCard(part = CardPart.of(index + 1, parts), modifier = Modifier.settling(this)) {
+        SoftCard(part = CardPart.of(index + 1, parts), modifier = Modifier.animateRow(this)) {
             if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
             SwipeToRemove(onRemove = { actions.onDeleteEntry(entry) }) {
                 EntryRow(
@@ -298,16 +298,6 @@ private fun LazyListScope.daySection(day: MealPlanDay, today: LocalDate, actions
     }
 }
 
-/** Rows fade in and out and the ones below glide into place, so a removal never jumps. */
-private fun Modifier.settling(scope: LazyItemScope): Modifier =
-    with(scope) {
-        animateItem(
-            fadeInSpec = tween(Motion.STATE),
-            placementSpec = tween(Motion.EXPAND, easing = Settle),
-            fadeOutSpec = tween(Motion.STATE),
-        )
-    }
-
 /**
  * The day's head with a quiet add at its end. An empty day says so underneath, and the whole day
  * becomes one target that plans a meal.
@@ -316,22 +306,25 @@ private fun Modifier.settling(scope: LazyItemScope): Modifier =
 private fun PlanDayHeader(date: LocalDate, today: LocalDate, isEmpty: Boolean, onAdd: () -> Unit) {
     val locale = currentLocale()
     val addLabel = stringResource(R.string.plan_add_for, remember(date, locale) { weekday(date, locale) })
+    // The note takes its room at once, so the list glides around it instead of following it in
+    // steps; it fades in when the day's last meal goes, and is simply there on a day that opens empty.
+    val note = remember { Animatable(if (isEmpty) 1f else 0f) }
+    LaunchedEffect(isEmpty) { if (isEmpty) note.animateTo(1f, tween(Motion.STATE, easing = Settle)) else note.snapTo(0f) }
     Column(
         Modifier
             .fillMaxWidth()
             .then(if (isEmpty) Modifier.clickable(onClickLabel = addLabel, role = Role.Button, onClick = onAdd) else Modifier),
     ) {
         DayHeader(date, today) { IconAction(R.drawable.ic_add, addLabel, onAdd) }
-        AnimatedVisibility(
-            visible = isEmpty,
-            enter = fadeIn(tween(Motion.STATE)) + expandVertically(tween(Motion.EXPAND, easing = Settle)),
-            exit = fadeOut(tween(Motion.STATE)) + shrinkVertically(tween(Motion.EXPAND, easing = Settle)),
-        ) {
+        if (isEmpty) {
             Text(
                 text = stringResource(R.string.plan_day_empty),
                 style = AromaType.Small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = CardPadding, end = CardPadding, bottom = Space.s),
+                modifier =
+                    Modifier
+                        .padding(start = CardPadding, end = CardPadding, bottom = Space.s)
+                        .graphicsLayer { alpha = note.value },
             )
         }
     }

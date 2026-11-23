@@ -61,7 +61,7 @@ import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.Motion.Glide
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.ThumbnailSize
@@ -114,7 +114,7 @@ fun AddMealSheet(
             targetState = noteMode,
             transitionSpec = {
                 fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) using
-                    SizeTransform(clip = false) { _, _ -> tween(Motion.EXPAND, easing = Settle) }
+                    SizeTransform(clip = false) { _, _ -> tween(Motion.EXPAND, easing = Glide) }
             },
             label = "addMealMode",
         ) { notes ->

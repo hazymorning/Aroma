@@ -68,6 +68,13 @@ class MealPlanViewModel(
     private val searchQuery = MutableStateFlow("")
     private var loadJob: Job? = null
 
+    /**
+     * Entries removed here. The plan is read again once the server confirms a removal, and the copy
+     * kept on the phone, which still has the entry, answers first; without this the meal would come
+     * back for a moment and leave a second time.
+     */
+    private val removed = mutableSetOf<Int>()
+
     init {
         load(refreshing = false)
         observeSearch()
@@ -97,7 +104,7 @@ class MealPlanViewModel(
                     .catch { error ->
                         mutableState.update { it.copy(isLoading = false, isRefreshing = false, error = error.toAromaError()) }
                     }.collect { loadable ->
-                        val byDay = loadable.data.groupBy { it.date }
+                        val byDay = loadable.data.filterNot { it.id in removed }.groupBy { it.date }
                         val week = (0L until 7L).map { start.plusDays(it) }.map { MealPlanDay(it, byDay[it].orEmpty()) }
                         mutableState.update {
                             it.copy(
@@ -115,12 +122,14 @@ class MealPlanViewModel(
     fun delete(entry: MealPlanEntry) =
         viewModelScope.launch {
             val before = state.value.days
+            removed += entry.id
             mutableState.update { state -> state.copy(days = state.days.map { day -> day.copy(entries = day.entries - entry) }) }
             attempt { mealPlans.delete(entry.id) }
                 .onSuccess {
                     load(refreshing = false)
                     mutableEvents.emit(MealPlanEvent.Removed(entry))
                 }.onFailure { error ->
+                    removed -= entry.id
                     mutableState.update { it.copy(days = before) }
                     mutableEvents.emit(MealPlanEvent.Failed(error.toAromaError()))
                 }

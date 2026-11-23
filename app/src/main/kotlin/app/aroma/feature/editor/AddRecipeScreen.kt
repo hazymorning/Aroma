@@ -91,7 +91,7 @@ import app.aroma.ui.theme.ContentEdge
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.Motion.Glide
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.SectionSpace
@@ -306,7 +306,7 @@ private fun PasteLink(offer: PasteOffer?, onPaste: () -> Unit) {
         targetState = offer,
         transitionSpec = {
             fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.PRESS)) using
-                SizeTransform { _, _ -> tween(Motion.EXPAND, easing = Settle) }
+                SizeTransform { _, _ -> tween(Motion.EXPAND, easing = Glide) }
         },
         contentAlignment = Alignment.TopStart,
         label = "pasteOffer",
@@ -482,8 +482,8 @@ private fun NameDialog(name: String, onNameChange: (String) -> Unit, onCreate: (
     )
 }
 
-private val Unfold = expandVertically(tween(Motion.EXPAND, easing = Settle)) + fadeIn(tween(Motion.EXPAND, easing = LinearEasing))
-private val Fold = shrinkVertically(tween(Motion.EXPAND, easing = Settle)) + fadeOut(tween(Motion.STATE, easing = LinearEasing))
+private val Unfold = expandVertically(tween(Motion.EXPAND, easing = Glide)) + fadeIn(tween(Motion.EXPAND, easing = LinearEasing))
+private val Fold = shrinkVertically(tween(Motion.EXPAND, easing = Glide)) + fadeOut(tween(Motion.STATE, easing = LinearEasing))
 
 /**
  * An error set as text where it happened: a small glyph and title in the error colour, the reason

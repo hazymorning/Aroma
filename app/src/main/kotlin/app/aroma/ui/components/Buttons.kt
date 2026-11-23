@@ -2,6 +2,7 @@ package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,8 +14,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,11 +34,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import app.aroma.R
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.ChipHeight
@@ -46,6 +53,7 @@ import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.extras
+import app.aroma.ui.theme.floatingShadow
 import app.aroma.ui.theme.isDarkScheme
 import app.aroma.ui.theme.photoButtonShadow
 import app.aroma.ui.theme.tabular
@@ -93,6 +101,56 @@ fun PrimaryButton(
         }
     }
 }
+
+/**
+ * The page's main action, floating at its bottom end over what scrolls beneath: a sage pill with a
+ * glyph and a label, on the soft shadow of what floats. While not [expanded] it folds to a circle
+ * around the glyph; the pill narrows towards its end, and the label has faded before the edge can
+ * cut it off.
+ */
+@Composable
+fun FloatingAction(
+    text: String,
+    @DrawableRes icon: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    expanded: Boolean = true,
+) {
+    val unfolded = animateFloatAsState(if (expanded) 1f else 0f, tween(Motion.EXPAND, easing = Motion.Glide), label = "unfold")
+    Row(
+        modifier =
+            modifier
+                // The width is read while measuring, so folding lays out the button alone and recomposes nothing.
+                .layout { measurable, constraints ->
+                    val height = ControlHeight.roundToPx()
+                    val width = lerp(height, measurable.maxIntrinsicWidth(height), unfolded.value).coerceAtMost(constraints.maxWidth)
+                    val placeable = measurable.measure(Constraints.fixed(width, height))
+                    layout(width, height) { placeable.place(0, 0) }
+                }.floatingShadow(CircleShape)
+                .clip(CircleShape)
+                .background(extras.cta)
+                .clickable(role = Role.Button, onClick = onClick)
+                .wrapContentWidth(Alignment.Start, unbounded = true)
+                .padding(start = FloatingActionInset, end = Space.l),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(icon), contentDescription = null, tint = extras.onCta, modifier = Modifier.size(Glyph.m))
+        Spacer(Modifier.width(Space.xs))
+        Text(
+            text = text,
+            style = AromaType.Label,
+            color = extras.onCta,
+            maxLines = 1,
+            modifier = Modifier.graphicsLayer { alpha = ((unfolded.value - LABEL_SHOWN) / (1 - LABEL_SHOWN)).coerceIn(0f, 1f) },
+        )
+    }
+}
+
+/** Where the glyph of a [FloatingAction] starts, so that folded it stands in the middle of its circle. */
+private val FloatingActionInset = (ControlHeight - Glyph.m) / 2
+
+/** How far unfolded a [FloatingAction] is before its label starts to show. */
+private const val LABEL_SHOWN = 0.8f
 
 /**
  * A quiet action on the soft fill every control shares. [confirmed] turns the icon into a check for

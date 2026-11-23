@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -145,7 +146,9 @@ fun ShoppingScreen(
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     var shoppingMode by rememberSaveable { mutableStateOf(false) }
     KeepScreenOn(shoppingMode)
-    val listState = rememberLazyListState()
+    // Another list, or shopping mode with its larger rows, is another page rather than an edit of this
+    // one: it shows at once, from its top, instead of every row gliding to a new place.
+    val listState = key(state.list?.id, shoppingMode) { rememberLazyListState() }
     ScrollToTopOnReselect(listState)
     val addFocus = remember { FocusRequester() }
     val current by rememberUpdatedState(state)

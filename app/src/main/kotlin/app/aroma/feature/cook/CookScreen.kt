@@ -114,7 +114,7 @@ import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.Motion.Glide
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
@@ -315,7 +315,7 @@ private fun StepProgress(current: Int, steps: Int) {
         horizontalArrangement = Arrangement.spacedBy(Space.xxs),
     ) {
         repeat(steps) { index ->
-            val fill by animateFloatAsState(if (index <= current) 1f else 0f, tween(Motion.EXPAND, easing = Settle), label = "stepFill")
+            val fill by animateFloatAsState(if (index <= current) 1f else 0f, tween(Motion.EXPAND, easing = Glide), label = "stepFill")
             val done = MaterialTheme.colorScheme.primary
             Box(
                 Modifier
@@ -510,7 +510,7 @@ private fun Timers(timers: List<CookTimerUi>, actions: CookActions) {
     Box(
         Modifier
             .fillMaxWidth()
-            .animateContentSize(tween(Motion.EXPAND, easing = Settle)),
+            .animateContentSize(tween(Motion.EXPAND, easing = Glide)),
     ) {
         if (timers.isNotEmpty()) {
             SoftCard(Modifier.padding(top = Space.s)) {

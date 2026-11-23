@@ -229,7 +229,7 @@ private fun PanelCard(
                         reverseDirection = true,
                         orientation = Orientation.Vertical,
                         enabled = canToggle,
-                        flingBehavior = AnchoredDraggableDefaults.flingBehavior(state, animationSpec = PanelMotion),
+                        flingBehavior = AnchoredDraggableDefaults.flingBehavior(state, animationSpec = Motion.LetGo),
                     ).then(
                         if (canToggle) {
                             Modifier.clickable(
@@ -239,7 +239,7 @@ private fun PanelCard(
                                     ),
                                 role = Role.Button,
                             ) {
-                                scope.launch { state.animateTo(if (expanded) PanelValue.Collapsed else PanelValue.Expanded, PanelMotion) }
+                                scope.launch { state.animateTo(if (expanded) PanelValue.Collapsed else PanelValue.Expanded, Toggle) }
                             }
                         } else {
                             Modifier
@@ -371,4 +371,5 @@ private const val HALF_TURN = 180f
 /** One line of type, measured for its height. */
 private const val LINE = "0"
 
-private val PanelMotion = tween<Float>(Motion.EXPAND, easing = Motion.Settle)
+/** Opened or closed with a tap, the panel glides; dragged and let go, it carries on at the finger's speed. */
+private val Toggle = tween<Float>(Motion.EXPAND, easing = Motion.Glide)

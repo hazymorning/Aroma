@@ -98,7 +98,7 @@ outlined *(checked)*; a field shows a sage ring only while it has the cursor.
 | Views of a page | `PageTabs` |
 | Filters | `AromaFilterChip` |
 | A choice of two or three in a form | `SegmentedControl` |
-| Actions | `PrimaryButton` (one per screen), `SecondaryButton`, `QuietLink`, `IconAction`, `HeaderAction`, `TonalIconButton`, `OnPhotoButton` |
+| Actions | `PrimaryButton` (one per screen), `FloatingAction` (that one action over a long page), `SecondaryButton`, `QuietLink`, `IconAction`, `HeaderAction`, `TonalIconButton`, `OnPhotoButton` |
 | Values | `Stepper`, `SwitchRow`, `RatingStars`, `CheckCircle` |
 | Input | `LabeledTextField`, `LabeledSecureTextField`, `PillTextField`, `SearchPill` |
 | Layers | `AromaBottomSheet`, `SheetAction`, `SheetFooter`, `AromaDropdownMenu`, `AromaAlertDialog` |
@@ -110,8 +110,31 @@ dialogs *(checked)*.
 
 ## Motion
 
-Things fade and settle (`Motion.Settle`); nothing bounces. 120 ms for a press, 180 ms for a change
-of state, 240 ms for moving and resizing; durations come from `Motion` *(checked)*.
+Motion is quick and quiet: things fade where they stand and move without a jump; nothing bounces,
+overshoots or hops into place. Durations come from `Motion` *(checked)*: 120 ms for a press and for
+what leaves, 180 ms for a change of state and for what arrives, 240 ms for moving and resizing. A
+page changes in 300 ms: the old page's fade, then the new one's.
+
+- **Two curves.** What moves or changes size in sight glides (`Motion.Glide`, a tween's own curve):
+  it starts easy, so no frame jumps ahead. What arrives settles (`Motion.Settle`): its quick start
+  passes while it is still faint. A page's fades run evenly.
+- **Let go.** What a finger drags and lets go, a swiped row or the panel in cook mode, carries on
+  at the finger's speed on `Motion.LetGo`, a spring that never bounces, and stops where it lands.
+- **Coming and going.** Things fade in and out where they stand, with no more than a small drift or
+  scale. A floating action is there with its page from the first frame; it folds to its glyph
+  while the page scrolls on and unfolds when it heads back.
+- **Lists.** Rows have stable keys and move with `animateRow` *(checked)*: a new row fades in as the
+  rows after it glide aside; a leaving row holds still while they glide over it, so a card never
+  shows a gap. Nothing in a list grows in steps *(checked)*: a row that changes size does so at
+  once, and the list glides around it. A row that changes groups fades out and in rather than
+  sliding across the list; another week, list or mode is a new page, not an edit of the old one.
+  A row swiped away lets go like that, and the list closes up as soon as it has all but left.
+- **Pages.** The old page fades out as it starts to drift; the new one fades in as it drifts the
+  rest of the way. Tabs only fade. The tab bar comes and goes with its page.
+- **Cheap frames.** Opacity, offsets and sizes are read where they are drawn or placed
+  (`graphicsLayer { }`, `offset { }`, a layout's measure), so a running animation recomposes nothing.
+- **No animations.** With animations turned off in Android, everything lands at once; what Compose
+  does not time itself, a photo's crossfade or the stars' stagger, follows the same setting.
 
 ## Words and access
 

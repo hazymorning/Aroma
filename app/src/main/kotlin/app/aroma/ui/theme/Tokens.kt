@@ -1,6 +1,11 @@
 package app.aroma.ui.theme
 
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -62,7 +67,7 @@ object Glyph {
     val xl: Dp = 32.dp
 }
 
-/** Durations in milliseconds, and the curve that movement and size changes settle with. */
+/** Durations in milliseconds, and the two curves of the app's motion. */
 object Motion {
     const val PRESS = 120
     const val STATE = 180
@@ -71,8 +76,20 @@ object Motion {
     /** One breath of something that pulses while it waits: a placeholder, a finished timer. */
     const val PULSE = 1000
 
-    /** Material's emphasized decelerate curve: quick start, long soft landing. */
+    /**
+     * Material's emphasized decelerate curve: most of the way in the first frames, then a long soft
+     * landing. For what arrives as it fades in, where that quick start is not seen.
+     */
     val Settle = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+
+    /** An easy start and a soft landing, so no frame jumps ahead: for what moves or changes size in sight. */
+    val Glide: Easing = FastOutSlowInEasing
+
+    /**
+     * For what a finger drags and lets go: a spring, unlike a tween, carries on at the finger's speed,
+     * and this one never bounces.
+     */
+    val LetGo: AnimationSpec<Float> = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
 }
 
 /** Thin lines: between rows inside a card, the ring of an open check, the focus of a field. */

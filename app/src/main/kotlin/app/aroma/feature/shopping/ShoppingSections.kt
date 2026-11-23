@@ -67,13 +67,14 @@ import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwipeToRemove
+import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.measureText
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.ContentEdge
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.Motion.Glide
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
@@ -129,7 +130,7 @@ internal fun LazyListScope.shoppingSections(
                     icon = R.drawable.ic_basket,
                     title = stringResource(R.string.shopping_empty_title),
                     body = stringResource(R.string.shopping_empty_message),
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateRow(this),
                 )
             }
             return
@@ -142,7 +143,7 @@ internal fun LazyListScope.shoppingSections(
                     icon = R.drawable.ic_done_all,
                     title = stringResource(R.string.shopping_done_title),
                     body = stringResource(R.string.shopping_done_message),
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateRow(this),
                     standsAlone = false,
                 )
             }
@@ -154,7 +155,7 @@ internal fun LazyListScope.shoppingSections(
                 text = section.label?.name ?: stringResource(R.string.shopping_other),
                 modifier =
                     Modifier
-                        .animateItem()
+                        .animateRow(this)
                         .padding(top = Space.l),
             )
         }
@@ -162,13 +163,17 @@ internal fun LazyListScope.shoppingSections(
     }
     if (groups.checked.isNotEmpty()) {
         item(key = "basket", contentType = "basket") {
-            BasketHeader(count = groups.checked.size, onClear = actions.onClearChecked, modifier = Modifier.animateItem())
+            BasketHeader(count = groups.checked.size, onClear = actions.onClearChecked, modifier = Modifier.animateRow(this))
         }
         itemRows(groups.checked, state, actions, large, onEdit)
     }
 }
 
-/** A group of rows on one card, with hairlines between them inset to the text. */
+/**
+ * A group of rows on one card, with hairlines between them inset to the text. A row keyed by where it
+ * stands leaves its group and fades in at the new one when it is checked off or back, rather than
+ * sliding across the list over the rows between.
+ */
 private fun LazyListScope.itemRows(
     items: List<ShoppingItem>,
     state: ShoppingUiState,
@@ -176,8 +181,12 @@ private fun LazyListScope.itemRows(
     large: Boolean,
     onEdit: (ShoppingItem) -> Unit,
 ) {
-    itemsIndexed(items, key = { _, item -> item.id }, contentType = { _, _ -> "item" }) { index, item ->
-        SoftCard(Modifier.animateItem(), part = CardPart.of(index, items.size)) {
+    itemsIndexed(
+        items,
+        key = { _, item -> (if (item.checked) "basket-" else "open-") + item.id },
+        contentType = { _, _ -> "item" },
+    ) { index, item ->
+        SoftCard(Modifier.animateRow(this), part = CardPart.of(index, items.size)) {
             if (index > 0) Hairline(Modifier.padding(start = textKeyline(large), end = CardPadding))
             SwipeToRemove(onRemove = { actions.onDelete(item) }) {
                 ItemRow(
@@ -218,7 +227,7 @@ private fun BasketHeader(count: Int, onClear: () -> Unit, modifier: Modifier = M
 
 /**
  * One item: the check on the card's content edge, the text on the keyline after it. Checking draws the check,
- * fades the text and strikes it through; the row moves into the basket a moment later.
+ * fades the text and strikes it through; the row leaves for the basket a moment later.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -241,7 +250,7 @@ private fun ItemRow(
     val text = remember(line, amount) { itemText(line, amount) }
     val fade = animateFloatAsState(if (checked) 0.45f else 1f, tween(Motion.STATE), label = "itemFade")
     val strike = remember { Animatable(if (checked) 1f else 0f) }
-    LaunchedEffect(checked) { strike.animateTo(if (checked) 1f else 0f, tween(Motion.STATE, easing = Settle)) }
+    LaunchedEffect(checked) { strike.animateTo(if (checked) 1f else 0f, tween(Motion.STATE, easing = Glide)) }
     val haptics = LocalHapticFeedback.current
     val stateLabel = stringResource(if (checked) R.string.shopping_checked else R.string.shopping_unchecked)
     val deleteLabel = stringResource(R.string.action_delete)

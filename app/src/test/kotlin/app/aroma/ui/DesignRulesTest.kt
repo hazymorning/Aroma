@@ -75,6 +75,25 @@ class DesignRulesTest {
         )
 
     @Test
+    fun motionComesFromMotion() =
+        assertNone("Use a duration of Motion:", violations(Regex("""tween\(\s*\d"""), "feature", "ui/components", "ui/navigation"))
+
+    @Test
+    fun listRowsMoveAlike() =
+        assertNone("Move rows of a list with animateRow:", violations(Regex("""\.animateItem\("""), "feature", "ui/navigation"))
+
+    @Test
+    fun listsGlideInsteadOfGrowingInSteps() {
+        val list = Regex("""\bLazy(Column|Row|ListScope)\b""")
+        val growing = Regex("""\b(expandVertically|shrinkVertically|animateContentSize)\b""")
+        val found =
+            files("feature", "ui/components", "ui/navigation")
+                .filter { file -> file.readText().let { list.containsMatchIn(it) && growing.containsMatchIn(it) } }
+                .map { it.relativeTo(root).path }
+        assertNone("Change a row's size at once and let the list glide around it, instead of growing it in steps:", found)
+    }
+
+    @Test
     fun theScaleHasSevenSizes() {
         // Every role in AromaType, found by reflection so a new role is checked too.
         val roles =

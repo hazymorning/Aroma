@@ -3,9 +3,12 @@ package app.aroma.feature.home
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.SnapPosition
@@ -77,6 +80,7 @@ import app.aroma.ui.components.SearchPill
 import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
+import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingInkBelow
 import app.aroma.ui.components.ratingInkStart
@@ -84,6 +88,7 @@ import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.Motion.Glide
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.ScreenMargin
@@ -159,8 +164,9 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                 HomeHeader(state, actions)
             }
             item(key = "rate") {
-                RatePromptSlot(state.toRate, actions)
+                RatePromptSlot(state.toRate, actions, Modifier.animateRow(this))
             }
+            // The outline and the error give way at once; the sections fade in where they land.
             when {
                 state.isLoading -> {
                     item(key = "loading") { HomeLoading() }
@@ -174,7 +180,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
 
                 else -> {
                     item(key = "today") {
-                        TodaySection(state.today, actions)
+                        TodaySection(state.today, actions, Modifier.animateRow(this))
                     }
                     if (state.suggestions.isNotEmpty()) {
                         item(key = "suggestions") {
@@ -182,6 +188,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                                 title = stringResource(if (state.suggestionsForMeal) state.meal.titleRes() else R.string.home_ideas),
                                 recipes = state.suggestions,
                                 actions = actions,
+                                modifier = Modifier.animateRow(this),
                             )
                         }
                     }
@@ -192,6 +199,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                                 state.recent,
                                 actions,
                                 onShowAll = actions.onShowAllRecipes,
+                                modifier = Modifier.animateRow(this),
                             )
                         }
                     }
@@ -202,12 +210,18 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                                 state.favorites,
                                 actions,
                                 onShowAll = actions.onShowFavorites,
+                                modifier = Modifier.animateRow(this),
                             )
                         }
                     }
                     if (state.cookedLongAgo.isNotEmpty()) {
                         item(key = "cookedLongAgo") {
-                            RecipeCarousel(stringResource(R.string.home_cooked_long_ago), state.cookedLongAgo, actions)
+                            RecipeCarousel(
+                                stringResource(R.string.home_cooked_long_ago),
+                                state.cookedLongAgo,
+                                actions,
+                                modifier = Modifier.animateRow(this),
+                            )
                         }
                     }
                 }
@@ -250,7 +264,7 @@ private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
 @Composable
 private fun ProfileButton(name: String?, large: Boolean, onClick: () -> Unit) {
     val label = stringResource(R.string.home_open_profile)
-    val size by animateDpAsState(if (large) LargeProfileSize else ProfileSize, tween(Motion.STATE, easing = Settle), label = "profileSize")
+    val size by animateDpAsState(if (large) LargeProfileSize else ProfileSize, tween(Motion.STATE, easing = Glide), label = "profileSize")
     val target = maxOf(size, TouchTarget)
     // The paddings give back what the target reaches beyond the circle, so the circle keeps its place.
     val reach = (target - size) / 2
@@ -274,22 +288,32 @@ private fun ProfileButton(name: String?, large: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Holds the rate prompt, so it can fade and fold away once it is answered or dismissed. */
+/**
+ * Holds the rate prompt. Answered or dismissed, the card fades where it stands and gives up its room
+ * once it has all but faded, and the page below glides in; the glide starts easy, so nothing passes
+ * over the card while it can still be seen. A new prompt takes its room at once and fades in as the
+ * page glides aside.
+ */
 @Composable
-private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions) {
+private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions, modifier: Modifier = Modifier) {
     AnimatedContent(
         targetState = toRate,
         contentKey = { it?.recipeId },
         transitionSpec = {
-            fadeIn(tween(Motion.EXPAND, easing = Settle)) togetherWith fadeOut(tween(Motion.EXPAND, easing = Settle)) using
-                SizeTransform(clip = true) { _, _ -> tween(Motion.EXPAND, easing = Settle) }
+            val arrive = fadeIn(tween(Motion.STATE, easing = Settle)) + scaleIn(tween(Motion.STATE, easing = Settle), RATE_SCALE)
+            val leave = fadeOut(tween(Motion.PRESS)) + scaleOut(tween(Motion.PRESS), RATE_SCALE)
+            arrive togetherWith leave using
+                SizeTransform(clip = false) { initial, target -> if (target.height < initial.height) snap(Motion.PRESS / 2) else snap() }
         },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         label = "ratePrompt",
     ) { reminder ->
         if (reminder != null) RatePrompt(reminder, actions)
     }
 }
+
+/** How small the rate prompt is as it starts to fade in, and once it has faded out. */
+private const val RATE_SCALE = 0.96f
 
 /** Asks, without a notification, how the last recipe cooked turned out. */
 @Composable
@@ -349,8 +373,8 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
 }
 
 @Composable
-private fun TodaySection(entries: List<MealPlanEntry>, actions: HomeActions) {
-    Column {
+private fun TodaySection(entries: List<MealPlanEntry>, actions: HomeActions, modifier: Modifier = Modifier) {
+    Column(modifier) {
         SectionHeader(
             title = stringResource(R.string.home_today),
             actionLabel = stringResource(R.string.home_open_plan),
@@ -465,8 +489,14 @@ private fun EmptyToday(onPlan: () -> Unit) {
 }
 
 @Composable
-private fun RecipeCarousel(title: String, recipes: List<RecipeSummary>, actions: HomeActions, onShowAll: (() -> Unit)? = null) {
-    Column {
+private fun RecipeCarousel(
+    title: String,
+    recipes: List<RecipeSummary>,
+    actions: HomeActions,
+    modifier: Modifier = Modifier,
+    onShowAll: (() -> Unit)? = null,
+) {
+    Column(modifier) {
         SectionHeader(title = title, actionLabel = onShowAll?.let { stringResource(R.string.action_show_all) }, onAction = onShowAll)
         Spacer(Modifier.height(Space.xs))
         LazyRow(

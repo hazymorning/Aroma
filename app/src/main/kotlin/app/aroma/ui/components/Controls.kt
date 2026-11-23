@@ -2,6 +2,7 @@ package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
@@ -49,7 +50,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -80,7 +80,7 @@ import app.aroma.ui.theme.ChipHeight
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.Motion.Glide
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.SectionSpace
@@ -152,7 +152,10 @@ fun Stepper(
         )
         AnimatedContent(
             targetState = label,
-            transitionSpec = { fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) },
+            transitionSpec = {
+                fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) using
+                    SizeTransform { _, _ -> tween(Motion.EXPAND, easing = Glide) }
+            },
             label = "stepperValue",
         ) { value ->
             Text(
@@ -222,13 +225,12 @@ private fun Stars(
                     else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
                 }
             if (onRate != null) {
-                // Stars up to the tapped one fill in turn.
+                // Stars up to the tapped one fill in turn. The wait belongs to the animation, so with animations off there is none.
                 val fill = remember(star) { Animatable(1f) }
                 LaunchedEffect(lit) {
                     if (lit) {
                         fill.snapTo(0.4f)
-                        kotlinx.coroutines.delay(STAR_STAGGER_MILLIS * (star - 1))
-                        fill.animateTo(1f, tween(Motion.STATE))
+                        fill.animateTo(1f, tween(Motion.STATE, delayMillis = STAR_STAGGER_MILLIS * (star - 1)))
                     }
                 }
                 Box(
@@ -248,7 +250,7 @@ private fun Stars(
                         modifier =
                             Modifier
                                 .size(starSize.dp)
-                                .alpha(fill.value),
+                                .graphicsLayer { alpha = fill.value },
                     )
                 }
             } else {
@@ -265,7 +267,7 @@ fun ratingDescription(rating: Double?): String =
     if (rating == null) stringResource(R.string.rating_none) else stringResource(R.string.rating_description, rating)
 
 /** How long each star waits for the one before it as the stars fill in. */
-private const val STAR_STAGGER_MILLIS = 50L
+private const val STAR_STAGGER_MILLIS = 50
 
 /** Interactive stars stand centred in 48 dp targets; offset the row by this to set the first glyph on a keyline. */
 fun ratingTouchInset(starSize: Int): Dp = (TouchTarget - starSize.dp) / 2
@@ -424,7 +426,7 @@ fun SegmentedControl(options: List<String>, selectedIndex: Int, onSelect: (Int) 
             .padding(SegmentInset),
     ) {
         val segment = maxWidth / options.size.coerceAtLeast(1)
-        val offset by animateDpAsState(segment * selectedIndex.coerceAtLeast(0), tween(Motion.EXPAND, easing = Settle), label = "thumb")
+        val offset by animateDpAsState(segment * selectedIndex.coerceAtLeast(0), tween(Motion.EXPAND, easing = Glide), label = "thumb")
         if (selectedIndex >= 0) {
             Box(
                 Modifier
@@ -485,7 +487,7 @@ fun PageTabs(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit,
                 tween(Motion.STATE),
                 label = "tab",
             )
-            val rule by animateFloatAsState(if (selected) 1f else 0f, tween(Motion.STATE, easing = Settle), label = "tabRule")
+            val rule by animateFloatAsState(if (selected) 1f else 0f, tween(Motion.STATE), label = "tabRule")
             Column(
                 Modifier
                     .height(TouchTarget)
@@ -525,7 +527,7 @@ fun CheckCircle(checked: Boolean, modifier: Modifier = Modifier, size: Dp = 24.d
     val draw = remember { Animatable(if (checked) 1f else 0f) }
     LaunchedEffect(checked) {
         if (checked) {
-            draw.animateTo(1f, tween(Motion.STATE, delayMillis = Motion.PRESS, easing = Settle))
+            draw.animateTo(1f, tween(Motion.STATE, delayMillis = Motion.PRESS, easing = Glide))
         } else {
             draw.snapTo(0f)
         }
