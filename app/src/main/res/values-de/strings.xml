@@ -327,8 +327,8 @@
     <string name="editor_name">Name</string>
     <string name="editor_description">Beschreibung</string>
     <string name="editor_servings">Portionen</string>
-    <string name="editor_prep_minutes">Vorber. (Min.)</string>
-    <string name="editor_cook_minutes">Kochen (Min.)</string>
+    <string name="editor_prep_minutes">Vorbereitung (Min.)</string>
+    <string name="editor_cook_minutes">Kochzeit (Min.)</string>
     <string name="editor_total_minutes">Gesamt (Min.)</string>
     <string name="editor_ingredients_hint">Beginnt eine Zeile mit #, wird sie zur Zwischenüberschrift.</string>
     <string name="editor_ingredient_hint">z. B. 200 g Mehl</string>

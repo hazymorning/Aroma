@@ -64,7 +64,6 @@ import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.InlineProgress
 import app.aroma.ui.components.LabeledTextField
-import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.OnPhotoButton
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PlaceholderLines
@@ -121,7 +120,7 @@ fun EditorScreen(state: EditorUiState, actions: EditorActions, modifier: Modifie
     }
 }
 
-/** Save as a quiet ink link; while saving, a small spinner holds its place. */
+/** Save as a quiet link; while saving, a small spinner holds its place. */
 @Composable
 private fun SaveLink(saving: Boolean, enabled: Boolean, onSave: () -> Unit) {
     // The bar already insets its actions by 8 dp; 16 more puts the text on the right margin.
@@ -129,7 +128,6 @@ private fun SaveLink(saving: Boolean, enabled: Boolean, onSave: () -> Unit) {
         QuietLink(
             text = stringResource(R.string.action_save),
             onClick = onSave,
-            tone = LinkTone.Ink,
             enabled = enabled && !saving,
             modifier = Modifier.alpha(if (saving) 0f else 1f),
         )
@@ -387,7 +385,7 @@ private fun EditableRows(
             }
         }
         Hairline(Modifier.padding(horizontal = CardPadding))
-        QuietLink(addLabel, addRow, Modifier.padding(horizontal = CardPadding), tone = LinkTone.Accent, leadingIcon = R.drawable.ic_add)
+        QuietLink(addLabel, addRow, Modifier.padding(horizontal = CardPadding), leadingIcon = R.drawable.ic_add)
     }
 }
 

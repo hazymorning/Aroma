@@ -2,6 +2,7 @@ package app.aroma.ui.components
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -29,6 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.ControlHeight
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Space
@@ -57,7 +59,10 @@ fun aromaFieldColors(): TextFieldColors {
     )
 }
 
-/** The label above a field: never a notched label inside its border. */
+/**
+ * The label above a field, level with the text inside it, as a group's label stands over its card:
+ * never a notched label inside its border.
+ */
 @Composable
 fun FieldLabel(text: String, modifier: Modifier = Modifier) {
     Text(
@@ -65,7 +70,7 @@ fun FieldLabel(text: String, modifier: Modifier = Modifier) {
         style = AromaType.Label,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         // The field itself carries the label for TalkBack, so it is not read twice.
-        modifier = modifier.padding(bottom = Space.xs).clearAndSetSemantics {},
+        modifier = modifier.padding(start = CardPadding, end = CardPadding, bottom = Space.xs).clearAndSetSemantics {},
     )
 }
 
@@ -76,9 +81,15 @@ private fun FieldNote(text: String, isError: Boolean) {
         text = text,
         style = AromaType.Small,
         color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = Space.xs),
+        modifier = Modifier.padding(start = CardPadding, end = CardPadding, top = Space.xs),
     )
 }
+
+/**
+ * The room around a field's text: [CardPadding] at the sides, as in a card, and as much above and
+ * below as makes a field of one line of [AromaType.Body] exactly [ControlHeight] tall, like a button.
+ */
+private val FieldPadding = PaddingValues(horizontal = CardPadding, vertical = 14.dp)
 
 /** Where a field for several lines starts. */
 private val MultiLineFieldHeight = 112.dp
@@ -138,6 +149,7 @@ fun LabeledTextField(
                     placeholder = placeholder?.let { { Text(it, style = AromaType.Body) } },
                     trailingIcon = trailingIcon,
                     colors = colors,
+                    contentPadding = FieldPadding,
                     container = {
                         OutlinedTextFieldDefaults.Container(
                             enabled = enabled,
@@ -198,6 +210,7 @@ fun LabeledSecureTextField(
                     trailingIcon = trailingIcon,
                     isError = isError,
                     colors = colors,
+                    contentPadding = FieldPadding,
                     container = {
                         OutlinedTextFieldDefaults.Container(
                             enabled = true,

@@ -55,17 +55,18 @@ import app.aroma.R
 import app.aroma.core.model.ServerInfo
 import app.aroma.data.AromaError
 import app.aroma.data.remote.ServerAddress
-import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.LabeledSecureTextField
 import app.aroma.ui.components.LabeledTextField
-import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.QuietLink
+import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.fullBleed
 import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.rememberSyncedTextFieldState
 import app.aroma.ui.components.titleRes
 import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
@@ -204,8 +205,7 @@ private fun CredentialsStep(state: LoginUiState, actions: LoginActions) {
     val obfuscation = if (showSecret) TextObfuscationMode.Visible else TextObfuscationMode.RevealLastTyped
     Column {
         state.server?.let { server ->
-            ServerLine(server, actions.onChangeServer)
-            Hairline(Modifier.padding(top = Space.m))
+            ServerCard(server, actions.onChangeServer)
             Spacer(Modifier.height(Space.l))
         }
         if (state.useToken) {
@@ -290,42 +290,45 @@ private fun rememberSecretState(value: String, onValueChange: (String) -> Unit):
     return state
 }
 
-/** The server that answered, as a line of text with a quiet way back to change it. */
+/** The server that answered, on a card with a quiet way back to change it. */
 @Composable
-private fun ServerLine(server: ServerInfo, onChange: () -> Unit) {
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painterResource(R.drawable.ic_check),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(MarkSize),
-            )
-            Spacer(Modifier.width(Space.m))
-            Column(
-                Modifier
-                    .weight(1f)
-                    .semantics(mergeDescendants = true) {},
-            ) {
-                Text(stringResource(R.string.login_server_found, server.version), style = AromaType.BodyStrong)
+private fun ServerCard(server: ServerInfo, onChange: () -> Unit) {
+    // A card keeps the page's margins itself, as this form does, so it reaches out by them to stand on the fields' edge.
+    SoftCard(Modifier.fullBleed(ScreenMargin)) {
+        Column(Modifier.padding(CardPadding)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painterResource(R.drawable.ic_check),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(MarkSize),
+                )
+                Spacer(Modifier.width(Space.m))
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .semantics(mergeDescendants = true) {},
+                ) {
+                    Text(stringResource(R.string.login_server_found, server.version), style = AromaType.BodyStrong)
+                    Text(
+                        text = server.url.removePrefix("https://").removePrefix("http://"),
+                        style = AromaType.Small,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.width(Space.m))
+                QuietLink(stringResource(R.string.login_change_server), onChange)
+            }
+            if (server.url.startsWith("http://")) {
                 Text(
-                    text = server.url.removePrefix("https://").removePrefix("http://"),
+                    text = stringResource(R.string.login_unencrypted),
                     style = AromaType.Small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = MarkSize + Space.m, top = Space.xxs),
                 )
             }
-            Spacer(Modifier.width(Space.m))
-            QuietLink(stringResource(R.string.login_change_server), onChange, tone = LinkTone.Ink)
-        }
-        if (server.url.startsWith("http://")) {
-            Text(
-                text = stringResource(R.string.login_unencrypted),
-                style = AromaType.Small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = MarkSize + Space.m, top = Space.xxs),
-            )
         }
     }
 }

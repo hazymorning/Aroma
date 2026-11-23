@@ -203,11 +203,11 @@ private fun FromWebsite(state: AddRecipeUiState, actions: AddRecipeActions) {
             }
         }
         Spacer(Modifier.height(Space.l))
+        // While an import runs, the button rests with its label; the card below is the one place that shows progress.
         PrimaryButton(
             text = stringResource(R.string.add_import),
             onClick = actions.onImport,
             enabled = state.canImport,
-            loading = importing,
             modifier =
                 Modifier
                     .padding(horizontal = ScreenMargin)
@@ -237,12 +237,15 @@ private fun AiOptions(state: AddRecipeUiState, actions: AddRecipeActions) {
             enter = expandVertically(tween(Motion.EXPAND, easing = Settle)) + fadeIn(tween(Motion.EXPAND, easing = LinearEasing)),
             exit = shrinkVertically(tween(Motion.EXPAND, easing = Settle)) + fadeOut(tween(Motion.STATE, easing = LinearEasing)),
         ) {
-            SwitchRow(
-                title = stringResource(R.string.add_ai_translate),
-                subtitle = null,
-                checked = state.translate,
-                onChange = actions.onTranslateChange,
-            )
+            Column {
+                Hairline(Modifier.padding(horizontal = CardPadding))
+                SwitchRow(
+                    title = stringResource(R.string.add_ai_translate),
+                    subtitle = null,
+                    checked = state.translate,
+                    onChange = actions.onTranslateChange,
+                )
+            }
         }
     }
 }
