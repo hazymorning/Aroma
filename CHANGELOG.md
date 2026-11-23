@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 – 2026-11-23
+
+**New**
+- Widgets for today's meals and your shopping list, in every size. Tick items off right on the home screen.
+- Recipes in your measures: as written, metric or US. Oven temperatures and pan sizes in the steps change too.
+
+**Better**
+- A calmer look that is the same on every screen.
+
+**Fixed**
+- Instagram posts import again, also when Instagram hides them from the app.
+
 ## 0.3.0 – 2026-11-23
 
 **New**
