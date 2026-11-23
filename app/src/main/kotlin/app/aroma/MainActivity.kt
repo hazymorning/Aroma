@@ -18,7 +18,6 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.aroma.data.session.SessionState
 import app.aroma.data.settings.ThemeMode
-import app.aroma.data.sync.OfflineRecipesWorker
 import app.aroma.ui.navigation.AromaNavHost
 import app.aroma.ui.navigation.LaunchRequest
 import app.aroma.ui.navigation.LoginDestination
@@ -57,13 +56,6 @@ class MainActivity : AppCompatActivity() {
                 val style = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark }
                 enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
                 onDispose { }
-            }
-            LaunchedEffect(session, settings.offlineRecipes) {
-                if (session is SessionState.SignedIn &&
-                    settings.offlineRecipes
-                ) {
-                    OfflineRecipesWorker.schedule(applicationContext, enabled = true)
-                }
             }
             AromaTheme(darkTheme = dark, dynamicColor = settings.dynamicColor) {
                 Surface(color = MaterialTheme.colorScheme.background) {
