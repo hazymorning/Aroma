@@ -1,0 +1,11 @@
+Aroma
+Copyright 2026 hazymorning. Free software under the GNU General Public License, version 3 (see LICENSE).
+
+It includes fonts by others, under their own licences:
+
+- app/src/main/res/font/newsreader_*.ttf: Newsreader (https://github.com/productiontype/Newsreader), SIL Open
+  Font License 1.1; the licence ships as app/src/main/assets/licenses/OFL-Newsreader.txt.
+- app/src/main/res/font/figtree_*.ttf: Figtree (https://github.com/erikdkennedy/figtree), SIL Open Font License
+  1.1; the licence ships as app/src/main/assets/licenses/OFL-Figtree.txt.
+
+The libraries Aroma is built with are listed, with their licences, in the app under Settings > Open source licenses.
