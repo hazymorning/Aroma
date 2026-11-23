@@ -6,11 +6,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -18,19 +16,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -40,7 +33,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -72,9 +64,9 @@ import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.QuietLink
+import app.aroma.ui.components.SwipeToRemove
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.measureText
-import app.aroma.ui.components.rememberRowSwipeState
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
@@ -177,7 +169,7 @@ private fun LazyListScope.itemRows(
     itemsIndexed(items, key = { _, item -> item.id }, contentType = { _, _ -> "item" }) { index, item ->
         Column(Modifier.animateItem()) {
             if (index > 0) Hairline(Modifier.padding(start = textKeyline(large), end = ScreenMargin))
-            SwipeToDelete(onDelete = { actions.onDelete(item) }) {
+            SwipeToRemove(onRemove = { actions.onDelete(item) }) {
                 ItemRow(
                     item = item,
                     checked = state.isChecked(item),
@@ -210,48 +202,6 @@ private fun BasketHeader(count: Int, onClear: () -> Unit, modifier: Modifier = M
                     .semantics { heading() },
         )
         QuietLink(stringResource(R.string.shopping_clear_checked), onClear, Modifier.alignByBaseline(), tone = LinkTone.Ink)
-    }
-}
-
-/** Swiping a row to the start uncovers a faint red field with the bin; letting go past the threshold deletes it. */
-@Composable
-private fun SwipeToDelete(onDelete: () -> Unit, content: @Composable () -> Unit) {
-    val state = rememberRowSwipeState()
-    val haptics = LocalHapticFeedback.current
-    val delete by rememberUpdatedState(onDelete)
-    LaunchedEffect(state.currentValue) {
-        if (state.currentValue == SwipeToDismissBoxValue.EndToStart) delete()
-    }
-    LaunchedEffect(state) {
-        snapshotFlow { state.targetValue == SwipeToDismissBoxValue.EndToStart }
-            .collect { armed -> if (armed) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }
-    }
-    val armed = state.targetValue == SwipeToDismissBoxValue.EndToStart
-    val glyph by animateFloatAsState(if (armed) 1f else 0.45f, tween(Motion.STATE), label = "deleteGlyph")
-    SwipeToDismissBox(
-        state = state,
-        enableDismissFromStartToEnd = false,
-        backgroundContent = {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.08f))
-                    .padding(horizontal = ScreenMargin),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_delete),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier =
-                        Modifier
-                            .size(20.dp)
-                            .graphicsLayer { alpha = glyph },
-                )
-            }
-        },
-    ) {
-        content()
     }
 }
 

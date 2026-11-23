@@ -97,6 +97,7 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
 |---|---|
 | `PageHeader`, `DetailTopBar`, `LargeTitle`, `SectionHeader`, `Kicker` | Headings |
 | `SoftCard`, `CardPart`, `Hairline` | Groups and the lines inside them |
+| `SwipeToRemove` | Taking a row off a list or the plan |
 | `PrimaryButton`, `SecondaryButton`, `QuietLink`, `HeaderAction`, `IconAction`, `HairlineIconButton`, `OnPhotoButton` | Actions |
 | `QuietPress`, `PhotoPress` | Pressing what has no ripple |
 | `SwitchRow`, `SegmentedControl`, `AromaFilterChip`, `Stepper`, `RatingStars`, `CheckCircle` | Choices |

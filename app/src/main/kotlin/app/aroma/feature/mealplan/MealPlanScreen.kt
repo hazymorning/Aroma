@@ -30,12 +30,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,8 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -85,10 +80,10 @@ import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SheetAction
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
+import app.aroma.ui.components.SwipeToRemove
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
-import app.aroma.ui.components.rememberRowSwipeState
 import app.aroma.ui.theme.CardTitle
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
@@ -386,39 +381,6 @@ private fun DayTitle(date: LocalDate, weekday: String, isToday: Boolean, modifie
             Kicker(stringResource(R.string.home_today), Modifier.alignByBaseline(), color = MaterialTheme.colorScheme.primary)
         }
     }
-}
-
-/** Swiping a row towards the start removes it; the snackbar offers the way back. */
-@Composable
-private fun SwipeToRemove(onRemove: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val state = rememberRowSwipeState()
-    val haptics = LocalHapticFeedback.current
-    val armed = state.targetValue == SwipeToDismissBoxValue.EndToStart
-    LaunchedEffect(armed) {
-        if (armed) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-    }
-    SwipeToDismissBox(
-        state = state,
-        enableDismissFromStartToEnd = false,
-        onDismiss = { onRemove() },
-        modifier = modifier,
-        backgroundContent = {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.08f))
-                    .padding(end = ScreenMargin),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_delete),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(RowGlyph),
-                )
-            }
-        },
-    ) { content() }
 }
 
 /**
