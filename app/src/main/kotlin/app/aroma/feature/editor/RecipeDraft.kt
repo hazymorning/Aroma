@@ -1,3 +1,5 @@
+@file:UseSerializers(OrganizerSerializer::class)
+
 package app.aroma.feature.editor
 
 import app.aroma.core.format.DurationDetector
@@ -8,7 +10,12 @@ import app.aroma.data.remote.dto.IngredientDto
 import app.aroma.data.remote.dto.OrganizerDto
 import app.aroma.data.remote.servingsFrom
 import app.aroma.data.remote.toModel
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.UseSerializers
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -25,6 +32,7 @@ import java.util.Locale
 import java.util.UUID
 
 /** What the editor shows: plain text that is easy to change on a phone. */
+@Serializable
 data class EditorForm(
     val name: String = "",
     val description: String = "",
@@ -37,6 +45,16 @@ data class EditorForm(
     val categories: List<Organizer> = emptyList(),
     val tags: List<Organizer> = emptyList(),
 )
+
+/** Saves a form's categories and tags as Mealie's JSON for them, so the model itself stays plain. */
+private object OrganizerSerializer : KSerializer<Organizer> {
+    override val descriptor = OrganizerDto.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: Organizer) =
+        encoder.encodeSerializableValue(OrganizerDto.serializer(), OrganizerDto(value.id, value.name, value.slug))
+
+    override fun deserialize(decoder: Decoder): Organizer = decoder.decodeSerializableValue(OrganizerDto.serializer()).toModel()
+}
 
 /**
  * Converts between Mealie's recipe JSON and [EditorForm]. Saving produces a patch with only

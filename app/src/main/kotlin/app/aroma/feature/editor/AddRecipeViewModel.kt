@@ -9,13 +9,13 @@ import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -53,8 +53,8 @@ class AddRecipeViewModel(
         )
     val state: StateFlow<AddRecipeUiState> = mutableState.asStateFlow()
 
-    private val mutableResults = MutableSharedFlow<AddRecipeResult>(extraBufferCapacity = 1)
-    val results: SharedFlow<AddRecipeResult> = mutableResults.asSharedFlow()
+    private val outbox = Channel<AddRecipeResult>(Channel.BUFFERED)
+    val results: Flow<AddRecipeResult> = outbox.receiveAsFlow()
 
     init {
         if (importsSharedLink) saved[SHARED_LINK_IMPORTED] = true
@@ -114,7 +114,7 @@ class AddRecipeViewModel(
         viewModelScope.launch {
             mutableState.update { it.copy(working = mode, failure = null) }
             runCatching { block() }
-                .onSuccess { mutableResults.emit(it) }
+                .onSuccess { outbox.send(it) }
                 .onFailure { error -> mutableState.update { it.copy(failure = AddFailure(mode, error.toAromaError())) } }
             mutableState.update { it.copy(working = null, step = null) }
         }

@@ -1,21 +1,24 @@
 package app.aroma.feature.editor
 
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.RecipeImage
 import app.aroma.data.AromaError
+import app.aroma.data.remote.MealieJson
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.toAromaError
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -34,18 +37,19 @@ data class EditorUiState(
 )
 
 class EditorViewModel(
-    private val slug: String,
+    private var slug: String,
     private val recipes: RecipeRepository,
     private val serverUrl: String,
     private val locale: Locale,
+    private val savedState: SavedStateHandle,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(EditorUiState())
     val state: StateFlow<EditorUiState> = mutableState.asStateFlow()
 
-    private val mutableSaved = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    private val outbox = Channel<String>(Channel.BUFFERED)
 
     /** Emits the (possibly renamed) slug after a successful save. */
-    val saved: SharedFlow<String> = mutableSaved.asSharedFlow()
+    val saved: Flow<String> = outbox.receiveAsFlow()
 
     private var original: JsonObject? = null
     private var image: Pair<ByteArray, String>? = null
@@ -67,9 +71,11 @@ class EditorViewModel(
                     original = json
                     val image = (json["image"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
                     val id = (json["id"] as? JsonPrimitive)?.contentOrNull
+                    // Changes made before Android ended the app come back instead of the server's copy.
+                    val edited = savedState.get<String>(FORM)?.let { MealieJson.decodeFromString(EditorForm.serializer(), it) }
                     mutableState.update {
                         it.copy(
-                            form = RecipeDraft.formFrom(json, locale),
+                            form = edited ?: RecipeDraft.formFrom(json, locale),
                             currentImage = if (image != null && id != null) RecipeImage(serverUrl, id, image) else null,
                             isLoading = false,
                         )
@@ -77,7 +83,10 @@ class EditorViewModel(
                 }.onFailure { error -> mutableState.update { it.copy(isLoading = false, error = error.toAromaError()) } }
         }
 
-    fun update(change: (EditorForm) -> EditorForm) = mutableState.update { it.copy(form = change(it.form), error = null) }
+    fun update(change: (EditorForm) -> EditorForm) {
+        val form = mutableState.updateAndGet { it.copy(form = change(it.form), error = null) }.form
+        savedState[FORM] = MealieJson.encodeToString(EditorForm.serializer(), form)
+    }
 
     fun setImage(uri: Uri, bytes: ByteArray, extension: String) {
         image = bytes to extension
@@ -91,12 +100,18 @@ class EditorViewModel(
             mutableState.update { it.copy(isSaving = true, error = null) }
             runCatching {
                 val patch = RecipeDraft.patch(json, state.value.form, locale, durationText)
-                val newSlug = if (patch.isEmpty()) slug else recipes.update(slug, patch)
-                image?.let { (bytes, extension) -> recipes.uploadImage(newSlug, bytes, extension) }
-                newSlug
-            }.onSuccess { mutableSaved.emit(it) }
+                if (patch.isNotEmpty()) {
+                    slug = recipes.update(slug, patch)
+                    // Saved even if the photo fails next: a retry starts from here, under the new slug.
+                    original = JsonObject(json + patch)
+                }
+                image?.let { (bytes, extension) -> recipes.uploadImage(slug, bytes, extension) }
+                slug
+            }.onSuccess { outbox.send(it) }
                 .onFailure { error -> mutableState.update { it.copy(error = error.toAromaError()) } }
             mutableState.update { it.copy(isSaving = false) }
         }
     }
 }
+
+private const val FORM = "form"

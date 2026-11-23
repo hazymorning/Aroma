@@ -639,7 +639,7 @@ fun AddRecipeDestination(sharedUrl: String?, nav: NavController) {
 @Composable
 fun EditorDestination(slug: String, nav: NavController) {
     val locale = currentLocale()
-    val vm = aromaViewModel { EditorViewModel(slug, recipes, sessions.requireServerUrl(), locale) }
+    val vm = aromaViewModel { EditorViewModel(slug, recipes, sessions.requireServerUrl(), locale, it) }
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
