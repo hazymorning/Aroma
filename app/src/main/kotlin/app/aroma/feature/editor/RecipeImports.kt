@@ -98,18 +98,15 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
         val outcome =
             try {
                 val known = if (rerun && sent.exists()) sent.readLines().filter { it.isNotBlank() }.toSet() else null
+                val onSending = { newest: Set<String> ->
+                    sent.parentFile?.mkdirs()
+                    sent.writeText(newest.joinToString("\n"))
+                }
                 val slug =
                     if (known != null) {
-                        importer.resume(request, known, onStep)
+                        importer.resume(request, known, onSending, onStep)
                     } else {
-                        importer.import(
-                            request,
-                            onSending = { newest ->
-                                sent.parentFile?.mkdirs()
-                                sent.writeText(newest.joinToString("\n"))
-                            },
-                            onStep = onStep,
-                        )
+                        importer.import(request, onSending, onStep)
                     }
                 ImportOutcome.Added(slug, nameOf(slug))
             } catch (error: Exception) {

@@ -109,6 +109,29 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         }
     }
 
+    /** Nothing planned today: the card that says so stands on the page's edge like every other. */
+    @Test
+    fun homeNothingPlanned() {
+        applyLocale()
+        snapshot("home_empty_${variant.suffix}", variant.dark) {
+            TabFrame(Tab.Home) {
+                HomeScreen(
+                    state =
+                        HomeUiState(
+                            greeting = Greeting.Morning,
+                            firstName = "Mara",
+                            recent = sample.recipes,
+                            meal = Meal.Breakfast,
+                            suggestions = sample.recipes.take(4),
+                            suggestionsForMeal = true,
+                            isLoading = false,
+                        ),
+                    actions = HomeActions(),
+                )
+            }
+        }
+    }
+
     @Test
     fun recipe() {
         applyLocale()

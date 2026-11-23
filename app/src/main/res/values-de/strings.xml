@@ -59,7 +59,7 @@
     <string name="error_import_message">Mealie hat auf dieser Seite kein Rezept gefunden.</string>
     <string name="error_import_unreachable">Mealie konnte diese Seite nicht öffnen. Prüfe den Link oder versuche es später noch einmal.</string>
     <string name="error_import_no_answer">Mealie hat zu lange nicht geantwortet. Kommt das Rezept noch an, findest du es unter Rezepte.</string>
-    <string name="error_import_post_unreadable">Aroma konnte den Beitrag nicht lesen, vielleicht ist er nur angemeldet zu sehen. Kopiere seinen Text in „Rezepttext“ und importiere noch einmal.</string>
+    <string name="error_import_post_unreadable">Weder Aroma noch dein Mealie-Server konnten den Beitrag lesen, vielleicht ist er nur angemeldet zu sehen. Kopiere seinen Text in „Rezepttext“ und importiere noch einmal.</string>
     <string name="error_generic_title">Da ist etwas schiefgelaufen</string>
     <string name="error_generic_message">Der Server hat mit einem Fehler geantwortet. Versuche es gleich noch einmal.</string>
 

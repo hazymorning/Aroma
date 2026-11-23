@@ -44,7 +44,7 @@ sealed class AromaError(message: String? = null, cause: Throwable? = null) : Exc
             /** The connection dropped and no recipe turned up while Aroma waited for it. */
             NoAnswer,
 
-            /** The platform shows the post only to signed-in users, and no text of it was given. */
+            /** Neither the phone nor Mealie could read the post, and no text of it was given. */
             PostUnreadable,
         }
     }

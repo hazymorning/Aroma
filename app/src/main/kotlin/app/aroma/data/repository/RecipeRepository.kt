@@ -414,6 +414,17 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
             (added.firstOrNull { source != null && it.orgURL == source } ?: added.firstOrNull())?.slug
         }
 
+    /** The slugs of the newest recipes that link to [url]. */
+    suspend fun recentFrom(url: String): List<String> = mealieCall { newest().filter { it.orgURL == url }.map { it.slug } }
+
+    /** The photo of the recipe with [recipeId] as Mealie stores it, or null when it has none. */
+    suspend fun photo(recipeId: String): ByteArray? =
+        try {
+            mealieCall { sessions.api().recipePhoto(recipeId).use { body -> withContext(Dispatchers.IO) { body.bytes() } } }
+        } catch (_: AromaError.NotFound) {
+            null
+        }
+
     private suspend fun newest(): List<RecipeSummaryDto> =
         sessions
             .api()

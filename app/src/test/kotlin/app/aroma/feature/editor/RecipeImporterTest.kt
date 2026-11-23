@@ -74,6 +74,17 @@ class RecipeImporterTest {
     @Volatile
     private var answers = "gnocchi"
 
+    /** The slug Mealie's regular import answers with, where it differs from [answers]. */
+    @Volatile
+    private var linkAnswers: String? = null
+
+    /** Whether Mealie's regular import cannot read the post either, as when Instagram blocks the server too. */
+    @Volatile
+    private var linkFails = false
+
+    /** Names other recipes have already, which Mealie refuses for a renamed recipe. */
+    private val takenNames = mutableSetOf<String>()
+
     /** Cuts the stream of [endpoint] ("url" or "ai"); [arrives] shows up on the server two checks later, if not null. */
     private class Cut(val endpoint: String, val arrives: String?)
 
@@ -117,14 +128,19 @@ class RecipeImporterTest {
         }
 
     @Test
-    fun `a post whose text holds no recipe also sends its link, so Mealie can watch the video`() =
+    fun `a post whose text holds no recipe is read by Mealie, and its caption kept as the recipe's text`() =
         runBlocking<Unit> {
             caption = "Das Rezept steht im Video! #gnocchi"
+            aiFails = true
+            preview("Das Rezept steht im Video! #gnocchi")
 
-            importer().run(ImportRequest(post, useAi = true))
+            val slug = importer().run(ImportRequest(post, useAi = true))
 
-            val sent = requests.single { it.url.encodedPath == "/api/recipes/create/ai/stream" }.body!!.utf8()
-            assertTrue(sent.contains("name=\"url\""))
+            assertEquals("vorschau", slug)
+            assertEquals(listOf("/api/recipes/create/ai/stream", "/api/recipes/create/url/stream"), creations())
+            val saved = requests.single { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/vorschau" }.body!!.utf8()
+            assertTrue(saved.contains("Das Rezept steht im Video!"))
+            assertTrue("the placeholders go", saved.contains("\"recipeIngredient\":[]"))
         }
 
     @Test
@@ -142,16 +158,70 @@ class RecipeImporterTest {
         }
 
     @Test
-    fun `a post shown only after signing in asks for its text, and nothing reaches Mealie`() =
+    fun `a post the phone may not see is read by Mealie, and its link preview becomes the recipe`() =
         runBlocking<Unit> {
             caption = null
+            preview(CAPTION)
+            val steps = mutableListOf<ImportStep>()
+
+            val slug = importer().run(ImportRequest(post)) { steps += it }
+
+            assertEquals("vorschau", slug)
+            assertEquals(listOf("/api/recipes/create/url/stream"), creations())
+            val saved = requests.single { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/vorschau" }.body!!.utf8()
+            assertTrue(saved.contains("500 g Gnocchi") && saved.contains("\"name\":\"Tomaten-Gnocchi\""))
+            assertFalse("the preview keeps its photo and stays the recipe", requests.any { it.method == "DELETE" })
+            assertEquals(listOf(ImportStep.ReadingPost, ImportStep.Waiting, ImportStep.Saving), steps)
+        }
+
+    @Test
+    fun `with AI, the caption Mealie read goes to the AI as text, and the new recipe takes the preview's photo`() =
+        runBlocking<Unit> {
+            caption = null
+            preview(CAPTION)
+
+            val slug = importer().run(ImportRequest(post, useAi = true))
+
+            assertEquals("gnocchi", slug)
+            assertEquals(listOf("/api/recipes/create/url/stream", "/api/recipes/create/ai/stream"), creations())
+            val sent = requests.single { it.url.encodedPath == "/api/recipes/create/ai/stream" }.body!!.utf8()
+            assertTrue(sent.contains("- 500 g Gnocchi"))
+            assertFalse("the AI never gets the post's link, which shows it the sign-in page", sent.contains("name=\"url\""))
+            assertTrue(requests.any { it.method == "GET" && it.url.encodedPath == "/api/media/recipes/id-vorschau/images/original.webp" })
+            assertTrue(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
+            assertTrue(requests.any { it.method == "DELETE" && it.url.encodedPath == "/api/recipes/vorschau" })
+            assertTrue(
+                requests.any {
+                    it.method == "PATCH" && it.url.encodedPath == "/api/recipes/gnocchi" &&
+                        it.body!!.utf8().contains(post)
+                },
+            )
+        }
+
+    @Test
+    fun `a post neither the phone nor Mealie can read asks for its text and leaves nothing behind`() =
+        runBlocking<Unit> {
+            caption = null
+            linkFails = true
             try {
                 importer().run(ImportRequest(post))
                 fail("Without its text the post cannot be read")
             } catch (failure: AromaError.ImportFailed) {
                 assertEquals(Reason.PostUnreadable, failure.reason)
             }
-            assertFalse(requests.any { it.url.encodedPath.startsWith("/api/") && it.method != "GET" })
+            assertFalse(requests.any { it.method == "POST" && it.url.encodedPath == "/api/recipes" })
+        }
+
+    @Test
+    fun `a name another recipe has already gets a number, the way Mealie numbers new recipes`() =
+        runBlocking<Unit> {
+            caption = null
+            preview(CAPTION)
+            takenNames += "Tomaten-Gnocchi"
+
+            assertEquals("vorschau", importer().run(ImportRequest(post)))
+            val renamed = requests.filter { it.method == "PATCH" }.map { it.body!!.utf8() }
+            assertTrue(renamed.last().contains("\"name\":\"Tomaten-Gnocchi (2)\""))
         }
 
     @Test
@@ -279,7 +349,7 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             finishing = Cut("ai", arrives = "gnocchi")
 
-            assertEquals("gnocchi", importer().resume(ImportRequest(post, useAi = true), known) { })
+            assertEquals("gnocchi", importer().resume(ImportRequest(post, useAi = true), known, onSending = {}) { })
             assertEquals(emptyList<String>(), creations())
         }
 
@@ -340,13 +410,32 @@ class RecipeImporterTest {
                     cutStream()
                 } else if (aiFails && path.contains("/ai/")) {
                     sse("event: error\ndata: {\"message\":\"The AI provider did not answer\"}\n\n")
+                } else if (linkFails && path.contains("/url/")) {
+                    sse("event: error\ndata: {\"message\":\"No recipe was found in the provided source\"}\n\n")
                 } else {
-                    sse("event: done\ndata: {\"slug\":\"$answers\"}\n\n")
+                    val slug = linkAnswers?.takeIf { path.contains("/url/") } ?: answers
+                    sse("event: done\ndata: {\"slug\":\"$slug\"}\n\n")
                 }
+            }
+
+            request.method == "GET" && path.startsWith("/api/media/recipes/") -> {
+                MockResponse
+                    .Builder()
+                    .addHeader("Content-Type", "image/webp")
+                    .body(Buffer().write(byteArrayOf(4, 5, 6)))
+                    .build()
             }
 
             request.method == "GET" && path.startsWith("/api/recipes/") -> {
                 details[path.removePrefix("/api/recipes/")]?.let(::json) ?: MockResponse.Builder().code(404).build()
+            }
+
+            request.method == "PATCH" && takenNames.any { request.body!!.utf8().contains("\"name\":\"$it\"") } -> {
+                MockResponse
+                    .Builder()
+                    .code(400)
+                    .body("""{"detail":{"message":"Recipe already exists"}}""")
+                    .build()
             }
 
             request.method == "PATCH" -> {
@@ -410,6 +499,14 @@ class RecipeImporterTest {
     private fun postPage(caption: String) =
         """<meta property="og:title" content="Koch mit mir on Instagram: &quot;${caption.replace("\n", "&#10;")}&quot;">""" +
             """<meta property="og:image" content="http://www.instagram.com:${server.port}/photo.jpg">"""
+
+    /** Mealie's regular import saves the post's link preview: the whole caption as the name, placeholders, the photo. */
+    private fun preview(caption: String) {
+        val name = "Koch mit mir on Instagram: \\\"${caption.replace("\n", "\\n")}\\\""
+        details["vorschau"] =
+            recipe("vorschau", name, ingredients = listOf("Could not detect ingredients"), steps = listOf("Could not detect instructions"))
+        linkAnswers = "vorschau"
+    }
 
     private fun summary(id: String, slug: String, link: String? = null, user: String = USER) =
         """{"id":"$id","slug":"$slug","name":"$slug","userId":"$user","orgURL":${link?.let { "\"$it\"" }}}"""

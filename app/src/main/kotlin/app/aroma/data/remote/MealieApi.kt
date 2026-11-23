@@ -141,6 +141,13 @@ interface MealieApi {
     @GET("api/groups/self")
     suspend fun group(): GroupDto
 
+    /** A recipe's photo in the format Mealie keeps it in. */
+    @Streaming
+    @GET("api/media/recipes/{id}/images/original.webp")
+    suspend fun recipePhoto(
+        @Path("id") id: String,
+    ): ResponseBody
+
     @Multipart
     @PUT("api/recipes/{slug}/image")
     suspend fun uploadImage(

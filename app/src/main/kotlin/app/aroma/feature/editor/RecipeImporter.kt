@@ -53,10 +53,13 @@ sealed interface ImportStep {
 
 /**
  * Imports recipes so that Mealie saves each one once, complete. Websites go to Mealie's importer,
- * which reads their recipe data directly. A social media post is read on the phone first: Mealie
- * sees no more of it than its link preview, which it would save as a recipe without ingredients or
- * steps. Mealie's AI, or Aroma itself without AI, then makes the recipe from the post's text, and
- * Aroma adds the post's link and photo.
+ * which reads their recipe data directly.
+ *
+ * A social media post shows its recipe only in its caption. Aroma reads the post on the phone
+ * first; where the platform shows the phone just its sign-in page, Mealie reads the post from the
+ * server, as it reads any link, and saves its link preview: the caption as the name, and the
+ * photo. Either way the caption then becomes a proper recipe: Mealie's AI reads it as text (never
+ * from the link, which shows the AI the same sign-in page), or Aroma sorts it itself.
  *
  * [untitled] names a recipe whose text starts straight with its ingredients. [patience] is how
  * long Aroma waits for a recipe after the connection dropped, checking every [checkEvery].
@@ -74,56 +77,82 @@ class RecipeImporter(
      * them, should the connection drop, or Android end the app, before the answer arrives.
      */
     suspend fun import(request: ImportRequest, onSending: suspend (Set<String>) -> Unit, onStep: (ImportStep) -> Unit): String {
-        val isPost = SocialPosts.isPost(request.url)
-        if (isPost) onStep(ImportStep.ReadingPost)
-        val post = if (isPost) posts.read(request.url) else null
-        val text = request.text.ifBlank { post?.caption.orEmpty() }
-        // A website needs the AI only to translate; Mealie reads its recipe data directly.
-        val withAi = request.useAi && (isPost || text.isNotBlank() || request.translateTo != null) && recipes.canImportWithAi()
         val sending = Sending(onStep, onSending)
-        val slug =
-            when {
-                withAi -> sending.withAi(request, text, isPost)
-                text.isNotBlank() -> sending.fromText(text, request.url)
-                isPost -> throw AromaError.ImportFailed(PostUnreadable)
-                else -> sending.fromPage(request.url)
+        if (!SocialPosts.isPost(request.url)) return sending.fromWebsite(request)
+        onStep(ImportStep.ReadingPost)
+        val post = posts.read(request.url)
+        val caption = request.text.ifBlank { post?.caption.orEmpty() }
+        if (caption.isNotBlank()) {
+            val slug =
+                sending.withAi(caption, request, preview = null)
+                    ?: caption.takeIf(::holdsRecipe)?.let { sending.fromText(it, request.url, into = null) }
+            if (slug != null) {
+                complete(slug, request.url, post?.image, onStep)
+                return slug
             }
-        if (isPost) complete(slug, request.url, post?.image, onStep)
-        return slug
+        }
+        // No caption reached the phone, or none that holds the recipe: Mealie reads the post itself,
+        // from its video where the server transcribes one, otherwise from its link preview.
+        val preview =
+            try {
+                sending.fromLink(request.url)
+            } catch (failure: AromaError.ImportFailed) {
+                if (caption.isNotBlank()) {
+                    return sending.fromText(caption, request.url, into = null).also { slug ->
+                        complete(slug, request.url, post?.image, onStep)
+                    }
+                }
+                throw if (failure.reason == NoAnswer) failure else AromaError.ImportFailed(PostUnreadable)
+            }
+        // The AI has seen the phone's caption already.
+        return sending.fromPreview(preview, request, caption, askAi = caption.isBlank())
     }
 
     /**
      * Picks up an import the app was ended in the middle of: its request may have reached Mealie
-     * already, so it is not sent again; Aroma waits for its recipe instead.
+     * already, so it is not sent again; Aroma waits for its recipe instead, and finishes a post's
+     * link preview as the import would have.
      */
-    suspend fun resume(request: ImportRequest, known: Set<String>, onStep: (ImportStep) -> Unit): String {
+    suspend fun resume(
+        request: ImportRequest,
+        known: Set<String>,
+        onSending: suspend (Set<String>) -> Unit,
+        onStep: (ImportStep) -> Unit,
+    ): String {
         onStep(ImportStep.StillWorking)
         val slug = awaitNewRecipe(known, request.url.ifBlank { null })
-        if (SocialPosts.isPost(request.url)) complete(slug, request.url, posts.read(request.url)?.image, onStep)
+        if (!SocialPosts.isPost(request.url)) return slug
+        val sending = Sending(onStep, onSending)
+        if (recipes.recipeJson(slug).isLinkPreviewOnly()) return sending.fromPreview(slug, request, request.text, askAi = true)
+        // A finished recipe of a post leaves nothing of its link preview behind.
+        recipes
+            .recentFrom(request.url)
+            .filter { it != slug && recipes.recipeJson(it).isLinkPreviewOnly() }
+            .forEach { preview -> sending.adoptPhoto(from = preview, to = slug) }
+        complete(slug, request.url, posts.read(request.url)?.image, onStep)
         return slug
     }
 
     /** The requests of one import that create a recipe, each preceded by [onSending]. */
     private inner class Sending(private val onStep: (ImportStep) -> Unit, private val onSending: suspend (Set<String>) -> Unit) {
         /**
-         * Lets Mealie's AI build the recipe. A post goes as its text, which spares Mealie a page it
-         * cannot read; its link goes along only when the text holds no recipe, so that Mealie can
-         * listen to the video. Should the AI fail, Aroma reads the text itself, and a website still
-         * has Mealie's regular import, untranslated.
+         * A website: Mealie's regular import, or its AI where text came with the link or the recipe
+         * is to be translated. Should the AI fail, Aroma reads the text itself, and the link still
+         * has Mealie's regular import, untranslated. Without the AI, pasted text is read by Aroma.
          */
-        suspend fun withAi(request: ImportRequest, text: String, isPost: Boolean): String {
-            val link = request.url.takeIf { it.isNotBlank() && !(isPost && SocialCaption.parse(text).isRecipe) }
+        suspend fun fromWebsite(request: ImportRequest): String {
+            val withAi = request.useAi && (request.text.isNotBlank() || request.translateTo != null) && recipes.canImportWithAi()
+            if (!withAi) return if (request.text.isNotBlank()) fromText(request.text, request.url, into = null) else fromPage(request.url)
             return try {
-                onServer(source = link) {
-                    recipes.importWithAi(link, text, request.translateTo) { onStep(ImportStep.Server(it)) }
+                onServer(source = request.url.ifBlank { null }) {
+                    recipes.importWithAi(request.url.ifBlank { null }, request.text, request.translateTo) { onStep(ImportStep.Server(it)) }
                 }
             } catch (failure: AromaError.ImportFailed) {
-                val parsed = SocialCaption.parse(text)
+                val parsed = SocialCaption.parse(request.text)
                 when {
                     failure.reason == NoAnswer -> throw failure
-                    isPost && text.isBlank() -> throw AromaError.ImportFailed(PostUnreadable)
-                    parsed.ingredients.isNotEmpty() || parsed.steps.isNotEmpty() -> fromText(text, request.url)
-                    !isPost && request.url.isNotBlank() -> fromPage(request.url)
+                    parsed.ingredients.isNotEmpty() || parsed.steps.isNotEmpty() -> fromText(request.text, request.url, into = null)
+                    request.url.isNotBlank() -> fromPage(request.url)
                     else -> throw failure
                 }
             }
@@ -131,7 +160,7 @@ class RecipeImporter(
 
         /** Mealie's regular import. A page without recipe data would leave a recipe without ingredients or steps; it goes again. */
         suspend fun fromPage(url: String): String {
-            val slug = onServer(source = url) { recipes.importFromUrl(url) { onStep(ImportStep.Server(it)) } }
+            val slug = fromLink(url)
             val recipe =
                 try {
                     recipes.recipeJson(slug)
@@ -144,19 +173,76 @@ class RecipeImporter(
             throw AromaError.ImportFailed()
         }
 
-        /** Saves the recipe Aroma reads from [text] itself, with [source] as its link. */
-        suspend fun fromText(text: String, source: String): String {
+        /** Mealie reads [url] from the server and saves what it finds, if only the link preview. */
+        suspend fun fromLink(url: String): String = onServer(source = url) { recipes.importFromUrl(url) { onStep(ImportStep.Server(it)) } }
+
+        /**
+         * Turns what Mealie saved for a post into the recipe the post holds. Where Mealie read the
+         * recipe itself, from the post's video for instance, it is kept as it is. Otherwise Mealie
+         * saved the link preview, whose caption, or the [caption] the phone read, becomes the recipe,
+         * read by Mealie's AI where [askAi] and it may be used.
+         */
+        suspend fun fromPreview(preview: String, request: ImportRequest, caption: String, askAi: Boolean): String {
+            val recipe = recipes.recipeJson(preview)
+            if (!recipe.isLinkPreviewOnly()) return preview
+            val text = caption.ifBlank { SocialCaption.extract(recipe.text("name").orEmpty(), recipe.text("description").orEmpty()) }
+            if (text.isBlank()) {
+                deleteQuietly(preview)
+                throw AromaError.ImportFailed(PostUnreadable)
+            }
+            val built = if (askAi) withAi(text, request, preview) else null
+            if (built == null) return fromText(text, request.url, into = preview)
+            complete(built, request.url, image = null, onStep)
+            return built
+        }
+
+        /**
+         * Lets Mealie's AI read a post's [caption] as text, never from the link, which would show
+         * it the platform's sign-in page. The post's link [preview], where Mealie saved one, gives
+         * the recipe its photo and then goes. Null where the AI may not be used or found nothing.
+         */
+        suspend fun withAi(caption: String, request: ImportRequest, preview: String?): String? {
+            if (!request.useAi || !recipes.canImportWithAi()) return null
+            val built =
+                try {
+                    onServer(source = null) {
+                        recipes.importWithAi(
+                            url = null,
+                            text = caption,
+                            translateTo = request.translateTo,
+                        ) { onStep(ImportStep.Server(it)) }
+                    }
+                } catch (failure: AromaError.ImportFailed) {
+                    // Mealie may still be working on it; a recipe of Aroma's own could end up beside its.
+                    if (failure.reason == NoAnswer) throw failure
+                    // The AI found no recipe in the caption: Aroma reads it itself.
+                    return null
+                }
+            if (preview != null) adoptPhoto(from = preview, to = built)
+            return built
+        }
+
+        /**
+         * Saves the recipe Aroma reads from [text], with [source] as its link: into the link
+         * preview [into] where there is one, which keeps its photo, or as a new recipe. A caption
+         * without ingredients or steps is kept whole as the description, which beats no recipe.
+         */
+        suspend fun fromText(text: String, source: String, into: String?): String {
             val parsed = SocialCaption.parse(text)
-            if (parsed.ingredients.isEmpty() && parsed.steps.isEmpty()) throw AromaError.ImportFailed()
+            val structured = parsed.ingredients.isNotEmpty() || parsed.steps.isNotEmpty()
             onStep(ImportStep.Saving)
-            onSending(recipes.newestRecipeIds())
+            val slug =
+                into ?: run {
+                    onSending(recipes.newestRecipeIds())
+                    recipes.create(parsed.name.ifBlank { untitled() })
+                }
             val locale = Locale.getDefault()
-            val slug = recipes.create(parsed.name.ifBlank { untitled() })
             return try {
                 val fresh = recipes.recipeJson(slug)
                 val form =
                     RecipeDraft.formFrom(fresh, locale).copy(
-                        description = parsed.description,
+                        name = parsed.name.ifBlank { untitled() },
+                        description = if (structured) parsed.description else text.trim(),
                         ingredients = parsed.ingredients.joinToString("\n"),
                         steps = parsed.steps.ifEmpty { listOf("") },
                         servings = parsed.servings?.let(RecipeDraft::formatNumber).orEmpty(),
@@ -166,12 +252,28 @@ class RecipeImporter(
                         if (source.isNotBlank()) put("orgURL", source)
                         if (parsed.notes.isNotEmpty()) put("notes", JsonArray(parsed.notes.map(::note)))
                     }
-                recipes.update(slug, JsonObject(RecipeDraft.patch(fresh, form, locale) { "" } + extras))
+                saveNamed(slug, JsonObject(RecipeDraft.patch(fresh, form, locale) { "" } + extras))
             } catch (failure: AromaError) {
-                // A recipe with nothing but a name helps nobody.
-                deleteQuietly(slug)
+                // A new recipe with nothing but a name helps nobody; a link preview stays as Mealie saved it.
+                if (into == null) deleteQuietly(slug)
                 throw failure
             }
+        }
+
+        /**
+         * Gives [to] the photo of the link preview [from], then removes the preview, so the post
+         * leaves one recipe behind. The recipe is complete without the photo, should it not come.
+         */
+        suspend fun adoptPhoto(from: String, to: String) {
+            onStep(ImportStep.AddingPhoto)
+            try {
+                val id = recipes.recipeJson(from).text("id")
+                val photo = id?.let { recipes.photo(it) }
+                if (photo != null) recipes.uploadImage(to, photo, "webp")
+            } catch (_: AromaError) {
+                // See above.
+            }
+            deleteQuietly(from)
         }
 
         /**
@@ -196,9 +298,10 @@ class RecipeImporter(
     }
 
     /**
-     * Adds what Mealie did not take from the post: its link, and its photo, also over an image of
-     * Mealie's own. Without the link Mealie had no photo to take, yet 3.23 to 3.25 set an image
-     * anyway, one without a file. The recipe is complete without them; both can be added later.
+     * Adds what Mealie did not take from the post: its link, and the photo the phone read with
+     * the caption, also over an image of Mealie's own. Without the link Mealie had no photo to
+     * take, yet 3.23 to 3.25 set an image anyway, one without a file. The recipe is complete
+     * without them; both can be added later.
      */
     private suspend fun complete(slug: String, url: String, image: String?, onStep: (ImportStep) -> Unit) {
         try {
@@ -266,6 +369,27 @@ class RecipeImporter(
         return ingredients == listOf(PLACEHOLDER_INGREDIENTS) && steps == listOf(PLACEHOLDER_STEPS)
     }
 
+    /**
+     * Saves [patch]. Mealie refuses a name another recipe has already, as when a post is imported
+     * a second time; the name then gets a number, the way Mealie numbers a new recipe's name.
+     */
+    private suspend fun saveNamed(slug: String, patch: JsonObject): String {
+        val name = patch.text("name") ?: return recipes.update(slug, patch)
+        var attempt = patch
+        for (number in 2..NAME_NUMBERS) {
+            try {
+                return recipes.update(slug, attempt)
+            } catch (taken: AromaError.Server) {
+                if (taken.code != NAME_TAKEN) throw taken
+            }
+            attempt = JsonObject(patch + ("name" to JsonPrimitive("$name ($number)")))
+        }
+        return recipes.update(slug, attempt)
+    }
+
+    /** Whether Aroma finds ingredients or steps in [text]. */
+    private fun holdsRecipe(text: String): Boolean = SocialCaption.parse(text).let { it.ingredients.isNotEmpty() || it.steps.isNotEmpty() }
+
     private fun JsonObject.list(key: String): List<JsonObject> = (this[key] as? JsonArray)?.map { it.jsonObject }.orEmpty()
 
     private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
@@ -273,6 +397,10 @@ class RecipeImporter(
     private companion object {
         const val PLACEHOLDER_INGREDIENTS = "Could not detect ingredients"
         const val PLACEHOLDER_STEPS = "Could not detect instructions"
+
+        /** What Mealie answers a recipe renamed to a name another recipe has, and how many numbers are tried. */
+        const val NAME_TAKEN = 400
+        const val NAME_NUMBERS = 9
 
         /** Bad gateway, unavailable and timeouts of reverse proxies, including Cloudflare's 52x. */
         val PROXY_GAVE_UP = setOf(502, 503, 504, 520, 522, 524)
