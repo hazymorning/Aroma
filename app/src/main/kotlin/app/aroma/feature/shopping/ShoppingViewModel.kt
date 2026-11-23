@@ -5,16 +5,20 @@ import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.ShoppingItem
 import app.aroma.core.model.ShoppingList
 import app.aroma.core.model.ShoppingListInfo
+import app.aroma.data.AromaError
 import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -22,12 +26,21 @@ import kotlinx.serialization.json.JsonObject
 /** How long a checked row stays in place before it moves into or out of the basket. */
 private const val SETTLE_MILLIS = 450L
 
+sealed interface ShoppingEvent {
+    /** [item] is gone from list [listId]; [ShoppingViewModel.undoDelete] puts it back. */
+    data class Deleted(val listId: String, val item: JsonObject) : ShoppingEvent
+
+    data class Failed(val error: AromaError) : ShoppingEvent
+}
+
 class ShoppingViewModel(private val shopping: ShoppingRepository, private val settings: SettingsRepository) : ViewModel() {
     private val mutableState = MutableStateFlow(ShoppingUiState())
     val state: StateFlow<ShoppingUiState> = mutableState.asStateFlow()
 
+    private val outbox = Channel<ShoppingEvent>(Channel.BUFFERED)
+    val events: Flow<ShoppingEvent> = outbox.receiveAsFlow()
+
     private var listJobs: List<Job> = emptyList()
-    private var deleted: Pair<String, JsonObject>? = null
 
     /** Checks that are shown but not yet sent, by item id. */
     private val settling = mutableMapOf<String, Job>()
@@ -128,7 +141,8 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
                 settling.remove(item.id)
                 runCatching { shopping.toggle(item.listId, item.id) }
                     .onFailure { error ->
-                        mutableState.update { it.copy(settlingChecks = it.settlingChecks - item.id, notice = error.toAromaError()) }
+                        mutableState.update { it.copy(settlingChecks = it.settlingChecks - item.id) }
+                        outbox.send(ShoppingEvent.Failed(error.toAromaError()))
                     }
             }
     }
@@ -150,23 +164,10 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
 
     fun delete(item: ShoppingItem) =
         edit {
-            shopping.delete(item.listId, item.id)?.let { removed ->
-                deleted = item.listId to removed
-                mutableState.update { it.copy(lastDeleted = item) }
-            }
+            shopping.delete(item.listId, item.id)?.let { removed -> outbox.send(ShoppingEvent.Deleted(item.listId, removed)) }
         }
 
-    fun undoDelete() {
-        val (listId, item) = deleted ?: return
-        deleted = null
-        mutableState.update { it.copy(lastDeleted = null) }
-        edit { shopping.restore(listId, item) }
-    }
-
-    fun deleteHandled() {
-        deleted = null
-        mutableState.update { it.copy(lastDeleted = null) }
-    }
+    fun undoDelete(deleted: ShoppingEvent.Deleted) = edit { shopping.restore(deleted.listId, deleted.item) }
 
     fun clearChecked() {
         val listId = state.value.list?.id ?: return
@@ -180,7 +181,7 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
                     // The switcher shows the new list right away, before the lists are fetched again.
                     mutableState.update { it.copy(lists = it.lists + ShoppingListInfo(id, name.trim())) }
                     select(id)
-                }.onFailure { error -> mutableState.update { it.copy(notice = error.toAromaError()) } }
+                }.onFailure { error -> outbox.send(ShoppingEvent.Failed(error.toAromaError())) }
         }
 
     fun renameList(name: String) {
@@ -191,7 +192,7 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
                     mutableState.update { state ->
                         state.copy(lists = state.lists.map { if (it.id == listId) it.copy(name = name.trim()) else it })
                     }
-                }.onFailure { error -> mutableState.update { it.copy(notice = error.toAromaError()) } }
+                }.onFailure { error -> outbox.send(ShoppingEvent.Failed(error.toAromaError())) }
         }
     }
 
@@ -203,15 +204,13 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
                     mutableState.update { it.copy(list = null, isLoading = true) }
                     settings.setLastShoppingList(null)
                     loadLists()
-                }.onFailure { error -> mutableState.update { it.copy(notice = error.toAromaError()) } }
+                }.onFailure { error -> outbox.send(ShoppingEvent.Failed(error.toAromaError())) }
         }
     }
 
-    fun noticeShown() = mutableState.update { it.copy(notice = null) }
-
     private fun edit(block: suspend () -> Unit) {
         viewModelScope.launch {
-            runCatching { block() }.onFailure { error -> mutableState.update { it.copy(notice = error.toAromaError()) } }
+            runCatching { block() }.onFailure { error -> outbox.send(ShoppingEvent.Failed(error.toAromaError())) }
         }
     }
 }

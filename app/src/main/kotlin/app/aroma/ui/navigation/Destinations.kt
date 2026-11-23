@@ -90,6 +90,7 @@ import app.aroma.feature.settings.SettingsActions
 import app.aroma.feature.settings.SettingsScreen
 import app.aroma.feature.settings.SettingsViewModel
 import app.aroma.feature.shopping.ShoppingActions
+import app.aroma.feature.shopping.ShoppingEvent
 import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingViewModel
 import app.aroma.ui.appContainer
@@ -543,16 +544,40 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
 fun ShoppingDestination() {
     val vm = aromaViewModel { ShoppingViewModel(shopping, settings) }
     val state by vm.state.collectAsStateWithLifecycle()
+    val resources = LocalResources.current
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(vm) {
+        vm.events.collect { event ->
+            when (event) {
+                is ShoppingEvent.Deleted -> {
+                    // Launched, so a second deletion replaces this snackbar instead of queueing behind it.
+                    snackbar.currentSnackbarData?.dismiss()
+                    launch {
+                        val result =
+                            snackbar.showSnackbar(
+                                message = resources.getString(R.string.shopping_item_deleted),
+                                actionLabel = resources.getString(R.string.action_undo),
+                                duration = SnackbarDuration.Short,
+                            )
+                        if (result == SnackbarResult.ActionPerformed) vm.undoDelete(event)
+                    }
+                }
+
+                is ShoppingEvent.Failed -> {
+                    launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
+                }
+            }
+        }
+    }
     ShoppingScreen(
         state = state,
+        snackbar = snackbar,
         actions =
             ShoppingActions(
                 onNewItemChange = vm::onNewItemChange,
                 onAddItem = vm::addItem,
                 onToggle = vm::toggle,
                 onDelete = vm::delete,
-                onUndoDelete = vm::undoDelete,
-                onDeleteHandled = vm::deleteHandled,
                 onEdit = vm::rename,
                 onClearChecked = vm::clearChecked,
                 onSelectList = vm::select,
@@ -560,7 +585,6 @@ fun ShoppingDestination() {
                 onRenameList = vm::renameList,
                 onDeleteList = vm::deleteList,
                 onRefresh = vm::refresh,
-                onNoticeShown = vm::noticeShown,
             ),
     )
 }

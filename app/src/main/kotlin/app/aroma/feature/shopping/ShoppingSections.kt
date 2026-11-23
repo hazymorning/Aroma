@@ -115,13 +115,12 @@ private fun textKeyline(large: Boolean): Dp = if (large) 72.dp else IconKeyline
 
 /** The open items under their category kickers, then what is already in the basket. */
 internal fun LazyListScope.shoppingSections(
-    list: ShoppingList,
+    groups: ShoppingGroups,
     state: ShoppingUiState,
     actions: ShoppingActions,
     large: Boolean,
     onEdit: (ShoppingItem) -> Unit,
 ) {
-    val groups = list.grouped()
     when {
         groups.sections.isEmpty() && groups.checked.isEmpty() -> {
             item(key = "empty") {

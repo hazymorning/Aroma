@@ -36,14 +36,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,7 +84,6 @@ import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.currentLocale
-import app.aroma.ui.components.titleRes
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
@@ -102,8 +98,6 @@ data class ShoppingUiState(
     val isOffline: Boolean = false,
     val pendingChanges: Int = 0,
     val error: AromaError? = null,
-    val notice: AromaError? = null,
-    val lastDeleted: ShoppingItem? = null,
     /** Checks already shown on rows that have not moved yet, by item id. */
     val settlingChecks: Map<String, Boolean> = emptyMap(),
 ) {
@@ -115,8 +109,6 @@ data class ShoppingActions(
     val onAddItem: () -> Unit = {},
     val onToggle: (ShoppingItem) -> Unit = {},
     val onDelete: (ShoppingItem) -> Unit = {},
-    val onUndoDelete: () -> Unit = {},
-    val onDeleteHandled: () -> Unit = {},
     val onEdit: (ShoppingItem, String) -> Unit = { _, _ -> },
     val onClearChecked: () -> Unit = {},
     val onSelectList: (String) -> Unit = {},
@@ -124,21 +116,26 @@ data class ShoppingActions(
     val onRenameList: (String) -> Unit = {},
     val onDeleteList: () -> Unit = {},
     val onRefresh: () -> Unit = {},
-    val onNoticeShown: () -> Unit = {},
 )
 
 private enum class ShoppingDialog { Create, Rename, Delete }
 
 @Composable
-fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: Modifier = Modifier) {
+fun ShoppingScreen(
+    state: ShoppingUiState,
+    actions: ShoppingActions,
+    modifier: Modifier = Modifier,
+    snackbar: SnackbarHostState = remember { SnackbarHostState() },
+) {
     var dialog by rememberSaveable { mutableStateOf<ShoppingDialog?>(null) }
-    var editing by remember { mutableStateOf<ShoppingItem?>(null) }
+    // By id, so the dialog survives rotation and closes by itself once its item is gone.
+    var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     var shoppingMode by rememberSaveable { mutableStateOf(false) }
     KeepScreenOn(shoppingMode)
     val listState = rememberLazyListState()
     ScrollToTopOnReselect(listState)
-    val snackbar = remember { SnackbarHostState() }
-    ShoppingSnackbars(state, actions, snackbar)
+    // Grouped here, not in the list's builder, which runs again on every keystroke in the add field.
+    val groups = remember(state.list) { state.list?.grouped() }
     Box(modifier.fillMaxSize()) {
         AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
             LazyColumn(
@@ -149,7 +146,14 @@ fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: M
                 item(key = "header") {
                     Header(state, actions, shoppingMode, onShoppingMode = { shoppingMode = it }) { dialog = it }
                 }
-                body(state, actions, large = shoppingMode, onEdit = { editing = it }, onCreateList = { dialog = ShoppingDialog.Create })
+                body(
+                    state = state,
+                    groups = groups,
+                    actions = actions,
+                    large = shoppingMode,
+                    onEdit = { editingId = it.id },
+                    onCreateList = { dialog = ShoppingDialog.Create },
+                )
             }
         }
         StatusBarScrim(Modifier.align(Alignment.TopCenter))
@@ -204,16 +208,16 @@ fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: M
 
         null -> {}
     }
-    editing?.let { item ->
+    state.list?.items?.firstOrNull { it.id == editingId }?.let { item ->
         val locale = currentLocale()
         NameDialog(
             title = stringResource(R.string.shopping_edit_item),
             initial = itemLine(item, locale).toPlainText(),
             onConfirm = {
                 actions.onEdit(item, it)
-                editing = null
+                editingId = null
             },
-            onDismiss = { editing = null },
+            onDismiss = { editingId = null },
         )
     }
 }
@@ -228,45 +232,26 @@ private fun KeepScreenOn(enabled: Boolean) {
     }
 }
 
-@Composable
-private fun ShoppingSnackbars(state: ShoppingUiState, actions: ShoppingActions, snackbar: SnackbarHostState) {
-    val deletedMessage = stringResource(R.string.shopping_item_deleted)
-    val undoLabel = stringResource(R.string.action_undo)
-    val noticeText = state.notice?.let { stringResource(it.titleRes()) }
-    LaunchedEffect(state.notice) {
-        if (noticeText != null) {
-            snackbar.showSnackbar(noticeText)
-            actions.onNoticeShown()
-        }
-    }
-    LaunchedEffect(state.lastDeleted) {
-        if (state.lastDeleted != null) {
-            val result = snackbar.showSnackbar(deletedMessage, undoLabel, duration = SnackbarDuration.Short)
-            if (result == SnackbarResult.ActionPerformed) actions.onUndoDelete() else actions.onDeleteHandled()
-        }
-    }
-}
-
 private fun LazyListScope.body(
     state: ShoppingUiState,
+    groups: ShoppingGroups?,
     actions: ShoppingActions,
     large: Boolean,
     onEdit: (ShoppingItem) -> Unit,
     onCreateList: () -> Unit,
 ) {
-    val list = state.list
     when {
         state.isLoading -> {
             item(key = "loading") { Loading() }
         }
 
-        list == null && state.error != null -> {
+        groups == null && state.error != null -> {
             item(key = "error") {
                 ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.fillMaxWidth())
             }
         }
 
-        list == null -> {
+        groups == null -> {
             item(key = "noLists") {
                 MessageState(
                     icon = R.drawable.ic_basket,
@@ -281,7 +266,7 @@ private fun LazyListScope.body(
         }
 
         else -> {
-            shoppingSections(list, state, actions, large, onEdit)
+            shoppingSections(groups, state, actions, large, onEdit)
         }
     }
 }
