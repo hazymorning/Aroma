@@ -16,6 +16,7 @@ import app.aroma.core.model.Meal
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.core.model.User
+import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.data.update.UpdateState
 import app.aroma.feature.cook.CookActions
 import app.aroma.feature.cook.CookScreen
@@ -175,6 +176,19 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         }
     }
 
+    /** The steps, each with the ingredients it uses under it. */
+    @Test
+    fun recipeSteps() {
+        applyLocale()
+        snapshot(
+            "recipe_steps_${variant.suffix}",
+            variant.dark,
+            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHeader") },
+        ) {
+            RecipeScreen(state = RecipeUiState(recipe = sample.recipe, isLoading = false), actions = RecipeActions())
+        }
+    }
+
     /** Amounts in US measures: the chip shows the choice, and grams and millilitres read as cups and ounces. */
     @Test
     fun recipeInUsMeasures() {
@@ -320,7 +334,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                     CookUiState(
                         recipe = sample.recipe,
                         isLoading = false,
-                        ingredientsInSteps = true,
+                        ingredientsInSteps = IngredientsInSteps.All,
                         checkedIngredients = setOf(0, 2),
                     ),
                 actions = CookActions(),

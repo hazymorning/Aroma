@@ -7,6 +7,7 @@ import app.aroma.data.AromaError
 import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.repository.TimelineRepository
+import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
 import app.aroma.timer.CookingTimer
@@ -85,7 +86,7 @@ class CookViewModel(
         saved[CHECKED] = (if (index in checked) checked - index else checked + index).toIntArray()
     }
 
-    fun setIngredientsInSteps(enabled: Boolean) = viewModelScope.launch { settings.setIngredientsInSteps(enabled) }
+    fun setIngredientsInSteps(shown: IngredientsInSteps) = viewModelScope.launch { settings.setIngredientsInSteps(shown) }
 
     fun toggleTimer(id: Long) = timers.toggle(id)
 

@@ -11,6 +11,7 @@ import app.aroma.core.model.User
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.session.SessionManager
 import app.aroma.data.settings.AppLanguage
+import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.settings.ThemeMode
 import app.aroma.data.sync.OfflineRecipesWorker
@@ -65,7 +66,7 @@ class SettingsViewModel(
 
     fun setKeepScreenOn(enabled: Boolean) = viewModelScope.launch { settings.setKeepScreenOn(enabled) }
 
-    fun setIngredientsInSteps(enabled: Boolean) = viewModelScope.launch { settings.setIngredientsInSteps(enabled) }
+    fun setIngredientsInSteps(shown: IngredientsInSteps) = viewModelScope.launch { settings.setIngredientsInSteps(shown) }
 
     fun setMeasures(system: MeasureSystem) = viewModelScope.launch { settings.setMeasureSystem(system) }
 

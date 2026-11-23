@@ -79,10 +79,13 @@ import app.aroma.core.format.DurationDetector
 import app.aroma.core.format.IngredientFormatter
 import app.aroma.core.format.MeasureSystem
 import app.aroma.core.format.StepMeasures
+import app.aroma.core.format.ingredientsByStep
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.Step
 import app.aroma.data.AromaError
+import app.aroma.data.settings.IngredientsInSteps
+import app.aroma.feature.settings.labelRes
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.CardActionPadding
 import app.aroma.ui.components.DetailTopBarHeight
@@ -99,8 +102,8 @@ import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SecondaryButton
+import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.SoftCard
-import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.TonalIconButton
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatClock
@@ -139,7 +142,7 @@ data class CookUiState(
     val markedCooked: Boolean = false,
     val markFailed: Boolean = false,
     val exactAlarmHint: Boolean = false,
-    val ingredientsInSteps: Boolean = false,
+    val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
     val measures: MeasureSystem = MeasureSystem.AsWritten,
     val checkedIngredients: Set<Int> = emptySet(),
     val isLoading: Boolean = true,
@@ -150,7 +153,7 @@ data class CookActions(
     val onClose: () -> Unit = {},
     val onStartTimer: (seconds: Int, label: String) -> Unit = { _, _ -> },
     val onToggleIngredient: (Int) -> Unit = {},
-    val onIngredientsInSteps: (Boolean) -> Unit = {},
+    val onIngredientsInSteps: (IngredientsInSteps) -> Unit = {},
     val onToggleTimer: (Long) -> Unit = {},
     val onDismissTimer: (Long) -> Unit = {},
     val onRate: (Int) -> Unit = {},
@@ -189,14 +192,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                 .map { IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale, state.measures)) }
         }
     // Ingredients are ticked off by their place in the recipe, wherever they show.
-    val byReference =
-        remember(state.recipe) {
-            state.recipe
-                ?.ingredients
-                .orEmpty()
-                .mapIndexedNotNull { index, ingredient -> ingredient.referenceId?.let { it to index } }
-                .toMap()
-        }
+    val byStep = remember(state.recipe, locale) { state.recipe?.ingredientsByStep(locale).orEmpty() }
     Column(
         modifier
             .fillMaxSize()
@@ -232,8 +228,8 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                             count = steps.size,
                             step = step,
                             ingredients =
-                                remember(rows, step, byReference, state.ingredientsInSteps) {
-                                    stepIngredients(rows, step, byReference, all = state.ingredientsInSteps)
+                                remember(rows, byStep, page, state.ingredientsInSteps) {
+                                    stepIngredients(rows, byStep.getOrNull(page).orEmpty(), state.ingredientsInSteps)
                                 },
                             measures = state.measures,
                             checked = state.checkedIngredients,
@@ -265,12 +261,29 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
 /** The ingredients a step shows, with their places in the recipe, by which they are ticked off. */
 private class StepIngredients(val rows: List<IngredientRow>, val indexes: List<Int>, val all: Boolean)
 
-/** All ingredients with their sections when the cook wants them under every step, else those Mealie links to it. */
-private fun stepIngredients(rows: List<IngredientRow>, step: Step, byReference: Map<String, Int>, all: Boolean): StepIngredients {
-    if (all) return StepIngredients(rows, rows.indices.toList(), all = true)
-    val linked = step.ingredientReferences.mapNotNull { byReference[it] }
-    return StepIngredients(linked.map { rows[it].copy(section = null) }, linked, all = false)
-}
+/** All ingredients with their sections, those the step uses ([used]), or none, as the cook chose to see them. */
+private fun stepIngredients(rows: List<IngredientRow>, used: List<Int>, shown: IngredientsInSteps): StepIngredients =
+    when (shown) {
+        IngredientsInSteps.All -> {
+            StepIngredients(rows, rows.indices.toList(), all = true)
+        }
+
+        IngredientsInSteps.Used -> {
+            used.filter { it in rows.indices }.let {
+                StepIngredients(
+                    it.map { index ->
+                        rows[index].copy(section = null)
+                    },
+                    it,
+                    all = false,
+                )
+            }
+        }
+
+        IngredientsInSteps.None -> {
+            StepIngredients(emptyList(), emptyList(), all = false)
+        }
+    }
 
 /** Close on the margin and the recipe's name beside it, set as on the recipe page's bar, with all the room the button leaves. */
 @Composable
@@ -682,8 +695,8 @@ private fun IngredientsSheet(
     rows: List<IngredientRow>,
     checked: Set<Int>,
     onToggle: (Int) -> Unit,
-    inSteps: Boolean,
-    onInSteps: (Boolean) -> Unit,
+    inSteps: IngredientsInSteps,
+    onInSteps: (IngredientsInSteps) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.recipe_ingredients)) {
@@ -693,14 +706,13 @@ private fun IngredientsSheet(
                 .padding(bottom = Space.l),
         ) {
             IngredientList(rows, Modifier.padding(horizontal = ScreenMargin), checked, onToggle)
-            SoftCard(Modifier.padding(top = Space.l)) {
-                SwitchRow(
-                    title = stringResource(R.string.settings_ingredients_in_steps),
-                    subtitle = stringResource(R.string.settings_ingredients_in_steps_hint),
-                    checked = inSteps,
-                    onChange = onInSteps,
-                )
-            }
+            GroupLabel(stringResource(R.string.settings_ingredients_in_steps), Modifier.padding(top = Space.l, bottom = Space.xs))
+            SegmentedControl(
+                options = IngredientsInSteps.entries.map { stringResource(it.labelRes()) },
+                selectedIndex = inSteps.ordinal,
+                onSelect = { onInSteps(IngredientsInSteps.entries[it]) },
+                modifier = Modifier.padding(horizontal = ScreenMargin),
+            )
         }
     }
 }

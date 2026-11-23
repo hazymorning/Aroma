@@ -73,7 +73,11 @@ class RecipeViewModel(
             }
         }
         viewModelScope.launch { attempt { recipes.loadRatings() } }
-        viewModelScope.launch { settings.settings.collect { prefs -> mutableState.update { it.copy(measures = prefs.measureSystem) } } }
+        viewModelScope.launch {
+            settings.settings.collect { prefs ->
+                mutableState.update { it.copy(measures = prefs.measureSystem, ingredientsInSteps = prefs.ingredientsInSteps) }
+            }
+        }
     }
 
     fun load() {

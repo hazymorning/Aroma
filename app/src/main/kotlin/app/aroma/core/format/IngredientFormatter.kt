@@ -129,7 +129,7 @@ object IngredientFormatter {
         return firstWord to text.substring(firstWord.length).trim()
     }
 
-    private val KNOWN_UNITS =
+    internal val KNOWN_UNITS =
         setOf(
             "g",
             "gr",

@@ -363,8 +363,11 @@
     <string name="settings_cooking">Kochen</string>
     <string name="settings_keep_screen_on">Bildschirm anlassen</string>
     <string name="settings_keep_screen_on_hint">Solange der Kochmodus geöffnet ist.</string>
-    <string name="settings_ingredients_in_steps">Zutaten unter jedem Schritt</string>
-    <string name="settings_ingredients_in_steps_hint">Im Kochmodus, zum Abhaken, was du schon verwendet hast.</string>
+    <string name="settings_ingredients_in_steps">Zutaten bei den Schritten</string>
+    <string name="settings_ingredients_in_steps_hint">Im Kochmodus und auf der Rezeptseite. Was ein Schritt braucht, findet Aroma dort, wo er es nennt.</string>
+    <string name="ingredients_in_steps_none">Keine</string>
+    <string name="ingredients_in_steps_used">Benötigte</string>
+    <string name="ingredients_in_steps_all">Alle</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_all">Alle Rezepte auf diesem Gerät speichern</string>
     <string name="settings_offline_all_hint">Geöffnete Rezepte werden immer gespeichert. Damit lädst du auch alle anderen.</string>

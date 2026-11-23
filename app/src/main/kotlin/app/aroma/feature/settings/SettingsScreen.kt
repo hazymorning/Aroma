@@ -42,6 +42,7 @@ import app.aroma.core.format.MeasureSystem
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.User
 import app.aroma.data.settings.AppLanguage
+import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.data.settings.ThemeMode
 import app.aroma.data.update.UpdateState
 import app.aroma.feature.recipe.labelRes
@@ -76,7 +77,7 @@ data class SettingsUiState(
     val dynamicColorAvailable: Boolean = false,
     val language: AppLanguage = AppLanguage.System,
     val keepScreenOn: Boolean = true,
-    val ingredientsInSteps: Boolean = false,
+    val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
     val measures: MeasureSystem = MeasureSystem.AsWritten,
     val offlineRecipes: Boolean = false,
     val offlineCount: Int = 0,
@@ -91,7 +92,7 @@ data class SettingsActions(
     val onDynamicColor: (Boolean) -> Unit = {},
     val onLanguage: (AppLanguage) -> Unit = {},
     val onKeepScreenOn: (Boolean) -> Unit = {},
-    val onIngredientsInSteps: (Boolean) -> Unit = {},
+    val onIngredientsInSteps: (IngredientsInSteps) -> Unit = {},
     val onMeasures: (MeasureSystem) -> Unit = {},
     val onOfflineRecipes: (Boolean) -> Unit = {},
     val onCheckForUpdates: () -> Unit = {},
@@ -150,11 +151,13 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                 onChange = actions.onKeepScreenOn,
             )
             RowDivider()
-            SwitchRow(
+            Choice(
                 title = stringResource(R.string.settings_ingredients_in_steps),
                 subtitle = stringResource(R.string.settings_ingredients_in_steps_hint),
-                checked = state.ingredientsInSteps,
-                onChange = actions.onIngredientsInSteps,
+                options = IngredientsInSteps.entries,
+                selected = state.ingredientsInSteps,
+                optionLabel = { stringResource(it.labelRes()) },
+                onSelect = actions.onIngredientsInSteps,
             )
         }
         Group(stringResource(R.string.settings_offline)) {
@@ -420,4 +423,12 @@ private fun AppLanguage.labelRes() =
         AppLanguage.System -> R.string.settings_language_system
         AppLanguage.German -> R.string.settings_language_german
         AppLanguage.English -> R.string.settings_language_english
+    }
+
+/** The name of a choice of ingredients under the steps, as the settings and cook mode show it. */
+fun IngredientsInSteps.labelRes(): Int =
+    when (this) {
+        IngredientsInSteps.None -> R.string.ingredients_in_steps_none
+        IngredientsInSteps.Used -> R.string.ingredients_in_steps_used
+        IngredientsInSteps.All -> R.string.ingredients_in_steps_all
     }

@@ -73,6 +73,7 @@ import app.aroma.core.format.IngredientFormatter
 import app.aroma.core.format.MeasureSystem
 import app.aroma.core.format.Quantities
 import app.aroma.core.format.StepMeasures
+import app.aroma.core.format.ingredientsByStep
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.NutritionKind
 import app.aroma.core.model.NutritionValue
@@ -82,6 +83,7 @@ import app.aroma.core.model.Recipe
 import app.aroma.core.model.RecipeNote
 import app.aroma.core.model.Step
 import app.aroma.data.AromaError
+import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaDropdownMenu
 import app.aroma.ui.components.AromaFilterChip
@@ -131,6 +133,7 @@ data class RecipeUiState(
     val recipe: Recipe? = null,
     val scale: Double = 1.0,
     val measures: MeasureSystem = MeasureSystem.AsWritten,
+    val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
     val checkedIngredients: Set<Int> = emptySet(),
     val isFavorite: Boolean = false,
     val userRating: Double? = null,
@@ -191,6 +194,22 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
     // The cook button rises once the photo is gone, so on opening it never sits on the servings;
     // a recipe too short to scroll that far shows it right away.
     val cookShown by remember(listState) { derivedStateOf { !barOverPhoto || !listState.canScrollForward } }
+    val locale = currentLocale()
+    // What each step uses, scaled and in the chosen measures like the list above it.
+    val stepUses =
+        remember(recipe, state.scale, state.measures, locale) {
+            if (recipe == null) return@remember emptyList()
+            val lines =
+                recipe.ingredients.map { ingredient ->
+                    val line = IngredientFormatter.format(ingredient, state.scale, locale, state.measures)
+                    // As the list sets it: the note after a comma.
+                    listOfNotNull(line.measureText(), line.text, line.note?.let { ", $it" })
+                        .filter { it.isNotBlank() }
+                        .joinToString(" ")
+                        .replace(" ,", ",")
+                }
+            recipe.ingredientsByStep(locale).map { used -> used.mapNotNull(lines::getOrNull) }
+        }
     Box(modifier.fillMaxSize()) {
         when {
             recipe != null -> {
@@ -200,7 +219,7 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     item(key = HERO_KEY) { Hero(recipe) }
-                    recipeBody(recipe, state, actions, onOpenRating = { rateOpen = true })
+                    recipeBody(recipe, state, actions, stepUses, onOpenRating = { rateOpen = true })
                 }
             }
 
@@ -411,7 +430,13 @@ private fun BoxScope.CookButton(visible: Boolean, onClick: () -> Unit) {
     }
 }
 
-private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actions: RecipeActions, onOpenRating: () -> Unit) {
+private fun LazyListScope.recipeBody(
+    recipe: Recipe,
+    state: RecipeUiState,
+    actions: RecipeActions,
+    stepUses: List<List<String>>,
+    onOpenRating: () -> Unit,
+) {
     item(key = TITLE_KEY) { TitleBlock(recipe, state.isOffline) }
     item(key = "byline") {
         Byline(
@@ -450,7 +475,13 @@ private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actio
     if (recipe.steps.isNotEmpty()) {
         item(key = "stepsHeader") { SectionHeader(stringResource(R.string.recipe_steps)) }
         itemsIndexed(recipe.steps, key = { index, step -> step.id ?: "step$index" }) { index, step ->
-            StepItem(index, step, state.measures, Modifier.padding(top = if (index == 0) Space.xs else Space.l))
+            StepItem(
+                index = index,
+                step = step,
+                uses = if (state.ingredientsInSteps == IngredientsInSteps.None) emptyList() else stepUses.getOrNull(index).orEmpty(),
+                measures = state.measures,
+                modifier = Modifier.padding(top = if (index == 0) Space.xs else Space.l),
+            )
         }
     }
     if (recipe.notes.isNotEmpty()) {
@@ -731,7 +762,13 @@ fun servingsLabel(baseServings: Double, scale: Double, locale: Locale): String {
 
 /** A step with its number in sage in the gutter, level with the first line. */
 @Composable
-private fun StepItem(index: Int, step: Step, measures: MeasureSystem, modifier: Modifier = Modifier) {
+private fun StepItem(
+    index: Int,
+    step: Step,
+    uses: List<String>,
+    measures: MeasureSystem,
+    modifier: Modifier = Modifier,
+) {
     val locale = currentLocale()
     val text = remember(step.text, measures, locale) { StepMeasures.convert(step.text, measures, locale) }
     Row(modifier.padding(horizontal = ScreenMargin)) {
@@ -753,6 +790,15 @@ private fun StepItem(index: Int, step: Step, measures: MeasureSystem, modifier: 
                 Text(step.title, style = AromaType.BodyStrong, modifier = Modifier.padding(bottom = Space.xxs))
             }
             Text(text = rememberRichText(text), style = AromaType.Body)
+            // The ingredients the step uses, as the recipe's list shows them, so the step reads on its own.
+            if (uses.isNotEmpty()) {
+                Text(
+                    text = uses.joinToString(" · "),
+                    style = AromaType.Small,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Space.xs),
+                )
+            }
         }
     }
 }

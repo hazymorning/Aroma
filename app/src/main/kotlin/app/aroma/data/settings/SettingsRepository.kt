@@ -19,11 +19,14 @@ enum class ThemeMode { System, Light, Dark }
 
 enum class AppLanguage(val tag: String?) { System(null), German("de"), English("en") }
 
+/** Which ingredients a step shows in cook mode and on the recipe page: none, those it uses, or all to tick off. */
+enum class IngredientsInSteps { None, Used, All }
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.System,
     val dynamicColor: Boolean = false,
     val keepScreenOn: Boolean = true,
-    val ingredientsInSteps: Boolean = false,
+    val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
     val offlineRecipes: Boolean = false,
     val lastShoppingList: String? = null,
     val importWithAi: Boolean = true,
@@ -37,7 +40,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val theme = stringPreferencesKey("theme")
         val dynamicColor = booleanPreferencesKey("dynamic_color")
         val keepScreenOn = booleanPreferencesKey("keep_screen_on")
-        val ingredientsInSteps = booleanPreferencesKey("ingredients_in_steps")
+        val ingredientsInSteps = stringPreferencesKey("ingredients_in_steps_shown")
+
+        /** The switch that showed all ingredients under every step, before there was a choice. */
+        val allIngredientsInSteps = booleanPreferencesKey("ingredients_in_steps")
         val offlineRecipes = booleanPreferencesKey("offline_recipes")
         val lastShoppingList = stringPreferencesKey("last_shopping_list")
         val importWithAi = booleanPreferencesKey("import_with_ai")
@@ -52,7 +58,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 themeMode = prefs[Keys.theme]?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } } ?: ThemeMode.System,
                 dynamicColor = prefs[Keys.dynamicColor] ?: false,
                 keepScreenOn = prefs[Keys.keepScreenOn] ?: true,
-                ingredientsInSteps = prefs[Keys.ingredientsInSteps] ?: false,
+                ingredientsInSteps =
+                    IngredientsInSteps.entries.firstOrNull { it.name == prefs[Keys.ingredientsInSteps] }
+                        ?: if (prefs[Keys.allIngredientsInSteps] == true) IngredientsInSteps.All else IngredientsInSteps.Used,
                 offlineRecipes = prefs[Keys.offlineRecipes] ?: false,
                 lastShoppingList = prefs[Keys.lastShoppingList],
                 importWithAi = prefs[Keys.importWithAi] ?: true,
@@ -68,7 +76,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setKeepScreenOn(enabled: Boolean) = dataStore.edit { it[Keys.keepScreenOn] = enabled }
 
-    suspend fun setIngredientsInSteps(enabled: Boolean) = dataStore.edit { it[Keys.ingredientsInSteps] = enabled }
+    suspend fun setIngredientsInSteps(shown: IngredientsInSteps) = dataStore.edit { it[Keys.ingredientsInSteps] = shown.name }
 
     suspend fun setOfflineRecipes(enabled: Boolean) = dataStore.edit { it[Keys.offlineRecipes] = enabled }
 
