@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.2 – 2026-11-23
+
+**New**
+- Rework a recipe with AI: Mealie's AI puts its ingredients and steps in order.
+- Share photos from other apps to Aroma to make a recipe from them.
+
+**Better**
+- Adding a recipe is calmer, and with AI on, Instagram posts go through Mealie's AI too.
+- In cooking mode, the ingredients wait on a steady panel at the bottom.
+- Smoother motion everywhere, the cook button at the bottom right, and your initial instead of your photo.
+
+**Fixed**
+- Long recipe names stay whole.
+
 ## 0.4.1 – 2026-11-23
 
 **New**
