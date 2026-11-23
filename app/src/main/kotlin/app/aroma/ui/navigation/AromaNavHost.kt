@@ -135,7 +135,17 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
             snackbar,
             Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = if (showBar) barInset + 8.dp else navigationInset + 16.dp),
+                .padding(
+                    bottom =
+                        when {
+                            showBar -> barInset + 8.dp
+
+                            // Above the recipe's floating cook button.
+                            destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + 16.dp + 52.dp + 8.dp
+
+                            else -> navigationInset + 16.dp
+                        },
+                ),
         )
     }
 }

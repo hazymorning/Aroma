@@ -44,6 +44,7 @@ import app.aroma.R
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.photoButtonShadow
+import app.aroma.ui.theme.tabular
 
 /** The one filled action of a screen. While [loading], a small spinner takes the label's place. */
 @Composable
@@ -127,7 +128,7 @@ fun SecondaryButton(
             }
             Spacer(Modifier.width(8.dp))
         }
-        Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, style = MaterialTheme.typography.labelLarge.tabular(), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

@@ -219,12 +219,6 @@ fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 
 /** Interactive stars leave this much room before the first glyph; offset the row by it to keep the keyline. */
 fun ratingTouchInset(starSize: Int): Dp = (48.dp - starSize.dp) / 2
 
-/** A recipe's category or tag as a quiet hairline chip. */
-@Composable
-fun TagChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    AromaFilterChip(selected = false, label = label, onClick = onClick, modifier = modifier)
-}
-
 /** A hairline stadium chip; selected chips take the action colour. */
 @Composable
 fun AromaFilterChip(

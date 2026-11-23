@@ -29,7 +29,7 @@ fun rememberRichText(
 ): AnnotatedString {
     val linkStyles =
         TextLinkStyles(
-            style = SpanStyle(color = linkColor, fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline),
+            style = SpanStyle(color = linkColor, fontWeight = FontWeight.Medium, textDecoration = TextDecoration.Underline),
         )
     return remember(markdown, onDuration, linkStyles) {
         val styled = Markdown.parse(markdown)
@@ -37,7 +37,7 @@ fun rememberRichText(
             append(styled.text)
             styled.spans.forEach { span ->
                 when (span) {
-                    is StyledText.Span.Bold -> addStyle(SpanStyle(fontWeight = FontWeight.SemiBold), span.start, span.end)
+                    is StyledText.Span.Bold -> addStyle(SpanStyle(fontWeight = FontWeight.Medium), span.start, span.end)
                     is StyledText.Span.Italic -> addStyle(SpanStyle(fontStyle = FontStyle.Italic), span.start, span.end)
                     is StyledText.Span.Link -> addLink(LinkAnnotation.Url(span.url, linkStyles), span.start, span.end)
                 }

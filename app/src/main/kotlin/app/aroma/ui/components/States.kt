@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -111,7 +112,8 @@ fun PlaceholderLines(lines: Int, modifier: Modifier = Modifier) {
             Placeholder(
                 Modifier
                     .height(12.dp)
-                    .widthIn(min = 120.dp, max = if (index == lines - 1) 180.dp else 320.dp),
+                    .widthIn(max = if (index == lines - 1) 180.dp else 320.dp)
+                    .fillMaxWidth(),
                 shape = MaterialTheme.shapes.extraSmall,
             )
         }
