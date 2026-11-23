@@ -43,6 +43,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -83,6 +84,7 @@ import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.isDarkScheme
 import app.aroma.ui.theme.tabular
 import kotlin.math.floor
+import kotlin.math.roundToInt
 
 /** A small tracked label in capitals, where a cookbook would print a section name. */
 @Composable
@@ -161,10 +163,15 @@ fun Stepper(
 @Composable
 fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 14, onRate: ((Int) -> Unit)? = null) {
     val value = rating ?: 0.0
-    val description = stringResource(R.string.rating_description, value)
+    val description = ratingDescription(rating)
+    // Screen readers hear the stars as one choice among five: only the rated star is selected.
+    val chosen = rating?.roundToInt()
     val haptics = LocalHapticFeedback.current
     Row(
-        modifier = modifier.semantics(mergeDescendants = onRate == null) { contentDescription = description },
+        modifier =
+            modifier
+                .semantics(mergeDescendants = onRate == null) { contentDescription = description }
+                .then(if (onRate != null) Modifier.selectableGroup() else Modifier),
         horizontalArrangement = Arrangement.spacedBy(if (onRate != null) 0.dp else 2.dp),
     ) {
         for (star in 1..5) {
@@ -199,7 +206,7 @@ fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 
                             .weight(1f, fill = false)
                             .widthIn(max = TouchTarget)
                             .height(TouchTarget)
-                            .selectable(selected = lit, role = Role.RadioButton, onClick = {
+                            .selectable(selected = star == chosen, role = Role.RadioButton, onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                                 onRate(star)
                             }),
@@ -221,6 +228,12 @@ fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 
         }
     }
 }
+
+/** What a screen reader says of a rating: the stars out of five, or that there is none yet. */
+@Composable
+@ReadOnlyComposable
+fun ratingDescription(rating: Double?): String =
+    if (rating == null) stringResource(R.string.rating_none) else stringResource(R.string.rating_description, rating)
 
 /** How long each star waits for the one before it as the stars fill in. */
 private const val STAR_STAGGER_MILLIS = 50L

@@ -117,6 +117,7 @@
     </plurals>
 
     <string name="rating_description">Bewertet mit %1$.1f von 5</string>
+    <string name="rating_none">Noch nicht bewertet</string>
     <plurals name="rating_set">
         <item quantity="one">Mit %1$d Stern bewerten</item>
         <item quantity="other">Mit %1$d Sternen bewerten</item>

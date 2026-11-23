@@ -108,6 +108,7 @@ import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.Stepper
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.components.ratingDescription
 import app.aroma.ui.components.recipeTimeText
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.theme.IconKeyline
@@ -500,7 +501,7 @@ private fun Byline(rating: Double?, sourceUrl: String?, onOpenRating: () -> Unit
     val locale = currentLocale()
     val host = remember(sourceUrl) { sourceUrl?.let { runCatching { URI(it).host?.removePrefix("www.") }.getOrNull() } }
     val meta = MaterialTheme.typography.bodySmall
-    val description = stringResource(R.string.rating_description, rating ?: 0.0)
+    val description = ratingDescription(rating)
     Row(
         Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.s),
         verticalAlignment = Alignment.CenterVertically,
