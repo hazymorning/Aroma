@@ -94,6 +94,4 @@ jobs:
           apk="Aroma-$VERSION.apk"
           cp app/build/outputs/apk/release/app-release.apk "$apk"
           awk -v heading="## $VERSION " 'index($0, heading) == 1 { found = 1; next } /^## / { found = 0 } found' CHANGELOG.md > notes.md
-          checksum=$(sha256sum "$apk" | cut -d " " -f 1)
-          printf '\nSHA-256 %s: %s\n' "\`$apk\`" "\`$checksum\`" >> notes.md
           gh release create "v$VERSION" "$apk" --title "Aroma $VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest
