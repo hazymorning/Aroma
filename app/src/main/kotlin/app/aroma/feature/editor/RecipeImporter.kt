@@ -6,6 +6,7 @@ import app.aroma.data.AromaError
 import app.aroma.data.AromaError.ImportFailed.Reason.NoAnswer
 import app.aroma.data.AromaError.ImportFailed.Reason.PostUnreadable
 import app.aroma.data.isConnectivity
+import app.aroma.data.mayStillFinish
 import app.aroma.data.remote.Photo
 import app.aroma.data.remote.SocialPost
 import app.aroma.data.remote.SocialPosts
@@ -24,8 +25,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import java.io.File
-import java.net.ConnectException
-import java.net.NoRouteToHostException
 import java.util.Locale
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -382,17 +381,6 @@ class RecipeImporter(
         throw AromaError.ImportFailed(NoAnswer)
     }
 
-    /**
-     * Whether the request reached Mealie before it failed. A connection that could not even be
-     * opened never started an import.
-     */
-    private fun AromaError.mayStillFinish(): Boolean =
-        when (this) {
-            is AromaError.Offline -> cause !is ConnectException && cause !is NoRouteToHostException
-            is AromaError.Server -> code in PROXY_GAVE_UP
-            else -> false
-        }
-
     private fun note(text: String): JsonObject =
         buildJsonObject {
             put("title", "")
@@ -485,8 +473,5 @@ class RecipeImporter(
 
         const val PLACEHOLDER_INGREDIENTS = "Could not detect ingredients"
         const val PLACEHOLDER_STEPS = "Could not detect instructions"
-
-        /** Bad gateway, unavailable and timeouts of reverse proxies, including Cloudflare's 52x. */
-        val PROXY_GAVE_UP = setOf(502, 503, 504, 520, 522, 524)
     }
 }
