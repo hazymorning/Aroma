@@ -321,9 +321,24 @@
         <item quantity="other">%1$d recipes saved on this device</item>
     </plurals>
     <string name="settings_about">About</string>
-    <string name="settings_version">Version</string>
+    <string name="settings_version">Version %1$s</string>
+    <string name="settings_updates_check">Tap to look for a newer version.</string>
+    <string name="settings_updates_checking">Looking for a newer version…</string>
+    <string name="settings_updates_current">This is the newest version.</string>
+    <string name="settings_updates_failed">GitHub could not be reached. Try again in a moment.</string>
+    <string name="settings_updates_available">Aroma %1$s is out.</string>
+    <string name="settings_updates_downloading">Downloading Aroma %1$s… %2$d%%</string>
+    <string name="settings_updates_install">Install</string>
+    <string name="settings_updates_at_start">Look for updates at start</string>
+    <string name="settings_updates_at_start_hint">Asks GitHub once at each start, never in the background.</string>
     <string name="settings_licenses">Open source licenses</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_sign_out_title">Sign out?</string>
     <string name="settings_sign_out_message">Saved recipes and unsynced shopping changes are removed from this device.</string>
+
+    <!-- Updates -->
+    <string name="update_found">Aroma %1$s is out</string>
+    <string name="update_not_downloaded">Aroma %1$s could not be downloaded</string>
+    <string name="update_not_aroma">The download is not Aroma, so it was not installed</string>
+    <string name="update_no_installer">No installer found on this device</string>
 </resources>

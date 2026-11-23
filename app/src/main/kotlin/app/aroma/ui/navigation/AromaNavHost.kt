@@ -38,6 +38,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import app.aroma.ui.appContainer
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.LocalScrollToTop
@@ -125,6 +126,7 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
                 onReselect = { reselected.tryEmit(it) },
             )
         }
+        UpdateMessages(appContainer().updates, snackbar)
         AromaSnackbarHost(
             snackbar,
             Modifier

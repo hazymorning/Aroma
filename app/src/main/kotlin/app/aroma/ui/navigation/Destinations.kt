@@ -498,7 +498,7 @@ fun EditorDestination(slug: String, nav: NavController) {
 @Composable
 fun SettingsDestination(nav: NavController) {
     val context = LocalContext.current
-    val vm = aromaViewModel { SettingsViewModel(context.applicationContext, settings, sessions, recipes, ::signOut) }
+    val vm = aromaViewModel { SettingsViewModel(context.applicationContext, settings, sessions, recipes, updates, ::signOut) }
     val state by vm.state.collectAsStateWithLifecycle()
     SettingsScreen(
         state = state,
@@ -510,6 +510,9 @@ fun SettingsDestination(nav: NavController) {
                 onLanguage = vm::setLanguage,
                 onKeepScreenOn = { vm.setKeepScreenOn(it) },
                 onOfflineRecipes = { vm.setOfflineRecipes(it) },
+                onCheckForUpdates = vm::checkForUpdates,
+                onInstallUpdate = vm::installUpdate,
+                onCheckUpdatesAtStart = { vm.setCheckUpdatesAtStart(it) },
                 onOpenLicenses = { nav.navigate(LicensesRoute) },
                 onSignOut = { vm.signOut() },
             ),

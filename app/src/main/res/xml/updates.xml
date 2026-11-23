@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The one folder Android's installer may read: the update Aroma downloaded into its cache. -->
+<paths>
+    <cache-path name="update" path="update/" />
+</paths>

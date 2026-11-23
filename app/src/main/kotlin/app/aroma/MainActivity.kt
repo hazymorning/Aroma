@@ -24,6 +24,7 @@ import app.aroma.ui.navigation.AromaNavHost
 import app.aroma.ui.navigation.LoginDestination
 import app.aroma.ui.theme.AromaTheme
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 
 class MainActivity : AppCompatActivity() {
     private val sharedUrl = MutableStateFlow<String?>(null)
@@ -34,6 +35,11 @@ class MainActivity : AppCompatActivity() {
         val container = (application as AromaApplication).container
         splash.setKeepOnScreenCondition { container.sessions.state.value == SessionState.Loading }
         if (savedInstanceState == null) readSharedUrl(intent)
+        container.updates.checkAtStart {
+            container.settings.settings
+                .first()
+                .checkUpdatesAtStart
+        }
 
         setContent {
             val settings by container.settings.settings.collectAsStateWithLifecycle(AppSettings())

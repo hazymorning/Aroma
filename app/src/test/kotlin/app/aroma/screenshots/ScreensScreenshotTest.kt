@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performScrollToKey
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.core.model.User
+import app.aroma.data.update.UpdateState
 import app.aroma.feature.cook.CookActions
 import app.aroma.feature.cook.CookScreen
 import app.aroma.feature.cook.CookTimerUi
@@ -275,6 +276,26 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                         dynamicColorAvailable = true,
                         offlineCount = 18,
                         version = "0.1.0",
+                    ),
+                actions = SettingsActions(),
+            )
+        }
+    }
+
+    @Test
+    fun settingsUpdate() {
+        applyLocale()
+        snapshot(
+            "settings_update_${variant.suffix}",
+            variant.dark,
+            interact = { composeRule.onNodeWithText("Version 0.3.0").performScrollTo() },
+        ) {
+            SettingsScreen(
+                state =
+                    SettingsUiState(
+                        version = "0.3.0",
+                        update = UpdateState.Available("0.4.0", "", 1),
+                        checkUpdatesAtStart = true,
                     ),
                 actions = SettingsActions(),
             )

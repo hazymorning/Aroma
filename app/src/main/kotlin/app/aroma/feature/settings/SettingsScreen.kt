@@ -2,6 +2,7 @@ package app.aroma.feature.settings
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,9 +41,11 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,12 +55,14 @@ import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.User
 import app.aroma.data.settings.AppLanguage
 import app.aroma.data.settings.ThemeMode
+import app.aroma.data.update.UpdateState
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LargeTitle
+import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.currentLocale
@@ -77,6 +83,8 @@ data class SettingsUiState(
     val offlineRecipes: Boolean = false,
     val offlineCount: Int = 0,
     val version: String = "",
+    val update: UpdateState = UpdateState.Unknown,
+    val checkUpdatesAtStart: Boolean = false,
 )
 
 data class SettingsActions(
@@ -86,6 +94,9 @@ data class SettingsActions(
     val onLanguage: (AppLanguage) -> Unit = {},
     val onKeepScreenOn: (Boolean) -> Unit = {},
     val onOfflineRecipes: (Boolean) -> Unit = {},
+    val onCheckForUpdates: () -> Unit = {},
+    val onInstallUpdate: (UpdateState.Available) -> Unit = {},
+    val onCheckUpdatesAtStart: (Boolean) -> Unit = {},
     val onOpenLicenses: () -> Unit = {},
     val onSignOut: () -> Unit = {},
 )
@@ -147,21 +158,14 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             )
         }
         Group(stringResource(R.string.settings_about)) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp)
-                    .padding(horizontal = ScreenMargin)
-                    .semantics(mergeDescendants = true) {},
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_version), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Text(
-                    text = state.version,
-                    style = MaterialTheme.typography.bodyLarge.tabular(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            UpdateRow(state.version, state.update, actions.onCheckForUpdates, actions.onInstallUpdate)
+            RowDivider()
+            SwitchRow(
+                title = stringResource(R.string.settings_updates_at_start),
+                subtitle = stringResource(R.string.settings_updates_at_start_hint),
+                checked = state.checkUpdatesAtStart,
+                onChange = actions.onCheckUpdatesAtStart,
+            )
             RowDivider()
             NavigationRow(stringResource(R.string.settings_licenses), actions.onOpenLicenses)
         }
@@ -312,6 +316,71 @@ private fun <T> Choice(
             selectedIndex = options.indexOf(selected),
             onSelect = { onSelect(options[it]) },
         )
+    }
+}
+
+/**
+ * The version and where its updates stand. Tapping the row looks for a newer one; once one is
+ * found, its button downloads it and opens Android's installer.
+ */
+@Composable
+private fun UpdateRow(version: String, update: UpdateState, onCheck: () -> Unit, onInstall: (UpdateState.Available) -> Unit) {
+    val status =
+        when (update) {
+            UpdateState.Unknown -> {
+                stringResource(R.string.settings_updates_check)
+            }
+
+            UpdateState.Checking -> {
+                stringResource(R.string.settings_updates_checking)
+            }
+
+            UpdateState.Current -> {
+                stringResource(R.string.settings_updates_current)
+            }
+
+            UpdateState.Failed -> {
+                stringResource(R.string.settings_updates_failed)
+            }
+
+            is UpdateState.Available -> {
+                stringResource(R.string.settings_updates_available, update.version)
+            }
+
+            is UpdateState.Downloading -> {
+                stringResource(R.string.settings_updates_downloading, update.update.version, (update.progress * 100).toInt())
+            }
+        }
+    val canCheck = update == UpdateState.Unknown || update == UpdateState.Current || update == UpdateState.Failed
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .clickable(enabled = canCheck, role = Role.Button, onClick = onCheck)
+            .padding(horizontal = ScreenMargin, vertical = Space.s)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Space.m),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.settings_version, version), style = MaterialTheme.typography.bodyLarge.tabular())
+            Text(status, style = MaterialTheme.typography.bodyMedium.tabular(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        when (update) {
+            is UpdateState.Available -> {
+                SecondaryButton(stringResource(R.string.settings_updates_install), onClick = { onInstall(update) }, compact = true)
+            }
+
+            UpdateState.Checking, is UpdateState.Downloading -> {
+                CircularProgressIndicator(
+                    strokeWidth = 1.5.dp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+
+            else -> {}
+        }
     }
 }
 

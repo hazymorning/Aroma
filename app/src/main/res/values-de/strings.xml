@@ -318,9 +318,24 @@
         <item quantity="other">%1$d Rezepte auf diesem Gerät gespeichert</item>
     </plurals>
     <string name="settings_about">Über Aroma</string>
-    <string name="settings_version">Version</string>
+    <string name="settings_version">Version %1$s</string>
+    <string name="settings_updates_check">Tippe, um nach einer neueren Version zu suchen.</string>
+    <string name="settings_updates_checking">Neuere Version wird gesucht …</string>
+    <string name="settings_updates_current">Das ist die neueste Version.</string>
+    <string name="settings_updates_failed">GitHub ist nicht erreichbar. Versuch es gleich noch einmal.</string>
+    <string name="settings_updates_available">Aroma %1$s ist da.</string>
+    <string name="settings_updates_downloading">Aroma %1$s wird geladen … %2$d\u00A0%%</string>
+    <string name="settings_updates_install">Installieren</string>
+    <string name="settings_updates_at_start">Beim Start nach Updates suchen</string>
+    <string name="settings_updates_at_start_hint">Fragt GitHub einmal bei jedem Start, nie im Hintergrund.</string>
     <string name="settings_licenses">Open-Source-Lizenzen</string>
     <string name="settings_sign_out">Abmelden</string>
     <string name="settings_sign_out_title">Abmelden?</string>
     <string name="settings_sign_out_message">Gespeicherte Rezepte und noch nicht übertragene Änderungen an Einkaufslisten werden von diesem Gerät entfernt.</string>
+
+    <!-- Updates -->
+    <string name="update_found">Aroma %1$s ist da</string>
+    <string name="update_not_downloaded">Aroma %1$s konnte nicht geladen werden</string>
+    <string name="update_not_aroma">Der Download ist kein Aroma und wurde nicht installiert</string>
+    <string name="update_no_installer">Kein Installationsprogramm auf diesem Gerät gefunden</string>
 </resources>

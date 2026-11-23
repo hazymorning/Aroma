@@ -19,6 +19,7 @@ import app.aroma.data.session.SessionStore
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.sync.OfflineRecipesWorker
 import app.aroma.data.sync.ShoppingSyncWorker
+import app.aroma.data.update.Updates
 import app.aroma.timer.CookingTimers
 import coil3.SingletonImageLoader
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import java.io.File
 
 /** Creates and holds the app's long-lived objects. */
 class AppContainer(context: Context) {
@@ -58,6 +60,7 @@ class AppContainer(context: Context) {
             }
         }
     val timers = CookingTimers(appContext, scope)
+    val updates = Updates(clients.httpClient, BuildConfig.VERSION_NAME, appContext.cacheDir.resolve("update"), scope, appContext::isAroma)
 
     /** One import at a time, so imports waiting for Mealie never take each other's recipe. */
     val importLock = Mutex()
@@ -80,3 +83,7 @@ class AppContainer(context: Context) {
             auth.signOut()
         }
 }
+
+/** Whether [apk] is this app; Android's installer then checks that it carries the same signing key. */
+@Suppress("DEPRECATION") // The flags as an Int still work; the replacement needs Android 13.
+private fun Context.isAroma(apk: File): Boolean = packageManager.getPackageArchiveInfo(apk.path, 0)?.packageName == packageName

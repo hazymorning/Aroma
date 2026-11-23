@@ -13,6 +13,8 @@ import app.aroma.data.settings.AppLanguage
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.settings.ThemeMode
 import app.aroma.data.sync.OfflineRecipesWorker
+import app.aroma.data.update.UpdateState
+import app.aroma.data.update.Updates
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,7 @@ class SettingsViewModel(
     private val settings: SettingsRepository,
     sessions: SessionManager,
     recipes: RecipeRepository,
+    private val updates: Updates,
     private val signOutAndForget: () -> Unit,
 ) : ViewModel() {
     private val language = MutableStateFlow(settings.language)
@@ -36,7 +39,7 @@ class SettingsViewModel(
         }
 
     val state: StateFlow<SettingsUiState> =
-        combine(settings.settings, language, recipes.offlineCount()) { app, lang, offline ->
+        combine(settings.settings, language, recipes.offlineCount(), updates.state) { app, lang, offline, update ->
             SettingsUiState(
                 user = account?.first,
                 server = account?.second,
@@ -48,6 +51,8 @@ class SettingsViewModel(
                 offlineRecipes = app.offlineRecipes,
                 offlineCount = offline,
                 version = BuildConfig.VERSION_NAME,
+                update = update,
+                checkUpdatesAtStart = app.checkUpdatesAtStart,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(user = account?.first, server = account?.second))
 
@@ -62,6 +67,12 @@ class SettingsViewModel(
             settings.setOfflineRecipes(enabled)
             OfflineRecipesWorker.schedule(appContext, enabled)
         }
+
+    fun setCheckUpdatesAtStart(enabled: Boolean) = viewModelScope.launch { settings.setCheckUpdatesAtStart(enabled) }
+
+    fun checkForUpdates() = updates.checkNow()
+
+    fun installUpdate(update: UpdateState.Available) = updates.install(update)
 
     fun setLanguage(value: AppLanguage) {
         language.value = value

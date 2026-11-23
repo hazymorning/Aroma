@@ -22,6 +22,7 @@ data class AppSettings(
     val lastShoppingList: String? = null,
     val importWithAi: Boolean = true,
     val translateImports: Boolean = false,
+    val checkUpdatesAtStart: Boolean = false,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -33,6 +34,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val lastShoppingList = stringPreferencesKey("last_shopping_list")
         val importWithAi = booleanPreferencesKey("import_with_ai")
         val translateImports = booleanPreferencesKey("translate_imports")
+        val checkUpdatesAtStart = booleanPreferencesKey("check_updates_at_start")
     }
 
     val settings: Flow<AppSettings> =
@@ -45,6 +47,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 lastShoppingList = prefs[Keys.lastShoppingList],
                 importWithAi = prefs[Keys.importWithAi] ?: true,
                 translateImports = prefs[Keys.translateImports] ?: false,
+                checkUpdatesAtStart = prefs[Keys.checkUpdatesAtStart] ?: false,
             )
         }
 
@@ -55,6 +58,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setKeepScreenOn(enabled: Boolean) = dataStore.edit { it[Keys.keepScreenOn] = enabled }
 
     suspend fun setOfflineRecipes(enabled: Boolean) = dataStore.edit { it[Keys.offlineRecipes] = enabled }
+
+    suspend fun setCheckUpdatesAtStart(enabled: Boolean) = dataStore.edit { it[Keys.checkUpdatesAtStart] = enabled }
 
     /** Forgets what belonged to the signed-out account; look and feel stay as they are. */
     suspend fun forgetAccount() =
