@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -51,8 +52,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.OrganizerKind
+import app.aroma.core.model.Organizers
 import app.aroma.core.model.RecipeSort
 import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
@@ -85,9 +88,11 @@ data class RecipeFilter(
     val categories: Set<Organizer> = emptySet(),
     val tags: Set<Organizer> = emptySet(),
     val tools: Set<Organizer> = emptySet(),
+    val meal: Meal? = null,
     val sort: RecipeSort = RecipeSort.Newest,
 ) {
-    val hasFilters: Boolean get() = favoritesOnly || categories.isNotEmpty() || tags.isNotEmpty() || tools.isNotEmpty()
+    val hasFilters: Boolean
+        get() = favoritesOnly || meal != null || categories.isNotEmpty() || tags.isNotEmpty() || tools.isNotEmpty()
 
     fun selected(kind: OrganizerKind): Set<Organizer> =
         when (kind) {
@@ -110,6 +115,9 @@ data class RecipesUiState(
     val tags: List<Organizer> = emptyList(),
     val tools: List<Organizer> = emptyList(),
 ) {
+    /** The meals the household has a category or tag for, offered as quick filters. */
+    val meals: List<Meal> get() = Meal.entries.filter { it.namesIn(Organizers(categories, tags, tools)).isNotEmpty() }
+
     fun options(kind: OrganizerKind): List<Organizer> =
         when (kind) {
             OrganizerKind.Category -> categories
@@ -131,6 +139,7 @@ data class RecipesActions(
     val onSection: (RecipesSection) -> Unit = {},
     val onQueryChange: (String) -> Unit = {},
     val onToggleFavorites: () -> Unit = {},
+    val onToggleMeal: (Meal) -> Unit = {},
     val onToggleOrganizer: (OrganizerKind, Organizer) -> Unit = { _, _ -> },
     val onSortChange: (RecipeSort) -> Unit = {},
     val onClearFilters: () -> Unit = {},
@@ -268,6 +277,13 @@ private fun FilterChips(state: RecipesUiState, actions: RecipesActions, openShee
                 onClick = actions.onToggleFavorites,
             )
         }
+        items(state.meals, key = { it.name }) { meal ->
+            AromaFilterChip(
+                selected = state.filter.meal == meal,
+                label = stringResource(meal.labelRes()),
+                onClick = { actions.onToggleMeal(meal) },
+            )
+        }
         OrganizerKind.entries.filter { state.options(it).isNotEmpty() }.forEach { kind ->
             item(key = kind.name) {
                 val count = state.filter.selected(kind).size
@@ -308,6 +324,14 @@ internal fun RecipesHeader(
         )
     }
 }
+
+private fun Meal.labelRes() =
+    when (this) {
+        Meal.Breakfast -> R.string.meal_breakfast
+        Meal.Lunch -> R.string.meal_lunch
+        Meal.Snack -> R.string.meal_snack
+        Meal.Dinner -> R.string.meal_dinner
+    }
 
 private fun OrganizerKind.labelRes() =
     when (this) {

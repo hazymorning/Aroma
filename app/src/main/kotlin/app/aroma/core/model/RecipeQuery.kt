@@ -11,6 +11,8 @@ data class RecipeQuery(
     val tags: List<String> = emptyList(),
     val tools: List<String> = emptyList(),
     val cookbook: String? = null,
+    /** Names of the categories and tags of one meal; a recipe in any of them matches. */
+    val mealNames: List<String> = emptyList(),
     val sort: RecipeSort = RecipeSort.Newest,
     val seed: String? = null,
 )

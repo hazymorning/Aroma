@@ -116,7 +116,10 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                     tags = query.tags.ifEmpty { null },
                     tools = query.tools.ifEmpty { null },
                     cookbook = query.cookbook,
-                    queryFilter = favoriteFilter,
+                    queryFilter =
+                        listOfNotNull(favoriteFilter, query.mealNames.takeIf { it.isNotEmpty() }?.let(::namesFilter))
+                            .takeIf { it.isNotEmpty() }
+                            ?.joinToString(" AND ") { "($it)" },
                     paginationSeed = query.seed.takeIf { query.sort == RecipeSort.Random },
                 )
             // Screens ask from the main thread; encoding the offline copy and mapping are not for it.
@@ -142,6 +145,7 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         val filtered =
             local.filter { recipe ->
                 (!query.favoritesOnly || recipe.id in favorites) &&
+                    (query.mealNames.isEmpty() || (recipe.categories + recipe.tags).any { it.name in query.mealNames }) &&
                     query.categories.all { slug -> recipe.categories.any { it.slug == slug || it.id == slug } } &&
                     query.tags.all { slug -> recipe.tags.any { it.slug == slug || it.id == slug } }
             }
@@ -175,7 +179,6 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     /** A choice of recipes filed under [names] as category or tag, or of all recipes without names; new each [day]. */
     fun suggestions(names: List<String>, day: LocalDate, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
         summaries("home:suggestions:${names.sorted().joinToString(",")}") {
-            val list = names.joinToString(prefix = "[", postfix = "]") { "\"${it.replace("\"", "\\\"")}\"" }
             sessions
                 .api()
                 .recipes(
@@ -183,7 +186,7 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                     perPage = limit,
                     orderBy = "random",
                     orderDirection = "asc",
-                    queryFilter = if (names.isEmpty()) null else "recipe_category.name IN $list OR tags.name IN $list",
+                    queryFilter = names.takeIf { it.isNotEmpty() }?.let(::namesFilter),
                     paginationSeed = day.toString(),
                 ).items
         }
@@ -222,6 +225,12 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     }
 
     private fun idsFilter(ids: Collection<String>) = ids.joinToString(prefix = "id IN [", postfix = "]") { "\"$it\"" }
+
+    /** Recipes with a category or tag of one of these [names]. */
+    private fun namesFilter(names: List<String>): String {
+        val list = names.joinToString(prefix = "[", postfix = "]") { "\"${it.replace("\"", "\\\"")}\"" }
+        return "recipe_category.name IN $list OR tags.name IN $list"
+    }
 
     private fun summaries(key: String, fetch: suspend () -> List<RecipeSummaryDto>): Flow<Loadable<List<RecipeSummary>>> {
         val server = sessions.requireServerUrl()

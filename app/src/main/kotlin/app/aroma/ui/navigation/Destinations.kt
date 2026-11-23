@@ -177,6 +177,7 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
                         onSection = { section = it },
                         onQueryChange = vm::onQueryChange,
                         onToggleFavorites = vm::toggleFavorites,
+                        onToggleMeal = vm::toggleMeal,
                         onToggleOrganizer = vm::toggleOrganizer,
                         onSortChange = vm::setSort,
                         onClearFilters = vm::clearFilters,

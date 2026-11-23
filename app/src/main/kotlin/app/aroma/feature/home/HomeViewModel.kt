@@ -2,6 +2,7 @@ package app.aroma.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.aroma.core.model.Meal
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError

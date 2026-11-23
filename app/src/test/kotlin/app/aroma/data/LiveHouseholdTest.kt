@@ -1,9 +1,22 @@
 package app.aroma.data
 
 import app.aroma.core.model.MealType
+import app.aroma.core.model.RecipeQuery
+import app.aroma.data.remote.MealieJson
 import app.aroma.data.repository.TimelineRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -90,6 +103,33 @@ class LiveHouseholdTest {
         }
 
     @Test
+    fun `recipes filter by a meal's category or tag, also among favorites`() =
+        runBlocking {
+            val name = "Abendessen ${UUID.randomUUID().toString().take(8)}"
+            val tag = createTag(name)
+            try {
+                env.recipes.update(slug, buildJsonObject { put("tags", JsonArray(listOf(tag))) })
+                val recipe =
+                    env.recipes
+                        .recipeJson(slug)["id"]!!
+                        .jsonPrimitive.content
+                assertEquals(
+                    listOf(slug),
+                    env.recipes
+                        .page(RecipeQuery(mealNames = listOf(name)), 1)
+                        .items
+                        .map { it.slug },
+                )
+
+                env.recipes.setFavorite(recipe, slug, true)
+                val favorites = env.recipes.page(RecipeQuery(favoritesOnly = true, mealNames = listOf(name)), 1).items
+                assertEquals(listOf(slug), favorites.map { it.slug })
+            } finally {
+                deleteTag(tag["id"]!!.jsonPrimitive.content)
+            }
+        }
+
+    @Test
     fun `a planned meal moves to another day and meal`() =
         runBlocking {
             val day = LocalDate.now().plusDays(40)
@@ -108,5 +148,40 @@ class LiveHouseholdTest {
             } finally {
                 env.mealPlans.delete(created.id)
             }
+        }
+
+    private suspend fun createTag(name: String): JsonObject =
+        withContext(Dispatchers.IO) {
+            val body = buildJsonObject { put("name", name) }.toString().toRequestBody("application/json".toMediaType())
+            send(
+                Request
+                    .Builder()
+                    .url(api("api/organizers/tags"))
+                    .post(body)
+                    .build(),
+            ).jsonObject
+        }
+
+    private suspend fun deleteTag(id: String) =
+        withContext(Dispatchers.IO) {
+            send(
+                Request
+                    .Builder()
+                    .url(api("api/organizers/tags/$id"))
+                    .delete()
+                    .build(),
+            )
+        }
+
+    private fun api(path: String) =
+        env.sessions
+            .credentials()!!
+            .server
+            .resolve(path)!!
+
+    private fun send(request: Request) =
+        env.clients.httpClient.newCall(request).execute().use { response ->
+            assertTrue("Mealie answered ${response.code}", response.isSuccessful)
+            MealieJson.parseToJsonElement(response.body.string().ifBlank { "{}" })
         }
 }

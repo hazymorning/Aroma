@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.offset
 import app.aroma.R
 import app.aroma.core.model.Cookbook
 import app.aroma.core.model.ImageSize
+import app.aroma.core.model.Meal
 import app.aroma.core.model.MealPlanEntry
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary

@@ -2,8 +2,10 @@ package app.aroma.feature.recipes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.OrganizerKind
+import app.aroma.core.model.Organizers
 import app.aroma.core.model.RecipeQuery
 import app.aroma.core.model.RecipeSort
 import app.aroma.data.repository.RecipeRepository
@@ -70,6 +72,9 @@ class RecipesViewModel(
 
     fun toggleFavorites() = changeFilter { it.copy(favoritesOnly = !it.favoritesOnly) }
 
+    /** One meal at a time: choosing another replaces it, choosing it again clears it. */
+    fun toggleMeal(meal: Meal) = changeFilter { it.copy(meal = meal.takeIf { _ -> it.meal != meal }) }
+
     fun toggleOrganizer(kind: OrganizerKind, organizer: Organizer) =
         changeFilter { filter ->
             fun Set<Organizer>.toggle(): Set<Organizer> {
@@ -110,7 +115,8 @@ class RecipesViewModel(
     }
 
     private suspend fun loadPage(replace: Boolean) {
-        val filter = mutableState.value.filter
+        val state = mutableState.value
+        val filter = state.filter
         val query =
             RecipeQuery(
                 search = filter.query,
@@ -119,6 +125,7 @@ class RecipesViewModel(
                 tags = filter.tags.map { it.id },
                 tools = filter.tools.map { it.id },
                 cookbook = cookbook,
+                mealNames = filter.meal?.namesIn(Organizers(state.categories, state.tags, state.tools)).orEmpty(),
                 sort = filter.sort,
                 seed = randomSeed,
             )

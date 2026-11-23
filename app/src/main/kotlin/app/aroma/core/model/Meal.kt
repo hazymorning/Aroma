@@ -1,6 +1,5 @@
-package app.aroma.feature.home
+package app.aroma.core.model
 
-import app.aroma.core.model.Organizers
 import java.time.LocalTime
 
 /** The meal a time of day calls for, and the names households give it as a category or tag in Mealie. */

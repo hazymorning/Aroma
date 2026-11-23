@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
+import app.aroma.core.model.Meal
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.core.model.User
@@ -28,7 +29,6 @@ import app.aroma.feature.home.Greeting
 import app.aroma.feature.home.HomeActions
 import app.aroma.feature.home.HomeScreen
 import app.aroma.feature.home.HomeUiState
-import app.aroma.feature.home.Meal
 import app.aroma.feature.home.RateReminder
 import app.aroma.feature.login.LoginActions
 import app.aroma.feature.login.LoginScreen
