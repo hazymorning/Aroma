@@ -1,29 +1,46 @@
 package app.aroma.feature.cookbook
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.RecipeSummary
+import app.aroma.feature.recipes.RecipeCount
 import app.aroma.feature.recipes.RecipesUiState
+import app.aroma.feature.recipes.hangIntoRowGap
+import app.aroma.feature.recipes.pageItem
+import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.RecipeGrid
 import app.aroma.ui.components.recipeGridPlaceholders
+import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Standfirst
+
+/** The height of [DetailTopBar] below the status bar; the grid starts under it and scrolls beneath. */
+private val TopBarHeight = 56.dp
 
 @Composable
 fun CookbookScreen(
@@ -36,53 +53,74 @@ fun CookbookScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    RecipeGrid(
-        recipes = state.recipes,
-        onOpen = onOpenRecipe,
-        isLoadingMore = state.isLoadingMore,
-        canLoadMore = state.canLoadMore,
-        onLoadMore = onLoadMore,
-        modifier = modifier.fillMaxSize(),
-        header = {
-            item(span = { GridItemSpan(maxLineSpan) }, key = "header") {
-                Column(Modifier.statusBarsPadding()) {
-                    IconButton(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) {
-                        Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.action_back))
+    val grid = rememberLazyGridState()
+    var titleEnd by remember { mutableIntStateOf(Int.MAX_VALUE) }
+    val collapsed by remember { derivedStateOf { grid.firstVisibleItemIndex > 0 || grid.firstVisibleItemScrollOffset > titleEnd } }
+    Box(modifier.fillMaxSize()) {
+        RecipeGrid(
+            recipes = state.recipes,
+            onOpen = onOpenRecipe,
+            state = grid,
+            isLoadingMore = state.isLoadingMore,
+            canLoadMore = state.canLoadMore,
+            onLoadMore = onLoadMore,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    start = ScreenMargin,
+                    end = ScreenMargin,
+                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + TopBarHeight,
+                    bottom = 32.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                ),
+            header = {
+                pageItem("header") { Header(name, description, state, onTitleLaidOut = { titleEnd = it }) }
+                when {
+                    state.isLoading -> {
+                        recipeGridPlaceholders()
                     }
-                    Text(name, style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(top = 8.dp))
-                    if (description.isNotBlank()) {
-                        Text(
-                            text = description,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
-                    if (state.isOffline) OfflineNotice(Modifier.padding(top = 8.dp))
-                    Spacer(Modifier.height(20.dp))
-                }
-            }
-            when {
-                state.isLoading -> {
-                    recipeGridPlaceholders()
-                }
 
-                state.error != null && state.recipes.isEmpty() -> {
-                    item(span = { GridItemSpan(maxLineSpan) }, key = "error") {
-                        ErrorState(state.error, onRetry = onRetry)
+                    state.error != null && state.recipes.isEmpty() -> {
+                        pageItem("error") { ErrorState(state.error, onRetry = onRetry) }
                     }
-                }
 
-                state.recipes.isEmpty() -> {
-                    item(span = { GridItemSpan(maxLineSpan) }, key = "empty") {
-                        MessageState(
-                            icon = R.drawable.ic_recipes,
-                            title = stringResource(R.string.cookbook_empty_title),
-                            body = stringResource(R.string.cookbook_empty_message),
-                        )
+                    state.recipes.isEmpty() -> {
+                        pageItem("empty") {
+                            MessageState(
+                                icon = R.drawable.ic_recipes,
+                                title = stringResource(R.string.cookbook_empty_title),
+                                body = stringResource(R.string.cookbook_empty_message),
+                            )
+                        }
                     }
                 }
-            }
-        },
-    )
+            },
+        )
+        DetailTopBar(onBack = onBack, title = name, collapsed = collapsed)
+    }
+}
+
+/** The cookbook's name as the large title, its description as a serif lead, then the count. */
+@Composable
+private fun Header(name: String, description: String, state: RecipesUiState, onTitleLaidOut: (Int) -> Unit) {
+    Column(Modifier.hangIntoRowGap()) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.displaySmall,
+            modifier =
+                Modifier
+                    .onSizeChanged { onTitleLaidOut(it.height) }
+                    .padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp)
+                    .semantics { heading() },
+        )
+        if (description.isNotBlank()) {
+            Text(
+                text = description,
+                style = Standfirst,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp),
+            )
+        }
+        if (state.isOffline) OfflineNotice(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp))
+        RecipeCount(state)
+    }
 }

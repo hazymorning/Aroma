@@ -310,7 +310,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
             CookbookScreen(
                 name = sample.cookbooks.first().name,
                 description = sample.cookbooks.first().description,
-                state = RecipesUiState(recipes = sample.recipes.take(4), isLoading = false),
+                state = RecipesUiState(recipes = sample.recipes.take(4), total = 4, isLoading = false),
                 onBack = {},
                 onOpenRecipe = {},
                 onLoadMore = {},
