@@ -334,6 +334,12 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     }
 
     /**
+     * Mealie reads a text holding both "<" and ">" as a web page and asks its AI to transcribe it
+     * first, one more pass in a row; a recipe's text loses nothing by their look-alikes.
+     */
+    private fun plainText(text: String): String = if ('<' in text && '>' in text) text.replace('<', '‹').replace('>', '›') else text
+
+    /**
      * Lets the group's AI provider build a recipe from a link, a text, [photos] or several of them,
      * optionally translated. The photos are JPEGs, each with a file name of its own: Mealie keeps
      * them by name while it reads them.
@@ -347,7 +353,7 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     ): String {
         val parts =
             buildList {
-                text?.takeIf { it.isNotBlank() }?.let { add(MultipartBody.Part.createFormData("content", it.trim())) }
+                text?.takeIf { it.isNotBlank() }?.let { add(MultipartBody.Part.createFormData("content", plainText(it.trim()))) }
                 url?.takeIf { it.isNotBlank() }?.let { add(MultipartBody.Part.createFormData("url", it.trim())) }
                 translateTo?.let { add(MultipartBody.Part.createFormData("translateLanguage", it)) }
                 photos.forEach { add(MultipartBody.Part.createFormData("images", it.name, it.asRequestBody(JPEG))) }

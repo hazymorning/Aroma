@@ -109,19 +109,22 @@ class RecipeImporterTest {
     }
 
     @Test
-    fun `a caption that lists its ingredients and steps becomes the recipe at once, without the AI`() =
+    fun `with AI a post's caption goes to Mealie's AI as text alone, and its link and photo follow`() =
         runBlocking<Unit> {
             val steps = mutableListOf<ImportStep>()
 
             val slug = importer().run(ImportRequest(post, useAi = true)) { steps += it }
 
             assertEquals("gnocchi", slug)
-            assertEquals("neither Mealie's import nor its AI is asked", emptyList<String>(), creations())
+            assertEquals("Mealie's AI makes the recipe, as the group's prompts ask", listOf("/api/recipes/create/ai/stream"), creations())
+            val sent = requests.single { it.url.encodedPath == "/api/recipes/create/ai/stream" }.body!!.utf8()
+            assertTrue("the caption goes to the AI", sent.contains("- 500 g Gnocchi"))
+            assertFalse("Mealie does not load the post itself", sent.contains("name=\"url\""))
             assertFalse("the post's page is not loaded, its embed has it all", requests.any { it.url.encodedPath == "/p/AromaTest02/" })
-            val saved = requests.single { it.method == "PATCH" && it.body!!.utf8().contains("recipeIngredient") }.body!!.utf8()
-            assertTrue(saved.contains("500 g Gnocchi") && saved.contains(post))
+            assertTrue(requests.any { it.method == "PATCH" && it.body!!.utf8().contains(post) })
             assertTrue(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
-            assertEquals(listOf(ImportStep.ReadingPost, ImportStep.Saving, ImportStep.AddingPhoto), steps)
+            assertEquals(ImportStep.ReadingPost, steps.first())
+            assertTrue(ImportStep.AddingPhoto in steps)
         }
 
     @Test
@@ -160,6 +163,8 @@ class RecipeImporterTest {
     @Test
     fun `a recipe without emoji is left as it is`() =
         runBlocking<Unit> {
+            details["gnocchi"] = recipe("gnocchi", "Tomaten-Gnocchi", listOf("500 g Gnocchi"), listOf("Braten."), link = PAGE)
+
             importer().run(ImportRequest(PAGE))
 
             assertFalse(requests.any { it.method == "PATCH" })
@@ -184,7 +189,13 @@ class RecipeImporterTest {
 
             assertEquals("gnocchi", slug)
             assertEquals(listOf("/api/recipes/create/ai/stream", "/api/recipes/create/url/stream"), creations())
-            val saved = requests.single { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/gnocchi" }.body!!.utf8()
+            val saved =
+                requests
+                    .single {
+                        it.method == "PATCH" && it.url.encodedPath == "/api/recipes/gnocchi" &&
+                            it.body!!.utf8().contains("recipeIngredient")
+                    }.body!!
+                    .utf8()
             assertTrue(saved.contains("Das Rezept steht im Video!"))
             assertTrue("no placeholders", saved.contains("\"recipeIngredient\":[]"))
             assertTrue(
@@ -230,7 +241,13 @@ class RecipeImporterTest {
                     .utf8()
                     .contains("Tomaten-Gnocchi"),
             )
-            val saved = requests.single { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/gnocchi" }.body!!.utf8()
+            val saved =
+                requests
+                    .single {
+                        it.method == "PATCH" && it.url.encodedPath == "/api/recipes/gnocchi" &&
+                            it.body!!.utf8().contains("recipeIngredient")
+                    }.body!!
+                    .utf8()
             assertTrue(saved.contains("500 g Gnocchi") && saved.contains(post))
             assertTrue(requests.any { it.method == "GET" && it.url.encodedPath == "/api/media/recipes/id-vorschau/images/original.webp" })
             assertTrue(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
@@ -379,11 +396,22 @@ class RecipeImporterTest {
         }
 
     @Test
-    fun `text pasted for a website that lists its ingredients and steps is read without the AI`() =
+    fun `text pasted for a website goes to Mealie's AI with its link`() =
         runBlocking<Unit> {
             assertEquals("gnocchi", importer().run(ImportRequest(PAGE, text = CAPTION, useAi = true)))
-            assertEquals(emptyList<String>(), creations())
-            assertTrue(requests.any { it.method == "PATCH" && it.body!!.utf8().contains("500 g Gnocchi") })
+            val sent = requests.single { it.url.encodedPath == "/api/recipes/create/ai/stream" }.body!!.utf8()
+            assertTrue(sent.contains("- 500 g Gnocchi") && sent.contains(PAGE))
+        }
+
+    @Test
+    fun `text that would read as a web page is sent as plain text, which Mealie reads without an extra pass`() =
+        runBlocking<Unit> {
+            caption = "$PROSE Mit Liebe <3 und Basilikum -> fertig!"
+
+            importer().run(ImportRequest(post, useAi = true))
+            val sent = requests.single { it.url.encodedPath == "/api/recipes/create/ai/stream" }.body!!.utf8()
+            assertTrue(sent.contains("‹3") && sent.contains("-› fertig"))
+            assertFalse(sent.contains("<3"))
         }
 
     @Test
@@ -721,10 +749,16 @@ class RecipeImporterTest {
     private fun summary(id: String, slug: String, link: String? = null, user: String = USER) =
         """{"id":"$id","slug":"$slug","name":"$slug","userId":"$user","orgURL":${link?.let { "\"$it\"" }}}"""
 
-    private fun recipe(slug: String, name: String, ingredients: List<String>, steps: List<String>): String {
+    private fun recipe(
+        slug: String,
+        name: String,
+        ingredients: List<String>,
+        steps: List<String>,
+        link: String? = null,
+    ): String {
         val ingredientJson = ingredients.joinToString(",") { """{"note":"$it","display":"$it"}""" }
         val stepJson = steps.joinToString(",") { """{"text":"$it"}""" }
-        return """{"id":"id-$slug","slug":"$slug","name":"$name","description":"","image":null,"orgURL":null,""" +
+        return """{"id":"id-$slug","slug":"$slug","name":"$name","description":"","image":null,"orgURL":${link?.let { "\"$it\"" }},""" +
             """"recipeIngredient":[$ingredientJson],"recipeInstructions":[$stepJson]}"""
     }
 
