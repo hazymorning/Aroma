@@ -55,10 +55,9 @@ fun PageHeader(
         verticalAlignment = Alignment.Top,
     ) {
         Column(Modifier.weight(1f)) {
-            if (kicker != null) {
-                Kicker(kicker)
-                Spacer(Modifier.height(8.dp))
-            }
+            // The kicker line is kept even when empty, so titles sit at one height on every tab.
+            Kicker(kicker.orEmpty())
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.displaySmall,
@@ -76,7 +75,7 @@ fun PageHeader(
                 )
             }
         }
-        Row(Modifier.offset(y = if (kicker != null) 22.dp else (-2).dp), verticalAlignment = Alignment.CenterVertically, content = actions)
+        Row(Modifier.offset(y = 22.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
     }
 }
 
@@ -104,7 +103,7 @@ fun DetailTopBar(
     Column(
         modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.97f))
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding(),
     ) {
         Row(

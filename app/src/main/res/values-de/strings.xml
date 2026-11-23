@@ -70,6 +70,8 @@
     <string name="home_favorites">Favoriten</string>
     <string name="home_cookbooks">Kochbücher</string>
     <string name="search_recipes_hint">Rezepte durchsuchen</string>
+    <string name="home_rate_open">Rezept öffnen</string>
+    <string name="home_rate_dismiss">Ausblenden</string>
 
     <!-- Meal types -->
     <string name="meal_breakfast">Frühstück</string>
@@ -123,6 +125,8 @@
     <string name="select_all">Alle auswählen</string>
     <string name="select_none">Keine auswählen</string>
     <string name="share_import_label">Zu Aroma hinzufügen</string>
+    <string name="recipe_action_plan">Einplanen</string>
+    <string name="recipe_action_shop">Einkaufen</string>
 
     <!-- Login -->
     <string name="login_tagline">Deine Mealie-Rezepte, schön aufgeräumt.</string>
@@ -141,6 +145,7 @@
     <string name="login_password_disabled">Auf diesem Server ist die Anmeldung per Passwort abgeschaltet, daher brauchst du ein API-Token.</string>
     <string name="login_show_secret">Anzeigen</string>
     <string name="login_hide_secret">Verbergen</string>
+    <string name="login_http_hint">Läuft dein Server ohne https, gib die Adresse mit http:// davor ein.</string>
 
     <!-- Recipe library -->
     <string name="recipes_add">Rezept hinzufügen</string>
@@ -318,9 +323,4 @@
     <string name="settings_sign_out">Abmelden</string>
     <string name="settings_sign_out_title">Abmelden?</string>
     <string name="settings_sign_out_message">Gespeicherte Rezepte und noch nicht übertragene Änderungen an Einkaufslisten werden von diesem Gerät entfernt.</string>
-    <string name="home_rate_open">Rezept öffnen</string>
-    <string name="home_rate_dismiss">Nicht mehr fragen</string>
-    <string name="recipe_action_plan">Einplanen</string>
-    <string name="recipe_action_shop">Einkaufen</string>
-    <string name="login_http_hint">Läuft dein Server ohne https, gib die Adresse mit http:// davor ein.</string>
 </resources>

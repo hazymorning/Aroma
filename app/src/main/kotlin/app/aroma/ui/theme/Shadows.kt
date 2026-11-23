@@ -32,7 +32,7 @@ fun Modifier.floatingShadow(shape: Shape): Modifier {
         dropShadow(shape, Shadow(radius = 28.dp, spread = (-4).dp, color = ink.copy(alpha = 0.55f), offset = DpOffset(0.dp, 10.dp)))
             .dropShadow(shape, Shadow(radius = 3.dp, color = ink.copy(alpha = 0.35f), offset = DpOffset(0.dp, 1.dp)))
     } else {
-        dropShadow(shape, Shadow(radius = 32.dp, spread = (-6).dp, color = ink.copy(alpha = 0.12f), offset = DpOffset(0.dp, 12.dp)))
+        dropShadow(shape, Shadow(radius = 32.dp, spread = (-6).dp, color = ink.copy(alpha = 0.16f), offset = DpOffset(0.dp, 14.dp)))
             .dropShadow(shape, Shadow(radius = 3.dp, color = ink.copy(alpha = 0.06f), offset = DpOffset(0.dp, 1.dp)))
     }
 }

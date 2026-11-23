@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.aroma.ui.components.LocalBottomBarInset
+import app.aroma.ui.navigation.BarFade
 import app.aroma.ui.navigation.FloatingBar
 import app.aroma.ui.navigation.FloatingBarGap
 import app.aroma.ui.navigation.FloatingBarHeight
@@ -19,6 +20,7 @@ import app.aroma.ui.navigation.Tab
 fun TabFrame(tab: Tab, modifier: Modifier = Modifier, page: @Composable () -> Unit) {
     Box(modifier.fillMaxSize()) {
         CompositionLocalProvider(LocalBottomBarInset provides FloatingBarHeight + FloatingBarGap, content = page)
+        BarFade(FloatingBarHeight + FloatingBarGap, Modifier.align(Alignment.BottomCenter))
         FloatingBar(
             selected = tab,
             onSelect = {},

@@ -72,6 +72,8 @@
     <string name="home_favorites">Favorites</string>
     <string name="home_cookbooks">Cookbooks</string>
     <string name="search_recipes_hint">Search recipes</string>
+    <string name="home_rate_open">Open recipe</string>
+    <string name="home_rate_dismiss">Dismiss</string>
 
     <!-- Meal types -->
     <string name="meal_breakfast">Breakfast</string>
@@ -125,6 +127,8 @@
     <string name="select_all">Select all</string>
     <string name="select_none">Select none</string>
     <string name="share_import_label">Add to Aroma</string>
+    <string name="recipe_action_plan">Plan</string>
+    <string name="recipe_action_shop">Shop</string>
 
     <!-- Login -->
     <string name="login_tagline">Your Mealie recipes, beautifully organized.</string>
@@ -144,6 +148,7 @@
     <string name="login_password_disabled">Password sign-in is turned off on this server, so an API token is needed.</string>
     <string name="login_show_secret">Show</string>
     <string name="login_hide_secret">Hide</string>
+    <string name="login_http_hint">If your server has no https, enter its address with http:// in front.</string>
 
     <!-- Recipe library -->
     <string name="recipes_add">Add recipe</string>
@@ -321,9 +326,4 @@
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_sign_out_title">Sign out?</string>
     <string name="settings_sign_out_message">Saved recipes and unsynced shopping changes are removed from this device.</string>
-    <string name="home_rate_open">Open recipe</string>
-    <string name="home_rate_dismiss">Don’t ask</string>
-    <string name="recipe_action_plan">Plan</string>
-    <string name="recipe_action_shop">Shop</string>
-    <string name="login_http_hint">If your server has no https, enter its address with http:// in front.</string>
 </resources>

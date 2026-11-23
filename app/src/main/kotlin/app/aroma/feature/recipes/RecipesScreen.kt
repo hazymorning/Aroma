@@ -215,7 +215,13 @@ private fun LazyGridScope.body(state: RecipesUiState, actions: RecipesActions) {
 @Composable
 private fun Header(state: RecipesUiState, actions: RecipesActions, searchFocus: FocusRequester?, openSheet: (RecipesSheet) -> Unit) {
     Column {
-        PageHeader(title = stringResource(R.string.nav_recipes)) {
+        val count = state.total?.takeIf { state.recipes.isNotEmpty() }
+        PageHeader(
+            title = stringResource(R.string.nav_recipes),
+            kicker = count?.let { pluralStringResource(R.plurals.recipe_count, it, it) },
+        ) {
+            val sortLabel = stringResource(R.string.sort_title) + ": " + stringResource(state.filter.sort.labelRes())
+            HeaderAction(R.drawable.ic_sort, sortLabel, { openSheet(RecipesSheet.Sort) })
             HeaderAction(R.drawable.ic_add, stringResource(R.string.recipes_add), actions.onAddRecipe)
         }
         Spacer(Modifier.height(24.dp))
@@ -229,7 +235,7 @@ private fun Header(state: RecipesUiState, actions: RecipesActions, searchFocus: 
         Spacer(Modifier.height(16.dp))
         FilterChips(state, actions, openSheet)
         if (state.isOffline) OfflineNotice(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp))
-        RecipeCount(state)
+        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -257,14 +263,6 @@ private fun FilterChips(state: RecipesUiState, actions: RecipesActions, openShee
                     trailingIcon = R.drawable.ic_expand_more,
                 )
             }
-        }
-        item(key = "sort") {
-            AromaFilterChip(
-                selected = false,
-                label = stringResource(state.filter.sort.labelRes()),
-                onClick = { openSheet(RecipesSheet.Sort) },
-                trailingIcon = R.drawable.ic_sort,
-            )
         }
     }
 }

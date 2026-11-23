@@ -33,8 +33,8 @@ val Sans =
         Font(R.font.figtree_semibold, FontWeight.SemiBold),
     )
 
-// Titles break greedily: that keeps compound words whole and still breaks after a hyphen
-// ("Gnocchi-Lauch-" / "Auflauf"). Running text uses the paragraph strategy.
+// Titles balance their lines and never hyphenate, so compound words stay whole and a two-line
+// title never ends on a single word. Running text uses the paragraph strategy.
 private val balancedLines =
     LineHeightStyle(
         alignment = LineHeightStyle.Alignment.Center,
@@ -49,8 +49,8 @@ private fun serifDisplay(size: Int, lineHeight: Int, tracking: Double, weight: F
         lineHeight = lineHeight.sp,
         letterSpacing = tracking.em,
         lineHeightStyle = balancedLines,
-        lineBreak = LineBreak.Simple,
-        hyphens = Hyphens.Auto,
+        lineBreak = LineBreak.Heading,
+        hyphens = Hyphens.None,
     )
 
 private fun serifText(size: Int, lineHeight: Int, weight: FontWeight = FontWeight.Medium) =
@@ -60,8 +60,8 @@ private fun serifText(size: Int, lineHeight: Int, weight: FontWeight = FontWeigh
         fontSize = size.sp,
         lineHeight = lineHeight.sp,
         lineHeightStyle = balancedLines,
-        lineBreak = LineBreak.Simple,
-        hyphens = Hyphens.Auto,
+        lineBreak = LineBreak.Heading,
+        hyphens = Hyphens.None,
     )
 
 private fun sans(size: Int, lineHeight: Int, weight: FontWeight, letterSpacing: Double = 0.0) =
@@ -86,13 +86,13 @@ val CardTitle = serifText(18, 23)
 val KickerStyle = sans(11, 16, FontWeight.SemiBold, letterSpacing = 1.2)
 
 /** The serif lead under a title: recipe and cookbook descriptions, the login tagline. */
-val Standfirst = serifText(18, 27, FontWeight.Normal)
+val Standfirst = serifText(18, 27, FontWeight.Normal).copy(lineBreak = LineBreak.Paragraph, hyphens = Hyphens.Auto)
 
 /** Recipe steps: a touch larger than body text, for reading at arm's length. */
 val Reading = sans(17, 27, FontWeight.Normal)
 
 /** The step text in cook mode. */
-val CookStep = serifText(26, 36, FontWeight.Normal)
+val CookStep = serifText(26, 36, FontWeight.Normal).copy(lineBreak = LineBreak.Paragraph, hyphens = Hyphens.Auto)
 
 /** Lining figures of equal width, so times, amounts and counters do not jitter. */
 fun TextStyle.tabular(): TextStyle = copy(fontFeatureSettings = "tnum, lnum")

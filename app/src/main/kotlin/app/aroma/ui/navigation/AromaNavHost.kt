@@ -107,13 +107,7 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
             exit = fadeOut(tween(Motion.STATE)),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            val page = MaterialTheme.colorScheme.background
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(barInset + 24.dp)
-                    .background(Brush.verticalGradient(0f to page.copy(alpha = 0f), 0.45f to page.copy(alpha = 0.85f), 1f to page)),
-            )
+            BarFade(barInset)
         }
         AnimatedVisibility(
             visible = showBar,

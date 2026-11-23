@@ -182,6 +182,9 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
         derivedStateOf { listState.bottomOf(TITLE_KEY)?.let { it <= barBottom } ?: (listState.firstVisibleItemIndex > 0) }
     }
     val canCook = recipe?.steps?.isNotEmpty() == true
+    // The cook button rises once the photo is gone, so on opening it never sits on the servings;
+    // a recipe too short to scroll that far shows it right away.
+    val cookShown by remember(listState) { derivedStateOf { !barOverPhoto || !listState.canScrollForward } }
     Box(modifier.fillMaxSize()) {
         when {
             recipe != null -> {
@@ -218,7 +221,7 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
             isFavorite = state.isFavorite,
             actions = actions,
         )
-        CookButton(visible = canCook, onClick = actions.onStartCooking)
+        CookButton(visible = canCook && cookShown, onClick = actions.onStartCooking)
     }
     if (rateOpen && recipe != null) {
         RatingSheet(rating = state.userRating, onRate = actions.onRate, onDismiss = { rateOpen = false })
@@ -590,8 +593,6 @@ private fun RecipeQuickActions(
                 confirmed = confirmed == QuickAction.Shop,
                 modifier = Modifier.weight(1f),
             )
-        } else {
-            Spacer(Modifier.weight(1f))
         }
     }
 }

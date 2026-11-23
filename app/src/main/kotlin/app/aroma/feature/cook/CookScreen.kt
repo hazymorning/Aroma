@@ -182,7 +182,8 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
     ) {
         TopBar(
             title = state.recipe?.name.orEmpty(),
-            hasIngredients = rows.isNotEmpty(),
+            // The finished page has nothing left to look up.
+            hasIngredients = rows.isNotEmpty() && pager.currentPage < steps.size,
             onClose = actions.onClose,
             onIngredients = { showIngredients = true },
         )

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -41,8 +42,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.extras
+import app.aroma.ui.theme.isDarkScheme
 import app.aroma.ui.theme.photoButtonShadow
 import app.aroma.ui.theme.tabular
 
@@ -176,7 +179,16 @@ fun QuietLink(
         Text(text, style = MaterialTheme.typography.labelLarge, color = color, maxLines = 1)
         if (chevron) {
             Spacer(Modifier.width(4.dp))
-            Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+            // The chevron is drawn left of its box's centre; shifted so its tip ends on the margin.
+            Icon(
+                painterResource(R.drawable.ic_chevron_right),
+                contentDescription = null,
+                tint = color,
+                modifier =
+                    Modifier
+                        .size(16.dp)
+                        .offset(x = 5.dp),
+            )
         }
     }
 }
@@ -238,11 +250,16 @@ fun OnPhotoButton(
                 ),
         contentAlignment = Alignment.Center,
     ) {
+        // In dark mode a step lighter than the bar, with its fine edge, so it does not sink into dark photos.
+        val dark = isDarkScheme
         Box(
             Modifier
                 .size(40.dp)
                 .photoButtonShadow(CircleShape)
-                .background(extras.raised.copy(alpha = 0.92f), CircleShape),
+                .background(
+                    if (dark) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f) else extras.raised.copy(alpha = 0.92f),
+                    CircleShape,
+                ).then(if (dark) Modifier.border(Lines.hairline, extras.floatingEdge, CircleShape) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
             Icon(painterResource(icon), contentDescription = contentDescription, tint = tint, modifier = Modifier.size(20.dp))
