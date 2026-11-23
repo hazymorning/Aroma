@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.RecipeImage
 import app.aroma.data.AromaError
+import app.aroma.data.attempt
 import app.aroma.data.remote.MealieJson
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.toAromaError
@@ -66,7 +67,7 @@ class EditorViewModel(
     fun load() =
         viewModelScope.launch {
             mutableState.update { it.copy(isLoading = true, error = null) }
-            runCatching { recipes.recipeJson(slug) }
+            attempt { recipes.recipeJson(slug) }
                 .onSuccess { json ->
                     original = json
                     val image = (json["image"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
@@ -98,7 +99,7 @@ class EditorViewModel(
         if (state.value.isSaving) return
         viewModelScope.launch {
             mutableState.update { it.copy(isSaving = true, error = null) }
-            runCatching {
+            attempt {
                 val patch = RecipeDraft.patch(json, state.value.form, locale, durationText)
                 if (patch.isNotEmpty()) {
                     slug = recipes.update(slug, patch)

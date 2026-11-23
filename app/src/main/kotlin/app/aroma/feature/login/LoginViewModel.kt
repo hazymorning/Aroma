@@ -2,6 +2,7 @@ package app.aroma.feature.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.aroma.data.attempt
 import app.aroma.data.repository.AuthRepository
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,7 +50,7 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
         if (state.value.isWorking) return
         viewModelScope.launch {
             mutableState.update { it.copy(isWorking = true, error = null) }
-            runCatching { block() }.onFailure { error -> mutableState.update { it.copy(error = error.toAromaError()) } }
+            attempt { block() }.onFailure { error -> mutableState.update { it.copy(error = error.toAromaError()) } }
             mutableState.update { it.copy(isWorking = false) }
         }
     }

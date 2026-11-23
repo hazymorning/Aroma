@@ -7,6 +7,7 @@ import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.data.JsonCache
 import app.aroma.data.Loadable
+import app.aroma.data.attempt
 import app.aroma.data.local.CacheDao
 import app.aroma.data.local.CacheEntity
 import app.aroma.data.local.PendingChangeDao
@@ -137,7 +138,7 @@ class ShoppingRepository(
 
     suspend fun createList(name: String): String {
         val created = mealieCall { sessions.api().createShoppingList(CreateShoppingListDto(name.trim())) }
-        runCatching { refresh(created.id) }
+        attempt { refresh(created.id) }
         refreshLists()
         return created.id
     }
@@ -165,7 +166,7 @@ class ShoppingRepository(
     }
 
     private suspend fun refreshLists() {
-        runCatching {
+        attempt {
             val lists = sessions.api().shoppingLists().items
             cache.write(LISTS_KEY, ListSerializer(ShoppingListSummaryDto.serializer()), lists)
         }

@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import app.aroma.data.JsonCache
+import app.aroma.data.attempt
 import app.aroma.data.local.AromaDatabase
 import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.remote.MealieClientFactory
@@ -62,7 +63,7 @@ class AppContainer(context: Context) {
     val shopping: ShoppingRepository =
         ShoppingRepository(sessions, database.cache(), cache, database.pendingChanges()) {
             scope.launch {
-                val done = runCatching { shopping.sync() }.getOrDefault(false)
+                val done = attempt { shopping.sync() }.getOrDefault(false)
                 if (!done) ShoppingSyncWorker.enqueue(appContext)
             }
         }

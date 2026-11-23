@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.MealType
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
+import app.aroma.data.attempt
 import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.repository.ShoppingRepository
@@ -120,7 +121,7 @@ class RecipeViewModel(
     fun loadShoppingLists() =
         viewModelScope.launch {
             mutablePreferredList.value = settings.settings.first().lastShoppingList
-            runCatching { shopping.lists().first { !it.isRefreshing }.data }
+            attempt { shopping.lists().first { !it.isRefreshing }.data }
                 .onSuccess { mutableLists.value = it }
                 .onFailure {
                     mutableLists.value = emptyList()

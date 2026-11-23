@@ -111,3 +111,14 @@ suspend inline fun <T> mealieCall(block: suspend () -> T): T =
     } catch (error: Throwable) {
         throw error.toAromaError()
     }
+
+/**
+ * Runs [block] for a screen that shows what went wrong: its failure as an [AromaError]. Unlike
+ * `runCatching`, it lets cancellation through, so work for a screen that is gone stops there.
+ */
+suspend inline fun <T> attempt(block: suspend () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (error: Exception) {
+        Result.failure(error.toAromaError())
+    }

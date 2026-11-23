@@ -8,6 +8,7 @@ import app.aroma.core.model.RecipeQuery
 import app.aroma.core.model.RecipeSummary
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
+import app.aroma.data.attempt
 import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.repository.ShoppingRepository
@@ -114,7 +115,7 @@ class MealPlanViewModel(
         viewModelScope.launch {
             val before = state.value.days
             mutableState.update { state -> state.copy(days = state.days.map { day -> day.copy(entries = day.entries - entry) }) }
-            runCatching { mealPlans.delete(entry.id) }
+            attempt { mealPlans.delete(entry.id) }
                 .onSuccess {
                     load(refreshing = false)
                     mutableEvents.emit(MealPlanEvent.Removed(entry))
@@ -131,7 +132,7 @@ class MealPlanViewModel(
         title: String,
         note: String,
     ) = viewModelScope.launch {
-        runCatching { mealPlans.add(date, type, recipe?.id, title, note) }
+        attempt { mealPlans.add(date, type, recipe?.id, title, note) }
             .onSuccess { load(refreshing = false) }
             .onFailure { mutableEvents.emit(MealPlanEvent.Failed(it.toAromaError())) }
     }
@@ -196,7 +197,7 @@ class MealPlanViewModel(
             searchQuery.debounce(250).collect { text ->
                 mutableSearch.update { it.copy(isLoading = true) }
                 val results =
-                    runCatching { recipes.page(RecipeQuery(search = text), page = 1, perPage = 20).items }
+                    attempt { recipes.page(RecipeQuery(search = text), page = 1, perPage = 20).items }
                         .getOrDefault(emptyList())
                 mutableSearch.update { it.copy(results = results, isLoading = false) }
             }

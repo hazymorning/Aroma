@@ -6,6 +6,7 @@ import app.aroma.core.model.ShoppingItem
 import app.aroma.core.model.ShoppingList
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
+import app.aroma.data.attempt
 import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
@@ -105,7 +106,7 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
     }
 
     private suspend fun refreshList(listId: String) {
-        runCatching { shopping.refresh(listId) }
+        attempt { shopping.refresh(listId) }
             .onSuccess { mutableState.update { it.copy(isOffline = false, error = null) } }
             .onFailure { error ->
                 val failure = error.toAromaError()
@@ -139,7 +140,7 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
             viewModelScope.launch {
                 delay(SETTLE_MILLIS)
                 settling.remove(item.id)
-                runCatching { shopping.toggle(item.listId, item.id) }
+                attempt { shopping.toggle(item.listId, item.id) }
                     .onFailure { error ->
                         mutableState.update { it.copy(settlingChecks = it.settlingChecks - item.id) }
                         outbox.send(ShoppingEvent.Failed(error.toAromaError()))
@@ -176,7 +177,7 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
 
     fun createList(name: String) =
         viewModelScope.launch {
-            runCatching { shopping.createList(name) }
+            attempt { shopping.createList(name) }
                 .onSuccess { id ->
                     // The switcher shows the new list right away, before the lists are fetched again.
                     mutableState.update { it.copy(lists = it.lists + ShoppingListInfo(id, name.trim())) }
@@ -187,7 +188,7 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
     fun renameList(name: String) {
         val listId = state.value.list?.id ?: return
         viewModelScope.launch {
-            runCatching { shopping.renameList(listId, name) }
+            attempt { shopping.renameList(listId, name) }
                 .onSuccess {
                     mutableState.update { state ->
                         state.copy(lists = state.lists.map { if (it.id == listId) it.copy(name = name.trim()) else it })
@@ -199,7 +200,7 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
     fun deleteList() {
         val listId = state.value.list?.id ?: return
         viewModelScope.launch {
-            runCatching { shopping.deleteList(listId) }
+            attempt { shopping.deleteList(listId) }
                 .onSuccess {
                     mutableState.update { it.copy(list = null, isLoading = true) }
                     settings.setLastShoppingList(null)
@@ -210,7 +211,7 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
 
     private fun edit(block: suspend () -> Unit) {
         viewModelScope.launch {
-            runCatching { block() }.onFailure { error -> outbox.send(ShoppingEvent.Failed(error.toAromaError())) }
+            attempt { block() }.onFailure { error -> outbox.send(ShoppingEvent.Failed(error.toAromaError())) }
         }
     }
 }
