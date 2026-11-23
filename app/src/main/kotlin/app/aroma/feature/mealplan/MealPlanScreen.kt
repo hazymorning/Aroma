@@ -35,7 +35,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -65,6 +64,7 @@ import app.aroma.core.model.ImageSize
 import app.aroma.core.model.MealPlanEntry
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaBottomSheet
+import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.Kicker
@@ -131,7 +131,7 @@ fun MealPlanScreen(state: MealPlanUiState, actions: MealPlanActions, modifier: M
     ScrollToTopOnReselect(listState)
     // By id, so the sheet survives rotation and closes by itself once its entry is gone.
     var sheetEntryId by rememberSaveable { mutableStateOf<Int?>(null) }
-    PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = modifier.fillMaxSize()) {
+    AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
             contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + PageEndSpace),
@@ -522,7 +522,7 @@ private fun EntrySheet(entry: MealPlanEntry, onShop: () -> Unit, onRemove: () ->
                 )
             }
             if (entry.recipe != null) {
-                SheetAction(R.drawable.ic_basket, stringResource(R.string.recipe_add_to_list), onClick = { choose(onShop) })
+                SheetAction(R.drawable.ic_basket_add, stringResource(R.string.recipe_add_to_list), onClick = { choose(onShop) })
                 Hairline(Modifier.padding(start = IconKeyline, end = ScreenMargin))
             }
             SheetAction(R.drawable.ic_delete, stringResource(R.string.plan_remove), onClick = { choose(onRemove) }, destructive = true)

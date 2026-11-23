@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,8 +19,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -119,6 +125,7 @@ fun AromaAlertDialog(
     modifier: Modifier = Modifier,
     text: String? = null,
     destructive: Boolean = false,
+    confirmEnabled: Boolean = true,
     content: (@Composable () -> Unit)? = null,
 ) {
     AlertDialog(
@@ -133,15 +140,48 @@ fun AromaAlertDialog(
                 { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             },
         confirmButton = {
-            ConfirmLink(confirmLabel, onConfirm, if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+            ConfirmLink(
+                confirmLabel,
+                onConfirm,
+                if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                confirmEnabled,
+            )
         },
         dismissButton = { QuietLink(dismissLabel, onDismissRequest, modifier = Modifier.padding(end = 16.dp)) },
     )
 }
 
 @Composable
-private fun ConfirmLink(text: String, onClick: () -> Unit, color: Color) {
-    androidx.compose.material3.TextButton(onClick = onClick) {
-        Text(text, style = MaterialTheme.typography.labelLarge, color = color)
+private fun ConfirmLink(text: String, onClick: () -> Unit, color: Color, enabled: Boolean) {
+    TextButton(onClick = onClick, enabled = enabled) {
+        Text(text, style = MaterialTheme.typography.labelLarge, color = if (enabled) color else color.copy(alpha = 0.38f))
     }
+}
+
+/** Pull to refresh with a paper indicator and a sage arc, the same on every tab. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AromaPullToRefreshBox(
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val state = rememberPullToRefreshState()
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier,
+        state = state,
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = state,
+                isRefreshing = isRefreshing,
+                containerColor = extras.raised,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        },
+        content = content,
+    )
 }

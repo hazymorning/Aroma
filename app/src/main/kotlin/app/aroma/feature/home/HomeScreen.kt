@@ -42,7 +42,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -71,6 +70,7 @@ import app.aroma.core.model.MealPlanEntry
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
+import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
@@ -149,7 +149,7 @@ private val CarouselCardWidth = 160.dp
 fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
     ScrollToTopOnReselect(listState)
-    PullToRefreshBox(
+    AromaPullToRefreshBox(
         isRefreshing = state.isRefreshing,
         onRefresh = actions.onRefresh,
         modifier = modifier.fillMaxSize(),

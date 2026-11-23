@@ -40,7 +40,6 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -73,6 +72,7 @@ import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaDropdownMenu
 import app.aroma.ui.components.AromaMenuItem
+import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.HeaderAction
@@ -140,7 +140,7 @@ fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: M
     val snackbar = remember { SnackbarHostState() }
     ShoppingSnackbars(state, actions, snackbar)
     Box(modifier.fillMaxSize()) {
-        PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
+        AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + PageEndSpace),
@@ -512,6 +512,7 @@ private fun NameDialog(title: String, initial: String, onConfirm: (String) -> Un
         confirmLabel = stringResource(R.string.action_save),
         onConfirm = confirm,
         dismissLabel = stringResource(R.string.action_cancel),
+        confirmEnabled = text.isNotBlank(),
         content = {
             LabeledTextField(
                 value = text,
