@@ -60,7 +60,6 @@ import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.format.IngredientFormatter
 import app.aroma.core.format.IngredientLine
@@ -76,10 +75,11 @@ import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.measureText
 import app.aroma.ui.components.rememberRowSwipeState
-import app.aroma.ui.navigation.Transitions.Settle
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.ShoppingModeItem
 import java.util.Locale
 
 /** Open items grouped by label, in the order chosen in Mealie; unlabeled items come last. */
@@ -313,12 +313,7 @@ private fun ItemRow(
         ) {
             StruckText(
                 text = text,
-                style =
-                    if (large) {
-                        MaterialTheme.typography.bodyLarge.copy(fontSize = 22.sp, lineHeight = 28.sp)
-                    } else {
-                        MaterialTheme.typography.bodyLarge
-                    },
+                style = if (large) ShoppingModeItem else MaterialTheme.typography.bodyLarge,
                 progress = { strike.value },
             )
             if (item.recipeNames.isNotEmpty()) {

@@ -39,9 +39,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.aroma.ui.navigation.Transitions.Settle
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.floatingShadow
 

@@ -90,10 +90,10 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.rememberRowSwipeState
-import app.aroma.ui.navigation.Transitions.Settle
 import app.aroma.ui.theme.CardTitle
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.extras

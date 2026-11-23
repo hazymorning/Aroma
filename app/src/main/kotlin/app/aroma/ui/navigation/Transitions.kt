@@ -3,7 +3,6 @@ package app.aroma.ui.navigation
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -13,6 +12,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
+import app.aroma.ui.theme.Motion.Settle
 
 /**
  * Calm screen changes: the old screen fades out quickly while the new one settles in with a
@@ -23,9 +23,6 @@ internal object Transitions {
     private const val DURATION = 320
     private const val FADE_OUT = 110
     private const val FADE_IN = 210
-
-    /** Material's emphasized decelerate curve: quick start, long soft landing. */
-    val Settle = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 
     private fun drift(fullWidth: Int) = fullWidth / 12
 

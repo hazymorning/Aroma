@@ -1,5 +1,6 @@
 package app.aroma.ui.theme
 
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -24,11 +25,17 @@ val CardInset: Dp = 12.dp
 /** Text after a 24 dp check or icon. */
 val IconKeyline: Dp = 64.dp
 
-/** Durations in milliseconds; everything settles with [app.aroma.ui.navigation.Transitions.Settle]. */
+/** Durations in milliseconds, and the curve that movement and size changes settle with. */
 object Motion {
     const val PRESS = 120
     const val STATE = 180
     const val EXPAND = 240
+
+    /** One breath of something that pulses while it waits: a placeholder, a finished timer. */
+    const val PULSE = 1000
+
+    /** Material's emphasized decelerate curve: quick start, long soft landing. */
+    val Settle = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 }
 
 /** Thin lines: between rows, around controls, and the ring of a check circle. */

@@ -73,7 +73,6 @@ import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.format.DurationDetector
 import app.aroma.core.format.IngredientFormatter
@@ -103,11 +102,11 @@ import app.aroma.ui.components.formatDuration
 import app.aroma.ui.components.fullBleed
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberRichText
-import app.aroma.ui.navigation.Transitions.Settle
 import app.aroma.ui.theme.CookStep
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
-import app.aroma.ui.theme.tabular
+import app.aroma.ui.theme.TimerDigits
 import kotlinx.coroutines.launch
 
 data class CookTimerUi(
@@ -291,7 +290,7 @@ private fun StepProgress(current: Int, steps: Int) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         repeat(steps) { index ->
-            val fill by animateFloatAsState(if (index <= current) 1f else 0f, tween(280, easing = Settle), label = "stepFill")
+            val fill by animateFloatAsState(if (index <= current) 1f else 0f, tween(Motion.EXPAND, easing = Settle), label = "stepFill")
             val done = MaterialTheme.colorScheme.primary
             Box(
                 Modifier
@@ -557,10 +556,7 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
             )
             Text(
                 text = if (finished) stringResource(R.string.cook_timer_done) else formatClock(timer.remainingSeconds),
-                style =
-                    MaterialTheme.typography.headlineMedium
-                        .copy(fontSize = 28.sp)
-                        .tabular(),
+                style = TimerDigits,
                 color = timeColor,
                 maxLines = 1,
             )
@@ -583,7 +579,7 @@ private fun finishedPulse(): State<Float> =
     rememberInfiniteTransition(label = "timerDone").animateFloat(
         initialValue = 1f,
         targetValue = 0.55f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(Motion.PULSE), RepeatMode.Reverse),
         label = "timerPulse",
     )
 

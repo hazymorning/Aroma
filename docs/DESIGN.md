@@ -32,7 +32,7 @@ components only. `DesignRulesTest` checks the rules marked *(checked)* on every 
 | `PageEndSpace` | 32 | Free space after the last item of a scrolling page |
 | Shapes | extraSmall 4, small 8, medium 12, large 16, extraLarge 24; circle | Placeholder lines, thumbnails, photos and fields, cards, sheets; buttons, chips, avatars |
 | `Lines` | hairline 0.5, control 1, checkRing 1.25 | Between rows, around controls, a check's ring |
-| `Motion` | PRESS 120, STATE 180, EXPAND 240, with `Settle` | Pressing, changing state, moving and resizing |
+| `Motion` | PRESS 120, STATE 180, EXPAND 240, PULSE 1000, with `Settle` | Pressing, changing state, moving and resizing; a pulse while something waits |
 
 Colours, by role (`MaterialTheme.colorScheme` and `extras`):
 
@@ -50,7 +50,8 @@ Colours, by role (`MaterialTheme.colorScheme` and `extras`):
 
 Type (`Type.kt`): Newsreader for display and titles (`displaySmall` page titles,
 `headlineSmall` section and sheet titles, `CardTitle` titles in lists and cards, `Standfirst`
-leads, `CookStep` steps in cook mode); Figtree for running text (`body*`, `Reading`), labels
+leads, `CookStep` steps in cook mode, `StepNumber` step numbers, `TimerDigits` timers); Figtree
+for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode), labels
 (`label*`) and kickers (`KickerStyle`, tracked caps). Numbers that line up use `tabular()`.
 
 ## Rules
@@ -65,8 +66,8 @@ leads, `CookStep` steps in cook mode); Figtree for running text (`body*`, `Readi
 5. **Components, not primitives.** Screens use Aroma's components; Material's buttons, cards,
    dialogs, sheets, menus, switches, chips, fields, snackbars and progress indicators appear only
    inside `ui/components` *(checked)*.
-6. **Motion from `Motion`.** No literal durations; movement and size changes settle with `Settle`
-   *(checked: no `tween(N)`)*.
+6. **Motion from `Motion`.** No literal durations; movement and size changes settle with
+   `Motion.Settle` *(checked: no `tween(N)`)*.
 7. **Cards.** Rows that belong together sit on a `SoftCard`: a settings group, a day of the plan,
    a section of ingredients or of the shopping list, a day of the timeline, the times of a recipe.
    Hairlines separate rows only inside a card. A card's content keeps the 24 dp margin; the card

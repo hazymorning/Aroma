@@ -76,7 +76,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.format.IngredientFormatter
 import app.aroma.core.format.Quantities
@@ -112,14 +111,15 @@ import app.aroma.ui.components.Stepper
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.recipeTimeText
 import app.aroma.ui.components.rememberRichText
-import app.aroma.ui.navigation.Transitions.Settle
 import app.aroma.ui.theme.KickerStyle
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.Reading
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.Standfirst
+import app.aroma.ui.theme.StepNumber
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.floatingShadow
 import app.aroma.ui.theme.tabular
@@ -374,7 +374,7 @@ private fun BoxScope.CookButton(visible: Boolean, onClick: () -> Unit) {
     SideEffect { shown.targetState = visible }
     AnimatedVisibility(
         visibleState = shown,
-        enter = fadeIn(tween(220, delayMillis = 150)),
+        enter = fadeIn(tween(Motion.EXPAND, delayMillis = Motion.STATE)),
         exit = fadeOut(tween(Motion.STATE)),
         modifier =
             Modifier
@@ -397,7 +397,7 @@ private fun BoxScope.CookButton(visible: Boolean, onClick: () -> Unit) {
                 modifier =
                     Modifier
                         .animateEnterExit(
-                            enter = slideInVertically(tween(Motion.EXPAND, delayMillis = 150, easing = Settle)) { it / 3 },
+                            enter = slideInVertically(tween(Motion.EXPAND, delayMillis = Motion.STATE, easing = Settle)) { it / 3 },
                             exit = ExitTransition.None,
                         ).navigationBarsPadding()
                         .padding(bottom = Space.m)
@@ -704,10 +704,7 @@ private fun StepItem(index: Int, step: Step, modifier: Modifier = Modifier) {
     Row(modifier.padding(horizontal = ScreenMargin)) {
         Text(
             text = (index + 1).toString(),
-            style =
-                MaterialTheme.typography.headlineMedium
-                    .copy(fontSize = 24.sp)
-                    .tabular(),
+            style = StepNumber,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier =
                 Modifier

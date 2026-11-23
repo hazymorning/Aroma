@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.RecipeImage
+import app.aroma.ui.theme.Motion
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -67,7 +68,7 @@ fun RecipeImage(
                         // Keyed by URL alone, so a card's copy can stand in on the next screen.
                         .memoryCacheKey(image.url(size))
                         .placeholderMemoryCacheKey(placeholder?.let(image::url))
-                        .crossfade(220)
+                        .crossfade(Motion.EXPAND)
                         .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,

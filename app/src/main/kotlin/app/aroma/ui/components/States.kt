@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.data.AromaError
+import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 
 /**
@@ -96,7 +97,7 @@ fun Placeholder(modifier: Modifier = Modifier, shape: Shape = MaterialTheme.shap
     val alpha by transition.animateFloat(
         initialValue = 0.55f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(Motion.PULSE, easing = LinearEasing), RepeatMode.Reverse),
         label = "placeholderAlpha",
     )
     Box(

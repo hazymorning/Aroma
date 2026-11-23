@@ -73,8 +73,8 @@ import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.titleRes
-import app.aroma.ui.navigation.Transitions.Settle
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.tabular

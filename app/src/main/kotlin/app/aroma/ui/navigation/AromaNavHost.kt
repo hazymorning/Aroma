@@ -44,6 +44,7 @@ import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.LocalScrollToTop
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.Motion.Settle
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -158,8 +159,8 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
         }
         AnimatedVisibility(
             visible = showBar,
-            enter = fadeIn(tween(200)) + slideInVertically(tween(260, easing = Transitions.Settle)) { it / 2 },
-            exit = fadeOut(tween(140)) + slideOutVertically(tween(180)) { it / 2 },
+            enter = fadeIn(tween(Motion.STATE)) + slideInVertically(tween(Motion.EXPAND, easing = Settle)) { it / 2 },
+            exit = fadeOut(tween(Motion.PRESS)) + slideOutVertically(tween(Motion.STATE)) { it / 2 },
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)

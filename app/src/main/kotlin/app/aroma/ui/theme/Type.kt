@@ -94,6 +94,15 @@ val Reading = sans(17, 27, FontWeight.Normal)
 /** The step text in cook mode. */
 val CookStep = serifText(26, 36, FontWeight.Normal).copy(lineBreak = LineBreak.Paragraph, hyphens = Hyphens.Auto)
 
+/** A step's number in the gutter of a recipe, a quiet serif numeral level with the step's first line. */
+val StepNumber = serifDisplay(24, 32, -0.01).tabular()
+
+/** The time left on a cooking timer, readable from across the kitchen. */
+val TimerDigits = serifDisplay(28, 32, -0.01).tabular()
+
+/** Items in shopping mode, large enough to read with the phone held low over the trolley. */
+val ShoppingModeItem = sans(22, 28, FontWeight.Normal)
+
 /** Lining figures of equal width, so times, amounts and counters do not jitter. */
 fun TextStyle.tabular(): TextStyle = copy(fontFeatureSettings = "tnum, lnum")
 

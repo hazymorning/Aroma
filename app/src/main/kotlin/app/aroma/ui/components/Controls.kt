@@ -70,10 +70,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.aroma.R
-import app.aroma.ui.navigation.Transitions.Settle
 import app.aroma.ui.theme.KickerStyle
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.contactShadow
 import app.aroma.ui.theme.extras
@@ -137,7 +137,7 @@ fun Stepper(
         HairlineIconButton(R.drawable.ic_remove, stringResource(R.string.action_decrease), onDecrease, enabled = canDecrease)
         AnimatedContent(
             targetState = label,
-            transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
+            transitionSpec = { fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) },
             label = "stepperValue",
         ) { value ->
             Text(
@@ -180,13 +180,13 @@ fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 
                     else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
                 }
             if (onRate != null) {
-                // Stars up to the tapped one fill in turn, 50 ms apart.
+                // Stars up to the tapped one fill in turn.
                 val fill = remember(star) { Animatable(1f) }
                 LaunchedEffect(lit) {
                     if (lit) {
                         fill.snapTo(0.4f)
-                        kotlinx.coroutines.delay(50L * (star - 1))
-                        fill.animateTo(1f, tween(160))
+                        kotlinx.coroutines.delay(STAR_STAGGER_MILLIS * (star - 1))
+                        fill.animateTo(1f, tween(Motion.STATE))
                     }
                 }
                 Box(
@@ -218,6 +218,9 @@ fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 
         }
     }
 }
+
+/** How long each star waits for the one before it as the stars fill in. */
+private const val STAR_STAGGER_MILLIS = 50L
 
 /** Interactive stars leave this much room before the first glyph; offset the row by it to keep the keyline. */
 fun ratingTouchInset(starSize: Int): Dp = (48.dp - starSize.dp) / 2
@@ -372,11 +375,11 @@ fun SegmentedControl(options: List<String>, selectedIndex: Int, onSelect: (Int) 
  */
 @Composable
 fun CheckCircle(checked: Boolean, modifier: Modifier = Modifier, size: Dp = 24.dp) {
-    val fill by animateFloatAsState(if (checked) 1f else 0f, tween(140), label = "checkFill")
+    val fill by animateFloatAsState(if (checked) 1f else 0f, tween(Motion.PRESS), label = "checkFill")
     val draw = remember { Animatable(if (checked) 1f else 0f) }
     LaunchedEffect(checked) {
         if (checked) {
-            draw.animateTo(1f, tween(200, delayMillis = 80, easing = Settle))
+            draw.animateTo(1f, tween(Motion.STATE, delayMillis = Motion.PRESS, easing = Settle))
         } else {
             draw.snapTo(0f)
         }
