@@ -7,13 +7,15 @@ import android.content.Intent
 import android.os.Build
 import android.os.SystemClock
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 
 /** A running or paused countdown. [endsAt] is on the elapsed-realtime clock and null while paused. */
@@ -33,7 +35,7 @@ data class CookingTimer(
  * Timers survive leaving the cooking screen. Each running timer also has an alarm,
  * so the notification arrives even when Aroma is in the background.
  */
-class CookingTimers(private val context: Context, private val scope: CoroutineScope) {
+class CookingTimers(private val context: Context, scope: CoroutineScope) {
     private val mutableTimers = MutableStateFlow<List<CookingTimer>>(emptyList())
     val timers: StateFlow<List<CookingTimer>> = mutableTimers.asStateFlow()
 
@@ -42,32 +44,47 @@ class CookingTimers(private val context: Context, private val scope: CoroutineSc
     /** Ticks once per second while any timer runs. */
     val now: StateFlow<Long> = mutableNow.asStateFlow()
 
-    private var ticker: Job? = null
     private val alarms = context.getSystemService(AlarmManager::class.java)
 
     val canUseExactAlarms: Boolean
         get() = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()
+
+    init {
+        // One loop ticks on whole seconds while any timer runs; collectLatest ends it once none does.
+        scope.launch {
+            mutableTimers
+                .map { list -> list.any { it.isRunning } }
+                .distinctUntilChanged()
+                .collectLatest { running ->
+                    while (running) {
+                        tick()
+                        delay(1000 - SystemClock.elapsedRealtime() % 1000)
+                    }
+                }
+        }
+    }
 
     fun start(seconds: Int, label: String, recipeName: String) {
         val now = SystemClock.elapsedRealtime()
         val timer = CookingTimer(System.nanoTime(), label, recipeName, now + seconds * 1000L, seconds * 1000L)
         mutableTimers.update { it + timer }
         schedule(timer)
-        ensureTicking()
     }
 
     fun toggle(id: Long) {
         val now = SystemClock.elapsedRealtime()
-        mutableTimers.update { list ->
-            list.map { timer ->
-                when {
-                    timer.id != id -> timer
-                    timer.isRunning -> timer.copy(endsAt = null, remainingMillis = timer.remaining(now)).also { cancelAlarm(it) }
-                    else -> timer.copy(endsAt = now + timer.remainingMillis).also { schedule(it) }
-                }
-            }
-        }
-        ensureTicking()
+        val toggled =
+            mutableTimers
+                .updateAndGet { list ->
+                    list.map { timer ->
+                        when {
+                            timer.id != id -> timer
+                            timer.isRunning -> timer.copy(endsAt = null, remainingMillis = timer.remaining(now))
+                            else -> timer.copy(endsAt = now + timer.remainingMillis)
+                        }
+                    }
+                }.firstOrNull { it.id == id } ?: return
+        if (toggled.isRunning) schedule(toggled) else cancelAlarm(toggled)
     }
 
     fun dismiss(id: Long) {
@@ -80,27 +97,19 @@ class CookingTimers(private val context: Context, private val scope: CoroutineSc
         mutableTimers.value = emptyList()
     }
 
-    private fun ensureTicking() {
-        if (ticker?.isActive == true) return
-        ticker =
-            scope.launch {
-                while (isActive && mutableTimers.value.any { it.isRunning }) {
-                    val now = SystemClock.elapsedRealtime()
-                    mutableNow.value = now
-                    val finished = mutableTimers.value.filter { it.isRunning && it.remaining(now) == 0L }
-                    if (finished.isNotEmpty()) {
-                        mutableTimers.update { list ->
-                            list.map { timer -> if (timer in finished) timer.copy(endsAt = null, remainingMillis = 0) else timer }
-                        }
-                        finished.forEach { timer ->
-                            cancelAlarm(timer)
-                            TimerNotifications.showFinished(context, timer.id, timer.recipeName, timer.label)
-                        }
-                    }
-                    delay(1000 - (now % 1000))
-                }
-                mutableNow.value = SystemClock.elapsedRealtime()
-            }
+    /** Moves [now] on and rings the timers that have ended. */
+    private fun tick() {
+        val now = SystemClock.elapsedRealtime()
+        mutableNow.value = now
+        val finished = mutableTimers.value.filter { it.isRunning && it.remaining(now) == 0L }
+        if (finished.isEmpty()) return
+        mutableTimers.update { list ->
+            list.map { timer -> if (timer in finished) timer.copy(endsAt = null, remainingMillis = 0) else timer }
+        }
+        finished.forEach { timer ->
+            cancelAlarm(timer)
+            TimerNotifications.showFinished(context, timer.id, timer.recipeName, timer.label)
+        }
     }
 
     private fun schedule(timer: CookingTimer) {

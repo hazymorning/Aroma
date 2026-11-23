@@ -55,6 +55,8 @@ object TimerNotifications {
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
+                // The alarm and the running app can both post it when a timer ends; only the first rings.
+                .setOnlyAlertOnce(true)
                 .setContentIntent(open)
                 .build()
         NotificationManagerCompat.from(context).notify(id.hashCode(), notification)
