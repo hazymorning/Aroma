@@ -1,10 +1,15 @@
 package app.aroma.feature.shopping
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,34 +21,27 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalIconToggleButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -54,48 +52,46 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.semantics.toggleableState
-import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.aroma.R
-import app.aroma.core.format.IngredientFormatter
-import app.aroma.core.format.IngredientLine
 import app.aroma.core.model.ShoppingItem
 import app.aroma.core.model.ShoppingList
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
+import app.aroma.ui.components.AromaAlertDialog
+import app.aroma.ui.components.AromaDropdownMenu
+import app.aroma.ui.components.AromaMenuItem
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.HeaderAction
+import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PageEndSpace
+import app.aroma.ui.components.PageHeader
 import app.aroma.ui.components.PillTextField
 import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.ScrollToTopOnReselect
+import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.currentLocale
-import app.aroma.ui.components.measureText
 import app.aroma.ui.components.titleRes
-import app.aroma.ui.theme.Sans
-import java.util.Locale
+import app.aroma.ui.theme.IconKeyline
+import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.extras
 
 data class ShoppingUiState(
     val lists: List<ShoppingListInfo> = emptyList(),
@@ -108,7 +104,11 @@ data class ShoppingUiState(
     val error: AromaError? = null,
     val notice: AromaError? = null,
     val lastDeleted: ShoppingItem? = null,
-)
+    /** Checks already shown on rows that have not moved yet, by item id. */
+    val settlingChecks: Map<String, Boolean> = emptyMap(),
+) {
+    fun isChecked(item: ShoppingItem): Boolean = settlingChecks[item.id] ?: item.checked
+}
 
 data class ShoppingActions(
     val onNewItemChange: (String) -> Unit = {},
@@ -134,72 +134,32 @@ fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: M
     var dialog by rememberSaveable { mutableStateOf<ShoppingDialog?>(null) }
     var editing by remember { mutableStateOf<ShoppingItem?>(null) }
     var shoppingMode by rememberSaveable { mutableStateOf(false) }
-    val view = LocalView.current
-    DisposableEffect(shoppingMode) {
-        view.keepScreenOn = shoppingMode
-        onDispose { view.keepScreenOn = false }
-    }
+    KeepScreenOn(shoppingMode)
+    val listState = rememberLazyListState()
+    ScrollToTopOnReselect(listState)
     val snackbar = remember { SnackbarHostState() }
-    val deletedMessage = stringResource(R.string.shopping_item_deleted)
-    val undoLabel = stringResource(R.string.action_undo)
-    val noticeText = state.notice?.let { stringResource(it.titleRes()) }
-    LaunchedEffect(state.notice) {
-        if (noticeText != null) {
-            snackbar.showSnackbar(noticeText)
-            actions.onNoticeShown()
-        }
-    }
-    LaunchedEffect(state.lastDeleted) {
-        if (state.lastDeleted != null) {
-            val result = snackbar.showSnackbar(deletedMessage, undoLabel, duration = SnackbarDuration.Short)
-            if (result == SnackbarResult.ActionPerformed) actions.onUndoDelete() else actions.onDeleteHandled()
-        }
-    }
+    ShoppingSnackbars(state, actions, snackbar)
     Box(modifier.fillMaxSize()) {
         PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + PageEndSpace),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 item(key = "header") {
                     Header(state, actions, shoppingMode, onShoppingMode = { shoppingMode = it }) { dialog = it }
                 }
-                val list = state.list
-                when {
-                    state.isLoading -> {
-                        item(key = "loading") { Loading() }
-                    }
-
-                    list == null && state.error != null -> {
-                        item(key = "error") {
-                            ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.fillMaxWidth())
-                        }
-                    }
-
-                    list == null -> {
-                        item(key = "noLists") {
-                            MessageState(
-                                icon = R.drawable.ic_basket,
-                                title = stringResource(R.string.shopping_no_lists_title),
-                                body = stringResource(R.string.shopping_no_lists_message),
-                                actionLabel = stringResource(R.string.shopping_create_list),
-                                onAction = { dialog = ShoppingDialog.Create },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-
-                    else -> {
-                        listContent(list, actions, large = shoppingMode, onEdit = { editing = it })
-                    }
-                }
+                body(state, actions, large = shoppingMode, onEdit = { editing = it }, onCreateList = { dialog = ShoppingDialog.Create })
             }
         }
+        StatusBarScrim(Modifier.align(Alignment.TopCenter))
         AromaSnackbarHost(
             snackbar,
             Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = LocalBottomBarInset.current),
+                .imePadding()
+                // 8 dp above the bar; while typing the bar is gone and the keyboard takes its place.
+                .padding(bottom = if (WindowInsets.isImeVisible) 16.dp else LocalBottomBarInset.current + 8.dp),
         )
     }
     when (dialog) {
@@ -228,17 +188,17 @@ fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: M
         }
 
         ShoppingDialog.Delete -> {
-            AlertDialog(
+            AromaAlertDialog(
                 onDismissRequest = { dialog = null },
-                title = { Text(stringResource(R.string.shopping_delete_list_title)) },
-                text = { Text(stringResource(R.string.shopping_delete_list_message, state.list?.name.orEmpty())) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        actions.onDeleteList()
-                        dialog = null
-                    }) { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) }
+                title = stringResource(R.string.shopping_delete_list_title),
+                text = stringResource(R.string.shopping_delete_list_message, state.list?.name.orEmpty()),
+                confirmLabel = stringResource(R.string.action_delete),
+                onConfirm = {
+                    actions.onDeleteList()
+                    dialog = null
                 },
-                dismissButton = { TextButton(onClick = { dialog = null }) { Text(stringResource(R.string.action_cancel)) } },
+                dismissLabel = stringResource(R.string.action_cancel),
+                destructive = true,
             )
         }
 
@@ -258,6 +218,74 @@ fun ShoppingScreen(state: ShoppingUiState, actions: ShoppingActions, modifier: M
     }
 }
 
+/** Shopping mode keeps the screen awake, so the list stays readable between shelves. */
+@Composable
+private fun KeepScreenOn(enabled: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(enabled) {
+        view.keepScreenOn = enabled
+        onDispose { view.keepScreenOn = false }
+    }
+}
+
+@Composable
+private fun ShoppingSnackbars(state: ShoppingUiState, actions: ShoppingActions, snackbar: SnackbarHostState) {
+    val deletedMessage = stringResource(R.string.shopping_item_deleted)
+    val undoLabel = stringResource(R.string.action_undo)
+    val noticeText = state.notice?.let { stringResource(it.titleRes()) }
+    LaunchedEffect(state.notice) {
+        if (noticeText != null) {
+            snackbar.showSnackbar(noticeText)
+            actions.onNoticeShown()
+        }
+    }
+    LaunchedEffect(state.lastDeleted) {
+        if (state.lastDeleted != null) {
+            val result = snackbar.showSnackbar(deletedMessage, undoLabel, duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) actions.onUndoDelete() else actions.onDeleteHandled()
+        }
+    }
+}
+
+private fun LazyListScope.body(
+    state: ShoppingUiState,
+    actions: ShoppingActions,
+    large: Boolean,
+    onEdit: (ShoppingItem) -> Unit,
+    onCreateList: () -> Unit,
+) {
+    val list = state.list
+    when {
+        state.isLoading -> {
+            item(key = "loading") { Loading() }
+        }
+
+        list == null && state.error != null -> {
+            item(key = "error") {
+                ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.fillMaxWidth())
+            }
+        }
+
+        list == null -> {
+            item(key = "noLists") {
+                MessageState(
+                    icon = R.drawable.ic_basket,
+                    title = stringResource(R.string.shopping_no_lists_title),
+                    body = stringResource(R.string.shopping_no_lists_message),
+                    actionLabel = stringResource(R.string.shopping_create_list),
+                    onAction = onCreateList,
+                    primaryAction = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        else -> {
+            shoppingSections(list, state, actions, large, onEdit)
+        }
+    }
+}
+
 @Composable
 private fun Header(
     state: ShoppingUiState,
@@ -266,339 +294,260 @@ private fun Header(
     onShoppingMode: (Boolean) -> Unit,
     openDialog: (ShoppingDialog) -> Unit,
 ) {
-    var listMenu by remember { mutableStateOf(false) }
-    var moreMenu by remember { mutableStateOf(false) }
+    val list = state.list
+    Column {
+        PageHeader(title = stringResource(R.string.nav_shopping)) {
+            if (list != null) {
+                ShoppingModeToggle(shoppingMode, onShoppingMode)
+                ListMenu(openDialog)
+            }
+        }
+        when {
+            shoppingMode -> {
+                Text(
+                    text = stringResource(R.string.shopping_mode_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp),
+                )
+            }
+
+            list != null -> {
+                ListSwitcher(list, state.lists, actions.onSelectList)
+                PillTextField(
+                    value = state.newItem,
+                    onValueChange = actions.onNewItemChange,
+                    placeholder = stringResource(R.string.shopping_add_hint),
+                    leadingIcon = R.drawable.ic_add,
+                    imeAction = ImeAction.Done,
+                    onSubmit = actions.onAddItem,
+                    // With the switcher's target below the name, this sets the field about 24 dp under it.
+                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp),
+                    trailing = { AddButton(visible = state.newItem.isNotBlank(), onClick = actions.onAddItem) },
+                )
+            }
+        }
+        SyncStatus(offline = state.isOffline, pendingChanges = state.pendingChanges)
+    }
+}
+
+/** That the list is the offline copy, and how many changes wait to be sent, in one quiet block. */
+@Composable
+private fun SyncStatus(offline: Boolean, pendingChanges: Int) {
+    if (!offline && pendingChanges == 0) return
     Column(
-        Modifier
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(top = 20.dp),
+        Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(Modifier.padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.nav_shopping), style = MaterialTheme.typography.displaySmall, modifier = Modifier.weight(1f))
-            if (state.list != null) {
-                FilledTonalIconToggleButton(checked = shoppingMode, onCheckedChange = onShoppingMode) {
-                    Icon(
-                        painterResource(R.drawable.ic_basket),
-                        contentDescription = stringResource(if (shoppingMode) R.string.shopping_mode_off else R.string.shopping_mode_on),
-                    )
-                }
-                Box {
-                    IconButton(onClick = { moreMenu = true }) {
-                        Icon(painterResource(R.drawable.ic_more_horiz), contentDescription = stringResource(R.string.action_more))
-                    }
-                    DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
-                        DropdownMenuItem(text = { Text(stringResource(R.string.shopping_create_list)) }, onClick = {
-                            moreMenu = false
-                            openDialog(ShoppingDialog.Create)
-                        })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.shopping_rename_list)) }, onClick = {
-                            moreMenu = false
-                            openDialog(ShoppingDialog.Rename)
-                        })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.shopping_delete_list)) }, onClick = {
-                            moreMenu = false
-                            openDialog(ShoppingDialog.Delete)
-                        })
-                    }
-                }
-            }
-        }
-        if (shoppingMode) {
+        if (offline) OfflineNotice()
+        if (pendingChanges > 0) {
             Text(
-                text = stringResource(R.string.shopping_mode_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-        }
-        state.list?.takeUnless { shoppingMode }?.let { list ->
-            Box(Modifier.padding(start = 8.dp)) {
-                TextButton(onClick = { if (state.lists.size > 1) listMenu = true }) {
-                    Text(list.name, style = MaterialTheme.typography.titleMedium)
-                    if (state.lists.size > 1) {
-                        Icon(painterResource(R.drawable.ic_expand_more), contentDescription = stringResource(R.string.shopping_switch_list))
-                    }
-                }
-                DropdownMenu(expanded = listMenu, onDismissRequest = { listMenu = false }) {
-                    state.lists.forEach { info ->
-                        DropdownMenuItem(
-                            text = { Text(info.name) },
-                            trailingIcon =
-                                if (info.id == list.id) {
-                                    { Icon(painterResource(R.drawable.ic_check), contentDescription = null) }
-                                } else {
-                                    null
-                                },
-                            onClick = {
-                                listMenu = false
-                                actions.onSelectList(info.id)
-                            },
-                        )
-                    }
-                }
-            }
-            PillTextField(
-                value = state.newItem,
-                onValueChange = actions.onNewItemChange,
-                placeholder = stringResource(R.string.shopping_add_hint),
-                leadingIcon = R.drawable.ic_add,
-                imeAction = ImeAction.Done,
-                onSubmit = actions.onAddItem,
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp),
-                trailing =
-                    if (state.newItem.isNotBlank()) {
-                        {
-                            FilledIconButton(onClick = actions.onAddItem) {
-                                Icon(painterResource(R.drawable.ic_check), contentDescription = stringResource(R.string.shopping_add))
-                            }
-                        }
-                    } else {
-                        null
-                    },
-            )
-        }
-        if (state.isOffline) {
-            OfflineNotice(Modifier.padding(start = 20.dp, top = 12.dp))
-        }
-        if (state.pendingChanges > 0) {
-            Text(
-                text = pluralStringResource(R.plurals.shopping_pending, state.pendingChanges, state.pendingChanges),
+                text = pluralStringResource(R.plurals.shopping_pending, pendingChanges, pendingChanges),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 20.dp, top = 4.dp),
+                // Under the notice's text, past its 16 dp glyph and 8 dp gap.
+                modifier = Modifier.padding(start = if (offline) 24.dp else 0.dp),
             )
         }
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.listContent(
-    list: ShoppingList,
-    actions: ShoppingActions,
-    large: Boolean,
-    onEdit: (ShoppingItem) -> Unit,
-) {
-    val groups = list.grouped()
-    if (groups.sections.isEmpty() && groups.checked.isEmpty()) {
-        item(key = "empty") {
-            MessageState(
-                icon = R.drawable.ic_basket,
-                title = stringResource(R.string.shopping_empty_title),
-                body = stringResource(R.string.shopping_empty_message),
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        return
-    }
-    if (groups.sections.isEmpty()) {
-        item(key = "allDone") {
-            MessageState(
-                icon = R.drawable.ic_done_all,
-                title = stringResource(R.string.shopping_done_title),
-                body = stringResource(R.string.shopping_done_message),
-                modifier = Modifier.fillMaxWidth(),
+/** The cart glyph, drawn in sage with a faint fill while shopping mode is on. */
+@Composable
+private fun ShoppingModeToggle(on: Boolean, onChange: (Boolean) -> Unit) {
+    val label = stringResource(if (on) R.string.shopping_mode_off else R.string.shopping_mode_on)
+    IconToggleButton(checked = on, onCheckedChange = onChange, modifier = Modifier.semantics { contentDescription = label }) {
+        Crossfade(on, animationSpec = tween(Motion.STATE), label = "shoppingMode") { active ->
+            Icon(
+                painterResource(if (active) R.drawable.ic_cart_selected else R.drawable.ic_cart),
+                contentDescription = null,
+                tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             )
         }
     }
-    groups.sections.forEach { section ->
-        item(key = "label-${section.label?.id ?: "none"}") {
+}
+
+@Composable
+private fun ListMenu(openDialog: (ShoppingDialog) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val choose = { dialog: ShoppingDialog ->
+        open = false
+        openDialog(dialog)
+    }
+    Box {
+        HeaderAction(R.drawable.ic_more_horiz, stringResource(R.string.action_more), onClick = { open = true })
+        AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            AromaMenuItem(stringResource(R.string.shopping_create_list), R.drawable.ic_add, onClick = { choose(ShoppingDialog.Create) })
+            AromaMenuItem(stringResource(R.string.shopping_rename_list), R.drawable.ic_edit, onClick = { choose(ShoppingDialog.Rename) })
+            AromaMenuItem(
+                stringResource(R.string.shopping_delete_list),
+                R.drawable.ic_delete,
+                onClick = { choose(ShoppingDialog.Delete) },
+                destructive = true,
+            )
+        }
+    }
+}
+
+/**
+ * The list's name under the page title, on the margin. With more than one list it opens a menu
+ * of the others; pressing dims it instead of blooming a ripple.
+ */
+@Composable
+private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, onSelect: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val switchable = lists.size > 1
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val alpha by animateFloatAsState(if (pressed) 0.6f else 1f, tween(Motion.PRESS), label = "switcherAlpha")
+    Box(
+        Modifier
+            .padding(horizontal = ScreenMargin)
+            .heightIn(min = 48.dp)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = switchable,
+                onClickLabel = stringResource(R.string.shopping_switch_list),
+                role = Role.Button,
+                onClick = { open = true },
+            )
+            // The name sits 8 dp under the title, and the rest of its 48 dp target lies below it.
+            .padding(top = 8.dp),
+    ) {
+        Row(Modifier.graphicsLayer { this.alpha = alpha }, verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = section.label?.name ?: stringResource(R.string.shopping_other),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier =
-                    Modifier
-                        .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 4.dp)
-                        .semantics { heading() },
+                text = current.name,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
-        }
-        items(section.items, key = { it.id }) { item ->
-            SwipeableItem(item, actions, large, onEdit)
-        }
-    }
-    if (groups.checked.isNotEmpty()) {
-        item(key = "checkedHeader") {
-            Row(
-                modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 28.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.shopping_in_cart, groups.checked.size),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .semantics { heading() },
-                )
-                TextButton(onClick = actions.onClearChecked) { Text(stringResource(R.string.shopping_clear_checked)) }
-            }
-        }
-        items(groups.checked, key = { it.id }) { item ->
-            SwipeableItem(item, actions, large, onEdit)
-        }
-    }
-}
-
-@Composable
-private fun SwipeableItem(item: ShoppingItem, actions: ShoppingActions, large: Boolean, onEdit: (ShoppingItem) -> Unit) {
-    val dismissState = rememberSwipeToDismissBoxState()
-    LaunchedEffect(dismissState.currentValue) {
-        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) actions.onDelete(item)
-    }
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        backgroundContent = {
-            val color by animateColorAsState(
-                if (dismissState.targetValue ==
-                    SwipeToDismissBoxValue.EndToStart
-                ) {
-                    MaterialTheme.colorScheme.errorContainer
-                } else {
-                    Color.Transparent
-                },
-                label = "swipe",
-            )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(color)
-                    .padding(horizontal = 24.dp),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                Icon(painterResource(R.drawable.ic_delete), contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
-            }
-        },
-    ) {
-        ItemRow(item, large, onToggle = { actions.onToggle(item) }, onLongClick = { onEdit(item) })
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun ItemRow(item: ShoppingItem, large: Boolean, onToggle: () -> Unit, onLongClick: () -> Unit) {
-    val locale = currentLocale()
-    val line = remember(item, locale) { itemLine(item, locale) }
-    val checkedLabel = stringResource(R.string.shopping_checked)
-    val uncheckedLabel = stringResource(R.string.shopping_unchecked)
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-                .combinedClickable(role = Role.Checkbox, onClick = onToggle, onLongClick = onLongClick)
-                .semantics(mergeDescendants = true) {
-                    toggleableState = ToggleableState(item.checked)
-                    stateDescription = if (item.checked) checkedLabel else uncheckedLabel
-                }.heightIn(min = if (large) 72.dp else 56.dp)
-                .padding(horizontal = 20.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CheckCircle(item.checked, size = if (large) 34.dp else 26.dp)
-        Spacer(Modifier.width(16.dp))
-        Column(
-            Modifier
-                .weight(1f)
-                .alpha(if (item.checked) 0.5f else 1f),
-        ) {
-            val textStyle =
-                if (large) {
-                    MaterialTheme.typography.headlineSmall.copy(
-                        fontFamily = Sans,
-                    )
-                } else {
-                    MaterialTheme.typography.bodyLarge
-                }
-            Text(
-                text = itemText(line),
-                style = textStyle.copy(textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None),
-            )
-            if (item.recipeNames.isNotEmpty()) {
-                Text(
-                    text = stringResource(R.string.shopping_for_recipe, item.recipeNames.joinToString(", ")),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CheckCircle(checked: Boolean, size: Dp) {
-    val fill by animateColorAsState(if (checked) MaterialTheme.colorScheme.primary else Color.Transparent, label = "check")
-    Surface(
-        shape = CircleShape,
-        color = fill,
-        border = if (checked) null else BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
-        modifier = Modifier.size(size),
-    ) {
-        if (checked) {
-            Box(contentAlignment = Alignment.Center) {
+            if (switchable) {
+                Spacer(Modifier.width(4.dp))
                 Icon(
-                    painterResource(R.drawable.ic_check),
+                    painterResource(R.drawable.ic_expand_more),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(size * 0.7f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
                 )
+            }
+        }
+        AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            lists.forEach { info ->
+                ListChoice(info.name, chosen = info.id == current.id) {
+                    open = false
+                    onSelect(info.id)
+                }
             }
         }
     }
 }
 
-internal fun itemLine(item: ShoppingItem, locale: Locale): IngredientLine =
-    if (item.unit != null || item.food != null) {
-        IngredientFormatter.parsed(item.quantity, item.unit, item.food, item.note, 1.0, locale)
-    } else {
-        IngredientFormatter.freeText(item.note, if (item.quantity > 1) item.quantity else 0.0, 1.0, locale)
-    }
-
-private fun itemText(line: IngredientLine): AnnotatedString =
-    buildAnnotatedString {
-        if (line.hasMeasure) {
-            withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append(measureText(line)) }
-            append(' ')
-        }
-        append(line.text)
-        line.note?.let { append(", $it") }
-    }
-
+/** A list in the switcher's menu; the current one carries a sage check at the end. */
 @Composable
-private fun NameDialog(title: String, initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
-    var text by rememberSaveable { mutableStateOf(initial) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
-                modifier = Modifier.fillMaxWidth(),
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(text.trim()) }, enabled = text.isNotBlank()) { Text(stringResource(R.string.action_save)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+private fun ListChoice(name: String, chosen: Boolean, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        trailingIcon =
+            if (chosen) {
+                {
+                    Icon(
+                        painterResource(R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            } else {
+                null
+            },
+        onClick = onClick,
+        modifier = Modifier.semantics { selected = chosen },
     )
 }
 
+/** The add field's confirm: a small sage circle 8 dp from the field's end, there only while something is typed. */
 @Composable
-private fun Loading() {
-    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        repeat(6) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Placeholder(Modifier.size(26.dp), shape = CircleShape)
-                Spacer(Modifier.width(16.dp))
-                Placeholder(
+private fun AddButton(visible: Boolean, onClick: () -> Unit) {
+    Box(Modifier.size(48.dp)) {
+        AnimatedVisibility(visible, enter = fadeIn(tween(Motion.STATE)), exit = fadeOut(tween(Motion.STATE))) {
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clickable(
+                        interactionSource = null,
+                        indication = ripple(bounded = false, radius = 16.dp),
+                        role = Role.Button,
+                        onClick = onClick,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
                     Modifier
-                        .height(18.dp)
-                        .width(if (it % 2 == 0) 180.dp else 240.dp),
-                )
+                        .size(32.dp)
+                        .background(extras.cta, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_check),
+                        contentDescription = stringResource(R.string.shopping_add),
+                        tint = extras.onCta,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
         }
+    }
+}
+
+/** A name for a list or the text of an item, typed into one field. Saving needs something to save. */
+@Composable
+private fun NameDialog(title: String, initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var text by rememberSaveable { mutableStateOf(initial) }
+    val confirm = { if (text.isNotBlank()) onConfirm(text.trim()) }
+    AromaAlertDialog(
+        onDismissRequest = onDismiss,
+        title = title,
+        confirmLabel = stringResource(R.string.action_save),
+        onConfirm = confirm,
+        dismissLabel = stringResource(R.string.action_cancel),
+        content = {
+            LabeledTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = null,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { confirm() }),
+            )
+        },
+    )
+}
+
+private val PlaceholderWidths = listOf(176.dp, 128.dp, 216.dp, 152.dp, 192.dp, 120.dp)
+
+/** The outline of a category while the list loads: a kicker, then rows of checks and lines. */
+@Composable
+private fun Loading() {
+    Column(Modifier.padding(top = 32.dp)) {
+        Placeholder(
+            Modifier
+                .padding(horizontal = ScreenMargin)
+                .size(width = 96.dp, height = 12.dp),
+            shape = MaterialTheme.shapes.extraSmall,
+        )
         Spacer(Modifier.height(8.dp))
+        PlaceholderWidths.forEach { width ->
+            Row(
+                Modifier
+                    .height(56.dp)
+                    .padding(horizontal = ScreenMargin),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Placeholder(Modifier.size(24.dp), shape = CircleShape)
+                Spacer(Modifier.width(IconKeyline - ScreenMargin - 24.dp))
+                Placeholder(Modifier.size(width = width, height = 12.dp), shape = MaterialTheme.shapes.extraSmall)
+            }
+        }
     }
 }

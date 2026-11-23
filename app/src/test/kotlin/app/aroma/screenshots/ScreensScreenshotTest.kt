@@ -174,6 +174,8 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                                 ),
                             list = sample.shoppingList,
                             isLoading = false,
+                            // Just checked: drawn and struck through, a moment before it moves into the basket.
+                            settlingChecks = mapOf(sample.shoppingList.items[1].id to true),
                         ),
                     actions = ShoppingActions(),
                 )

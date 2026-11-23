@@ -3,10 +3,12 @@ package app.aroma.feature.shopping
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.ShoppingItem
+import app.aroma.core.model.ShoppingList
 import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,12 +18,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
+/** How long a checked row stays in place before it moves into or out of the basket. */
+private const val SETTLE_MILLIS = 450L
+
 class ShoppingViewModel(private val shopping: ShoppingRepository, private val settings: SettingsRepository) : ViewModel() {
     private val mutableState = MutableStateFlow(ShoppingUiState())
     val state: StateFlow<ShoppingUiState> = mutableState.asStateFlow()
 
     private var listJobs: List<Job> = emptyList()
     private var deleted: Pair<String, JsonObject>? = null
+
+    /** Checks that are shown but not yet sent, by item id. */
+    private val settling = mutableMapOf<String, Job>()
 
     init {
         loadLists()
@@ -56,7 +64,10 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
             listOf(
                 viewModelScope.launch {
                     shopping.observe(listId).collect { list ->
-                        if (list != null) mutableState.update { it.copy(list = list, isLoading = false) }
+                        if (list != null) {
+                            val settlingChecks = settle(list)
+                            mutableState.update { it.copy(list = list, isLoading = false, settlingChecks = settlingChecks) }
+                        }
                     }
                 },
                 viewModelScope.launch {
@@ -98,7 +109,41 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
         edit { shopping.add(listId, text) }
     }
 
-    fun toggle(item: ShoppingItem) = edit { shopping.toggle(item.listId, item.id) }
+    /**
+     * Shows the new check at once but changes the list [SETTLE_MILLIS] later, so the row stays in
+     * place until its check is drawn and only then moves. A second tap in the meantime takes it back.
+     */
+    fun toggle(item: ShoppingItem) {
+        val waiting = settling.remove(item.id)
+        if (waiting != null) {
+            waiting.cancel()
+            mutableState.update { it.copy(settlingChecks = it.settlingChecks - item.id) }
+            return
+        }
+        mutableState.update { it.copy(settlingChecks = it.settlingChecks + (item.id to !item.checked)) }
+        settling[item.id] =
+            viewModelScope.launch {
+                delay(SETTLE_MILLIS)
+                settling.remove(item.id)
+                runCatching { shopping.toggle(item.listId, item.id) }
+                    .onFailure { error ->
+                        mutableState.update { it.copy(settlingChecks = it.settlingChecks - item.id, notice = error.toAromaError()) }
+                    }
+            }
+    }
+
+    /**
+     * The checks [list] does not show yet. A check the list already shows, because the change
+     * arrived from elsewhere first, is no longer sent.
+     */
+    private fun settle(list: ShoppingList): Map<String, Boolean> {
+        val checked = list.items.associate { it.id to it.checked }
+        val (arrived, pending) =
+            state.value.settlingChecks.entries
+                .partition { (id, shown) -> checked[id] == shown }
+        arrived.forEach { settling.remove(it.key)?.cancel() }
+        return pending.filter { it.key in checked }.associate { it.key to it.value }
+    }
 
     fun rename(item: ShoppingItem, text: String) = edit { shopping.rename(item.listId, item.id, text) }
 

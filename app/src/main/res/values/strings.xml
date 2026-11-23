@@ -220,7 +220,7 @@
     <!-- Shopping -->
     <string name="shopping_mode_on">Start shopping mode</string>
     <string name="shopping_mode_off">Leave shopping mode</string>
-    <string name="shopping_mode_hint">Shopping mode: large text, screen stays on. Tap an item to check it off.</string>
+    <string name="shopping_mode_hint">Large text, and the screen stays on.</string>
     <string name="shopping_add_hint">Add an item</string>
     <string name="shopping_add">Add</string>
     <string name="shopping_switch_list">Switch list</string>
@@ -232,8 +232,8 @@
     <string name="shopping_edit_item">Edit item</string>
     <string name="shopping_item_deleted">Item removed</string>
     <string name="shopping_other">Other</string>
-    <string name="shopping_in_cart">Done (%1$d)</string>
-    <string name="shopping_clear_checked">Remove all</string>
+    <string name="shopping_in_cart">In the basket · %1$d</string>
+    <string name="shopping_clear_checked">Clear</string>
     <string name="shopping_for_recipe">for %1$s</string>
     <string name="shopping_checked">Checked off</string>
     <string name="shopping_unchecked">Not checked off</string>
