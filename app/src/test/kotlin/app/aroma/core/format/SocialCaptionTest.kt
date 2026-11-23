@@ -1,6 +1,7 @@
 package app.aroma.core.format
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -46,6 +47,19 @@ class SocialCaptionTest {
         assertEquals("Ofenkürbis mit Feta", SocialCaption.extract("Lena auf Instagram: „Ofenkürbis mit Feta“", ""))
         assertEquals("Ofenkürbis mit Feta", SocialCaption.extract("Ofenkürbis mit Feta | TikTok", ""))
         assertEquals("Linsensuppe", SocialCaption.extract("Linsensuppe", "Linsensuppe"))
+    }
+
+    @Test
+    fun `a sign-in page is told apart from a post`() {
+        val desc = "Create an account or log in to Instagram - Share what you're into with the people who get you."
+        assertTrue(SocialCaption.isSignInPage("Instagram", desc))
+        assertTrue(SocialCaption.isSignInPage("Instagram (1)", ""))
+        assertTrue(SocialCaption.isSignInPage("Login • Instagram", desc))
+        assertTrue(SocialCaption.isSignInPage("TikTok - Make Your Day", ""))
+        assertTrue(SocialCaption.isSignInPage("Log in to Facebook", ""))
+        assertFalse(SocialCaption.isSignInPage("Koch mit mir on Instagram: \"$gnocchi\"", desc))
+        assertFalse(SocialCaption.isSignInPage("Ofenkürbis mit Feta | TikTok", ""))
+        assertFalse(SocialCaption.isSignInPage("Lena (@lena) on Threads", "Linsensuppe mit Zitrone"))
     }
 
     @Test

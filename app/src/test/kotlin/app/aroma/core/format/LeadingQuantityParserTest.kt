@@ -24,6 +24,12 @@ class LeadingQuantityParserTest {
     }
 
     @Test
+    fun `decimals keep their leading zeros`() {
+        assertEquals(1.05, parse("1,05 kg Kartoffeln")!!.value, 0.0)
+        assertEquals(0.05, parse("0.05 l Rum")!!.value, 0.0)
+    }
+
+    @Test
     fun `fractions in all common spellings`() {
         assertEquals(0.5, parse("1/2 TL Salz")!!.value, 0.0)
         assertEquals(0.5, parse("½ Zitrone")!!.value, 0.0)

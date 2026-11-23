@@ -414,8 +414,12 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
             (added.firstOrNull { source != null && it.orgURL == source } ?: added.firstOrNull())?.slug
         }
 
-    /** The slugs of the newest recipes that link to [url]. */
-    suspend fun recentFrom(url: String): List<String> = mealieCall { newest().filter { it.orgURL == url }.map { it.slug } }
+    /** The slugs of the recipes linking to [url] that the signed-in user added since [since] was taken. */
+    suspend fun addedFrom(url: String, since: Set<String>): List<String> =
+        mealieCall {
+            val user = userId()
+            newest().filter { it.id !in since && (it.userId == null || it.userId == user) && it.orgURL == url }.map { it.slug }
+        }
 
     /** The photo of the recipe with [recipeId] as Mealie stores it, or null when it has none. */
     suspend fun photo(recipeId: String): ByteArray? =

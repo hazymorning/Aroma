@@ -227,9 +227,64 @@ class RecipeImporterTest {
     @Test
     fun `text pasted with a post is read instead of its caption`() =
         runBlocking<Unit> {
-            caption = null
+            caption = "Das Rezept steht im Video! #gnocchi"
 
             assertEquals("gnocchi", importer().run(ImportRequest(post, text = CAPTION)))
+            val saved = requests.single { it.method == "PATCH" && it.body!!.utf8().contains("recipeIngredient") }.body!!.utf8()
+            assertTrue(saved.contains("500 g Gnocchi"))
+        }
+
+    @Test
+    fun `text pasted for a post the phone may not see goes into Mealie's link preview, which keeps the photo`() =
+        runBlocking<Unit> {
+            caption = null
+            preview("Koch mit mir")
+
+            assertEquals("vorschau", importer().run(ImportRequest(post, text = CAPTION)))
+            val saved = requests.single { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/vorschau" }.body!!.utf8()
+            assertTrue(saved.contains("500 g Gnocchi") && saved.contains("\"name\":\"Tomaten-Gnocchi\""))
+            assertFalse(requests.any { it.method == "DELETE" })
+        }
+
+    @Test
+    fun `a sign-in page Mealie saved instead of the post asks for its text and leaves nothing behind`() =
+        runBlocking<Unit> {
+            caption = null
+            signInPreview()
+            try {
+                importer().run(ImportRequest(post, useAi = true))
+                fail("A sign-in page holds no recipe")
+            } catch (failure: AromaError.ImportFailed) {
+                assertEquals(Reason.PostUnreadable, failure.reason)
+            }
+            assertEquals("the AI never reads the sign-in page", listOf("/api/recipes/create/url/stream"), creations())
+            assertTrue(requests.any { it.method == "DELETE" && it.url.encodedPath == "/api/recipes/vorschau" })
+            assertFalse(requests.any { it.method == "POST" && it.url.encodedPath == "/api/recipes" })
+        }
+
+    @Test
+    fun `pasted text beside a sign-in page becomes a recipe of its own, without the platform's logo`() =
+        runBlocking<Unit> {
+            caption = null
+            signInPreview()
+
+            assertEquals("gnocchi", importer().run(ImportRequest(post, text = CAPTION)))
+            assertTrue(requests.any { it.method == "DELETE" && it.url.encodedPath == "/api/recipes/vorschau" })
+            assertFalse(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
+            assertTrue(requests.any { it.method == "PATCH" && it.body!!.utf8().contains(post) })
+        }
+
+    @Test
+    fun `a post read without a title keeps the name Mealie numbered for it`() =
+        runBlocking<Unit> {
+            caption = "Zutaten:\n- 500 g Gnocchi\n\nZubereitung:\n1. Gnocchi braten."
+            details["gnocchi"] = recipe("gnocchi", "Rezept (1)", ingredients = emptyList(), steps = emptyList())
+            takenNames += "Rezept"
+
+            assertEquals("gnocchi", importer().run(ImportRequest(post)))
+            val saved = requests.filter { it.method == "PATCH" }.map { it.body!!.utf8() }
+            assertFalse("the name is not taken back", saved.any { it.contains("\"name\":\"Rezept\"") || it.contains("Rezept (2)") })
+            assertTrue(saved.any { it.contains("500 g Gnocchi") })
         }
 
     @Test
@@ -311,6 +366,20 @@ class RecipeImporterTest {
         }
 
     @Test
+    fun `a post whose link import was cut off waits for Mealie instead of saving a second recipe`() =
+        runBlocking<Unit> {
+            caption = "Das Rezept steht im Video! #gnocchi"
+            cut = Cut("url", arrives = null)
+            try {
+                importer(patience = 200.milliseconds).run(ImportRequest(post))
+                fail("Nothing arrived, so the import cannot succeed")
+            } catch (failure: AromaError.ImportFailed) {
+                assertEquals(Reason.NoAnswer, failure.reason)
+            }
+            assertFalse(requests.any { it.method == "POST" && it.url.encodedPath == "/api/recipes" })
+        }
+
+    @Test
     fun `when no recipe turns up the import says Mealie did not answer, and creates nothing itself`() =
         runBlocking<Unit> {
             cut = Cut("ai", arrives = null)
@@ -349,8 +418,28 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             finishing = Cut("ai", arrives = "gnocchi")
 
-            assertEquals("gnocchi", importer().resume(ImportRequest(post, useAi = true), known, onSending = {}) { })
+            assertEquals("gnocchi", importer().resume(ImportRequest(post, useAi = true), known, before = known, onSending = {}) { })
             assertEquals(emptyList<String>(), creations())
+        }
+
+    @Test
+    fun `a picked-up import removes only the link preview it made itself`() =
+        runBlocking<Unit> {
+            val placeholders = { slug: String ->
+                recipe(slug, "Instagram-Post", listOf("Could not detect ingredients"), listOf("Could not detect instructions"))
+            }
+            listOf("vorschau", "fremde-vorschau", "fruehere-vorschau").forEach { details[it] = placeholders(it) }
+            listed.add(0, summary("id-fruehere-vorschau", "fruehere-vorschau", link = post))
+            listed.add(0, summary("id-fremde-vorschau", "fremde-vorschau", link = post, user = "someone-else"))
+            listed.add(0, summary("id-vorschau", "vorschau", link = post))
+            finishing = Cut("ai", arrives = "gnocchi")
+            val before = known + "id-fruehere-vorschau"
+            val last = before + "id-fremde-vorschau" + "id-vorschau"
+
+            assertEquals("gnocchi", importer().resume(ImportRequest(post, useAi = true), last, before, onSending = {}) { })
+            val deleted = requests.filter { it.method == "DELETE" }.map { it.url.encodedPath }
+            assertEquals(listOf("/api/recipes/vorschau"), deleted)
+            assertTrue(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
         }
 
     private val post get() = "http://www.instagram.com:${server.port}/p/AromaTest02/"
@@ -505,6 +594,18 @@ class RecipeImporterTest {
         val name = "Koch mit mir on Instagram: \\\"${caption.replace("\n", "\\n")}\\\""
         details["vorschau"] =
             recipe("vorschau", name, ingredients = listOf("Could not detect ingredients"), steps = listOf("Could not detect instructions"))
+        linkAnswers = "vorschau"
+    }
+
+    /** What Mealie saves when the platform shows the server its sign-in page too. */
+    private fun signInPreview() {
+        details["vorschau"] =
+            recipe(
+                "vorschau",
+                "Instagram",
+                ingredients = listOf("Could not detect ingredients"),
+                steps = listOf("Could not detect instructions"),
+            )
         linkAnswers = "vorschau"
     }
 

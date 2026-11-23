@@ -64,6 +64,19 @@ class SocialPostsTest {
         }
 
     @Test
+    fun `a sign-in page shown at the post's own address reads as no post`() =
+        runBlocking {
+            server.enqueue(
+                page(
+                    """<meta property="og:title" content="Instagram">""" +
+                        """<meta property="og:description" content="Create an account or log in to Instagram.">""",
+                ),
+            )
+
+            assertNull(posts.read(link("/p/Gnocchi/")))
+        }
+
+    @Test
     fun `a page without a link preview reads as no post`() =
         runBlocking {
             server.enqueue(page("<title>Instagram</title>"))

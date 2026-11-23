@@ -42,7 +42,11 @@ class SocialPosts(client: OkHttpClient, private val userAgent: () -> String) {
                     source.request(MAX_PAGE_BYTES)
                     val preview = LinkPreview.parse(source.buffer.readUtf8(minOf(source.buffer.size, MAX_PAGE_BYTES)))
                     val caption = SocialCaption.extract(preview.title, preview.description)
-                    if (caption.isBlank()) null else SocialPost(caption, preview.image)
+                    if (caption.isBlank() || SocialCaption.isSignInPage(preview.title, preview.description)) {
+                        null
+                    } else {
+                        SocialPost(caption, preview.image)
+                    }
                 }
             } catch (_: IOException) {
                 null

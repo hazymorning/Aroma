@@ -69,8 +69,10 @@ object LeadingQuantityParser {
             }
             if ((peek() == '.' || peek() == ',') && text.getOrNull(position + 1)?.isDigit() == true) {
                 advance()
-                val decimals = readDigits() ?: return null
-                return "$whole.$decimals".toDouble()
+                val decimals = position
+                readDigits() ?: return null
+                // The decimals stay text, so "1.05" keeps its zero.
+                return "$whole.${text.substring(decimals, position)}".toDouble()
             }
             val afterWhole = position
             peek()?.let { glyph ->

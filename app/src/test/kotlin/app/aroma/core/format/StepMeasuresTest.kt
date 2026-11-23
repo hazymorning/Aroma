@@ -40,6 +40,14 @@ class StepMeasuresTest {
         ).forEach { (written, converted) -> assertEquals(converted, us(written)) }
 
     @Test
+    fun `turning by degrees is an angle, not a temperature`() =
+        listOf(
+            "Das Blech nach 10 Minuten um 180 Grad drehen.",
+            "Den Teig um 90 Grad drehen und erneut falten.",
+            "Die Form 180 Grad wenden.",
+        ).forEach { assertEquals(it, us(it)) }
+
+    @Test
     fun `temperatures below an oven's keep single degrees`() {
         assertEquals("Cook to 63 °C.", metric("Cook to 145°F."))
         assertEquals("Cook until it reads 74 °C.", metric("Cook until it reads 165 °F."))

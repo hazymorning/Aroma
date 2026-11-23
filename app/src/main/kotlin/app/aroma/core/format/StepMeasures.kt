@@ -67,12 +67,22 @@ object StepMeasures {
                 val degrees = listOf(low, high).filter { it.isNotEmpty() }.mapNotNull(LeadingQuantityParser::amount)
                 // A bare "C" may be a cup, unless the number is an oven's.
                 val bareLetter = before.isEmpty() && scale.first().isLetter() && scale.length == 1
-                if ((bareLetter && degrees.first() < 100) || isNegative(text, match.range.first)) return@mapNotNull null
+                if ((bareLetter && degrees.first() < 100) || isNegative(text, match.range.first) || isAngle(text, match.range, scale)) {
+                    return@mapNotNull null
+                }
                 val celsius = scale.first().lowercaseChar() in "c℃g"
                 val converted = degrees.map { if (celsius) toFahrenheit(it) else toCelsius(it) }.distinct()
                 val system = if (celsius) MeasureSystem.Metric else MeasureSystem.US
                 Mention(match.range, system, converted.joinToString("–", postfix = if (celsius) " °F" else " °C"))
             }.toList()
+
+    /** "Das Blech um 180 Grad drehen" turns the tray: a bare "Grad" is an angle when something turns by it. */
+    private fun isAngle(text: String, range: IntRange, scale: String): Boolean =
+        scale.equals("grad", ignoreCase = true) &&
+            (turnedBy.containsMatchIn(text.substring(0, range.first)) || turning.containsMatchIn(text.substring(range.last + 1)))
+
+    private val turnedBy = Regex("""\bum\s+$""", RegexOption.IGNORE_CASE)
+    private val turning = Regex("""^\s*(?:\p{L}+\s+){0,2}(?:drehen|wenden|gedreht|gewendet)""", RegexOption.IGNORE_CASE)
 
     /** "-18 °C" in a freezer, while "180 °C-200 °C" is a range. */
     private fun isNegative(text: String, start: Int): Boolean {

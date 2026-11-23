@@ -17,6 +17,21 @@ object SocialCaption {
             .map(::unwrap)
             .maxBy { it.length }
 
+    /**
+     * Whether a link preview shows the platform's sign-in page, which it shows visitors it does not
+     * let in, rather than a post: no text framed as a post's, and a title that names only the
+     * platform or the signing in ("Instagram", "Login • Instagram").
+     */
+    fun isSignInPage(title: String, description: String): Boolean {
+        if (listOf(title, description).any { Quoted.containsMatchIn(it.trim()) }) return false
+        val name = title.trim().replace(Numbered, "")
+        return PlatformOnly.matches(name) || SignIn.containsMatchIn(name)
+    }
+
+    private val Numbered = Regex("""\s+\(\d+\)$""")
+    private val PlatformOnly = Regex("""(?:Instagram|TikTok|Facebook|Threads)(?:\s+[|·•–-]\s+.*)?""", RegexOption.IGNORE_CASE)
+    private val SignIn = Regex("""\b(?:log\s?in|sign\s?(?:in|up)|anmelden|einloggen|registrieren)\b""", RegexOption.IGNORE_CASE)
+
     private fun unwrap(text: String): String {
         val trimmed = text.trim().replace(SiteSuffix, "")
         return (Quoted.find(trimmed)?.groupValues?.get(1) ?: trimmed).trim()

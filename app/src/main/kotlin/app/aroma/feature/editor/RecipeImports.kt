@@ -93,18 +93,20 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
             val job = state.updateAndGet { it?.next(step) }
             if (job != null && !seen()) ImportNotifications.running(context, id, job)
         }
-        // The newest recipes from right before the request went out, kept on disk for a re-run.
+        // The newest recipes from right before the last and the first request that creates a recipe, kept on disk for a re-run.
         val sent = File(context.noBackupFilesDir, "imports/$id")
+        val first = File(context.noBackupFilesDir, "imports/$id.first")
         val outcome =
             try {
-                val known = if (rerun && sent.exists()) sent.readLines().filter { it.isNotBlank() }.toSet() else null
+                val known = if (rerun && sent.exists()) sent.ids() else null
                 val onSending = { newest: Set<String> ->
                     sent.parentFile?.mkdirs()
+                    if (!first.exists()) first.writeText(newest.joinToString("\n"))
                     sent.writeText(newest.joinToString("\n"))
                 }
                 val slug =
                     if (known != null) {
-                        importer.resume(request, known, onSending, onStep)
+                        importer.resume(request, known, before = if (first.exists()) first.ids() else known, onSending, onStep)
                     } else {
                         importer.import(request, onSending, onStep)
                     }
@@ -114,9 +116,12 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
                 ImportOutcome.Failed(error.toAromaError())
             }
         sent.delete()
+        first.delete()
         val job = state.updateAndGet { it?.copy(outcome = outcome) } ?: return
         ImportNotifications.ended(context, id, job, seen())
     }
+
+    private fun File.ids(): Set<String> = readLines().filter { it.isNotBlank() }.toSet()
 
     private suspend fun nameOf(slug: String): String =
         try {
