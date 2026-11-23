@@ -21,20 +21,23 @@ import app.aroma.data.settings.AppSettings
 import app.aroma.data.settings.ThemeMode
 import app.aroma.data.sync.OfflineRecipesWorker
 import app.aroma.ui.navigation.AromaNavHost
+import app.aroma.ui.navigation.LaunchRequest
 import app.aroma.ui.navigation.LoginDestination
+import app.aroma.ui.navigation.Shortcut
 import app.aroma.ui.theme.AromaTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 
 class MainActivity : AppCompatActivity() {
-    private val sharedUrl = MutableStateFlow<String?>(null)
+    private val launch = MutableStateFlow<LaunchRequest?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
         val container = (application as AromaApplication).container
         splash.setKeepOnScreenCondition { container.sessions.state.value == SessionState.Loading }
-        if (savedInstanceState == null) readSharedUrl(intent)
+        if (savedInstanceState == null) launch.value = LaunchRequest.from(intent)
+        Shortcut.publish(this)
         container.updates.checkAtStart {
             container.settings.settings
                 .first()
@@ -44,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         setContent {
             val settings by container.settings.settings.collectAsStateWithLifecycle(AppSettings())
             val session by container.sessions.state.collectAsStateWithLifecycle()
-            val pendingUrl by sharedUrl.collectAsStateWithLifecycle()
+            val pendingLaunch by launch.collectAsStateWithLifecycle()
             val dark =
                 when (settings.themeMode) {
                     ThemeMode.System -> isSystemInDarkTheme()
@@ -74,7 +77,7 @@ class MainActivity : AppCompatActivity() {
 
                         is SessionState.SignedIn -> {
                             key(current.session.serverUrl, current.session.userId) {
-                                AromaNavHost(sharedUrl = pendingUrl, onSharedUrlConsume = { sharedUrl.value = null })
+                                AromaNavHost(launch = pendingLaunch, onLaunchConsume = { launch.value = null })
                             }
                         }
                     }
@@ -85,13 +88,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        readSharedUrl(intent)
-    }
-
-    /** Links shared from a browser ("Share" > Aroma) open the import screen. */
-    private fun readSharedUrl(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_SEND || intent.type != "text/plain") return
-        val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
-        sharedUrl.value = Regex("""https?://\S+""").find(text)?.value
+        LaunchRequest.from(intent)?.let { launch.value = it }
     }
 }

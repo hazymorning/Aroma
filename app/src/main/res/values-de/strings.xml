@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Navigation -->
+    <string name="shortcut_search">Suchen</string>
+    <string name="shortcut_search_long">Rezepte durchsuchen</string>
+    <string name="shortcut_add">Neues Rezept</string>
+    <string name="shortcut_add_long">Rezept hinzufügen</string>
+    <string name="shortcut_plan_long">Wochenplan öffnen</string>
+    <string name="shortcut_shopping_long">Einkaufsliste öffnen</string>
     <string name="nav_home">Start</string>
     <string name="nav_recipes">Rezepte</string>
     <string name="nav_meal_plan">Wochenplan</string>

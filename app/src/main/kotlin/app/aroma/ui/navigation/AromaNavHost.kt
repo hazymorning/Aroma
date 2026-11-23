@@ -49,7 +49,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 
 @Composable
-fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: Modifier = Modifier) {
+fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: Modifier = Modifier) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val destination = backStack?.destination
@@ -57,15 +57,38 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
     val showBar = destination?.isTab() == true && !WindowInsets.isImeVisible
     val reselected = remember { MutableSharedFlow<Tab>(extraBufferCapacity = 1) }
     val snackbar = remember { SnackbarHostState() }
+
     // Home's search opens the recipe tab with its search field focused, once.
     val focusSearch = remember { mutableStateOf(false) }
+    val launchConsume by rememberUpdatedState(onLaunchConsume)
+    LaunchedEffect(launch) {
+        when (launch) {
+            is LaunchRequest.Import -> {
+                nav.navigate(AddRecipeRoute(launch.url))
+            }
 
-    val sharedUrlConsume by rememberUpdatedState(onSharedUrlConsume)
-    LaunchedEffect(sharedUrl) {
-        if (sharedUrl != null) {
-            nav.navigate(AddRecipeRoute(sharedUrl))
-            sharedUrlConsume()
+            LaunchRequest.AddRecipe -> {
+                nav.navigate(AddRecipeRoute())
+            }
+
+            LaunchRequest.Search -> {
+                focusSearch.value = true
+                nav.navigateToTab(Tab.Recipes)
+            }
+
+            LaunchRequest.MealPlan -> {
+                nav.navigateToTab(Tab.MealPlan)
+            }
+
+            LaunchRequest.Shopping -> {
+                nav.navigateToTab(Tab.Shopping)
+            }
+
+            null -> {
+                return@LaunchedEffect
+            }
         }
+        launchConsume()
     }
 
     // The bar floats over the page instead of taking space from it, so showing and hiding it never

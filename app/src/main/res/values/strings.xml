@@ -3,6 +3,12 @@
     <string name="app_name" translatable="false">Aroma</string>
 
     <!-- Navigation -->
+    <string name="shortcut_search">Search</string>
+    <string name="shortcut_search_long">Search recipes</string>
+    <string name="shortcut_add">New recipe</string>
+    <string name="shortcut_add_long">Add a recipe</string>
+    <string name="shortcut_plan_long">Open the meal plan</string>
+    <string name="shortcut_shopping_long">Open the shopping list</string>
     <string name="nav_home">Home</string>
     <string name="nav_recipes">Recipes</string>
     <string name="nav_meal_plan">Meal plan</string>

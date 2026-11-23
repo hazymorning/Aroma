@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The shopping glyph, centred in an adaptive icon's 108 dp canvas for a launcher shortcut. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="1.75"
+        android:scaleY="1.75"
+        android:translateX="33.0"
+        android:translateY="33.0">
+        <path
+            android:pathData="M4.25,10.25 H19.75 L18.33,18.58 A2,2 0 0 1 16.36,20.25 H7.64 A2,2 0 0 1 5.67,18.58 Z M7.5,10.25 C7.5,6.9 9.5,4.5 12,4.5 C14.5,4.5 16.5,6.9 16.5,10.25 M10,13.25 L10.2,17.25 M14,13.25 L13.8,17.25"
+            android:fillColor="#00000000"
+            android:strokeColor="#FF2F4A2E"
+            android:strokeWidth="1.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>
