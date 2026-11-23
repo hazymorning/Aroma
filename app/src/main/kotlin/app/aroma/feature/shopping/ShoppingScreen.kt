@@ -67,7 +67,6 @@ import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaDropdownMenu
-import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.AromaMenuItem
 import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.AromaSnackbarHost
@@ -75,6 +74,7 @@ import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.LocalBottomBarInset
+import app.aroma.ui.components.MenuChip
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PageHeader
@@ -409,7 +409,7 @@ private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, o
     var open by remember { mutableStateOf(false) }
     Box(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs)) {
         if (lists.size > 1) {
-            AromaFilterChip(selected = false, label = current.name, onClick = { open = true }, trailingIcon = R.drawable.ic_expand_more)
+            MenuChip(label = current.name, onClickLabel = stringResource(R.string.shopping_switch_list), onClick = { open = true })
         } else {
             Text(text = current.name, style = AromaType.BodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

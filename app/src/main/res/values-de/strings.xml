@@ -258,6 +258,7 @@
     <string name="shopping_add_hint">Artikel hinzufügen</string>
     <string name="shopping_add">Hinzufügen</string>
     <string name="shopping_create_list">Neue Liste</string>
+    <string name="shopping_switch_list">Liste wechseln</string>
     <string name="shopping_rename_list">Liste umbenennen</string>
     <string name="shopping_delete_list">Liste löschen</string>
     <string name="shopping_delete_list_title">Liste löschen?</string>
@@ -388,6 +389,7 @@
     <string name="update_not_downloaded">Aroma %1$s konnte nicht geladen werden</string>
     <string name="update_not_aroma">Der Download ist kein Aroma und wurde nicht installiert</string>
     <string name="update_no_installer">Kein Installationsprogramm auf diesem Gerät gefunden</string>
+    <string name="measures_change">Maßeinheiten ändern</string>
     <string name="measures_title">Maßeinheiten</string>
     <string name="measures_as_written">Wie im Rezept</string>
     <string name="measures_metric">Metrisch (g, ml)</string>

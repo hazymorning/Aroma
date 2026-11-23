@@ -2,12 +2,12 @@ package app.aroma.ui.components
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,23 +51,24 @@ fun DayHeader(date: LocalDate, today: LocalDate, modifier: Modifier = Modifier, 
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(RowHeight.oneLine)
-                .padding(start = CardPadding, end = if (action != null) CardActionPadding else CardPadding),
+                .heightIn(min = RowHeight.oneLine)
+                .padding(start = CardPadding, end = if (action != null) CardActionPadding else CardPadding)
+                .padding(vertical = Space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier
-                .weight(1f)
-                .semantics(mergeDescendants = true) { heading() },
-            verticalAlignment = Alignment.CenterVertically,
+        // With large text the date and the badge move to a line of their own rather than being cut.
+        FlowRow(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .semantics(mergeDescendants = true) { heading() },
+            horizontalArrangement = Arrangement.spacedBy(Space.xs),
+            verticalArrangement = Arrangement.spacedBy(Space.xxs),
+            itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Text(name, style = AromaType.SectionTitle)
-            Spacer(Modifier.width(Space.xs))
             Text(text = shortDate, style = AromaType.Small.tabular(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (date == today) {
-                Spacer(Modifier.width(Space.s))
-                TodayBadge()
-            }
+            if (date == today) TodayBadge()
         }
         action?.invoke()
     }

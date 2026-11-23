@@ -82,7 +82,7 @@ object StepMeasures {
             (turnedBy.containsMatchIn(text.substring(0, range.first)) || turning.containsMatchIn(text.substring(range.last + 1)))
 
     private val turnedBy = Regex("""\bum\s+$""", RegexOption.IGNORE_CASE)
-    private val turning = Regex("""^\s*(?:\p{L}+\s+){0,2}(?:drehen|wenden|gedreht|gewendet)""", RegexOption.IGNORE_CASE)
+    private val turning = Regex("""^\s*(?:drehen|wenden|gedreht|gewendet)""", RegexOption.IGNORE_CASE)
 
     /** "-18 °C" in a freezer, while "180 °C-200 °C" is a range. */
     private fun isNegative(text: String, start: Int): Boolean {

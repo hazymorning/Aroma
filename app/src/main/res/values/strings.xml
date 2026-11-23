@@ -261,6 +261,7 @@
     <string name="shopping_add_hint">Add an item</string>
     <string name="shopping_add">Add</string>
     <string name="shopping_create_list">New list</string>
+    <string name="shopping_switch_list">Switch list</string>
     <string name="shopping_rename_list">Rename list</string>
     <string name="shopping_delete_list">Delete list</string>
     <string name="shopping_delete_list_title">Delete this list?</string>
@@ -391,6 +392,7 @@
     <string name="update_not_downloaded">Aroma %1$s could not be downloaded</string>
     <string name="update_not_aroma">The download is not Aroma, so it was not installed</string>
     <string name="update_no_installer">No installer found on this device</string>
+    <string name="measures_change">Change measures</string>
     <string name="measures_title">Measures</string>
     <string name="measures_as_written">As written</string>
     <string name="measures_metric">Metric (g, ml)</string>

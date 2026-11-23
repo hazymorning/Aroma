@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -317,6 +318,46 @@ fun AromaFilterChip(
                 )
             }
         }
+    }
+}
+
+/**
+ * A chip that shows the current choice and opens a menu of the others: shaped like a filter chip,
+ * on the sage wash while the choice differs from the usual one ([highlighted]), and read out as a
+ * drop-down list with [onClickLabel] as what a tap does.
+ */
+@Composable
+fun MenuChip(
+    label: String,
+    onClickLabel: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
+) {
+    val container by animateColorAsState(if (highlighted) extras.selected else extras.card, tween(Motion.STATE), label = "menuChip")
+    val content by animateColorAsState(
+        if (highlighted) extras.onSelected else MaterialTheme.colorScheme.onSurface,
+        tween(Motion.STATE),
+        label = "menuChipContent",
+    )
+    Row(
+        modifier =
+            modifier
+                .height(ChipHeight)
+                .clip(CircleShape)
+                .background(container)
+                .clickable(onClickLabel = onClickLabel, role = Role.DropdownList, onClick = onClick)
+                .padding(start = Space.m, end = Space.s),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = AromaType.Label, color = content, maxLines = 1)
+        Spacer(Modifier.width(Space.xxs))
+        Icon(
+            painterResource(R.drawable.ic_expand_more),
+            contentDescription = null,
+            tint = if (highlighted) content else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(Glyph.s),
+        )
     }
 }
 

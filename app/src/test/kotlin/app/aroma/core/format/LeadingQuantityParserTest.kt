@@ -25,8 +25,15 @@ class LeadingQuantityParserTest {
 
     @Test
     fun `decimals keep their leading zeros`() {
-        assertEquals(1.05, parse("1,05 kg Kartoffeln")!!.value, 0.0)
-        assertEquals(0.05, parse("0.05 l Rum")!!.value, 0.0)
+        assertEquals(1.05, parse("1,05 kg Kartoffeln")!!.value, 1e-9)
+        assertEquals(0.05, parse("0.05 l Rum")!!.value, 1e-9)
+    }
+
+    @Test
+    fun `digits of other scripts read as numbers`() {
+        assertEquals(1.5, parse("١.٥ كوب حليب")!!.value, 1e-9)
+        assertEquals(1.5, parse("۱.۵ پیمانه شیر")!!.value, 1e-9)
+        assertEquals(1.5, parse("１.５ カップ")!!.value, 1e-9)
     }
 
     @Test

@@ -72,7 +72,7 @@ tokens or named constants only *(checked)*.
 | `extras.card` | #EEEFE7 | #1E211D | Cards, fields, chips, quiet buttons |
 | `extras.selected` / `onSelected` | #DCE7D4 | #2E3D2B | The chosen chip, segment, today |
 | `extras.cta` / `onCta` | #486447 | #3A5638 | The one filled action |
-| `extras.raised` | #FFFFFF | #242722 | The tab bar, sheets, menus |
+| `extras.raised` | #FFFFFF | #2C2F2A | The tab bar, sheets, menus |
 | `primary` | #486447 | #AECDA5 | Links, checks, group labels, step numbers, amounts, the brand |
 | `onSurface` / `onSurfaceVariant` | ink / soft ink | | Text and glyphs |
 | `error` | | | Removing and failing, nothing else |

@@ -235,15 +235,15 @@ class RecipeImporterTest {
         }
 
     @Test
-    fun `text pasted for a post the phone may not see goes into Mealie's link preview, which keeps the photo`() =
+    fun `text pasted for a post the phone may not see is saved at once, without asking Mealie`() =
         runBlocking<Unit> {
             caption = null
             preview("Koch mit mir")
 
-            assertEquals("vorschau", importer().run(ImportRequest(post, text = CAPTION)))
-            val saved = requests.single { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/vorschau" }.body!!.utf8()
-            assertTrue(saved.contains("500 g Gnocchi") && saved.contains("\"name\":\"Tomaten-Gnocchi\""))
-            assertFalse(requests.any { it.method == "DELETE" })
+            assertEquals("gnocchi", importer().run(ImportRequest(post, text = CAPTION)))
+            assertEquals(emptyList<String>(), creations())
+            val saved = requests.single { it.method == "PATCH" && it.body!!.utf8().contains("recipeIngredient") }.body!!.utf8()
+            assertTrue(saved.contains("500 g Gnocchi"))
         }
 
     @Test
@@ -268,10 +268,21 @@ class RecipeImporterTest {
             caption = null
             signInPreview()
 
-            assertEquals("gnocchi", importer().run(ImportRequest(post, text = CAPTION)))
+            assertEquals("gnocchi", importer().run(ImportRequest(post, text = "Linsensuppe mit Zitrone, das Rezept steht im Video")))
             assertTrue(requests.any { it.method == "DELETE" && it.url.encodedPath == "/api/recipes/vorschau" })
             assertFalse(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
-            assertTrue(requests.any { it.method == "PATCH" && it.body!!.utf8().contains(post) })
+            assertTrue(requests.any { it.method == "PATCH" && it.body!!.utf8().contains("Linsensuppe mit Zitrone") })
+        }
+
+    @Test
+    fun `a post the phone read keeps its photo when Mealie is shown the sign-in page`() =
+        runBlocking<Unit> {
+            caption = "Das Rezept steht im Video! #gnocchi"
+            signInPreview()
+
+            assertEquals("gnocchi", importer().run(ImportRequest(post)))
+            assertTrue(requests.any { it.method == "DELETE" && it.url.encodedPath == "/api/recipes/vorschau" })
+            assertTrue(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
         }
 
     @Test

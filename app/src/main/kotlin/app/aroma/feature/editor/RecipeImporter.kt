@@ -82,13 +82,13 @@ class RecipeImporter(
         onStep(ImportStep.ReadingPost)
         val post = posts.read(request.url)
         val caption = request.text.ifBlank { post?.caption.orEmpty() }
-        // The phone read the post: its caption and photo make the recipe, should the caption hold one.
-        if (post != null) {
+        // Text pasted with the link, or the caption the phone read, makes the recipe, should it hold one.
+        if (caption.isNotBlank()) {
             val slug =
                 sending.withAi(caption, request, preview = null)
                     ?: caption.takeIf(::holdsRecipe)?.let { sending.fromText(it, request.url, into = null) }
             if (slug != null) {
-                complete(slug, request.url, post.image, onStep)
+                complete(slug, request.url, post?.image, onStep)
                 return slug
             }
         }
@@ -101,12 +101,13 @@ class RecipeImporter(
                 // Mealie may still be saving the post; a recipe of Aroma's own would end up beside it.
                 if (failure.reason == NoAnswer) throw failure
                 if (caption.isBlank()) throw AromaError.ImportFailed(PostUnreadable)
-                return sending.fromCaption(caption, request, askAi = post == null).also { slug ->
+                // The AI has seen the caption already.
+                return sending.fromText(caption, request.url, into = null).also { slug ->
                     complete(slug, request.url, post?.image, onStep)
                 }
             }
-        // Where the phone read the post, the AI has seen its caption already.
-        return sending.fromPreview(preview, request, caption, askAi = post == null)
+        // The AI has seen the caption already, where there was one.
+        return sending.fromPreview(preview, request, caption, askAi = caption.isBlank(), image = post?.image)
     }
 
     /**
@@ -126,7 +127,9 @@ class RecipeImporter(
         val slug = awaitNewRecipe(known, request.url.ifBlank { null })
         if (!SocialPosts.isPost(request.url)) return slug
         val sending = Sending(onStep, onSending)
-        if (recipes.recipeJson(slug).isLinkPreviewOnly()) return sending.fromPreview(slug, request, request.text, askAi = true)
+        if (recipes.recipeJson(slug).isLinkPreviewOnly()) {
+            return sending.fromPreview(slug, request, request.text, askAi = true, image = null)
+        }
         // A finished recipe of a post leaves nothing of its link preview behind; [before] the import's
         // first request, any preview was someone else's, or the user's own from earlier.
         recipes
@@ -184,9 +187,16 @@ class RecipeImporter(
          * Turns what Mealie saved for a post into the recipe the post holds. Where Mealie read the
          * recipe itself, from the post's video for instance, it is kept as it is. Otherwise Mealie
          * saved the link preview, whose caption, or the [caption] the phone read, becomes the recipe,
-         * read by Mealie's AI where [askAi] and it may be used.
+         * read by Mealie's AI where [askAi] and it may be used. [image] is the photo the phone read
+         * with the caption, for a recipe that cannot have the preview's.
          */
-        suspend fun fromPreview(preview: String, request: ImportRequest, caption: String, askAi: Boolean): String {
+        suspend fun fromPreview(
+            preview: String,
+            request: ImportRequest,
+            caption: String,
+            askAi: Boolean,
+            image: String?,
+        ): String {
             val recipe = recipes.recipeJson(preview)
             if (!recipe.isLinkPreviewOnly()) return preview
             val title = recipe.text("name").orEmpty()
@@ -195,7 +205,7 @@ class RecipeImporter(
                 // The platform showed the server its sign-in page too: neither its words nor its logo belong in the recipe.
                 deleteQuietly(preview)
                 if (caption.isBlank()) throw AromaError.ImportFailed(PostUnreadable)
-                return fromCaption(caption, request, askAi).also { complete(it, request.url, image = null, onStep) }
+                return fromCaption(caption, request, askAi).also { complete(it, request.url, image, onStep) }
             }
             val text = caption.ifBlank { SocialCaption.extract(title, description) }
             if (text.isBlank()) {

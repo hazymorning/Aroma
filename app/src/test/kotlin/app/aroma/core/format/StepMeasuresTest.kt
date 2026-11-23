@@ -48,6 +48,13 @@ class StepMeasuresTest {
         ).forEach { assertEquals(it, us(it)) }
 
     @Test
+    fun `a temperature stays one when the dish is turned later`() =
+        assertEquals(
+            "Bei 400 °F unter gelegentlichem Wenden 40 Minuten garen.",
+            us("Bei 200 Grad unter gelegentlichem Wenden 40 Minuten garen."),
+        )
+
+    @Test
     fun `temperatures below an oven's keep single degrees`() {
         assertEquals("Cook to 63 °C.", metric("Cook to 145°F."))
         assertEquals("Cook until it reads 74 °C.", metric("Cook until it reads 165 °F."))

@@ -227,7 +227,7 @@ fun DetailPage(
                     title,
                     Modifier
                         .onSizeChanged { titleEnd = it.height }
-                        .graphicsLayer { alpha = (1f - scroll.value / (titleEnd * TITLE_FADE)).coerceIn(0f, 1f) },
+                        .graphicsLayer { alpha = largeTitleAlpha(scroll.value, titleEnd) },
                 )
                 content()
             }
@@ -235,6 +235,12 @@ fun DetailPage(
         DetailTopBar(onBack = onBack, title = title, collapsed = collapsed, actions = actions)
     }
 }
+
+/**
+ * How much of a large title [titleEnd] px tall still shows once the page has scrolled [scrolled] px:
+ * it fades out as it passes under the bar, before the bar takes up the title.
+ */
+fun largeTitleAlpha(scrolled: Int, titleEnd: Int): Float = (1f - scrolled / (titleEnd * TITLE_FADE)).coerceIn(0f, 1f)
 
 /** How much of a large title has scrolled away by the time it has faded out. */
 private const val TITLE_FADE = 0.6f

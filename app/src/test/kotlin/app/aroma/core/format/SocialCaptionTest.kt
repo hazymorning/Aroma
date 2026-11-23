@@ -60,6 +60,7 @@ class SocialCaptionTest {
         assertFalse(SocialCaption.isSignInPage("Koch mit mir on Instagram: \"$gnocchi\"", desc))
         assertFalse(SocialCaption.isSignInPage("Ofenkürbis mit Feta | TikTok", ""))
         assertFalse(SocialCaption.isSignInPage("Lena (@lena) on Threads", "Linsensuppe mit Zitrone"))
+        assertFalse(SocialCaption.isSignInPage("TikTok · Lena", "Ofenkürbis mit Feta #rezept"))
     }
 
     @Test

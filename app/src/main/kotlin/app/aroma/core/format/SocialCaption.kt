@@ -29,7 +29,7 @@ object SocialCaption {
     }
 
     private val Numbered = Regex("""\s+\(\d+\)$""")
-    private val PlatformOnly = Regex("""(?:Instagram|TikTok|Facebook|Threads)(?:\s+[|·•–-]\s+.*)?""", RegexOption.IGNORE_CASE)
+    private val PlatformOnly = Regex("""(?:Instagram|TikTok|Facebook|Threads)(?:\s*[|·•–-]\s*Make Your Day)?""", RegexOption.IGNORE_CASE)
     private val SignIn = Regex("""\b(?:log\s?in|sign\s?(?:in|up)|anmelden|einloggen|registrieren)\b""", RegexOption.IGNORE_CASE)
 
     private fun unwrap(text: String): String {

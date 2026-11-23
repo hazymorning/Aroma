@@ -94,6 +94,7 @@ import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
+import app.aroma.ui.components.MenuChip
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.OnPhotoButton
 import app.aroma.ui.components.Placeholder
@@ -685,11 +686,11 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
 private fun MeasuresChip(system: MeasureSystem, onSelect: (MeasureSystem) -> Unit, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
     Box(modifier) {
-        AromaFilterChip(
-            selected = system != MeasureSystem.AsWritten,
+        MenuChip(
             label = stringResource(system.labelRes()),
+            onClickLabel = stringResource(R.string.measures_change),
             onClick = { open = true },
-            trailingIcon = R.drawable.ic_expand_more,
+            highlighted = system != MeasureSystem.AsWritten,
         )
         AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             MeasureSystem.entries.forEach { option ->

@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -32,6 +33,7 @@ import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.RecipeGrid
+import app.aroma.ui.components.largeTitleAlpha
 import app.aroma.ui.components.pageItem
 import app.aroma.ui.components.recipeGridPlaceholders
 import app.aroma.ui.theme.AromaType
@@ -85,7 +87,24 @@ fun CollectionScreen(
                     bottom = PageEndSpace + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
                 ),
             header = {
-                pageItem("header") { Header(kind, name, description, state, onTitleLaidOut = { titleEnd = it }) }
+                pageItem("header") {
+                    Header(
+                        kind,
+                        name,
+                        description,
+                        state,
+                        onTitleLaidOut = { titleEnd = it },
+                        titleAlpha = {
+                            if (grid.firstVisibleItemIndex >
+                                0
+                            ) {
+                                0f
+                            } else {
+                                largeTitleAlpha(grid.firstVisibleItemScrollOffset, titleEnd)
+                            }
+                        },
+                    )
+                }
                 when {
                     state.isLoading -> {
                         recipeGridPlaceholders()
@@ -137,9 +156,15 @@ private fun Header(
     description: String,
     state: RecipesUiState,
     onTitleLaidOut: (Int) -> Unit,
+    titleAlpha: () -> Float,
 ) {
     Column {
-        Column(Modifier.onSizeChanged { onTitleLaidOut(it.height) }) {
+        // The title fades as it passes under the bar, as on every page with a large title.
+        Column(
+            Modifier
+                .onSizeChanged { onTitleLaidOut(it.height) }
+                .graphicsLayer { alpha = titleAlpha() },
+        ) {
             kind.labelRes()?.let {
                 Text(
                     text = stringResource(it),

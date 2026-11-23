@@ -1,5 +1,7 @@
 package app.aroma.core.format
 
+import kotlin.math.pow
+
 /**
  * Quantity found at the start of free text such as "2 1/2 EL Olivenöl" or "3-4 Kartoffeln".
  * Mealie keeps unparsed ingredients as plain notes; this makes them scalable anyway.
@@ -69,10 +71,10 @@ object LeadingQuantityParser {
             }
             if ((peek() == '.' || peek() == ',') && text.getOrNull(position + 1)?.isDigit() == true) {
                 advance()
-                val decimals = position
-                readDigits() ?: return null
-                // The decimals stay text, so "1.05" keeps its zero.
-                return "$whole.${text.substring(decimals, position)}".toDouble()
+                val start = position
+                val decimals = readDigits() ?: return null
+                // Counting the digits keeps the zero of "1.05".
+                return whole + decimals / 10.0.pow(position - start)
             }
             val afterWhole = position
             peek()?.let { glyph ->
