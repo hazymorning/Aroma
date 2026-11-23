@@ -1,53 +1,70 @@
 package app.aroma.feature.settings
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.User
 import app.aroma.data.settings.AppLanguage
 import app.aroma.data.settings.ThemeMode
+import app.aroma.ui.components.AromaAlertDialog
+import app.aroma.ui.components.DetailTopBar
+import app.aroma.ui.components.DetailTopBarHeight
+import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.Kicker
+import app.aroma.ui.components.LargeTitle
+import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.SwitchRow
+import app.aroma.ui.components.currentLocale
+import app.aroma.ui.theme.Lines
+import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.extras
+import app.aroma.ui.theme.tabular
 
 data class SettingsUiState(
     val user: User? = null,
@@ -76,35 +93,21 @@ data class SettingsActions(
 @Composable
 fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: Modifier = Modifier) {
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
-    Column(
-        modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .navigationBarsPadding()
-            .padding(bottom = 32.dp),
-    ) {
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = actions.onBack) {
-                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.action_back))
-            }
+    SettingsPage(title = stringResource(R.string.settings_title), onBack = actions.onBack, modifier = modifier) {
+        state.user?.let { user ->
+            Account(user, state.server)
+            Hairline(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l))
         }
-        Text(
-            text = stringResource(R.string.settings_title),
-            style = MaterialTheme.typography.displaySmall,
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
-        )
-        state.user?.let { AccountCard(it, state.server) }
-
         Group(stringResource(R.string.settings_appearance)) {
-            Label(stringResource(R.string.settings_theme))
             Choice(
+                label = stringResource(R.string.settings_theme),
                 options = ThemeMode.entries,
                 selected = state.themeMode,
-                label = { stringResource(it.labelRes()) },
+                optionLabel = { stringResource(it.labelRes()) },
                 onSelect = actions.onThemeMode,
             )
             if (state.dynamicColorAvailable) {
+                RowDivider()
                 SwitchRow(
                     title = stringResource(R.string.settings_dynamic_color),
                     subtitle = stringResource(R.string.settings_dynamic_color_hint),
@@ -115,9 +118,10 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
         }
         Group(stringResource(R.string.settings_language)) {
             Choice(
+                label = null,
                 options = AppLanguage.entries,
                 selected = state.language,
-                label = { stringResource(it.labelRes()) },
+                optionLabel = { stringResource(it.labelRes()) },
                 onSelect = actions.onLanguage,
             )
         }
@@ -143,103 +147,143 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             )
         }
         Group(stringResource(R.string.settings_about)) {
-            Row(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
-                Text(stringResource(R.string.settings_version), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Text(state.version, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clickable(role = Role.Button, onClick = actions.onOpenLicenses)
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .heightIn(min = 56.dp)
+                    .padding(horizontal = ScreenMargin)
+                    .semantics(mergeDescendants = true) {},
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.settings_licenses), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.settings_version), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(
+                    text = state.version,
+                    style = MaterialTheme.typography.bodyLarge.tabular(),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+            RowDivider()
+            NavigationRow(stringResource(R.string.settings_licenses), actions.onOpenLicenses)
         }
-        Spacer(Modifier.height(24.dp))
-        OutlinedButton(
-            onClick = { confirmSignOut = true },
-            modifier =
-                Modifier
-                    .padding(horizontal = 20.dp)
-                    .fillMaxWidth()
-                    .height(52.dp),
-        ) {
-            Icon(painterResource(R.drawable.ic_logout), contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Text(stringResource(R.string.settings_sign_out))
-        }
+        SignOutRow(onClick = { confirmSignOut = true })
     }
     if (confirmSignOut) {
-        AlertDialog(
+        AromaAlertDialog(
             onDismissRequest = { confirmSignOut = false },
-            title = { Text(stringResource(R.string.settings_sign_out_title)) },
-            text = { Text(stringResource(R.string.settings_sign_out_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmSignOut = false
-                    actions.onSignOut()
-                }) { Text(stringResource(R.string.settings_sign_out)) }
+            title = stringResource(R.string.settings_sign_out_title),
+            text = stringResource(R.string.settings_sign_out_message),
+            confirmLabel = stringResource(R.string.settings_sign_out),
+            onConfirm = {
+                confirmSignOut = false
+                actions.onSignOut()
             },
-            dismissButton = { TextButton(onClick = { confirmSignOut = false }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissLabel = stringResource(R.string.action_cancel),
+            destructive = true,
         )
     }
 }
 
+/**
+ * A pushed page of the settings: a large title and a scrolling column under [DetailTopBar]. Once
+ * the title has scrolled beneath the bar, the bar shows it in small.
+ */
 @Composable
-private fun AccountCard(user: User, server: ServerInfo?) {
-    Surface(
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier =
+internal fun SettingsPage(title: String, onBack: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    val scroll = rememberScrollState()
+    var titleEnd by remember { mutableIntStateOf(Int.MAX_VALUE) }
+    val collapsed by remember { derivedStateOf { scroll.value > titleEnd } }
+    Box(modifier.fillMaxSize()) {
+        Column(
             Modifier
-                .padding(horizontal = 20.dp)
-                .fillMaxWidth(),
-    ) {
-        Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(56.dp)) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = (user.fullName.ifBlank { user.username }).firstOrNull()?.uppercase() ?: "?",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
+                .fillMaxSize()
+                .verticalScroll(scroll)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = DetailTopBarHeight)
+                .navigationBarsPadding()
+                .padding(bottom = Space.xl),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Column(Modifier.widthIn(max = 600.dp)) {
+                LargeTitle(title, Modifier.onSizeChanged { titleEnd = it.height }, bottomSpacing = 0.dp)
+                content()
             }
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(user.fullName.ifBlank { user.username }, style = MaterialTheme.typography.titleLarge)
-                if (user.email.isNotBlank()) {
-                    Text(user.email, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                server?.let {
-                    Text(
-                        text =
-                            stringResource(
-                                R.string.settings_server_line,
-                                it.url.removePrefix("https://").removePrefix("http://"),
-                                it.version,
-                            ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
+        }
+        DetailTopBar(onBack = onBack, title = title, collapsed = collapsed)
+    }
+}
+
+/** Who is signed in where, set as plain text beside the initial; no card around it. */
+@Composable
+private fun Account(user: User, server: ServerInfo?) {
+    val name = user.fullName.ifBlank { user.username }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = ScreenMargin, end = ScreenMargin, top = Space.l)
+            .semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Monogram(name)
+        Spacer(Modifier.width(Space.m))
+        Column(Modifier.weight(1f)) {
+            Text(name, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (user.email.isNotBlank()) {
+                Text(
+                    text = user.email,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            server?.let {
+                Text(
+                    text =
+                        stringResource(
+                            R.string.settings_server_line,
+                            it.url.removePrefix("https://").removePrefix("http://"),
+                            it.version,
+                        ),
+                    style = MaterialTheme.typography.bodySmall.tabular(),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = Space.xxs),
+                )
             }
         }
     }
 }
 
+/** The first letter of the name in a fine ring, like the profile button on Home. */
 @Composable
-private fun Group(title: String, content: @Composable () -> Unit) {
-    Column(Modifier.padding(top = 28.dp)) {
+private fun Monogram(name: String) {
+    Box(
+        Modifier
+            .size(48.dp)
+            .border(Lines.control, extras.hairlineStrong, CircleShape)
+            .clearAndSetSemantics {},
+        contentAlignment = Alignment.Center,
+    ) {
         Text(
+            text = name.take(1).uppercase(currentLocale()),
+            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 20.sp, lineHeight = 26.sp),
+        )
+    }
+}
+
+/**
+ * A group of settings under a kicker. Every row brings 12 dp of air above its text, so the kicker
+ * keeps only a little more and sits the same distance above a switch as above a choice.
+ */
+@Composable
+private fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.padding(top = Space.xxl)) {
+        Kicker(
             text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
             modifier =
                 Modifier
-                    .padding(horizontal = 20.dp, vertical = 4.dp)
+                    .padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.xxs)
                     .semantics { heading() },
         )
         content()
@@ -247,30 +291,73 @@ private fun Group(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Label(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 8.dp),
-    )
+private fun <T> Choice(
+    label: String?,
+    options: List<T>,
+    selected: T,
+    optionLabel: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = ScreenMargin, vertical = Space.s),
+    ) {
+        if (label != null) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(Space.xs))
+        }
+        SegmentedControl(
+            options = options.map { optionLabel(it) },
+            selectedIndex = options.indexOf(selected),
+            onSelect = { onSelect(options[it]) },
+        )
+    }
 }
 
 @Composable
-private fun <T> Choice(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
-    SingleChoiceSegmentedButtonRow(
+private fun NavigationRow(title: String, onClick: () -> Unit) {
+    Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 4.dp),
+            .heightIn(min = 56.dp)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = ScreenMargin),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        options.forEachIndexed { index, option ->
-            SegmentedButton(
-                selected = option == selected,
-                onClick = { onSelect(option) },
-                shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                icon = {},
-            ) { Text(label(option), maxLines = 1) }
-        }
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Icon(
+            painterResource(R.drawable.ic_chevron_right),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(16.dp),
+        )
     }
+}
+
+/** Signing out is a plain row in red, set apart by space rather than a button. */
+@Composable
+private fun SignOutRow(onClick: () -> Unit) {
+    val color = MaterialTheme.colorScheme.error
+    Row(
+        Modifier
+            .padding(top = Space.xxl)
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = ScreenMargin),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(R.drawable.ic_logout), contentDescription = null, tint = color)
+        Spacer(Modifier.width(Space.m))
+        Text(stringResource(R.string.settings_sign_out), style = MaterialTheme.typography.bodyLarge, color = color)
+    }
+}
+
+/** The hairline between rows of one group, inset to the text column. */
+@Composable
+private fun RowDivider() {
+    Hairline(Modifier.padding(horizontal = ScreenMargin))
 }
 
 private fun ThemeMode.labelRes() =

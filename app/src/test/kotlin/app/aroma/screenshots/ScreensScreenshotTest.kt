@@ -37,6 +37,7 @@ import app.aroma.feature.recipes.RecipeFilter
 import app.aroma.feature.recipes.RecipesActions
 import app.aroma.feature.recipes.RecipesScreen
 import app.aroma.feature.recipes.RecipesUiState
+import app.aroma.feature.settings.LicensesScreen
 import app.aroma.feature.settings.SettingsActions
 import app.aroma.feature.settings.SettingsScreen
 import app.aroma.feature.settings.SettingsUiState
@@ -272,6 +273,12 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                 actions = SettingsActions(),
             )
         }
+    }
+
+    @Test
+    fun licenses() {
+        applyLocale()
+        snapshot("licenses_${variant.suffix}", variant.dark) { LicensesScreen(onBack = {}) }
     }
 
     @Test

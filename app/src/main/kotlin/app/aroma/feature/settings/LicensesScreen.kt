@@ -2,25 +2,27 @@ package app.aroma.feature.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -28,6 +30,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.LinkTone
+import app.aroma.ui.components.QuietLink
+import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.extras
 
 private data class License(val component: String, val license: String, val asset: String? = null)
 
@@ -35,7 +43,6 @@ private val licenses =
     listOf(
         License("Newsreader", "SIL Open Font License 1.1", "licenses/OFL-Newsreader.txt"),
         License("Figtree", "SIL Open Font License 1.1", "licenses/OFL-Figtree.txt"),
-        License("Material Symbols", "Apache License 2.0"),
         License("Android Jetpack (AndroidX, Compose, Room, WorkManager)", "Apache License 2.0"),
         License("Kotlin, kotlinx.coroutines, kotlinx.serialization", "Apache License 2.0"),
         License("OkHttp, Retrofit", "Apache License 2.0"),
@@ -44,47 +51,85 @@ private val licenses =
 
 @Composable
 fun LicensesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    var open by rememberSaveable { mutableStateOf<String?>(null) }
-    Column(
-        modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .navigationBarsPadding(),
-    ) {
-        IconButton(onClick = onBack, modifier = Modifier.padding(8.dp)) {
-            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.action_back))
-        }
-        Text(
-            text = stringResource(R.string.settings_licenses),
-            style = MaterialTheme.typography.displaySmall,
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
-        )
-        licenses.forEach { item ->
-            val rowModifier = if (item.asset != null) Modifier.clickable(role = Role.Button) { open = item.asset } else Modifier
-            Column(
-                rowModifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-            ) {
-                Text(item.component, style = MaterialTheme.typography.bodyLarge)
-                Text(item.license, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+    var openAsset by rememberSaveable { mutableStateOf<String?>(null) }
+    SettingsPage(title = stringResource(R.string.settings_licenses), onBack = onBack, modifier = modifier) {
+        Spacer(Modifier.height(Space.s))
+        licenses.forEachIndexed { index, item ->
+            if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
+            LicenseRow(item, onOpen = item.asset?.let { asset -> { openAsset = asset } })
         }
     }
-    open?.let { asset ->
-        val text =
-            remember(asset) {
-                context.assets
-                    .open(asset)
-                    .bufferedReader()
-                    .use { it.readText() }
-            }
-        AlertDialog(
-            onDismissRequest = { open = null },
-            text = { Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.verticalScroll(rememberScrollState())) },
-            confirmButton = { TextButton(onClick = { open = null }) { Text(stringResource(R.string.action_close)) } },
-        )
+    openAsset?.let { asset ->
+        LicenseDialog(title = licenses.first { it.asset == asset }.component, asset = asset, onDismiss = { openAsset = null })
     }
 }
+
+/** One component and its licence; rows whose full text ships with the app open it. */
+@Composable
+private fun LicenseRow(item: License, onOpen: (() -> Unit)?) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .then(if (onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
+            .padding(horizontal = ScreenMargin, vertical = Space.s),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(item.component, style = MaterialTheme.typography.titleMedium)
+            Text(item.license, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (onOpen != null) {
+            Spacer(Modifier.width(Space.m))
+            Icon(
+                painterResource(R.drawable.ic_chevron_right),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
+}
+
+/** The full licence on paper, with a single quiet way out. */
+@Composable
+private fun LicenseDialog(title: String, asset: String, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val text =
+        remember(asset) {
+            context.assets
+                .open(asset)
+                .bufferedReader()
+                .use { reflow(it.readText()) }
+        }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = extras.raised,
+        tonalElevation = 0.dp,
+        title = { Text(title, style = MaterialTheme.typography.headlineSmall) },
+        text = {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            )
+        },
+        confirmButton = { QuietLink(stringResource(R.string.action_close), onDismiss, tone = LinkTone.Ink) },
+    )
+}
+
+/**
+ * The licence files are wrapped at 80 columns. Joining the lines of each paragraph lets the text
+ * wrap once, to the dialog; a short heading in capitals keeps its own line and rules of dashes go.
+ */
+private fun reflow(text: String): String =
+    text
+        .split(Regex("""\n\s*\n"""))
+        .map { paragraph -> paragraph.lines().map(String::trim).filter { line -> line.any { it != '-' } } }
+        .filter { it.isNotEmpty() }
+        .joinToString("\n\n") { lines ->
+            val heading = lines.first().takeIf { lines.size > 1 && it.length <= 24 && it.none(Char::isLowerCase) }
+            if (heading != null) heading + "\n" + lines.drop(1).joinToString(" ") else lines.joinToString(" ")
+        }
