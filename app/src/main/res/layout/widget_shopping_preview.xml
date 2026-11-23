@@ -9,16 +9,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_paper"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:paddingTop="8dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
+        android:baselineAligned="false"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingTop="4dp"
-        android:paddingEnd="12dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="10dp">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -29,30 +30,38 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:ellipsize="end"
                 android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
                 android:text="@string/widget_preview_list"
-                android:textColor="@color/widget_ink"
+                android:textColor="@color/widget_on_surface"
                 android:textSize="16sp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:maxLines="1"
                 android:text="@string/widget_preview_left"
-                android:textColor="@color/widget_soft_ink"
-                android:textSize="12sp" />
+                android:textColor="@color/widget_on_surface_variant"
+                android:textSize="14sp" />
         </LinearLayout>
 
-        <ImageView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/widget_circle"
-            android:backgroundTint="@color/widget_button"
-            android:contentDescription="@null"
-            android:scaleType="center"
-            android:src="@drawable/ic_add"
-            android:tint="@color/widget_on_button"
-            tools:ignore="UseAppTint" />
+        <FrameLayout
+            android:layout_width="48dp"
+            android:layout_height="48dp">
+
+            <ImageView
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/widget_circle"
+                android:backgroundTint="@color/widget_cta"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_add"
+                android:tint="@color/widget_on_cta"
+                tools:ignore="UseAppTint" />
+        </FrameLayout>
     </LinearLayout>
 
     <TextView

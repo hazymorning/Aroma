@@ -53,10 +53,14 @@ class MealPlanRepository(private val sessions: SessionManager, private val cache
         return cache.observe(UPCOMING_KEY, EntriesSerializer).map { it?.toEntries(server) }
     }
 
-    /** Fetches [today] and the [UPCOMING_DAYS] days after it for [upcoming]. */
+    /**
+     * Fetches [today] and the [UPCOMING_DAYS] days after it for [upcoming]. An answer that arrives
+     * after its sign-in ended is dropped, so the next account never sees that week.
+     */
     suspend fun refreshUpcoming(today: LocalDate) {
+        val signIn = sessions.current?.token
         val entries = mealieCall { sessions.api().mealPlans(today.toString(), today.plusDays(UPCOMING_DAYS).toString()).items }
-        cache.write(UPCOMING_KEY, EntriesSerializer, entries)
+        if (sessions.current?.token == signIn) cache.write(UPCOMING_KEY, EntriesSerializer, entries)
     }
 
     suspend fun add(

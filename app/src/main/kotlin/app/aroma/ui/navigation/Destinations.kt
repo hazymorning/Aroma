@@ -541,12 +541,23 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
     }
 }
 
+/** The shopping tab; [request] asks once for a widget's list, and with its "+" for the field that adds to it. */
 @Composable
-fun ShoppingDestination() {
+fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -> Unit) {
     val vm = aromaViewModel { ShoppingViewModel(shopping, settings) }
     val state by vm.state.collectAsStateWithLifecycle()
     val resources = LocalResources.current
     val snackbar = remember { SnackbarHostState() }
+    // Kept here, not saved: rotation, a restored process or coming back to the tab never asks again.
+    var focusAdd by remember { mutableStateOf(false) }
+    val consumeRequest by rememberUpdatedState(onRequestConsume)
+    LaunchedEffect(request) {
+        if (request != null) {
+            consumeRequest()
+            request.listId?.let(vm::select)
+            focusAdd = request.add
+        }
+    }
     LaunchedEffect(vm) {
         vm.events.collect { event ->
             when (event) {
@@ -587,6 +598,8 @@ fun ShoppingDestination() {
                 onDeleteList = vm::deleteList,
                 onRefresh = vm::refresh,
             ),
+        focusAdd = focusAdd,
+        onFocusAddConsume = { focusAdd = false },
     )
 }
 

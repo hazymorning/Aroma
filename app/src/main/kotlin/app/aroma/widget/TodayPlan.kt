@@ -3,9 +3,11 @@ package app.aroma.widget
 import androidx.compose.ui.unit.DpSize
 import app.aroma.core.model.MealPlanEntry
 import app.aroma.core.model.MealType
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 
 /** A day of the plan, its meals in the order of the day. */
 internal data class PlanDay(val date: LocalDate, val meals: List<MealPlanEntry>)
@@ -39,6 +41,9 @@ internal fun nextChange(now: LocalDateTime): LocalDateTime {
             .minOrNull()
     return later?.let { now.toLocalDate().atTime(it) } ?: now.toLocalDate().plusDays(1).atStartOfDay()
 }
+
+/** How long from [now] in [zone] until [nextChange], so a night that changes the clocks still ends at midnight. */
+internal fun untilNextChange(now: LocalDateTime, zone: ZoneId): Duration = Duration.between(now.atZone(zone), nextChange(now).atZone(zone))
 
 /** By when a meal of this type is over, so the widget moves on to the next. */
 internal val MealType.over: LocalTime

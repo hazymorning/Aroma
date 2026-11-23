@@ -43,6 +43,9 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
 
     private var listJobs: List<Job> = emptyList()
 
+    /** The list shown or on its way, known at once, so lists that arrive meanwhile never pick another. */
+    private var selectedId: String? = null
+
     /** Checks that are shown but not yet sent, by item id. */
     private val settling = mutableMapOf<String, Job>()
 
@@ -57,7 +60,7 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
                 .catch { error -> mutableState.update { it.copy(isLoading = false, error = error.toAromaError()) } }
                 .collect { loadable ->
                     mutableState.update { it.copy(lists = loadable.data, isOffline = loadable.isOffline) }
-                    val selected = mutableState.value.list?.id
+                    val selected = selectedId
                     if (selected == null || loadable.data.none { it.id == selected }) {
                         val remembered = settings.settings.first().lastShoppingList
                         val target = loadable.data.firstOrNull { it.id == remembered } ?: loadable.data.firstOrNull()
@@ -73,6 +76,7 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
         }
 
     fun select(listId: String) {
+        selectedId = listId
         listJobs.forEach { it.cancel() }
         viewModelScope.launch { settings.setLastShoppingList(listId) }
         listJobs =

@@ -11,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -49,6 +48,7 @@ import app.aroma.R
 import app.aroma.core.model.ShoppingItem
 import app.aroma.core.model.ShoppingLabel
 import app.aroma.core.model.ShoppingList
+import app.aroma.data.AromaError
 import app.aroma.data.attempt
 import app.aroma.data.session.SessionState
 import app.aroma.ui.navigation.LaunchRequest
@@ -146,7 +146,8 @@ class ShoppingWidgetReceiver : GlanceAppWidgetReceiver() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        Widgets.keepFresh(context)
+        // Also called without widgets, as the clock or the language changes: then nothing needs refreshing.
+        if (appWidgetIds.isNotEmpty()) Widgets.keepFresh(context)
     }
 
     override fun onDisabled(context: Context) {
@@ -173,7 +174,7 @@ internal fun shoppingStates(container: AppContainer, chosen: String?): Flow<Shop
                     pickList(lists.data, chosen, settings.lastShoppingList)?.id
                 }.distinctUntilChanged()
                     .flatMapLatest { listId -> if (listId == null) flowOf(ShoppingState.NoLists) else listStates(container, listId) }
-                    .catch { emit(ShoppingState.Unreachable) }
+                    .catch { error -> if (error is AromaError) emit(ShoppingState.Unreachable) else throw error }
             }
         }
     }
@@ -216,53 +217,50 @@ internal suspend fun shownShoppingLists(context: Context, container: AppContaine
 @Composable
 internal fun ShoppingContent(state: ShoppingState, lingering: Set<String>, onToggle: (ShoppingItem) -> Unit, onRetry: () -> Unit) {
     val context = LocalContext.current
-    val openList = actionStartActivity(LaunchRequest.Shopping.intent(context))
+    val openApp = actionStartActivity(LaunchRequest.Shopping().intent(context))
     when (state) {
         ShoppingState.Loading -> {
             WidgetSurface { LoadingOutline() }
         }
 
         ShoppingState.SignedOut -> {
-            WidgetSurface(GlanceModifier.clickable(openList)) {
-                WidgetMessage(
-                    icon = R.drawable.ic_basket,
-                    title = context.getString(R.string.widget_signed_out),
-                    modifier = GlanceModifier.fillMaxSize(),
-                    body = context.getString(R.string.widget_shopping_signed_out),
-                    button = { FilledButton(context.getString(R.string.widget_sign_in), openList) },
-                )
-            }
+            WidgetMessage(
+                icon = R.drawable.ic_basket,
+                title = context.getString(R.string.widget_signed_out),
+                onClick = openApp,
+                body = context.getString(R.string.widget_shopping_signed_out),
+                button = context.getString(R.string.widget_sign_in),
+            )
         }
 
         ShoppingState.NoLists -> {
-            WidgetSurface(GlanceModifier.clickable(openList)) {
-                WidgetMessage(
-                    icon = R.drawable.ic_basket,
-                    title = context.getString(R.string.widget_no_lists_title),
-                    modifier = GlanceModifier.fillMaxSize(),
-                    body = context.getString(R.string.widget_no_lists_message),
-                )
-            }
+            WidgetMessage(
+                icon = R.drawable.ic_basket,
+                title = context.getString(R.string.widget_no_lists_title),
+                onClick = openApp,
+                body = context.getString(R.string.widget_no_lists_message),
+            )
         }
 
         ShoppingState.Unreachable -> {
-            WidgetSurface {
-                WidgetMessage(
-                    icon = R.drawable.ic_cloud_off,
-                    title = context.getString(R.string.widget_unreachable_title),
-                    modifier = GlanceModifier.fillMaxSize(),
-                    body = context.getString(R.string.widget_unreachable_message),
-                    button = { FilledButton(context.getString(R.string.widget_retry), action(block = onRetry)) },
-                )
-            }
+            WidgetMessage(
+                icon = R.drawable.ic_cloud_off,
+                title = context.getString(R.string.widget_unreachable_title),
+                onClick = action(block = onRetry),
+                body = context.getString(R.string.widget_unreachable_message),
+                button = context.getString(R.string.widget_retry),
+            )
         }
 
         is ShoppingState.Ready -> {
+            val list = state.list
+            val openList = actionStartActivity(LaunchRequest.Shopping(list.id).intent(context))
+            val addToList = actionStartActivity(LaunchRequest.Shopping(list.id, add = true).intent(context))
             when (ShoppingLayout.at(LocalSize.current)) {
-                ShoppingLayout.Count -> Count(state.list, openList)
-                ShoppingLayout.Bar -> WidgetSurface { Header(state.list, openList, GlanceModifier.fillMaxSize()) }
-                ShoppingLayout.List -> Items(state.list, lingering, aisles = false, openList, onToggle)
-                ShoppingLayout.Aisles -> Items(state.list, lingering, aisles = true, openList, onToggle)
+                ShoppingLayout.Count -> Count(list, openList)
+                ShoppingLayout.Bar -> WidgetSurface { Header(list, openList, addToList, GlanceModifier.fillMaxSize()) }
+                ShoppingLayout.List -> Items(list, lingering, aisles = false, openList, addToList, onToggle)
+                ShoppingLayout.Aisles -> Items(list, lingering, aisles = true, openList, addToList, onToggle)
             }
         }
     }
@@ -281,13 +279,10 @@ private fun Count(list: ShoppingList, openList: Action) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (left == 0) {
-                Glyph(R.drawable.ic_done_all, WidgetColors.accent)
+                Glyph(R.drawable.ic_done_all, WidgetColors.onSurfaceVariant)
             } else {
-                Glyph(R.drawable.ic_basket, WidgetColors.accent)
-                Text(
-                    NumberFormat.getInstance(context.resources.configuration.locales[0]).format(left),
-                    style = WidgetType.title.copy(fontSize = 20.sp),
-                )
+                Glyph(R.drawable.ic_basket, WidgetColors.onSurfaceVariant)
+                Text(NumberFormat.getInstance(context.resources.configuration.locales[0]).format(left), style = WidgetType.large)
             }
         }
     }
@@ -300,13 +295,14 @@ private fun Items(
     lingering: Set<String>,
     aisles: Boolean,
     openList: Action,
+    addToList: Action,
     onToggle: (ShoppingItem) -> Unit,
 ) {
     val context = LocalContext.current
     val rows = shoppingRows(list, lingering).filter { aisles || it is ShoppingRow.Item }
     WidgetSurface {
         Column(GlanceModifier.fillMaxSize()) {
-            Header(list, openList)
+            Header(list, openList, addToList, GlanceModifier.padding(top = HeaderTop))
             when {
                 rows.isNotEmpty() -> {
                     LazyColumn(GlanceModifier.defaultWeight().padding(horizontal = WidgetPadding - ROW_INSET)) {
@@ -331,29 +327,28 @@ private fun Items(
     }
 }
 
-/** The list's name and how many items are left, which open the list in the app, and "+", which opens it to add. */
+/** The list's name and how many items are left, which open the list in the app, and "+", which opens it ready to add to. */
 @Composable
-private fun Header(list: ShoppingList, openList: Action, modifier: GlanceModifier = GlanceModifier) {
+private fun Header(list: ShoppingList, openList: Action, addToList: Action, modifier: GlanceModifier = GlanceModifier) {
     val context = LocalContext.current
     val left = list.items.count { !it.checked }
-    Row(modifier.fillMaxWidth().padding(start = WidgetPadding, end = 8.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(GlanceModifier.defaultWeight().height(TargetSize).clickable(openList), verticalAlignment = Alignment.CenterVertically) {
-            Text(list.name, style = WidgetType.title, maxLines = 1)
-            if (left > 0) {
-                Text(context.resources.getQuantityString(R.plurals.widget_items_left, left, left), style = WidgetType.caption, maxLines = 1)
-            }
-        }
-        AddButton(context.getString(R.string.widget_add_item), openList)
-    }
+    WidgetHeader(
+        title = list.name,
+        onClick = openList,
+        modifier = modifier,
+        subtitle = if (left > 0) context.resources.getQuantityString(R.plurals.widget_items_left, left, left) else null,
+        action = { AddButton(context.getString(R.string.widget_add_item), addToList) },
+    )
 }
 
+/** An aisle's name in sage, as the app names a group of rows. */
 @Composable
 private fun AisleName(label: ShoppingLabel?) {
     Text(
         text = label?.name ?: LocalContext.current.getString(R.string.widget_aisle_other),
-        style = WidgetType.label.copy(color = WidgetColors.accent),
+        style = WidgetType.label.copy(color = WidgetColors.primary),
         maxLines = 1,
-        modifier = GlanceModifier.fillMaxWidth().padding(start = ROW_INSET, end = ROW_INSET, top = 12.dp, bottom = 2.dp),
+        modifier = GlanceModifier.fillMaxWidth().padding(start = ROW_INSET, end = ROW_INSET, top = 16.dp),
     )
 }
 
@@ -372,15 +367,12 @@ private fun ItemRow(item: ShoppingItem, onToggle: (ShoppingItem) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Check(item.checked)
-        Spacer(GlanceModifier.width(WidgetPadding))
+        Spacer(GlanceModifier.width(16.dp))
         Text(
             text = text,
             style =
                 if (item.checked) {
-                    WidgetType.body.copy(
-                        color = WidgetColors.softInk,
-                        textDecoration = TextDecoration.LineThrough,
-                    )
+                    WidgetType.body.copy(color = WidgetColors.onSurfaceVariant, textDecoration = TextDecoration.LineThrough)
                 } else {
                     WidgetType.body
                 },
@@ -392,5 +384,5 @@ private fun ItemRow(item: ShoppingItem, onToggle: (ShoppingItem) -> Unit) {
 /** How long checked items stay in place after the last check, so a slip can be undone where it happened. */
 private val LINGER = 3.seconds
 
-/** How far a row's press reaches past the keyline its check and words stand on. */
+/** How far a row's press reaches past the edge its check and words stand on. */
 private val ROW_INSET = 4.dp

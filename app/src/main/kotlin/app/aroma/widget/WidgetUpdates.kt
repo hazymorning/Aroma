@@ -21,6 +21,7 @@ import app.aroma.data.attempt
 import app.aroma.data.session.SessionState
 import app.aroma.data.settings.inAppLanguage
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -53,32 +54,38 @@ internal object Widgets {
     }
 
     /**
-     * For as long as the app runs, draws the widgets again after a change to the plan or a list made
-     * here, by the app or a widget, and after a change of account or of the app's look. All of it is
-     * done on a best effort: what fails waits for the next change or refresh and never reaches the app.
+     * For as long as the app runs, draws the widgets again after a change made here, by the app or a
+     * widget: both kinds after a change of account or of the app's look, the shopping widgets after a
+     * change to a list, the Today widgets after one to the plan. All of it is done on a best effort:
+     * what fails waits for the next change or refresh and never reaches the app.
      */
-    @OptIn(FlowPreview::class)
     fun follow(context: Context, container: AppContainer) {
+        val account =
+            container.sessions.state
+                .filter { it != SessionState.Loading }
+                .map { (it as? SessionState.SignedIn)?.session?.let { session -> session.serverUrl to session.userId } }
+                .distinctUntilChanged()
+                .drop(1)
+        val look = container.widgetLooks.onEach { attempt { publishPreviews(context, it) } }.drop(1)
+        val appList =
+            container.settings.settings
+                .map { it.lastShoppingList }
+                .distinctUntilChanged()
+                .drop(1)
+        val lists = merge(appList, container.shopping.changes)
+        container.scope.launch { merge(account, look).settled().collect { attempt { updateAll(context) } } }
+        container.scope.launch { lists.settled().collect { attempt { ShoppingWidget().updateAll(context) } } }
         container.scope.launch {
-            val account =
-                container.sessions.state
-                    .filter { it != SessionState.Loading }
-                    .map { (it as? SessionState.SignedIn)?.session?.let { session -> session.serverUrl to session.userId } }
-                    .distinctUntilChanged()
-                    .drop(1)
-            val look = container.widgetLooks.onEach { attempt { publishPreviews(context, it) } }.drop(1)
-            val appList =
-                container.settings.settings
-                    .map { it.lastShoppingList }
-                    .distinctUntilChanged()
-                    .drop(1)
             // Planning goes straight to the server, so the widgets' copy of the week is fetched again first.
-            val plan = container.mealPlans.changes.onEach { refreshPlan(context, container) }
-            merge(account, look, appList, container.shopping.changes, plan)
-                .debounce(SETTLE)
-                .collect { attempt { updateAll(context) } }
+            container.mealPlans.changes.settled().collect {
+                refreshPlan(context, container)
+                attempt { TodayWidget().updateAll(context) }
+            }
         }
     }
+
+    @OptIn(FlowPreview::class)
+    private fun Flow<*>.settled(): Flow<*> = debounce(SETTLE)
 
     /** Keeps the periodic refresh scheduled while a widget is on a home screen; scheduling it again changes nothing. */
     fun keepFresh(context: Context) {

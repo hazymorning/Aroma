@@ -15,13 +15,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.Image
-import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
@@ -38,7 +34,6 @@ import androidx.glance.appwidget.provideContent
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
-import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxHeight
@@ -51,7 +46,6 @@ import androidx.glance.layout.width
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
 import androidx.glance.text.Text
-import androidx.glance.unit.ColorProvider
 import app.aroma.AppContainer
 import app.aroma.R
 import app.aroma.core.model.MealPlanEntry
@@ -72,7 +66,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.transformLatest
 import java.time.Clock
-import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -100,7 +93,7 @@ class TodayWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
         val clock = Clock.systemDefaultZone()
         val firstLook = container.widgetLooks.first()
         val firstState = todayStates(context, container, clock).firstShown(TodayState.Loading)
-        TodayRollover.schedule(context, LocalDateTime.now(clock))
+        TodayRollover.schedule(context, clock)
         provideContent {
             val look by container.widgetLooks.collectAsState(firstLook)
             var retries by remember { mutableIntStateOf(0) }
@@ -134,7 +127,8 @@ class TodayWidgetReceiver : GlanceAppWidgetReceiver() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        Widgets.keepFresh(context)
+        // Also called without widgets, as the clock or the language changes: then nothing needs refreshing.
+        if (appWidgetIds.isNotEmpty()) Widgets.keepFresh(context)
     }
 
     override fun onDisabled(context: Context) {
@@ -146,16 +140,17 @@ class TodayWidgetReceiver : GlanceAppWidgetReceiver() {
 
 /**
  * Renders the Today widgets again when what they lead with changes: as a meal is over and at
- * midnight, and when the clock or the time zone is changed. The alarm waits for the phone to wake.
+ * midnight, and when the clock or the time zone is changed. The alarm is inexact and waits for the
+ * phone to wake, so it never wakes it.
  */
 internal object TodayRollover {
     private const val ROLL_OVER = "app.aroma.action.TODAY_ROLL_OVER"
 
     val actions = setOf(ROLL_OVER, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED)
 
-    fun schedule(context: Context, now: LocalDateTime) {
-        val at = Duration.between(now, nextChange(now)).toMillis() + System.currentTimeMillis()
-        context.getSystemService(AlarmManager::class.java).set(AlarmManager.RTC, at, intent(context))
+    fun schedule(context: Context, clock: Clock) {
+        val at = clock.instant().plus(untilNextChange(LocalDateTime.now(clock), clock.zone))
+        context.getSystemService(AlarmManager::class.java).set(AlarmManager.RTC, at.toEpochMilli(), intent(context))
     }
 
     fun cancel(context: Context) = context.getSystemService(AlarmManager::class.java).cancel(intent(context))
@@ -200,7 +195,7 @@ private fun changesOfLead(clock: Clock): Flow<LocalDateTime> =
         while (true) {
             val now = LocalDateTime.now(clock)
             emit(now)
-            delay(Duration.between(now, nextChange(now)).toMillis())
+            delay(untilNextChange(now, clock.zone).toMillis())
         }
     }
 
@@ -230,27 +225,23 @@ internal fun TodayContent(state: TodayState, onRetry: () -> Unit) {
         }
 
         TodayState.SignedOut -> {
-            WidgetSurface(GlanceModifier.clickable(openPlan)) {
-                WidgetMessage(
-                    icon = R.drawable.ic_plan,
-                    title = context.getString(R.string.widget_signed_out),
-                    modifier = GlanceModifier.fillMaxSize(),
-                    body = context.getString(R.string.widget_today_signed_out),
-                    button = { FilledButton(context.getString(R.string.widget_sign_in), openPlan) },
-                )
-            }
+            WidgetMessage(
+                icon = R.drawable.ic_plan,
+                title = context.getString(R.string.widget_signed_out),
+                onClick = openPlan,
+                body = context.getString(R.string.widget_today_signed_out),
+                button = context.getString(R.string.widget_sign_in),
+            )
         }
 
         TodayState.Unreachable -> {
-            WidgetSurface {
-                WidgetMessage(
-                    icon = R.drawable.ic_cloud_off,
-                    title = context.getString(R.string.widget_unreachable_title),
-                    modifier = GlanceModifier.fillMaxSize(),
-                    body = context.getString(R.string.widget_unreachable_message),
-                    button = { FilledButton(context.getString(R.string.widget_retry), action(block = onRetry)) },
-                )
-            }
+            WidgetMessage(
+                icon = R.drawable.ic_cloud_off,
+                title = context.getString(R.string.widget_unreachable_title),
+                onClick = action(block = onRetry),
+                body = context.getString(R.string.widget_unreachable_message),
+                button = context.getString(R.string.widget_retry),
+            )
         }
 
         is TodayState.Ready -> {
@@ -272,41 +263,28 @@ private fun Line(state: TodayState.Ready, lead: MealPlanEntry) {
     WidgetSurface(GlanceModifier.clickable(open(lead))) {
         Row(GlanceModifier.fillMaxSize().padding(horizontal = WidgetPadding), verticalAlignment = Alignment.CenterVertically) {
             if (LocalSize.current.width >= WidgetSizes.Wide) {
-                Thumbnail(lead, state.thumbnails[lead.recipe?.id], THUMBNAIL_SIZE)
-                Spacer(GlanceModifier.width(WidgetPadding))
+                Thumbnail(lead, state.thumbnails[lead.recipe?.id])
+                Spacer(GlanceModifier.width(16.dp))
             }
             Column(GlanceModifier.defaultWeight()) {
-                Text(leadLabel(state.plan, lead), style = WidgetType.label, maxLines = 1)
-                Text(lead.name, style = WidgetType.title, maxLines = 1)
+                Text(leadLabel(state.plan, lead), style = WidgetType.small, maxLines = 1)
+                Text(lead.name, style = WidgetType.name, maxLines = 1)
             }
         }
     }
 }
 
-/** The next meal's photo filling the widget, its name on a gentle shade; without a photo, its glyph. */
+/** The next meal as the app's cards show a recipe: its photo, given the room, and its name set underneath. */
 @Composable
 private fun Hero(state: TodayState.Ready, lead: MealPlanEntry) {
     WidgetSurface(GlanceModifier.clickable(open(lead))) {
-        val hero = state.hero
-        if (hero != null) {
-            Photo(hero, GlanceModifier.fillMaxSize())
-            Image(
-                ImageProvider(R.drawable.widget_scrim),
-                contentDescription = null,
-                contentScale = ContentScale.FillBounds,
-                modifier = GlanceModifier.fillMaxSize(),
-            )
-            Column(GlanceModifier.fillMaxSize().padding(WidgetPadding), verticalAlignment = Alignment.Bottom) {
-                Text(leadLabel(state.plan, lead), style = WidgetType.label.copy(color = OnPhotoSoft), maxLines = 1)
-                Text(lead.name, style = WidgetType.title.copy(color = OnPhoto), maxLines = 3)
+        Column(GlanceModifier.fillMaxSize().padding(WidgetPadding), verticalAlignment = Alignment.CenterVertically) {
+            if (LocalSize.current.height >= PHOTO_OVER_CAPTION) {
+                PhotoTile(lead, state.hero, GlanceModifier.fillMaxWidth().defaultWeight())
+                Spacer(GlanceModifier.height(8.dp))
             }
-        } else {
-            Column(GlanceModifier.fillMaxSize().padding(WidgetPadding)) {
-                Glyph(lead.glyph, WidgetColors.accent)
-                Spacer(GlanceModifier.defaultWeight())
-                Text(leadLabel(state.plan, lead), style = WidgetType.label, maxLines = 1)
-                Text(lead.name, style = WidgetType.title, maxLines = 3)
-            }
+            Text(leadLabel(state.plan, lead), style = WidgetType.small, maxLines = 1)
+            Text(lead.name, style = WidgetType.name, maxLines = 2)
         }
     }
 }
@@ -329,43 +307,35 @@ private fun HeroAndDay(state: TodayState.Ready, lead: MealPlanEntry) {
                     .fillMaxHeight()
                     .clickable(open(lead))
                     .semantics { contentDescription = lead.name }
-            val hero = state.hero
-            if (hero != null) {
-                Photo(hero, tile.cornerRadius(InnerCorner))
-            } else {
-                Box(tile.fill(WidgetColors.card), contentAlignment = Alignment.Center) { Glyph(lead.glyph, WidgetColors.softInk) }
-            }
-            Spacer(GlanceModifier.width(WidgetPadding))
+            PhotoTile(lead, state.hero, tile)
+            Spacer(GlanceModifier.width(16.dp - MEAL_INSET))
             LazyColumn(GlanceModifier.defaultWeight().fillMaxHeight()) {
-                items(meals) { meal ->
-                    MealRow(meal, state.plan, photo = null, label = if (meal == lead) leadLabel(state.plan, lead) else null)
-                }
+                items(meals) { meal -> MealRow(meal, label = if (meal == lead) leadLabel(state.plan, lead) else null) }
             }
         }
     }
 }
 
-/** A header over the days from the one the widget looks at on, the next meal on the sage wash. */
+/** The plan's name over the days from the one the widget looks at on, the next meal on the sage wash. */
 @Composable
 private fun Week(state: TodayState.Ready, openPlan: Action) {
     val context = LocalContext.current
     val photos = LocalSize.current.width >= WidgetSizes.Wide
     WidgetSurface {
         Column(GlanceModifier.fillMaxSize()) {
-            // Shaped like the shopping widget's header: a little air, then 48 dp that open the plan.
-            val header = GlanceModifier.fillMaxWidth().padding(top = 4.dp).height(TargetSize)
-            Box(header.clickable(openPlan).padding(horizontal = WidgetPadding), contentAlignment = Alignment.CenterStart) {
-                Text(context.getString(R.string.widget_meal_plan), style = WidgetType.title, maxLines = 1)
-            }
+            WidgetHeader(context.getString(R.string.widget_meal_plan), openPlan, GlanceModifier.padding(top = HeaderTop))
             LazyColumn(GlanceModifier.defaultWeight().padding(horizontal = WidgetPadding - MEAL_INSET)) {
                 state.plan.days.forEach { day ->
                     item { DayLabel(dayName(day.date, state.plan.today)) }
                     if (day.meals.isEmpty()) {
                         item { NothingPlanned(lead = day == state.plan.day, openPlan) }
                     } else {
-                        items(day.meals) { meal -> MealRow(meal, state.plan, state.thumbnails[meal.recipe?.id], showPhoto = photos) }
+                        items(day.meals) { meal ->
+                            MealRow(meal, state.thumbnails[meal.recipe?.id], showPhoto = photos, washed = meal == state.plan.next)
+                        }
                     }
                 }
+                item { Spacer(GlanceModifier.height(8.dp)) }
             }
         }
     }
@@ -376,63 +346,68 @@ private fun Week(state: TodayState.Ready, openPlan: Action) {
 private fun EmptyDay(plan: TodayPlan, openPlan: Action) {
     val context = LocalContext.current
     val title = context.getString(if (plan.day.date == plan.today) R.string.widget_today_empty else R.string.widget_tomorrow_empty)
-    WidgetSurface(GlanceModifier.clickable(openPlan)) {
-        WidgetMessage(
-            icon = R.drawable.ic_calendar_add,
-            title = title,
-            modifier = GlanceModifier.fillMaxSize(),
-            button = { FilledButton(context.getString(R.string.widget_plan_meal), openPlan) },
-        )
-    }
+    WidgetMessage(
+        icon = R.drawable.ic_calendar_add,
+        title = title,
+        onClick = openPlan,
+        button = context.getString(R.string.widget_plan_meal),
+    )
 }
 
+/** A day's name in sage, as the app names a group of rows. */
 @Composable
 private fun DayLabel(name: String) {
     Text(
         text = name,
-        style = WidgetType.label.copy(color = WidgetColors.accent),
+        style = WidgetType.label.copy(color = WidgetColors.primary),
         maxLines = 1,
-        modifier = GlanceModifier.fillMaxWidth().padding(start = MEAL_INSET, top = 8.dp, bottom = 4.dp),
+        modifier = GlanceModifier.fillMaxWidth().padding(start = MEAL_INSET, end = MEAL_INSET, top = 16.dp, bottom = 4.dp),
     )
 }
 
 /**
  * A planned meal: its photo when there is room, its kind, or [label] in its place, and its name;
- * the next meal on the sage wash.
+ * [washed] sets it on the sage wash.
  */
 @Composable
 private fun MealRow(
     meal: MealPlanEntry,
-    plan: TodayPlan,
-    photo: Bitmap?,
+    photo: Bitmap? = null,
     showPhoto: Boolean = false,
     label: String? = null,
+    washed: Boolean = false,
 ) {
     val context = LocalContext.current
-    val next = meal == plan.next
-    val ink = if (next) WidgetColors.onSelected else WidgetColors.ink
-    val softInk = if (next) WidgetColors.onSelected else WidgetColors.softInk
     Row(
         modifier =
             GlanceModifier
                 .fillMaxWidth()
-                .then(if (next) GlanceModifier.fill(WidgetColors.selected) else GlanceModifier)
+                .then(if (washed) GlanceModifier.fill(WidgetColors.selected) else GlanceModifier)
                 .clickable(open(meal))
-                .padding(horizontal = MEAL_INSET, vertical = 6.dp),
+                .padding(horizontal = MEAL_INSET, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showPhoto) {
-            Thumbnail(meal, photo, THUMBNAIL_SIZE)
-            Spacer(GlanceModifier.width(WidgetPadding))
+            Thumbnail(meal, photo)
+            Spacer(GlanceModifier.width(16.dp))
         }
         Column(GlanceModifier.defaultWeight()) {
-            Text(label ?: context.getString(meal.type.label), style = WidgetType.label.copy(color = softInk), maxLines = 1)
-            Text(meal.name, style = WidgetType.body.copy(color = ink), maxLines = 2)
+            val kind = label ?: context.getString(meal.type.label)
+            Text(
+                kind,
+                style = WidgetType.small.copy(color = if (washed) WidgetColors.onSelected else WidgetColors.onSurfaceVariant),
+                maxLines = 1,
+            )
+            Text(
+                meal.name,
+                style = WidgetType.name.copy(color = if (washed) WidgetColors.onSelected else WidgetColors.onSurface),
+                maxLines = 2,
+            )
         }
     }
 }
 
-/** A day with nothing planned, which opens the plan; the day the widget looks at offers to plan a meal. */
+/** A day with nothing planned, which opens the plan; the day the widget looks at offers to plan a meal, as a link. */
 @Composable
 private fun NothingPlanned(lead: Boolean, openPlan: Action) {
     val context = LocalContext.current
@@ -446,22 +421,38 @@ private fun NothingPlanned(lead: Boolean, openPlan: Action) {
     ) {
         Text(
             text = context.getString(R.string.widget_day_empty),
-            style = WidgetType.body.copy(color = WidgetColors.softInk),
+            style = WidgetType.small,
             maxLines = 1,
             modifier = GlanceModifier.defaultWeight(),
         )
-        if (lead) FilledButton(context.getString(R.string.widget_plan_meal), openPlan)
+        if (lead) {
+            Text(
+                context.getString(R.string.widget_plan_meal),
+                style = WidgetType.small.copy(color = WidgetColors.primary),
+                maxLines = 1,
+            )
+        }
     }
 }
 
-/** A meal's photo, or the glyph of a recipe without one or of a note, on a soft fill. */
+/** A meal's photo with the app's card corners, or the glyph of a recipe without one or of a note on a soft fill. */
 @Composable
-private fun Thumbnail(meal: MealPlanEntry, photo: Bitmap?, size: Dp) {
+private fun PhotoTile(meal: MealPlanEntry, photo: Bitmap?, modifier: GlanceModifier = GlanceModifier) {
     if (photo != null) {
-        Photo(photo, GlanceModifier.size(size).cornerRadius(InnerCorner))
+        Photo(photo, modifier.cornerRadius(CardCorner))
     } else {
-        Box(GlanceModifier.size(size).fill(WidgetColors.card), contentAlignment = Alignment.Center) {
-            Glyph(meal.glyph, WidgetColors.softInk, size = 20.dp)
+        Box(modifier.fill(WidgetColors.card), contentAlignment = Alignment.Center) { Glyph(meal.glyph, WidgetColors.onSurfaceVariant) }
+    }
+}
+
+/** A meal's thumbnail beside its words, or the glyph of a recipe without a photo or of a note. */
+@Composable
+private fun Thumbnail(meal: MealPlanEntry, photo: Bitmap?) {
+    if (photo != null) {
+        Photo(photo, GlanceModifier.size(THUMBNAIL_SIZE).cornerRadius(ThumbnailCorner))
+    } else {
+        Box(GlanceModifier.size(THUMBNAIL_SIZE).fill(WidgetColors.card, R.drawable.widget_thumbnail), contentAlignment = Alignment.Center) {
+            Glyph(meal.glyph, WidgetColors.onSurfaceVariant, size = 20.dp)
         }
     }
 }
@@ -513,13 +504,13 @@ private val MealType.label: Int
             MealType.Dessert -> R.string.meal_dessert
         }
 
-private val OnPhoto = ColorProvider(Color.White)
-private val OnPhotoSoft = ColorProvider(Color.White.copy(alpha = 0.85f))
-
 /** About as large as the next meal's photo shows; Mealie's small rendition is not much larger. */
 private val HERO_SIZE = 160.dp
 private val HERO_TILE_WIDTH = 112.dp
-private val THUMBNAIL_SIZE = 40.dp
+private val THUMBNAIL_SIZE = 48.dp
 
-/** How far a meal's text stands inside its row, so the sage wash has room around it. */
+/** From this height a photo fits above the next meal's two lines of words. */
+private val PHOTO_OVER_CAPTION = 170.dp
+
+/** How far a meal's words stand inside its row, so the sage wash has room around them. */
 private val MEAL_INSET = 8.dp

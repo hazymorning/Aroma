@@ -1,6 +1,7 @@
 package app.aroma.widget
 
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -13,19 +14,13 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -35,12 +30,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.getAppWidgetState
@@ -52,7 +44,11 @@ import app.aroma.R
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.session.SessionState
 import app.aroma.data.settings.ThemeMode
+import app.aroma.ui.components.DetailPage
+import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.SoftCard
 import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.RowHeight
@@ -73,7 +69,9 @@ class ShoppingWidgetConfigActivity : AppCompatActivity() {
         val result = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
         // Leaving without a choice keeps the widget as it was; before Android 12 it is then not added.
         setResult(RESULT_CANCELED, result)
-        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+        // Any app can start this screen; it only ever sets up one of Aroma's own shopping widgets.
+        val provider = AppWidgetManager.getInstance(this).getAppWidgetInfo(widgetId)?.provider
+        if (provider != ComponentName(this, ShoppingWidgetReceiver::class.java)) {
             finish()
             return
         }
@@ -108,6 +106,7 @@ class ShoppingWidgetConfigActivity : AppCompatActivity() {
                         chosen = chosen,
                         signedIn = session is SessionState.SignedIn,
                         onChoose = { choose(glanceId, it, result) },
+                        onBack = ::finish,
                     )
                 }
             }
@@ -126,45 +125,30 @@ class ShoppingWidgetConfigActivity : AppCompatActivity() {
     }
 }
 
-/** The list open in the app first, as it is the default, then every list of the household. */
+/** The list open in the app first, as it is the default, then every list of the household, on one card. */
 @Composable
 private fun ListChoice(
     lists: List<ShoppingListInfo>,
     chosen: String?,
     signedIn: Boolean,
     onChoose: (String?) -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .verticalScroll(rememberScrollState())
-            .padding(vertical = Space.xl),
+    DetailPage(
+        title = stringResource(R.string.widget_config_title),
+        onBack = onBack,
+        modifier = modifier.background(MaterialTheme.colorScheme.background),
     ) {
         Text(
-            text = stringResource(R.string.widget_config_title),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier =
-                Modifier
-                    .padding(horizontal = ScreenMargin)
-                    .semantics { heading() },
-        )
-        Spacer(Modifier.height(Space.xs))
-        Text(
             text = stringResource(if (signedIn) R.string.widget_config_hint else R.string.widget_config_signed_out),
-            style = MaterialTheme.typography.bodyMedium,
+            style = AromaType.Body,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = ScreenMargin),
+            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
         )
-        Spacer(Modifier.height(Space.l))
-        // The card stands on the margin, the words on it a card's padding further in.
-        Column(
+        SoftCard(
             Modifier
-                .padding(horizontal = ScreenMargin)
-                .clip(MaterialTheme.shapes.large)
-                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(top = Space.l)
                 .selectableGroup(),
         ) {
             Choice(
@@ -173,11 +157,15 @@ private fun ListChoice(
                 selected = chosen == null,
                 onClick = { onChoose(null) },
             )
-            lists.forEach { list -> Choice(name = list.name, hint = null, selected = chosen == list.id, onClick = { onChoose(list.id) }) }
+            lists.forEach { list ->
+                Hairline(Modifier.padding(horizontal = CardPadding))
+                Choice(name = list.name, hint = null, selected = chosen == list.id, onClick = { onChoose(list.id) })
+            }
         }
     }
 }
 
+/** One choice on the card: its name, a quiet line about it, and the sage check once it is the widget's. */
 @Composable
 private fun Choice(name: String, hint: String?, selected: Boolean, onClick: () -> Unit) {
     Row(
@@ -190,17 +178,16 @@ private fun Choice(name: String, hint: String?, selected: Boolean, onClick: () -
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.bodyLarge)
-            if (hint != null) {
-                Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Text(name, style = AromaType.Body)
+            if (hint != null) Text(hint, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (selected) {
+            Spacer(Modifier.width(Space.m))
             Icon(
                 painter = painterResource(R.drawable.ic_check),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(Glyph.l),
+                modifier = Modifier.size(Glyph.m),
             )
         }
     }

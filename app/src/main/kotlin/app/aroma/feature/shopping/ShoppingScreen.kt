@@ -37,13 +37,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -92,6 +97,7 @@ import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.extras
+import kotlinx.coroutines.flow.first
 
 data class ShoppingUiState(
     val lists: List<ShoppingListInfo> = emptyList(),
@@ -124,12 +130,15 @@ data class ShoppingActions(
 
 private enum class ShoppingDialog { Create, Rename, Delete }
 
+/** The shopping list; with [focusAdd], ready to add to it: the cursor in the add field and the keyboard up. */
 @Composable
 fun ShoppingScreen(
     state: ShoppingUiState,
     actions: ShoppingActions,
     modifier: Modifier = Modifier,
     snackbar: SnackbarHostState = remember { SnackbarHostState() },
+    focusAdd: Boolean = false,
+    onFocusAddConsume: () -> Unit = {},
 ) {
     var dialog by rememberSaveable { mutableStateOf<ShoppingDialog?>(null) }
     // By id, so the dialog survives rotation and closes by itself once its item is gone.
@@ -138,6 +147,21 @@ fun ShoppingScreen(
     KeepScreenOn(shoppingMode)
     val listState = rememberLazyListState()
     ScrollToTopOnReselect(listState)
+    val addFocus = remember { FocusRequester() }
+    val current by rememberUpdatedState(state)
+    val consumeFocusAdd by rememberUpdatedState(onFocusAddConsume)
+    LaunchedEffect(focusAdd) {
+        if (focusAdd) {
+            shoppingMode = false
+            // The field shows once a list does, as part of the list's first item, laid out a frame later.
+            snapshotFlow { current.list != null }.first { it }
+            listState.scrollToItem(0)
+            withFrameNanos {}
+            runCatching { addFocus.requestFocus() }
+            // Only now: consuming changes the key, which would end this effect.
+            consumeFocusAdd()
+        }
+    }
     // Grouped here, not in the list's builder, which runs again on every keystroke in the add field.
     val groups = remember(state.list) { state.list?.grouped() }
     Box(modifier.fillMaxSize()) {
@@ -148,7 +172,7 @@ fun ShoppingScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 item(key = "header") {
-                    Header(state, actions, shoppingMode, onShoppingMode = { shoppingMode = it }) { dialog = it }
+                    Header(state, actions, shoppingMode, addFocus, onShoppingMode = { shoppingMode = it }) { dialog = it }
                 }
                 body(
                     state = state,
@@ -280,6 +304,7 @@ private fun Header(
     state: ShoppingUiState,
     actions: ShoppingActions,
     shoppingMode: Boolean,
+    addFocus: FocusRequester,
     onShoppingMode: (Boolean) -> Unit,
     openDialog: (ShoppingDialog) -> Unit,
 ) {
@@ -310,6 +335,7 @@ private fun Header(
                     leadingIcon = R.drawable.ic_add,
                     imeAction = ImeAction.Done,
                     onSubmit = actions.onAddItem,
+                    focusRequester = addFocus,
                     modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.s),
                     trailing = { AddButton(visible = state.newItem.isNotBlank(), onClick = actions.onAddItem) },
                 )

@@ -84,5 +84,10 @@ class WidgetContentTest {
             onNode(hasText("Produce")).assertExists()
             onNode(hasContentDescriptionEqualTo("Apples, not checked off")).assert(hasClickAction())
             onNode(hasContentDescriptionEqualTo("2 lemons, checked off")).assert(hasClickAction())
+            // Both open the list in the app; WidgetLaunchTest covers what each asks for.
+            onNode(hasClickAction() and hasAnyDescendant(hasText("Weekly shop")))
+                .assert(hasStartActivityClickAction(LaunchRequest.Shopping("list").intent(context)))
+            onNode(hasContentDescriptionEqualTo("Add to the list"))
+                .assert(hasStartActivityClickAction(LaunchRequest.Shopping("list", add = true).intent(context)))
         }
 }

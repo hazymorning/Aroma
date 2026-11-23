@@ -88,6 +88,7 @@ class WidgetScreenshotTest(private val variant: Variant) {
         capture("today_week_empty", TALL) { TodayContent(nothingToday, onRetry = {}) }
         capture("today_signed_out", SQUARE) { TodayContent(TodayState.SignedOut, onRetry = {}) }
         capture("today_unreachable", WIDE) { TodayContent(TodayState.Unreachable, onRetry = {}) }
+        capture("today_unreachable_row", ROW) { TodayContent(TodayState.Unreachable, onRetry = {}) }
         capture("today_loading", WIDE) { TodayContent(TodayState.Loading, onRetry = {}) }
     }
 
@@ -97,28 +98,16 @@ class WidgetScreenshotTest(private val variant: Variant) {
         SHOPPING_SIZES.forEach { (name, size) ->
             capture("shopping_$name", size) { ShoppingContent(ready, emptySet(), onToggle = {}, onRetry = {}) }
         }
-        val justChecked = sample.shoppingList.items[1].copy(checked = true)
-        val lingering =
-            ShoppingState.Ready(
-                sample.shoppingList.copy(
-                    items =
-                        sample.shoppingList.items.map {
-                            if (it.id ==
-                                justChecked.id
-                            ) {
-                                justChecked
-                            } else {
-                                it
-                            }
-                        },
-                ),
-            )
-        capture("shopping_lingering", TALL) { ShoppingContent(lingering, setOf(justChecked.id), onToggle = {}, onRetry = {}) }
+        val justChecked = sample.shoppingList.items[1].id
+        val items = sample.shoppingList.items.map { it.copy(checked = it.id == justChecked) }
+        val lingering = ShoppingState.Ready(sample.shoppingList.copy(items = items))
+        capture("shopping_lingering", TALL) { ShoppingContent(lingering, setOf(justChecked), onToggle = {}, onRetry = {}) }
         val done = ShoppingState.Ready(sample.shoppingList.copy(items = sample.shoppingList.items.map { it.copy(checked = true) }))
         capture("shopping_done", SQUARE) { ShoppingContent(done, emptySet(), onToggle = {}, onRetry = {}) }
         val empty = ShoppingState.Ready(sample.shoppingList.copy(items = emptyList()))
         capture("shopping_empty", SQUARE) { ShoppingContent(empty, emptySet(), onToggle = {}, onRetry = {}) }
         capture("shopping_signed_out", SQUARE) { ShoppingContent(ShoppingState.SignedOut, emptySet(), onToggle = {}, onRetry = {}) }
+        capture("shopping_signed_out_tall", TALL) { ShoppingContent(ShoppingState.SignedOut, emptySet(), onToggle = {}, onRetry = {}) }
         capture("shopping_no_lists", BAR) { ShoppingContent(ShoppingState.NoLists, emptySet(), onToggle = {}, onRetry = {}) }
     }
 
@@ -180,6 +169,7 @@ class WidgetScreenshotTest(private val variant: Variant) {
         private val WIDE = DpSize(300.dp, 190.dp)
         private val BAR = DpSize(260.dp, 60.dp)
         private val TALL = DpSize(300.dp, 400.dp)
+        private val ROW = DpSize(290.dp, 102.dp)
 
         /** Sizes from Android's guide to widget sizes, for a phone in portrait and in landscape. */
         private val TODAY_SIZES =
@@ -187,7 +177,7 @@ class WidgetScreenshotTest(private val variant: Variant) {
                 "line" to DpSize(150.dp, 60.dp),
                 "line_wide" to DpSize(290.dp, 60.dp),
                 "small" to DpSize(130.dp, 102.dp),
-                "row" to DpSize(290.dp, 102.dp),
+                "row" to ROW,
                 "square" to SQUARE,
                 "wide" to WIDE,
                 "landscape" to DpSize(520.dp, 110.dp),

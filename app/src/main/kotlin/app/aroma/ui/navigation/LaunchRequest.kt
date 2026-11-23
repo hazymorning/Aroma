@@ -33,8 +33,13 @@ sealed interface LaunchRequest {
         fun intent(context: Context): Intent = Shortcut.MealPlan.intent(context)
     }
 
-    data object Shopping : LaunchRequest {
-        fun intent(context: Context): Intent = Shortcut.Shopping.intent(context)
+    /** The shopping tab; from a widget with the widget's list, and with [add] ready to add to it. */
+    data class Shopping(val listId: String? = null, val add: Boolean = false) : LaunchRequest {
+        fun intent(context: Context): Intent =
+            Shortcut.Shopping.intent(context).apply {
+                listId?.let { putExtra(EXTRA, it) }
+                if (add) putExtra(ADD, true)
+            }
     }
 
     companion object {
@@ -55,6 +60,10 @@ sealed interface LaunchRequest {
                     importId(intent.getStringExtra(EXTRA))?.let(::ShowImport)
                 }
 
+                Shortcut.Shopping.action -> {
+                    Shopping(intent.getStringExtra(EXTRA), intent.getBooleanExtra(ADD, false))
+                }
+
                 else -> {
                     Shortcut.entries.firstOrNull { it.action == intent?.action }?.request
                 }
@@ -63,6 +72,7 @@ sealed interface LaunchRequest {
         private const val OPEN_RECIPE = "app.aroma.action.OPEN_RECIPE"
         private const val SHOW_IMPORT = "app.aroma.action.SHOW_IMPORT"
         private const val EXTRA = "id"
+        private const val ADD = "add"
 
         private val link = Regex("""https?://\S+""")
 
@@ -86,7 +96,7 @@ enum class Shortcut(
     Search(LaunchRequest.Search, R.string.shortcut_search, R.string.shortcut_search_long, R.drawable.shortcut_search),
     AddRecipe(LaunchRequest.AddRecipe, R.string.shortcut_add, R.string.shortcut_add_long, R.drawable.shortcut_add),
     MealPlan(LaunchRequest.MealPlan, R.string.nav_meal_plan, R.string.shortcut_plan_long, R.drawable.shortcut_plan),
-    Shopping(LaunchRequest.Shopping, R.string.nav_shopping, R.string.shortcut_shopping_long, R.drawable.shortcut_shopping),
+    Shopping(LaunchRequest.Shopping(), R.string.nav_shopping, R.string.shortcut_shopping_long, R.drawable.shortcut_shopping),
     ;
 
     val action = "app.aroma.action.${name.uppercase()}"

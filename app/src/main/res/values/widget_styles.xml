@@ -1,17 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The words of the widgets' previews, set as the widgets set them. -->
 <resources>
-    <!-- An item in the shopping widget's preview: the check's ring on the keyline, then its words. -->
+    <!-- An item in the shopping widget's preview: the check's ring on the widget's edge, then its words. -->
     <style name="WidgetPreviewItem">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:drawableStart">@drawable/widget_check_off</item>
-        <item name="android:drawablePadding">12dp</item>
-        <item name="android:drawableTint">@color/widget_ring</item>
+        <item name="android:drawablePadding">16dp</item>
+        <item name="android:drawableTint">@color/widget_outline</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:maxLines">1</item>
-        <item name="android:paddingHorizontal">12dp</item>
+        <item name="android:paddingHorizontal">16dp</item>
         <item name="android:paddingVertical">12dp</item>
-        <item name="android:textColor">@color/widget_ink</item>
+        <item name="android:textColor">@color/widget_on_surface</item>
         <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- The kind of a meal in the Today widget's preview. -->
+    <style name="WidgetPreviewMealKind">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:paddingHorizontal">8dp</item>
+        <item name="android:textColor">@color/widget_on_surface_variant</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- A recipe's name in the Today widget's preview, in the serif that names things. -->
+    <style name="WidgetPreviewMealName">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">serif</item>
+        <item name="android:maxLines">2</item>
+        <item name="android:paddingHorizontal">8dp</item>
+        <item name="android:textColor">@color/widget_on_surface</item>
+        <item name="android:textSize">16sp</item>
     </style>
 </resources>

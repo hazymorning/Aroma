@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- What a widget shows until its first frame is drawn: the outline the app's screens show while they load. -->
+<!-- What a widget shows until its first frame is drawn: the placeholder lines the app's screens show while they load. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@android:id/background"
     android:layout_width="match_parent"
@@ -7,18 +7,18 @@
     android:background="@drawable/widget_paper"
     android:gravity="center_vertical"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="16dp">
 
     <FrameLayout
-        android:layout_width="72dp"
+        android:layout_width="96dp"
         android:layout_height="12dp"
-        android:background="@drawable/widget_pill"
+        android:background="@drawable/widget_line"
         android:backgroundTint="@color/widget_card" />
 
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="12dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/widget_pill"
+        android:background="@drawable/widget_line"
         android:backgroundTint="@color/widget_card" />
 </LinearLayout>

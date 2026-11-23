@@ -66,6 +66,9 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
 
     // Home's search opens the recipe tab with its search field focused, once.
     val focusSearch = remember { mutableStateOf(false) }
+
+    // A shopping widget opens its list on the shopping tab, once; its "+" ready to add to the list.
+    val shoppingRequest = remember { mutableStateOf<LaunchRequest.Shopping?>(null) }
     val launchConsume by rememberUpdatedState(onLaunchConsume)
     LaunchedEffect(launch) {
         when (launch) {
@@ -95,7 +98,8 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                 nav.navigateToTab(Tab.MealPlan)
             }
 
-            LaunchRequest.Shopping -> {
+            is LaunchRequest.Shopping -> {
+                shoppingRequest.value = launch
                 nav.navigateToTab(Tab.Shopping)
             }
 
@@ -147,7 +151,9 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                 ) { RecipesDestination(nav, snackbar, focusSearch.value, onFocusSearchConsume = { focusSearch.value = false }) }
             }
             composable<MealPlanRoute> { underBar(Tab.MealPlan) { MealPlanDestination(nav, snackbar) } }
-            composable<ShoppingRoute> { underBar(Tab.Shopping) { ShoppingDestination() } }
+            composable<ShoppingRoute> {
+                underBar(Tab.Shopping) { ShoppingDestination(shoppingRequest.value, onRequestConsume = { shoppingRequest.value = null }) }
+            }
             composable<RecipeRoute> { RecipeDestination(it.toRoute<RecipeRoute>().slug, nav, snackbar) }
             composable<CookRoute> { entry ->
                 val route = entry.toRoute<CookRoute>()

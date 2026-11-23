@@ -11,14 +11,14 @@
     android:background="@drawable/widget_paper"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="16dp">
 
     <ImageView
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:contentDescription="@null"
         android:src="@drawable/ic_error"
-        android:tint="@color/widget_accent"
+        android:tint="@color/widget_on_surface_variant"
         tools:ignore="UseAppTint" />
 
     <TextView
@@ -28,6 +28,6 @@
         android:gravity="center"
         android:maxLines="3"
         android:text="@string/widget_error"
-        android:textColor="@color/widget_ink"
+        android:textColor="@color/widget_on_surface_variant"
         android:textSize="14sp" />
 </LinearLayout>

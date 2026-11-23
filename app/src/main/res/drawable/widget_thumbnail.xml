@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The stand-in for a thumbnail without a photo, with the app's thumbnail corners; tinted where it is used. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@android:color/black" />
+    <corners android:radius="12dp" />
+</shape>

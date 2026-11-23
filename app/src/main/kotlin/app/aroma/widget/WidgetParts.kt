@@ -66,9 +66,9 @@ internal fun WidgetSurface(modifier: GlanceModifier = GlanceModifier, content: @
 @ReadOnlyComposable
 private fun paper(): GlanceModifier =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        GlanceModifier.background(WidgetColors.page).cornerRadius(android.R.dimen.system_app_widget_background_radius)
+        GlanceModifier.background(WidgetColors.background).cornerRadius(android.R.dimen.system_app_widget_background_radius)
     } else {
-        GlanceModifier.background(ImageProvider(R.drawable.widget_paper), colorFilter = ColorFilter.tint(WidgetColors.page))
+        GlanceModifier.background(ImageProvider(R.drawable.widget_paper), colorFilter = ColorFilter.tint(WidgetColors.background))
     }
 
 /** One of the app's line glyphs in [color]. */
@@ -87,26 +87,53 @@ internal fun Photo(bitmap: Bitmap, modifier: GlanceModifier = GlanceModifier) {
     Image(ImageProvider(bitmap), contentDescription = null, contentScale = ContentScale.Crop, modifier = modifier)
 }
 
-/** A soft fill with rounded corners, which works before Android 12 too. */
+/** A soft fill with the app's card corners, which works before Android 12 too. */
 internal fun GlanceModifier.fill(
     color: ColorProvider,
     @DrawableRes shape: Int = R.drawable.widget_card,
 ): GlanceModifier = background(ImageProvider(shape), colorFilter = ColorFilter.tint(color))
 
-/** The one filled button a widget shows at most. */
+/** The one filled button a widget shows at most: a compact sage pill, as the app's main action. */
 @Composable
 internal fun FilledButton(text: String, onClick: Action) {
     Box(GlanceModifier.height(TargetSize).clickable(onClick), contentAlignment = Alignment.Center) {
-        Text(
-            text = text,
-            style = WidgetType.label.copy(color = WidgetColors.onButton),
-            maxLines = 1,
-            modifier = GlanceModifier.fill(WidgetColors.button, R.drawable.widget_pill).padding(horizontal = 16.dp, vertical = 10.dp),
-        )
+        Box(
+            GlanceModifier.height(CompactHeight).fill(WidgetColors.cta, R.drawable.widget_pill).padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = text, style = WidgetType.label.copy(color = WidgetColors.onCta), maxLines = 1)
+        }
     }
 }
 
-/** The round "+" in the corner of the shopping widget. */
+/**
+ * A widget's title over its list, which opens the app there, with a quiet [subtitle] such as how
+ * many items are left, and at its end the round [action] the widget offers, if any.
+ */
+@Composable
+internal fun WidgetHeader(
+    title: String,
+    onClick: Action,
+    modifier: GlanceModifier = GlanceModifier,
+    subtitle: String? = null,
+    action: (@Composable () -> Unit)? = null,
+) {
+    Row(
+        modifier.fillMaxWidth().padding(start = WidgetPadding, end = if (action != null) ActionEdge else WidgetPadding),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(GlanceModifier.defaultWeight().height(TargetSize).clickable(onClick), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = WidgetType.title, maxLines = 1)
+            if (subtitle != null) Text(subtitle, style = WidgetType.small, maxLines = 1)
+        }
+        action?.invoke()
+    }
+}
+
+/** The space above a header that stands over a list; with the header's 48 dp, as tall as one of the app's rows. */
+internal val HeaderTop = 8.dp
+
+/** The round "+" in the corner of the shopping widget, the widget's main action. */
 @Composable
 internal fun AddButton(description: String, onClick: Action) {
     Box(
@@ -116,8 +143,8 @@ internal fun AddButton(description: String, onClick: Action) {
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Box(GlanceModifier.size(AddButtonSize).fill(WidgetColors.button, R.drawable.widget_circle), contentAlignment = Alignment.Center) {
-            Glyph(R.drawable.ic_add, WidgetColors.onButton)
+        Box(GlanceModifier.size(CompactHeight).fill(WidgetColors.cta, R.drawable.widget_circle), contentAlignment = Alignment.Center) {
+            Glyph(R.drawable.ic_add, WidgetColors.onCta, size = 20.dp)
         }
     }
 }
@@ -126,55 +153,59 @@ internal fun AddButton(description: String, onClick: Action) {
 @Composable
 internal fun Check(checked: Boolean) {
     if (checked) {
-        Box(GlanceModifier.size(GlyphSize).fill(WidgetColors.accent, R.drawable.widget_circle), contentAlignment = Alignment.Center) {
-            Glyph(R.drawable.widget_check_mark, WidgetColors.page)
+        Box(GlanceModifier.size(GlyphSize).fill(WidgetColors.primary, R.drawable.widget_circle), contentAlignment = Alignment.Center) {
+            Glyph(R.drawable.widget_check_mark, WidgetColors.onPrimary)
         }
     } else {
-        Glyph(R.drawable.widget_check_off, WidgetColors.ring)
+        Glyph(R.drawable.widget_check_off, WidgetColors.outline)
     }
 }
 
 /**
- * What a widget says in place of its content: that nobody is signed in, that nothing is there yet
- * or that the server is out of reach. A widget one row high gets a single line, one cell only the
- * glyph; a larger one a glyph, a title, a line of help and at most one button.
+ * What a widget says in place of its content, as the app's message states do: that nobody is
+ * signed in, that nothing is there yet or that the server is out of reach. The whole widget takes
+ * the tap for [onClick], which a [button] offers where there is room for one. One cell shows the
+ * glyph only, a low widget a single line, a larger one the glyph, the title and the button, and a
+ * tall one the [body] as well.
  */
 @Composable
 internal fun WidgetMessage(
     @DrawableRes icon: Int,
     title: String,
-    modifier: GlanceModifier = GlanceModifier,
+    onClick: Action,
     body: String? = null,
-    button: (@Composable () -> Unit)? = null,
+    button: String? = null,
 ) {
     val size = LocalSize.current
-    when {
-        size.width < WidgetSizes.Narrow -> {
-            Box(modifier.semantics { contentDescription = title }, contentAlignment = Alignment.Center) {
-                Glyph(icon, WidgetColors.accent)
-            }
-        }
-
-        size.height < WidgetSizes.Low -> {
-            MessageLine(icon, title, modifier)
-        }
-
-        else -> {
-            Column(
-                modifier.padding(WidgetPadding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Glyph(icon, WidgetColors.accent)
-                Spacer(GlanceModifier.height(8.dp))
-                Text(title, style = WidgetType.title.copy(textAlign = TextAlign.Center), maxLines = 2)
-                if (body != null) {
-                    Spacer(GlanceModifier.height(4.dp))
-                    Text(body, style = WidgetType.caption.copy(textAlign = TextAlign.Center), maxLines = 3)
+    WidgetSurface(GlanceModifier.clickable(onClick)) {
+        when {
+            size.width < WidgetSizes.Narrow -> {
+                Box(GlanceModifier.fillMaxSize().semantics { contentDescription = title }, contentAlignment = Alignment.Center) {
+                    Glyph(icon, WidgetColors.onSurfaceVariant)
                 }
-                if (button != null) {
-                    Spacer(GlanceModifier.height(4.dp))
-                    button()
+            }
+
+            size.height < MessageHeight -> {
+                MessageLine(icon, title, GlanceModifier.fillMaxSize())
+            }
+
+            else -> {
+                Column(
+                    GlanceModifier.fillMaxSize().padding(WidgetPadding),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Glyph(icon, WidgetColors.onSurfaceVariant)
+                    Spacer(GlanceModifier.height(8.dp))
+                    Text(title, style = WidgetType.name.copy(textAlign = TextAlign.Center), maxLines = 2)
+                    if (body != null && size.height >= MessageWithBodyHeight) {
+                        Spacer(GlanceModifier.height(4.dp))
+                        Text(body, style = WidgetType.small.copy(textAlign = TextAlign.Center), maxLines = 3)
+                    }
+                    if (button != null) {
+                        Spacer(GlanceModifier.height(8.dp))
+                        FilledButton(button, onClick)
+                    }
                 }
             }
         }
@@ -189,19 +220,19 @@ internal fun MessageLine(
     modifier: GlanceModifier = GlanceModifier,
 ) {
     Row(modifier.fillMaxWidth().padding(horizontal = WidgetPadding), verticalAlignment = Alignment.CenterVertically) {
-        Glyph(icon, WidgetColors.accent)
-        Spacer(GlanceModifier.width(WidgetPadding))
+        Glyph(icon, WidgetColors.onSurfaceVariant)
+        Spacer(GlanceModifier.width(12.dp))
         Text(text, style = WidgetType.body, maxLines = 2)
     }
 }
 
-/** The outline of content still on its way, as the app's screens show it. */
+/** The outline of content still on its way, drawn as the app's placeholder lines. */
 @Composable
 internal fun LoadingOutline() {
     Column(GlanceModifier.fillMaxSize().padding(WidgetPadding), verticalAlignment = Alignment.CenterVertically) {
-        Box(GlanceModifier.height(OutlineLine).width(72.dp).fill(WidgetColors.card, R.drawable.widget_pill)) {}
+        Box(GlanceModifier.height(OutlineLine).width(96.dp).fill(WidgetColors.card, R.drawable.widget_line)) {}
         Spacer(GlanceModifier.height(8.dp))
-        Box(GlanceModifier.height(OutlineLine).fillMaxWidth().fill(WidgetColors.card, R.drawable.widget_pill)) {}
+        Box(GlanceModifier.height(OutlineLine).fillMaxWidth().fill(WidgetColors.card, R.drawable.widget_line)) {}
     }
 }
 
@@ -227,5 +258,18 @@ internal object WidgetSizes {
 }
 
 private val GlyphSize = 24.dp
-private val AddButtonSize = 40.dp
+
+/** The height of the app's compact buttons and chips. */
+private val CompactHeight = 36.dp
+
+/** The height of the app's placeholder lines. */
 private val OutlineLine = 12.dp
+
+/** From this height a message has room for its glyph, a title of two lines and its button. */
+private val MessageHeight = 170.dp
+
+/** From this height a message has room for its body as well. */
+private val MessageWithBodyHeight = 240.dp
+
+/** The padding after a round button at a widget's edge, so its circle, not its target, ends on the edge. */
+private val ActionEdge: Dp = WidgetPadding - (TargetSize - CompactHeight) / 2
