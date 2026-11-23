@@ -185,7 +185,7 @@
     <string name="cook_finished_title">Guten Appetit</string>
     <string name="cook_rate_question">Wie hat es geschmeckt?</string>
     <string name="cook_mark_cooked">Als heute gekocht markieren</string>
-    <string name="cook_marked">Als heute gekocht gespeichert</string>
+    <string name="cook_marked">Heute gekocht</string>
     <string name="cook_mark_failed">Das hat nicht geklappt. Versuche es bitte noch einmal.</string>
     <string name="cook_exact_alarm_hint">Erlaube genaue Wecker, damit Timer auch bei ausgeschaltetem Bildschirm pünktlich klingeln.</string>
     <string name="cook_exact_alarm_allow">Erlauben</string>

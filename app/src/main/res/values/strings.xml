@@ -188,7 +188,7 @@
     <string name="cook_finished_title">Enjoy your meal</string>
     <string name="cook_rate_question">How was it?</string>
     <string name="cook_mark_cooked">Mark as cooked today</string>
-    <string name="cook_marked">Saved as cooked today</string>
+    <string name="cook_marked">Cooked today</string>
     <string name="cook_mark_failed">Couldn’t save that. Please try again.</string>
     <string name="cook_exact_alarm_hint">Allow exact alarms so timers also ring on time when the screen is off.</string>
     <string name="cook_exact_alarm_allow">Allow</string>

@@ -1,6 +1,17 @@
 package app.aroma.feature.cook
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,30 +23,27 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,13 +53,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,18 +76,35 @@ import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.format.DurationDetector
 import app.aroma.core.format.IngredientFormatter
+import app.aroma.core.model.ImageSize
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.Step
 import app.aroma.data.AromaError
+import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.HairlineIconButton
+import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
+import app.aroma.ui.components.Kicker
+import app.aroma.ui.components.LinkTone
+import app.aroma.ui.components.PrimaryButton
+import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
+import app.aroma.ui.components.RecipeImage
+import app.aroma.ui.components.SecondaryButton
+import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatClock
 import app.aroma.ui.components.formatDuration
+import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberRichText
-import app.aroma.ui.theme.SerifText
+import app.aroma.ui.navigation.Transitions.Settle
+import app.aroma.ui.theme.CookStep
+import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.tabular
 import kotlinx.coroutines.launch
 
 data class CookTimerUi(
@@ -107,6 +141,11 @@ data class CookActions(
     val onRetry: () -> Unit = {},
 )
 
+/** A 40 dp hairline circle sits this far inside its 48 dp touch target. */
+private val CircleInset = 4.dp
+
+private const val DONE_STAR_SIZE = 32
+
 @Composable
 fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Modifier, initialPage: Int = 0) {
     val steps = state.recipe?.steps.orEmpty()
@@ -137,11 +176,16 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            .wrapContentWidth()
+            .widthIn(max = 600.dp),
     ) {
-        TopBar(state.recipe?.name.orEmpty(), hasIngredients = rows.isNotEmpty(), onClose = actions.onClose, onIngredients = {
-            showIngredients = true
-        })
+        TopBar(
+            title = state.recipe?.name.orEmpty(),
+            hasIngredients = rows.isNotEmpty(),
+            onClose = actions.onClose,
+            onIngredients = { showIngredients = true },
+        )
         when {
             state.error != null -> {
                 ErrorState(state.error, onRetry = actions.onRetry, modifier = Modifier.weight(1f).fillMaxWidth())
@@ -152,7 +196,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
             }
 
             else -> {
-                Progress(pager, steps.size)
+                StepProgress(pager.currentPage, steps.size)
                 HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
                     if (page < steps.size) {
                         val step = steps[page]
@@ -164,12 +208,12 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                             onStartTimer = actions.onStartTimer,
                         )
                     } else {
-                        FinishPage(state, actions)
+                        DonePage(state, actions)
                     }
                 }
                 Timers(state.timers, actions)
                 if (state.exactAlarmHint) ExactAlarmHint(actions.onAllowExactAlarms)
-                BottomButtons(pager, steps.size, actions.onClose)
+                BottomActions(pager, steps.size, actions.onClose)
             }
         }
     }
@@ -180,43 +224,52 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
 
 @Composable
 private fun TopBar(title: String, hasIngredients: Boolean, onClose: () -> Unit, onIngredients: () -> Unit) {
-    Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onClose) {
-            Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.cook_close))
-        }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        if (hasIngredients) {
-            TextButton(onClick = onIngredients) { Text(stringResource(R.string.recipe_ingredients)) }
-        }
-    }
-}
-
-@Composable
-private fun Progress(pager: PagerState, steps: Int) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 8.dp),
+                .height(56.dp)
+                .padding(start = 8.dp, end = ScreenMargin),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HeaderAction(R.drawable.ic_close, stringResource(R.string.cook_close), onClose)
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp, end = 16.dp),
+        )
+        if (hasIngredients) {
+            QuietLink(stringResource(R.string.recipe_ingredients), onIngredients, tone = LinkTone.Ink)
+        }
+    }
+}
+
+/** One fine segment per step; the current one fills from the left as the step comes up. */
+@Composable
+private fun StepProgress(current: Int, steps: Int) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         repeat(steps) { index ->
-            val color by animateColorAsState(
-                if (index <= pager.currentPage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-                label = "progress",
-            )
+            val fill by animateFloatAsState(if (index <= current) 1f else 0f, tween(280, easing = Settle), label = "stepFill")
+            val done = MaterialTheme.colorScheme.primary
             Box(
                 Modifier
                     .weight(1f)
-                    .height(4.dp)
+                    .height(2.dp)
                     .clip(CircleShape)
-                    .background(color),
+                    .background(MaterialTheme.colorScheme.outlineVariant)
+                    .drawBehind { drawRect(done, size = size.copy(width = size.width * fill)) },
             )
         }
     }
@@ -234,193 +287,302 @@ private fun StepPage(
     val resources = LocalResources.current
     val stepLabel = stringResource(R.string.cook_step_of, index + 1, count)
     val durations =
-        DurationDetector.detect(step.text).map { it.seconds } +
-            listOfNotNull(step.durationSeconds?.takeIf { it > 0 })
+        remember(step) {
+            (DurationDetector.detect(step.text).map { it.seconds } + listOfNotNull(step.durationSeconds?.takeIf { it > 0 })).distinct()
+        }
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 20.dp),
+            .padding(start = ScreenMargin, end = ScreenMargin, top = 32.dp, bottom = 32.dp),
     ) {
-        Text(stepLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-        if (!step.title.isNullOrBlank()) {
-            Text(step.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 8.dp))
-        }
+        Kicker(stepLabel)
         Spacer(Modifier.height(16.dp))
-        Text(
-            text = rememberRichText(step.text, onDuration = { onStartTimer(it.seconds, stepLabel) }),
-            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = SerifText, fontSize = 26.sp, lineHeight = 38.sp),
-        )
+        if (!step.title.isNullOrBlank()) {
+            Text(step.title, style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(8.dp))
+        }
+        StepText(rememberRichText(step.text, onDuration = { onStartTimer(it.seconds, stepLabel) }))
         if (durations.isNotEmpty()) {
             FlowRow(
                 modifier = Modifier.padding(top = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                durations.distinct().forEach { seconds ->
-                    FilledTonalButton(onClick = { onStartTimer(seconds, stepLabel) }) {
-                        Icon(painterResource(R.drawable.ic_timer), contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.cook_start_timer, resources.formatDuration(seconds)))
-                    }
+                durations.forEach { seconds ->
+                    SecondaryButton(
+                        text = stringResource(R.string.cook_start_timer, resources.formatDuration(seconds)),
+                        onClick = { onStartTimer(seconds, stepLabel) },
+                        icon = R.drawable.ic_timer,
+                        compact = true,
+                    )
                 }
             }
         }
         if (ingredients.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.cook_step_ingredients),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 32.dp),
-            )
-            IngredientList(ingredients, Modifier.padding(top = 4.dp))
+            Kicker(stringResource(R.string.cook_step_ingredients), Modifier.padding(top = 32.dp, bottom = 8.dp))
+            IngredientList(ingredients)
         }
     }
 }
 
+/**
+ * The step in large serif type. Durations stay sage links in the step's own weight; their
+ * underline is drawn by hand, because a text decoration would be as heavy as the type itself.
+ */
 @Composable
-private fun FinishPage(state: CookUiState, actions: CookActions) {
+private fun StepText(text: AnnotatedString) {
+    val linkColor = MaterialTheme.colorScheme.primary
+    val styled =
+        remember(text, linkColor) {
+            val quiet = TextLinkStyles(SpanStyle(color = linkColor))
+            text.mapAnnotations { range ->
+                when (val link = range.item) {
+                    is LinkAnnotation.Clickable -> AnnotatedString.Range(link.copy(styles = quiet), range.start, range.end)
+                    is LinkAnnotation.Url -> AnnotatedString.Range(link.copy(styles = quiet), range.start, range.end)
+                    else -> range
+                }
+            }
+        }
+    val links = remember(styled) { styled.getLinkAnnotations(0, styled.length) }
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    Text(
+        text = styled,
+        style = CookStep,
+        onTextLayout = { layout = it },
+        modifier = Modifier.drawBehind { layout?.let { drawUnderlines(it, links, linkColor.copy(alpha = 0.5f)) } },
+    )
+}
+
+private fun DrawScope.drawUnderlines(layout: TextLayoutResult, links: List<AnnotatedString.Range<LinkAnnotation>>, color: Color) {
+    val below = 4.dp.toPx()
+    val stroke = 1.dp.toPx()
+    links.forEach { link ->
+        for (line in layout.getLineForOffset(link.start)..layout.getLineForOffset(link.end - 1)) {
+            val start = maxOf(link.start, layout.getLineStart(line))
+            val end = minOf(link.end, layout.getLineEnd(line, visibleEnd = true))
+            if (end <= start) continue
+            val y = layout.getLineBaseline(line) + below
+            drawLine(color, Offset(layout.getBoundingBox(start).left, y), Offset(layout.getBoundingBox(end - 1).right, y), stroke)
+        }
+    }
+}
+
+/** The one centred layout of the app, set a little above the middle, where the eye rests. */
+@Composable
+private fun DonePage(state: CookUiState, actions: CookActions) {
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(32.dp),
+            .padding(horizontal = ScreenMargin, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(88.dp)) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    painterResource(R.drawable.ic_plate),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(40.dp),
-                )
-            }
-        }
-        Spacer(Modifier.height(24.dp))
-        Text(stringResource(R.string.cook_finished_title), style = MaterialTheme.typography.displaySmall, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.weight(1f))
+        RecipeImage(
+            image = state.recipe?.image,
+            size = ImageSize.Medium,
+            shape = MaterialTheme.shapes.large,
+            fallbackIconSize = 32.dp,
+            modifier = Modifier.size(112.dp),
+        )
+        Spacer(Modifier.height(32.dp))
         Text(
-            stringResource(R.string.cook_rate_question),
+            text = stringResource(R.string.cook_finished_title),
+            style = MaterialTheme.typography.displayMedium,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.cook_rate_question),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(8.dp))
-        RatingStars(state.rating, starSize = 30, onRate = actions.onRate)
-        Spacer(Modifier.height(28.dp))
-        if (state.markedCooked) {
-            Text(
-                text = stringResource(R.string.cook_marked),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            )
-        } else {
-            OutlinedButton(onClick = actions.onMarkCooked) { Text(stringResource(R.string.cook_mark_cooked)) }
-            if (state.markFailed) {
-                Text(
-                    text = stringResource(R.string.cook_mark_failed),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                    modifier =
-                        Modifier
-                            .padding(top = 8.dp)
-                            .semantics { liveRegion = LiveRegionMode.Polite },
+        // The stars' touch targets reach beyond the glyphs; the gaps are measured to the glyphs.
+        Spacer(Modifier.height(16.dp - ratingTouchInset(DONE_STAR_SIZE)))
+        RatingStars(state.rating, starSize = DONE_STAR_SIZE, onRate = actions.onRate)
+        Spacer(Modifier.height(32.dp - ratingTouchInset(DONE_STAR_SIZE)))
+        MarkCooked(state.markedCooked, state.markFailed, actions.onMarkCooked)
+        Spacer(Modifier.weight(2f))
+    }
+}
+
+@Composable
+private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
+    AnimatedContent(
+        targetState = marked,
+        transitionSpec = { fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) },
+        contentAlignment = Alignment.Center,
+        label = "markCooked",
+    ) { done ->
+        if (done) {
+            Row(
+                modifier =
+                    Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_check),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
                 )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.cook_marked), style = MaterialTheme.typography.titleMedium)
             }
+        } else {
+            SecondaryButton(stringResource(R.string.cook_mark_cooked), onMark, icon = R.drawable.ic_check)
         }
+    }
+    if (failed && !marked) {
+        Text(
+            text = stringResource(R.string.cook_mark_failed),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+            modifier =
+                Modifier
+                    .padding(top = 8.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+        )
     }
 }
 
 @Composable
 private fun Timers(timers: List<CookTimerUi>, actions: CookActions) {
-    if (timers.isEmpty()) return
-    Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .animateContentSize(tween(Motion.EXPAND, easing = Settle)),
+    ) {
+        if (timers.isNotEmpty()) Hairline(Modifier.padding(horizontal = ScreenMargin))
         timers.forEach { timer ->
-            val finished = timer.isFinished
-            val clock = formatClock(timer.remainingSeconds)
-            Surface(
-                shape = CircleShape,
-                color = if (finished) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(Modifier.padding(start = 20.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(painterResource(R.drawable.ic_timer), contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(12.dp))
-                    Text(timer.label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.weight(1f))
-                    Text(
-                        text = if (finished) stringResource(R.string.cook_timer_done) else clock,
-                        style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
-                        modifier = Modifier.semantics { contentDescription = clock },
-                    )
-                    if (!finished) {
-                        IconButton(onClick = { actions.onToggleTimer(timer.id) }) {
-                            Icon(
-                                painterResource(if (timer.isRunning) R.drawable.ic_pause else R.drawable.ic_play_arrow),
-                                contentDescription =
-                                    stringResource(
-                                        if (timer.isRunning) R.string.cook_timer_pause else R.string.cook_timer_resume,
-                                    ),
-                            )
-                        }
-                    }
-                    IconButton(onClick = { actions.onDismissTimer(timer.id) }) {
-                        Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.cook_timer_stop))
-                    }
-                }
-            }
+            TimerRow(timer, onToggle = { actions.onToggleTimer(timer.id) }, onDismiss = { actions.onDismissTimer(timer.id) })
         }
     }
 }
 
 @Composable
+private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> Unit) {
+    val finished = timer.isFinished
+    val pulse = if (finished) finishedPulse() else null
+    val timeColor by animateColorAsState(
+        when {
+            finished -> MaterialTheme.colorScheme.primary
+            timer.isRunning -> MaterialTheme.colorScheme.onSurface
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        tween(Motion.STATE),
+        label = "timerTime",
+    )
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .padding(start = ScreenMargin, end = ScreenMargin - CircleInset),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_timer),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Row(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .graphicsLayer { alpha = pulse?.value ?: 1f },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = timer.label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (finished) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = if (finished) stringResource(R.string.cook_timer_done) else formatClock(timer.remainingSeconds),
+                style =
+                    MaterialTheme.typography.headlineMedium
+                        .copy(fontSize = 28.sp)
+                        .tabular(),
+                color = timeColor,
+                maxLines = 1,
+            )
+        }
+        Spacer(Modifier.width(16.dp - CircleInset))
+        if (!finished) {
+            HairlineIconButton(
+                icon = if (timer.isRunning) R.drawable.ic_pause else R.drawable.ic_play_arrow,
+                contentDescription = stringResource(if (timer.isRunning) R.string.cook_timer_pause else R.string.cook_timer_resume),
+                onClick = onToggle,
+            )
+        }
+        HairlineIconButton(R.drawable.ic_close, stringResource(R.string.cook_timer_stop), onDismiss)
+    }
+}
+
+/** A finished timer breathes slowly, so it catches the eye from across the kitchen. */
+@Composable
+private fun finishedPulse(): State<Float> =
+    rememberInfiniteTransition(label = "timerDone").animateFloat(
+        initialValue = 1f,
+        targetValue = 0.55f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "timerPulse",
+    )
+
+@Composable
 private fun ExactAlarmHint(onAllow: () -> Unit) {
-    Row(Modifier.padding(start = 24.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = ScreenMargin),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(
             text = stringResource(R.string.cook_exact_alarm_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(end = 16.dp),
         )
-        TextButton(onClick = onAllow) { Text(stringResource(R.string.cook_exact_alarm_allow)) }
+        QuietLink(stringResource(R.string.cook_exact_alarm_allow), onAllow, tone = LinkTone.Ink)
     }
 }
 
 @Composable
-private fun BottomButtons(pager: PagerState, steps: Int, onClose: () -> Unit) {
+private fun BottomActions(pager: PagerState, steps: Int, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     val page = pager.currentPage
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = ScreenMargin, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        OutlinedButton(
+        HairlineIconButton(
+            icon = R.drawable.ic_arrow_back,
+            contentDescription = stringResource(R.string.cook_previous),
             onClick = { scope.launch { pager.animateScrollToPage(page - 1) } },
+            size = 52.dp,
             enabled = page > 0,
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .height(56.dp),
-        ) {
-            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.cook_previous))
-        }
-        Button(
-            onClick = {
-                if (page >= steps) onClose() else scope.launch { pager.animateScrollToPage(page + 1) }
-            },
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .height(56.dp),
-        ) {
-            Text(
+        )
+        Spacer(Modifier.width(12.dp))
+        PrimaryButton(
+            text =
                 stringResource(
                     when {
                         page >= steps -> R.string.action_close
@@ -428,27 +590,25 @@ private fun BottomButtons(pager: PagerState, steps: Int, onClose: () -> Unit) {
                         else -> R.string.cook_next
                     },
                 ),
-            )
-            if (page < steps - 1) {
-                Spacer(Modifier.width(8.dp))
-                Icon(painterResource(R.drawable.ic_arrow_forward), contentDescription = null, modifier = Modifier.size(20.dp))
-            }
-        }
+            onClick = { if (page >= steps) onClose() else scope.launch { pager.animateScrollToPage(page + 1) } },
+            trailingIcon = R.drawable.ic_arrow_forward.takeIf { page < steps - 1 },
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun IngredientsSheet(rows: List<IngredientRow>, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AromaBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier
-                .padding(horizontal = 24.dp)
                 .navigationBarsPadding()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 24.dp),
         ) {
-            Text(stringResource(R.string.recipe_ingredients), style = MaterialTheme.typography.headlineSmall)
-            IngredientList(rows, Modifier.padding(top = 8.dp, bottom = 24.dp))
+            SectionHeader(stringResource(R.string.recipe_ingredients))
+            IngredientList(rows, Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp))
         }
     }
 }
