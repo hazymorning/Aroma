@@ -2,10 +2,12 @@ package app.aroma.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 /*
- * Wire formats of the Mealie API (v2 and v3). Every field has a default so that
- * servers which omit or add fields still parse.
+ * Wire formats of the Mealie API (v2 and v3). Fields of responses have defaults where servers may
+ * leave them out; MealieJson ignores fields Aroma does not know. Fields of requests have none,
+ * because MealieJson does not send a value equal to its default.
  */
 
 @Serializable
@@ -182,7 +184,7 @@ data class RatingDto(val recipeId: String, val rating: Double? = null, val isFav
 data class RatingUpdateDto(val rating: Double? = null, val isFavorite: Boolean? = null)
 
 @Serializable
-data class ImportRecipeDto(val url: String, val includeTags: Boolean = true)
+data class ImportRecipeDto(val url: String, val includeTags: Boolean)
 
 /** Only what Aroma needs from the group: whether an AI provider is set up (Mealie 3 and newer). */
 @Serializable
@@ -211,8 +213,7 @@ data class TimelineEventDto(
 data class CreateTimelineEventDto(
     val recipeId: String,
     val subject: String,
-    val eventType: String = "info",
-    val eventMessage: String? = null,
+    val eventType: String,
     val timestamp: String,
 )
 
@@ -240,9 +241,9 @@ data class MealPlanEntryDto(
 data class CreateMealPlanDto(
     val date: String,
     val entryType: String,
-    val title: String = "",
-    val text: String = "",
-    val recipeId: String? = null,
+    val title: String,
+    val text: String,
+    val recipeId: String?,
 )
 
 @Serializable
@@ -258,7 +259,4 @@ data class LabelSettingDto(val labelId: String? = null, val position: Int = 0, v
 data class CreateShoppingListDto(val name: String)
 
 @Serializable
-data class AddRecipeToListDto(
-    val recipeIncrementQuantity: Double = 1.0,
-    val recipeIngredients: List<kotlinx.serialization.json.JsonObject>? = null,
-)
+data class AddRecipeToListDto(val recipeIncrementQuantity: Double, val recipeIngredients: List<JsonObject>?)

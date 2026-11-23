@@ -48,6 +48,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MediaType.Companion.toMediaType
@@ -527,10 +528,10 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     }
 }
 
-@kotlinx.serialization.Serializable
+@Serializable
 internal data class CookbookCoverDto(val cookbook: CookbookDto, val recipeCount: Int, val cover: RecipeSummaryDto?)
 
-@kotlinx.serialization.Serializable
+@Serializable
 internal data class OrganizersDto(
     val categories: List<OrganizerDto> = emptyList(),
     val tags: List<OrganizerDto> = emptyList(),

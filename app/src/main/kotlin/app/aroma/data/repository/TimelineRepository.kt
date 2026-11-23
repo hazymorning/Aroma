@@ -36,7 +36,7 @@ class TimelineRepository(private val sessions: SessionManager, private val recip
         mealieCall {
             val now = Instant.now().toString()
             val api = sessions.api()
-            api.createTimelineEvent(CreateTimelineEventDto(recipeId, subject, timestamp = now))
+            api.createTimelineEvent(CreateTimelineEventDto(recipeId, subject, eventType = "info", timestamp = now))
             api.markMade(slug, LastMadeDto(now))
             changeCount.update { it + 1 }
         }
