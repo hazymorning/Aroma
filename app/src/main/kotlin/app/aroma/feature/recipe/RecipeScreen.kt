@@ -84,8 +84,8 @@ import app.aroma.core.model.RecipeNote
 import app.aroma.core.model.Step
 import app.aroma.data.AromaError
 import app.aroma.data.settings.IngredientsInSteps
-import app.aroma.feature.editor.ImportProgress
 import app.aroma.feature.editor.ReworkJob
+import app.aroma.feature.editor.WorkProgress
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaDropdownMenu
 import app.aroma.ui.components.AromaFilterChip
@@ -482,13 +482,15 @@ private fun LazyListScope.recipeBody(
     }
     state.rework?.takeIf { it.outcome == null }?.let { job ->
         item(key = "rework") {
-            ImportProgress(
-                title = stringResource(R.string.recipe_rework_running),
-                startedAt = job.startedAt,
-                steps = job.steps,
-                hint = stringResource(R.string.recipe_rework_progress_hint),
-                modifier = Modifier.padding(top = Space.l),
-            )
+            Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l)) {
+                WorkProgress(job.steps, job.startedAt, stringResource(R.string.recipe_rework_running), Modifier.fillMaxWidth())
+                Text(
+                    text = stringResource(R.string.recipe_rework_progress_hint),
+                    style = AromaType.Small,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = CardPadding, end = CardPadding, top = Space.s),
+                )
+            }
         }
     }
     if (recipe.description.isNotBlank()) {

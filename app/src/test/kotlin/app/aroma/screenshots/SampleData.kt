@@ -332,6 +332,15 @@ class SampleData(private val german: Boolean) {
     /** Photos of a recipe to import: a page of a cookbook and a handwritten card. */
     val importPhotos = listOf("$SERVER/import/cookbook-page.jpg", "$SERVER/import/handwritten.jpg")
 
+    /** A recipe's page and a post with one, to import, and the post's caption. */
+    val importLink = t("https://www.chefkoch.de/rezepte/lauchpuffer", "https://www.bbcgoodfood.com/recipes/leek-fritters")
+    val importPost = "https://www.instagram.com/p/AromaTest01/"
+    val importCaption =
+        t(
+            "Ofen-Gnocchi mit Kirschtomaten\nZutaten:\n500 g Gnocchi\n250 g Kirschtomaten\n2 EL Olivenöl",
+            "Sheet-pan gnocchi with cherry tomatoes\nIngredients:\n500 g gnocchi\n250 g cherry tomatoes\n2 tbsp olive oil",
+        )
+
     companion object {
         const val SERVER = "https://mealie.test"
     }

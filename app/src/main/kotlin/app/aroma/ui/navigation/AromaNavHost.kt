@@ -69,11 +69,19 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
 
     // A shopping widget opens its list on the shopping tab, once; its "+" ready to add to the list.
     val shoppingRequest = remember { mutableStateOf<LaunchRequest.Shopping?>(null) }
+
+    // A recipe's text or photos shared to Aroma go to the add screen they open, which takes them once.
+    val sharedRecipe = remember { mutableStateOf<LaunchRequest.Shared?>(null) }
     val launchConsume by rememberUpdatedState(onLaunchConsume)
     LaunchedEffect(launch) {
         when (launch) {
             is LaunchRequest.Import -> {
                 nav.navigate(AddRecipeRoute(launch.url))
+            }
+
+            is LaunchRequest.Shared -> {
+                sharedRecipe.value = launch
+                nav.navigate(AddRecipeRoute())
             }
 
             LaunchRequest.AddRecipe -> {
@@ -160,7 +168,7 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                 CookDestination(route.slug, route.scale, nav)
             }
             composable<CollectionRoute> { CollectionDestination(it.toRoute(), nav, snackbar) }
-            composable<AddRecipeRoute> { AddRecipeDestination(it.toRoute(), nav) }
+            composable<AddRecipeRoute> { AddRecipeDestination(it.toRoute(), nav, sharedRecipe.value) { sharedRecipe.value = null } }
             composable<EditorRoute> { EditorDestination(it.toRoute<EditorRoute>().slug, nav) }
             composable<SettingsRoute> { SettingsDestination(nav) }
             composable<LicensesRoute> { LicensesDestination(nav) }

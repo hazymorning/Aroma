@@ -59,7 +59,7 @@
     <string name="error_import_message">Mealie hat auf dieser Seite kein Rezept gefunden.</string>
     <string name="error_import_unreachable">Mealie konnte diese Seite nicht öffnen. Prüfe den Link oder versuche es später noch einmal.</string>
     <string name="error_import_no_answer">Mealie hat zu lange nicht geantwortet. Kommt das Rezept noch an, findest du es unter Rezepte.</string>
-    <string name="error_import_post_unreadable">Weder Aroma noch dein Mealie-Server konnten den Beitrag lesen, vielleicht ist er nur angemeldet zu sehen. Kopiere seinen Text in „Rezepttext“ und importiere noch einmal.</string>
+    <string name="error_import_post_unreadable">Weder Aroma noch dein Mealie-Server konnten den Beitrag lesen, vielleicht ist er nur angemeldet zu sehen. Kopiere seinen Text, füge ihn unter dem Link ein und importiere noch einmal.</string>
     <string name="error_generic_title">Da ist etwas schiefgelaufen</string>
     <string name="error_generic_message">Der Server hat mit einem Fehler geantwortet. Versuche es gleich noch einmal.</string>
 
@@ -317,20 +317,27 @@
     <string name="timeline_empty_message">Was ihr kocht und neu hinzufügt, erscheint hier.</string>
 
     <!-- Add and edit -->
-    <string name="add_from_web">Aus Link oder Text</string>
-    <string name="add_from_web_hint">Füge einen Link ein, den Text eines Rezepts oder beides. Zutaten, Schritte und Foto kommen direkt ins Rezept.</string>
-    <string name="add_url_label">Link zum Rezept</string>
-    <string name="add_paste">Einfügen</string>
+    <string name="add_input_label">Link oder Rezepttext</string>
+    <string name="add_input_hint">Füge einen Link ein, den Text eines Rezepts oder beides</string>
+    <string name="add_paste_link">Kopierten Link einfügen</string>
+    <string name="add_paste_text">Kopierten Text einfügen</string>
     <string name="add_import">Importieren</string>
     <string name="add_ai_title">Mit KI auslesen</string>
-    <string name="add_ai_hint">Mealies KI macht aus dem Text ein sauberes Rezept, so wie es deine Prompts in Mealie vorgeben. Ohne KI liest Aroma den Text selbst: schneller, aber einfacher.</string>
-    <string name="add_text_label">Rezepttext (optional)</string>
-    <string name="add_text_hint">Zum Beispiel die Bildunterschrift eines Beitrags</string>
     <string name="add_ai_translate">Ins Deutsche übersetzen</string>
+    <string name="add_retry_with_ai">Schalte „Mit KI auslesen“ ein und versuche es noch einmal.</string>
+    <string name="add_retry_with_text">Füge den Rezepttext unter dem Link ein und versuche es noch einmal.</string>
+    <string name="add_other_ways">Andere Wege</string>
+    <string name="add_photos">Aus Fotos</string>
+    <string name="add_photos_hint">Kochbuchseite oder Rezeptkarte</string>
     <string name="add_photos_choose">Fotos hinzufügen</string>
     <string name="add_photos_take">Foto aufnehmen</string>
     <string name="add_photos_remove">Foto %1$d entfernen</string>
-    <string name="add_photos_no_recipe">Mealie hat auf den Fotos kein Rezept gefunden.</string>
+    <string name="add_photos_unreadable">Dein Mealie-Server kann noch keine Fotos lesen. Dafür braucht es in Mealie einen KI-Anbieter für Bilder.</string>
+    <plurals name="add_photos_first">
+        <item quantity="one">Ein Import nimmt höchstens %1$d Foto, hier ist das erste.</item>
+        <item quantity="other">Ein Import nimmt höchstens %1$d Fotos, hier sind die ersten %1$d.</item>
+    </plurals>
+    <string name="add_photos_no_recipe">Mealie hat auf den Fotos kein Rezept gefunden. Am besten klappen scharfe Fotos der ganzen Seite.</string>
     <string name="add_progress_waiting">Mealie liest das Rezept</string>
     <string name="add_progress_still_working">Mealie arbeitet noch</string>
     <string name="add_progress_reading_post">Beitrag lesen</string>
@@ -344,7 +351,7 @@
     <string name="add_progress_ai_hint">Mit KI dauert das meist eine halbe Minute, bei Videos länger. Du kannst Aroma derweil verlassen.</string>
     <string name="add_untitled">Importiertes Rezept</string>
     <string name="add_manual">Selbst schreiben</string>
-    <string name="add_manual_hint">Beginne mit einem Namen, Zutaten und Schritte folgen danach.</string>
+    <string name="add_manual_hint">Beginne mit einem Namen</string>
     <string name="add_create">Rezept anlegen</string>
     <string name="editor_title">Rezept bearbeiten</string>
     <string name="editor_name">Name</string>

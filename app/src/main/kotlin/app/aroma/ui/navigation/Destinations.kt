@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -50,6 +52,8 @@ import app.aroma.feature.editor.EditorActions
 import app.aroma.feature.editor.EditorScreen
 import app.aroma.feature.editor.EditorViewModel
 import app.aroma.feature.editor.ImportOutcome
+import app.aroma.feature.editor.WatchClipboard
+import app.aroma.feature.editor.copiedText
 import app.aroma.feature.editor.readPickedPhoto
 import app.aroma.feature.editor.reworkReason
 import app.aroma.feature.home.HomeActions
@@ -638,13 +642,30 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
     )
 }
 
+/** The add screen; [shared] is a recipe's text or photos another app shared, taken once, as [onSharedConsume] tells. */
 @Composable
-fun AddRecipeDestination(route: AddRecipeRoute, nav: NavController) {
-    val vm = aromaViewModel { AddRecipeViewModel(recipes, imports, settings, route.sharedUrl, route.job, it) }
+fun AddRecipeDestination(
+    route: AddRecipeRoute,
+    nav: NavController,
+    shared: LaunchRequest.Shared? = null,
+    onSharedConsume: () -> Unit = {},
+) {
+    val vm =
+        aromaViewModel {
+            AddRecipeViewModel(recipes, imports, settings, route.sharedUrl, route.job, it, shared?.text, shared?.photos.orEmpty())
+        }
+    // The screen that was made with the share took it; another one must not take it again.
+    val sharedConsume by rememberUpdatedState(onSharedConsume)
+    LaunchedEffect(vm) { if (shared != null) sharedConsume() }
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboard.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    WatchClipboard(vm::onClipboardChange)
+    // Back from what another app shared returns to that app, which Aroma opened over; the arrow stays in Aroma.
+    val activity = LocalActivity.current
+    val fromShare = rememberSaveable { route.sharedUrl != null || shared != null }
+    BackHandler(enabled = fromShare && activity?.isTaskRoot == false) { activity?.finish() }
     LaunchedEffect(vm) {
         vm.created.collect { slug -> nav.navigate(EditorRoute(slug)) { popUpTo<AddRecipeRoute> { inclusive = true } } }
     }
@@ -669,21 +690,8 @@ fun AddRecipeDestination(route: AddRecipeRoute, nav: NavController) {
         actions =
             AddRecipeActions(
                 onBack = { nav.popBackStack() },
-                onUrlChange = vm::onUrlChange,
-                onPaste = {
-                    scope.launch {
-                        val text =
-                            clipboard
-                                .getClipEntry()
-                                ?.clipData
-                                ?.takeIf { it.itemCount > 0 }
-                                ?.getItemAt(0)
-                                ?.text
-                                ?.toString()
-                        if (!text.isNullOrBlank()) vm.onUrlChange(text.trim())
-                    }
-                },
-                onTextChange = vm::onTextChange,
+                onInputChange = vm::onInputChange,
+                onPaste = { scope.launch { clipboard.copiedText(context)?.let(vm::paste) } },
                 onAddPhotos = vm::addPhotos,
                 onRemovePhoto = vm::removePhoto,
                 onUseAiChange = vm::onUseAiChange,

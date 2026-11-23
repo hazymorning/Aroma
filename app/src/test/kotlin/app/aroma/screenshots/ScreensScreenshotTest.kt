@@ -16,6 +16,7 @@ import app.aroma.core.model.Meal
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.core.model.User
+import app.aroma.data.AromaError
 import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.data.update.UpdateState
 import app.aroma.feature.cook.CookActions
@@ -30,9 +31,12 @@ import app.aroma.feature.editor.EditorForm
 import app.aroma.feature.editor.EditorScreen
 import app.aroma.feature.editor.EditorUiState
 import app.aroma.feature.editor.ImportJob
+import app.aroma.feature.editor.ImportOutcome
 import app.aroma.feature.editor.ImportPhoto
 import app.aroma.feature.editor.ImportRequest
 import app.aroma.feature.editor.ImportStep
+import app.aroma.feature.editor.PasteOffer
+import app.aroma.feature.editor.PhotosNote
 import app.aroma.feature.editor.ReworkJob
 import app.aroma.feature.editor.ReworkRequest
 import app.aroma.feature.home.Greeting
@@ -524,80 +528,74 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot("licenses_${variant.suffix}", variant.dark) { LicensesScreen(onBack = {}) }
     }
 
+    /** The add screen as it opens: one field, the AI's options as chips, and the ways in without a link below. */
     @Test
     fun addRecipe() {
         applyLocale()
+        withCamera()
         snapshot("add_${variant.suffix}", variant.dark) {
-            AddRecipeScreen(state = AddRecipeUiState(url = "https://example.com/leek-fritters"), actions = AddRecipeActions())
+            AddRecipeScreen(state = AddRecipeUiState(aiAvailable = true, photosAvailable = true), actions = AddRecipeActions())
         }
     }
 
+    /** A link copied in another app, offered right under the empty field. */
     @Test
-    fun addRecipeWithAi() {
+    fun addRecipeClipboard() {
         applyLocale()
-        snapshot("add_ai_${variant.suffix}", variant.dark) {
+        withCamera()
+        snapshot("add_clipboard_${variant.suffix}", variant.dark) {
+            AddRecipeScreen(
+                state = AddRecipeUiState(aiAvailable = true, photosAvailable = true, copied = PasteOffer.Link),
+                actions = AddRecipeActions(),
+            )
+        }
+    }
+
+    /** A link pasted, to be read with AI and translated; the caption copied since is offered to go below it. */
+    @Test
+    fun addRecipeLink() {
+        applyLocale()
+        withCamera()
+        snapshot("add_link_${variant.suffix}", variant.dark) {
             AddRecipeScreen(
                 state =
                     AddRecipeUiState(
-                        url = "https://www.instagram.com/p/AromaTest01/",
+                        input = sample.importLink,
                         aiAvailable = true,
-                        text =
-                            if (variant.locale ==
-                                "de"
-                            ) {
-                                "Zutaten: 500 g Gnocchi, 250 g Kirschtomaten …"
-                            } else {
-                                "Ingredients: 500 g gnocchi, 250 g cherry tomatoes …"
-                            },
+                        photosAvailable = true,
+                        translate = true,
+                        copied = PasteOffer.Text,
                     ),
                 actions = AddRecipeActions(),
             )
         }
     }
 
+    /** A caption below its link, to be read without AI, which takes the translation along. */
     @Test
-    fun addRecipeImporting() {
+    fun addRecipeText() {
         applyLocale()
-        snapshot("add_importing_${variant.suffix}", variant.dark) {
+        withCamera()
+        snapshot("add_text_${variant.suffix}", variant.dark) {
             AddRecipeScreen(
                 state =
                     AddRecipeUiState(
-                        url = "https://www.instagram.com/p/AromaTest01/",
+                        input = "${sample.importPost}\n\n${sample.importCaption}",
                         aiAvailable = true,
-                        import =
-                            ImportJob(
-                                request = ImportRequest("https://www.instagram.com/p/AromaTest01/", useAi = true),
-                                // Half a second into the 24th, so the clock reads 0:23 however long drawing takes.
-                                startedAt = System.currentTimeMillis() - 23_500,
-                                steps =
-                                    listOf(
-                                        ImportStep.ReadingPost,
-                                        ImportStep.Waiting,
-                                        ImportStep.Server(if (variant.locale == "de") "Rezept erstellen..." else "Creating recipe..."),
-                                        ImportStep.Server(
-                                            if (variant.locale ==
-                                                "de"
-                                            ) {
-                                                "Rezept wird übersetzt..."
-                                            } else {
-                                                "Translating recipe..."
-                                            },
-                                        ),
-                                    ),
-                            ),
+                        photosAvailable = true,
+                        useAi = false,
                     ),
                 actions = AddRecipeActions(),
             )
         }
     }
 
-    /** Two photos chosen for Mealie's AI: thumbnails on the page's edge, and the AI switch, needless with them, stepped aside. */
+    /** Two photos chosen for Mealie's AI, with tiles for more; the AI chip, needless with photos, stepped aside. */
     @Test
     fun addRecipeWithPhotos() {
         applyLocale()
         val context = ApplicationProvider.getApplicationContext<Context>()
-        // A phone with a camera, which the link to take a photo asks for.
-        shadowOf(context.packageManager).setSystemFeature(PackageManager.FEATURE_CAMERA_ANY, true)
+        withCamera()
         val photos = sample.importPhotos.map { ImportPhoto(photoFile(context, it)) }
         showFiles(context)
         snapshot("add_photos_${variant.suffix}", variant.dark) {
@@ -606,6 +604,78 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                 actions = AddRecipeActions(),
             )
         }
+    }
+
+    /** Photos shared from the gallery to a server that cannot read them: set aside, and the screen says why. */
+    @Test
+    fun addRecipePhotosUnreadable() {
+        applyLocale()
+        withCamera()
+        snapshot("add_photos_unreadable_${variant.suffix}", variant.dark) {
+            AddRecipeScreen(state = AddRecipeUiState(photosNote = PhotosNote.Unreadable), actions = AddRecipeActions())
+        }
+    }
+
+    /** A shared post on its way: the import button has turned into its progress, and the rest stepped aside. */
+    @Test
+    fun addRecipeImporting() {
+        applyLocale()
+        withCamera()
+        snapshot("add_importing_${variant.suffix}", variant.dark) {
+            AddRecipeScreen(
+                state =
+                    AddRecipeUiState(
+                        input = sample.importPost,
+                        aiAvailable = true,
+                        photosAvailable = true,
+                        import =
+                            ImportJob(
+                                request = ImportRequest(sample.importPost, useAi = true),
+                                // Half a second into the 24th, so the clock reads 0:23 however long drawing takes.
+                                startedAt = System.currentTimeMillis() - 23_500,
+                                steps =
+                                    listOf(
+                                        ImportStep.ReadingPost,
+                                        ImportStep.Waiting,
+                                        ImportStep.Server(if (variant.locale == "de") "Rezept erstellen..." else "Creating recipe..."),
+                                    ),
+                            ),
+                    ),
+                actions = AddRecipeActions(),
+            )
+        }
+    }
+
+    /** A post nobody could read: what to do about it below the button, and the caption copied since offered to paste. */
+    @Test
+    fun addRecipeError() {
+        applyLocale()
+        withCamera()
+        snapshot("add_error_${variant.suffix}", variant.dark) {
+            AddRecipeScreen(
+                state =
+                    AddRecipeUiState(
+                        input = sample.importPost,
+                        aiAvailable = true,
+                        photosAvailable = true,
+                        copied = PasteOffer.Text,
+                        import =
+                            ImportJob(
+                                request = ImportRequest(sample.importPost, useAi = true),
+                                startedAt = System.currentTimeMillis() - 41_000,
+                                steps = listOf(ImportStep.ReadingPost, ImportStep.Waiting),
+                                outcome = ImportOutcome.Failed(AromaError.ImportFailed(AromaError.ImportFailed.Reason.PostUnreadable)),
+                            ),
+                    ),
+                actions = AddRecipeActions(),
+            )
+        }
+    }
+
+    /** A phone with a camera, which the add screen's camera actions ask for. */
+    private fun withCamera() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        shadowOf(context.packageManager).setSystemFeature(PackageManager.FEATURE_CAMERA_ANY, true)
     }
 
     /** The photo [url] stands for as a file on the phone, where the add screen keeps the photos it imports. */

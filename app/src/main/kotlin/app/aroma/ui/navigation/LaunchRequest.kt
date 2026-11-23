@@ -1,19 +1,27 @@
 package app.aroma.ui.navigation
 
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.core.content.IntentCompat
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import app.aroma.MainActivity
 import app.aroma.R
+import app.aroma.feature.editor.ImportInput
 import java.util.UUID
 
-/** What Aroma was opened for: a link shared to it, one of its launcher shortcuts, a notification or a widget. */
+/** What Aroma was opened for: something shared to it, one of its launcher shortcuts, a notification or a widget. */
 sealed interface LaunchRequest {
+    /** A link shared to Aroma, imported at once. */
     data class Import(val url: String) : LaunchRequest
+
+    /** A recipe's text or photos shared to Aroma, which wait on the add screen for a look before they are imported. */
+    data class Shared(val text: String = "", val photos: List<Uri> = emptyList()) : LaunchRequest
 
     /** A recipe an import added, or a planned one tapped in a widget. */
     data class Recipe(val slug: String) : LaunchRequest {
@@ -47,9 +55,11 @@ sealed interface LaunchRequest {
         fun from(intent: Intent?): LaunchRequest? =
             when (intent?.action) {
                 Intent.ACTION_SEND -> {
-                    // Some apps share styled text, which a plain string extra would not return.
-                    val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
-                    text?.let { link.find(it)?.value?.trimEnd('.', ',', ')', '!', '?', '"', '\u201D') }?.let(::Import)
+                    shared(intent, listOfNotNull(IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)))
+                }
+
+                Intent.ACTION_SEND_MULTIPLE -> {
+                    shared(intent, IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java).orEmpty())
                 }
 
                 OPEN_RECIPE -> {
@@ -74,7 +84,28 @@ sealed interface LaunchRequest {
         private const val EXTRA = "id"
         private const val ADD = "add"
 
-        private val link = Regex("""https?://\S+""")
+        /**
+         * What another app shared: a link alone is imported at once, as sharing it to Aroma already
+         * said what to do with it; a recipe's text or photos open the add screen for a look first.
+         * Photos come as content uris only, since a file would be one of Aroma's own.
+         */
+        private fun shared(intent: Intent, streams: List<Uri>): LaunchRequest? {
+            // Some apps share styled text, which a plain string extra would not return.
+            val text =
+                intent
+                    .getCharSequenceExtra(Intent.EXTRA_TEXT)
+                    ?.toString()
+                    .orEmpty()
+                    .trim()
+            val photos = streams.filter { it.scheme == ContentResolver.SCHEME_CONTENT && intent.type?.startsWith("image/") == true }
+            val input = ImportInput.of(text)
+            return when {
+                photos.isNotEmpty() -> Shared(text, photos)
+                input.link != null && input.text.isEmpty() -> Import(input.link)
+                text.isNotEmpty() -> Shared(text)
+                else -> null
+            }
+        }
 
         /** Any app can send these actions, so an id that is none opens nothing. */
         private fun importId(text: String?): UUID? =

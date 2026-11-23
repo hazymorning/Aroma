@@ -61,7 +61,7 @@
     <string name="error_import_message">Mealie couldn’t find a recipe on this page.</string>
     <string name="error_import_unreachable">Mealie couldn’t open this page. Check the link or try again later.</string>
     <string name="error_import_no_answer">Mealie took too long to answer. If the recipe still arrives, you’ll find it under Recipes.</string>
-    <string name="error_import_post_unreadable">Neither Aroma nor your Mealie server could read the post; it may only be visible when signed in. Copy its text into “Recipe text” and import again.</string>
+    <string name="error_import_post_unreadable">Neither Aroma nor your Mealie server could read the post; it may only be visible when signed in. Copy its text, paste it below the link and import again.</string>
     <string name="error_generic_title">Something went wrong</string>
     <string name="error_generic_message">The server answered with an error. Please try again in a moment.</string>
 
@@ -320,20 +320,27 @@
     <string name="timeline_empty_message">What your household cooks and adds shows up here.</string>
 
     <!-- Add and edit -->
-    <string name="add_from_web">From a link or text</string>
-    <string name="add_from_web_hint">Paste a link, the text of a recipe, or both. Ingredients, steps and the photo go straight into the recipe.</string>
-    <string name="add_url_label">Link to the recipe</string>
-    <string name="add_paste">Paste</string>
+    <string name="add_input_label">Link or recipe text</string>
+    <string name="add_input_hint">Paste a link, the text of a recipe, or both</string>
+    <string name="add_paste_link">Paste the link you copied</string>
+    <string name="add_paste_text">Paste the text you copied</string>
     <string name="add_import">Import</string>
     <string name="add_ai_title">Read with AI</string>
-    <string name="add_ai_hint">Mealie’s AI turns the text into a tidy recipe, following your prompts in Mealie. Without it, Aroma reads the text itself: faster, but simpler.</string>
-    <string name="add_text_label">Recipe text (optional)</string>
-    <string name="add_text_hint">For example the caption of a post</string>
     <string name="add_ai_translate">Translate into English</string>
+    <string name="add_retry_with_ai">Turn on “Read with AI” and try again.</string>
+    <string name="add_retry_with_text">Paste the recipe’s text below the link and try again.</string>
+    <string name="add_other_ways">Other ways</string>
+    <string name="add_photos">From photos</string>
+    <string name="add_photos_hint">A cookbook page or a recipe card</string>
     <string name="add_photos_choose">Add photos</string>
     <string name="add_photos_take">Take a photo</string>
     <string name="add_photos_remove">Remove photo %1$d</string>
-    <string name="add_photos_no_recipe">Mealie couldn’t find a recipe in the photos.</string>
+    <string name="add_photos_unreadable">Your Mealie server can’t read photos yet. That takes an AI provider for images, set up in Mealie.</string>
+    <plurals name="add_photos_first">
+        <item quantity="one">An import takes %1$d photo at most, so here is the first.</item>
+        <item quantity="other">An import takes %1$d photos at most, so here are the first %1$d.</item>
+    </plurals>
+    <string name="add_photos_no_recipe">Mealie couldn’t find a recipe in the photos. Sharp photos of the whole page work best.</string>
     <string name="add_progress_waiting">Mealie is reading the recipe</string>
     <string name="add_progress_still_working">Mealie is still working</string>
     <string name="add_progress_reading_post">Reading the post</string>
@@ -347,7 +354,7 @@
     <string name="add_progress_ai_hint">With AI this usually takes half a minute, longer for videos. You can leave Aroma meanwhile.</string>
     <string name="add_untitled">Imported recipe</string>
     <string name="add_manual">Write it yourself</string>
-    <string name="add_manual_hint">Start with a name, then add ingredients and steps.</string>
+    <string name="add_manual_hint">Start with a name</string>
     <string name="add_create">Create recipe</string>
     <string name="editor_title">Edit recipe</string>
     <string name="editor_name">Name</string>

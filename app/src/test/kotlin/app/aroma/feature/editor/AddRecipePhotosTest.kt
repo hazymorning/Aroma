@@ -10,16 +10,23 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.work.testing.WorkManagerTestInitHelper
 import app.aroma.data.TestEnvironment
 import app.aroma.data.remote.SocialPosts
+import app.aroma.data.session.Session
 import app.aroma.data.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.runBlocking
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -32,7 +39,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
-/** Photos on the add screen: enough to import on their own, sent with the import, kept through the end of the app. */
+/**
+ * Photos on the add screen: enough to import on their own, sent with the import, kept through the
+ * end of the app; shared from another app, copied in for a look, where the server reads photos.
+ */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36])
@@ -44,6 +54,7 @@ class AddRecipePhotosTest {
     private val env = TestEnvironment()
     private val settings by lazy { SettingsRepository(PreferenceDataStoreFactory.create { folder.newFile("settings.preferences_pb") }) }
     private val screen = CoroutineScope(Dispatchers.Main)
+    private val server = MockWebServer()
 
     @Before
     fun setUp() = WorkManagerTestInitHelper.initializeTestWorkManager(context)
@@ -52,6 +63,7 @@ class AddRecipePhotosTest {
     fun tearDown() {
         screen.cancel()
         env.close()
+        server.close()
     }
 
     @Test
@@ -110,9 +122,80 @@ class AddRecipePhotosTest {
         assertEquals(MAX_IMPORT_PHOTOS, vm.state.value.photos.size)
     }
 
-    private fun open(saved: SavedStateHandle): AddRecipeViewModel {
+    @Test
+    fun `photos shared to Aroma are copied in for the photo import, and wait for the import button`() {
+        serverReadsPhotos()
+        val shared = listOf(photo(), photo())
+
+        val vm = open(SavedStateHandle(), shared.map(Uri::fromFile))
+        vm.state.launchIn(screen)
+        awaitUntil {
+            vm.state.value.photosAvailable && vm.state.value.photos
+                .count { it.file != null } == 2
+        }
+
+        val copies =
+            vm.state.value.photos
+                .map { it.file!! }
+        assertTrue(copies.all { it.exists() && it.parentFile!!.name == "import-photos" })
+        assertTrue("the shared files stay the other app's", copies.none { it in shared })
+        assertFalse(vm.state.value.isImporting)
+        assertTrue(vm.state.value.canImport)
+        assertNull(vm.state.value.photosNote)
+    }
+
+    @Test
+    fun `of more photos shared than an import sends, the first are taken, and the screen says so`() {
+        serverReadsPhotos()
+
+        val vm = open(SavedStateHandle(), List(MAX_IMPORT_PHOTOS + 2) { Uri.fromFile(photo()) })
+        vm.state.launchIn(screen)
+        awaitUntil {
+            vm.state.value.photosAvailable && vm.state.value.photos
+                .count { it.file != null } == MAX_IMPORT_PHOTOS
+        }
+
+        assertEquals(PhotosNote.FirstOnly, vm.state.value.photosNote)
+    }
+
+    @Test
+    fun `photos shared to a server that cannot read them are set aside, and the screen says why`() {
+        val vm = open(SavedStateHandle(), listOf(Uri.fromFile(photo())))
+        vm.state.launchIn(screen)
+        awaitUntil { vm.state.value.photosNote == PhotosNote.Unreadable }
+
+        assertTrue(
+            vm.state.value.photos
+                .isEmpty(),
+        )
+        assertFalse("nothing is left to import", vm.state.value.canImport)
+        awaitUntil { File(context.cacheDir, "import-photos").listFiles().isNullOrEmpty() }
+    }
+
+    private fun open(saved: SavedStateHandle, shared: List<Uri> = emptyList()): AddRecipeViewModel {
         val importer = RecipeImporter(env.recipes, SocialPosts(OkHttpClient()) { "Test browser" }, untitled = { "Rezept" })
-        return AddRecipeViewModel(env.recipes, RecipeImports(context, env.recipes, importer), settings, null, shownJob = null, saved)
+        val imports = RecipeImports(context, env.recipes, importer)
+        return AddRecipeViewModel(env.recipes, imports, settings, null, shownJob = null, saved, sharedPhotos = shared)
+    }
+
+    /** Signs in to a server whose group has Mealie's AI with a provider for images. */
+    private fun serverReadsPhotos() {
+        server.dispatcher =
+            object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse =
+                    if (request.url.encodedPath == "/api/groups/self") {
+                        MockResponse
+                            .Builder()
+                            .addHeader("Content-Type", "application/json")
+                            .body("""{"aiProviderSettings":{"aiEnabled":true,"imageProviderEnabled":true}}""")
+                            .build()
+                    } else {
+                        MockResponse.Builder().code(404).build()
+                    }
+            }
+        server.start()
+        val address = server.url("/").toString().trimEnd('/')
+        runBlocking { env.sessions.start(Session(address, token = "t", userId = "user-1", username = "mara", serverVersion = "v3.31.0")) }
     }
 
     private fun photo(): File {
