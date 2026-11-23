@@ -1,5 +1,6 @@
 package app.aroma.feature.editor
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,7 @@ import app.aroma.core.format.SharedLink
 import app.aroma.data.AromaError
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.settings.SettingsRepository
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -22,13 +24,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import java.io.File
 import java.util.Locale
 import java.util.UUID
 
 /**
  * The add screen. An import runs as background work ([RecipeImports]); the screen follows it by
- * id, kept with its saved state, so it finds the import again after Android ended the app.
- * [sharedUrl] is a link shared to Aroma, [shownJob] an import opened from its notification.
+ * id, kept with its saved state, so it finds the import again after Android ended the app, as it
+ * finds the photos added for the next import. [sharedUrl] is a link shared to Aroma, [shownJob] an
+ * import opened from its notification.
  */
 class AddRecipeViewModel(
     private val recipes: RecipeRepository,
@@ -45,7 +49,14 @@ class AddRecipeViewModel(
      */
     private val importsSharedLink = sharedUrl?.toHttpUrlOrNull() != null && saved.get<Boolean>(SHARED_LINK_IMPORTED) != true
 
-    private val form = MutableStateFlow(AddRecipeUiState(url = sharedUrl.orEmpty(), starting = importsSharedLink))
+    private val form =
+        MutableStateFlow(
+            AddRecipeUiState(
+                url = sharedUrl.orEmpty(),
+                starting = importsSharedLink,
+                photos = saved.get<ArrayList<String>>(PHOTOS).orEmpty().map { ImportPhoto(File(it)) },
+            ),
+        )
 
     private val jobId = saved.getStateFlow(FOLLOWED_IMPORT, shownJob)
 
@@ -71,7 +82,8 @@ class AddRecipeViewModel(
             // whether the server has AI the import asks itself, so leaving the screen at once loses nothing.
             if (importsSharedLink) start()
             val aiAvailable = recipes.canImportWithAi()
-            form.update { it.copy(aiAvailable = aiAvailable) }
+            val photosAvailable = recipes.canImportPhotosWithAi()
+            form.update { it.copy(aiAvailable = aiAvailable, photosAvailable = photosAvailable) }
         }
     }
 
@@ -89,6 +101,33 @@ class AddRecipeViewModel(
     fun onTranslateChange(enabled: Boolean) {
         form.update { it.copy(translate = enabled) }
         viewModelScope.launch { settings.setTranslateImports(enabled) }
+    }
+
+    /** Adds photos of the recipe, as many as there is room for, each scaled down in the background. */
+    fun addPhotos(uris: List<Uri>) {
+        val added = uris.take(MAX_IMPORT_PHOTOS - form.value.photos.size).map { it to ImportPhoto() }
+        if (added.isEmpty()) return
+        edit { state -> state.copy(photos = state.photos + added.map { it.second }) }
+        added.forEach { (uri, photo) ->
+            viewModelScope.launch {
+                val file = imports.preparePhoto(uri)
+                var kept = false
+                // An unreadable photo leaves its place; one removed meanwhile is not needed any more.
+                form.update { state ->
+                    kept = file != null && state.photos.any { it.id == photo.id }
+                    val photos = state.photos.mapNotNull { if (it.id != photo.id) it else file?.let { ready -> it.copy(file = ready) } }
+                    state.copy(photos = photos)
+                }
+                if (!kept) imports.discard(listOfNotNull(file))
+                savePhotos()
+            }
+        }
+    }
+
+    fun removePhoto(photo: ImportPhoto) {
+        edit { state -> state.copy(photos = state.photos.filterNot { it.id == photo.id }) }
+        imports.discard(listOfNotNull(photo.file))
+        savePhotos()
     }
 
     fun import() {
@@ -114,17 +153,33 @@ class AddRecipeViewModel(
         }
     }
 
+    override fun onCleared() {
+        // An import that started has copies of its own.
+        imports.discard(form.value.photos.mapNotNull { it.file })
+    }
+
     private fun start() {
         val current = form.value
+        val photos = current.photos.mapNotNull { it.file }
         val request =
             ImportRequest(
                 url = SharedLink.clean(current.url),
                 text = current.text.trim(),
                 useAi = current.useAi,
-                translateTo = Locale.getDefault().toLanguageTag().takeIf { current.useAi && current.translate },
+                // Photos are always read with AI, whatever the switch says.
+                translateTo = Locale.getDefault().toLanguageTag().takeIf { (current.useAi || photos.isNotEmpty()) && current.translate },
+                photos = photos,
             )
-        saved[FOLLOWED_IMPORT] = imports.start(request).toString()
-        form.update { it.copy(starting = false) }
+        form.update { it.copy(starting = true) }
+        // Without photos to copy, the import is queued before this returns, so leaving the screen at once loses nothing.
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            saved[FOLLOWED_IMPORT] = imports.start(request).toString()
+            form.update { it.copy(starting = false) }
+        }
+    }
+
+    private fun savePhotos() {
+        saved[PHOTOS] = ArrayList(form.value.photos.mapNotNull { it.file?.path })
     }
 
     /** A change to what is imported; an import that ended no longer belongs to it. */
@@ -138,3 +193,4 @@ class AddRecipeViewModel(
 
 private const val FOLLOWED_IMPORT = "followedImport"
 private const val SHARED_LINK_IMPORTED = "sharedLinkImported"
+private const val PHOTOS = "photos"

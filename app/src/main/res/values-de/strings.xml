@@ -308,6 +308,10 @@
     <string name="add_text_label">Rezepttext (optional)</string>
     <string name="add_text_hint">Zum Beispiel die Bildunterschrift eines Beitrags</string>
     <string name="add_ai_translate">Ins Deutsche übersetzen</string>
+    <string name="add_photos_choose">Fotos hinzufügen</string>
+    <string name="add_photos_take">Foto aufnehmen</string>
+    <string name="add_photos_remove">Foto %1$d entfernen</string>
+    <string name="add_photos_no_recipe">Mealie hat auf den Fotos kein Rezept gefunden.</string>
     <string name="add_progress_waiting">Mealie liest das Rezept</string>
     <string name="add_progress_still_working">Mealie arbeitet noch</string>
     <string name="add_progress_reading_post">Beitrag lesen</string>

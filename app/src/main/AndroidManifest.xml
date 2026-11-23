@@ -86,7 +86,8 @@
             </intent-filter>
         </activity>
 
-        <!-- A downloaded update: not exported, Android's installer may read it while it installs. -->
+        <!-- A downloaded update, which Android's installer may read while it installs, and the file the camera
+             app saves a photo for an import into: not exported, each reached only through the uri Aroma grants. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.updates"

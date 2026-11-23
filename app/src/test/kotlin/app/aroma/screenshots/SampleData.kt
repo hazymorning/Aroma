@@ -248,6 +248,9 @@ class SampleData(private val german: Boolean) {
             labelOrder = listOf("produce", "dairy", "bakery", "pantry"),
         )
 
+    /** Photos of a recipe to import: a page of a cookbook and a handwritten card. */
+    val importPhotos = listOf("$SERVER/import/cookbook-page.jpg", "$SERVER/import/handwritten.jpg")
+
     companion object {
         const val SERVER = "https://mealie.test"
     }

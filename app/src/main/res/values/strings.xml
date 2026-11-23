@@ -311,6 +311,10 @@
     <string name="add_text_label">Recipe text (optional)</string>
     <string name="add_text_hint">For example the caption of a post</string>
     <string name="add_ai_translate">Translate into English</string>
+    <string name="add_photos_choose">Add photos</string>
+    <string name="add_photos_take">Take a photo</string>
+    <string name="add_photos_remove">Remove photo %1$d</string>
+    <string name="add_photos_no_recipe">Mealie couldn’t find a recipe in the photos.</string>
     <string name="add_progress_waiting">Mealie is reading the recipe</string>
     <string name="add_progress_still_working">Mealie is still working</string>
     <string name="add_progress_reading_post">Reading the post</string>

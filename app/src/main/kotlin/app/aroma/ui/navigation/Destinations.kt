@@ -649,6 +649,8 @@ fun AddRecipeDestination(route: AddRecipeRoute, nav: NavController) {
                     }
                 },
                 onTextChange = vm::onTextChange,
+                onAddPhotos = vm::addPhotos,
+                onRemovePhoto = vm::removePhoto,
                 onUseAiChange = vm::onUseAiChange,
                 onTranslateChange = vm::onTranslateChange,
                 onImport = vm::import,

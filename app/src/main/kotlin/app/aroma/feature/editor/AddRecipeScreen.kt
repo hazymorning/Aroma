@@ -1,7 +1,15 @@
 package app.aroma.feature.editor
 
+import android.content.ActivityNotFoundException
+import android.content.pm.PackageManager
 import android.content.res.Resources
+import android.net.Uri
 import android.text.format.DateUtils
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.activity.result.contract.ActivityResultContracts.TakePicture
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearEasing
@@ -11,45 +19,60 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -66,7 +89,9 @@ import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.InlineProgress
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.LargeTitle
+import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PrimaryButton
+import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwitchRow
@@ -75,22 +100,35 @@ import app.aroma.ui.components.titleRes
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.ContentMaxWidth
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.TouchTarget
+import app.aroma.ui.theme.extras
+import app.aroma.ui.theme.photoButtonShadow
 import app.aroma.ui.theme.tabular
+import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.UUID
 
 /**
  * The add screen's state. [starting] covers the moment before an import exists; from then on
- * [import] is the import the screen follows, running or ended.
+ * [import] is the import the screen follows, running or ended. [photos] of the recipe can be
+ * added where Mealie's AI reads them ([photosAvailable]).
  */
 data class AddRecipeUiState(
     val url: String = "",
     val text: String = "",
     val name: String = "",
     val aiAvailable: Boolean = false,
+    val photosAvailable: Boolean = false,
+    val photos: List<ImportPhoto> = emptyList(),
     val useAi: Boolean = true,
     val translate: Boolean = false,
     val starting: Boolean = false,
@@ -98,21 +136,32 @@ data class AddRecipeUiState(
     val import: ImportJob? = null,
     val createError: AromaError? = null,
 ) {
-    /** AI is only offered when the server has a provider set up for the group. */
-    val usesAi: Boolean get() = aiAvailable && useAi
+    /** AI is only offered when the server has a provider set up for the group; photos are always read with it. */
+    val usesAi: Boolean get() = (aiAvailable && useAi) || photos.isNotEmpty()
 
     val isImporting: Boolean get() = starting || (import != null && import.outcome == null)
 
-    val canImport: Boolean get() = !isImporting && !creating && (url.isNotBlank() || text.isNotBlank())
+    val canImport: Boolean
+        get() =
+            !isImporting && !creating && photos.all { it.file != null } &&
+                (url.isNotBlank() || text.isNotBlank() || photos.isNotEmpty())
 
     val importError: AromaError? get() = (import?.outcome as? ImportOutcome.Failed)?.error
 }
+
+/** A photo for an import, in the order it was added; [file] is null while Aroma scales it down. */
+data class ImportPhoto(val file: File? = null, val id: String = UUID.randomUUID().toString())
+
+/** As many photos as a recipe needs: a page or two, a card's front and back. */
+const val MAX_IMPORT_PHOTOS = 4
 
 data class AddRecipeActions(
     val onBack: () -> Unit = {},
     val onUrlChange: (String) -> Unit = {},
     val onPaste: () -> Unit = {},
     val onTextChange: (String) -> Unit = {},
+    val onAddPhotos: (List<Uri>) -> Unit = {},
+    val onRemovePhoto: (ImportPhoto) -> Unit = {},
     val onUseAiChange: (Boolean) -> Unit = {},
     val onTranslateChange: (Boolean) -> Unit = {},
     val onImport: () -> Unit = {},
@@ -122,6 +171,13 @@ data class AddRecipeActions(
 
 /** The tick or the spinner in front of an import step, as large as [InlineProgress]. */
 private val StepMark = 20.dp
+
+/** A chosen photo, smaller only where four do not fit beside each other, and the round button on its corner that takes it out again. */
+private val PhotoSize = 72.dp
+private val RemoveMark = 24.dp
+
+/** How far the remove button's touch area reaches past the photo's corner, so that the mark sits [Space.xxs] inside it. */
+private val RemoveReach = (TouchTarget - RemoveMark) / 2 - Space.xxs
 
 @Composable
 fun AddRecipeScreen(state: AddRecipeUiState, actions: AddRecipeActions, modifier: Modifier = Modifier) {
@@ -197,10 +253,12 @@ private fun FromWebsite(state: AddRecipeUiState, actions: AddRecipeActions) {
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier.padding(horizontal = ScreenMargin),
             )
-            if (state.aiAvailable) {
+            if (state.photosAvailable) {
+                Photos(state.photos, editable, actions)
+            } else if (state.aiAvailable) {
                 Spacer(Modifier.height(Space.m))
-                AiOptions(state, actions)
             }
+            if (state.aiAvailable) AiOptions(state, actions)
         }
         Spacer(Modifier.height(Space.l))
         // While an import runs, the button rests with its label; the card below is the one place that shows progress.
@@ -214,7 +272,7 @@ private fun FromWebsite(state: AddRecipeUiState, actions: AddRecipeActions) {
                     .fillMaxWidth(),
         )
         state.import?.takeIf { importing }?.let { job ->
-            ImportProgress(job, state.usesAi, Modifier.padding(top = Space.m))
+            ImportProgress(job, state.usesAi || job.request.photos.isNotEmpty(), Modifier.padding(top = Space.m))
         }
         state.importError?.let {
             InlineError(it, Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m))
@@ -222,23 +280,166 @@ private fun FromWebsite(state: AddRecipeUiState, actions: AddRecipeActions) {
     }
 }
 
-/** Mealie's smarter reading, on a card of its own; translating unfolds below the switch. */
+/**
+ * Photos of the recipe for Mealie's AI: the chosen ones as thumbnails, each with a button that
+ * takes it out again, and two links that add more, from the gallery or the camera. They stand as
+ * far from the field above and the card below as the fields from each other; the links' touch
+ * area brings most of that room along.
+ */
+@Composable
+private fun Photos(photos: List<ImportPhoto>, editable: Boolean, actions: AddRecipeActions) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val room = MAX_IMPORT_PHOTOS - photos.size
+    val pickOne = rememberLauncherForActivityResult(PickVisualMedia()) { uri -> uri?.let { actions.onAddPhotos(listOf(it)) } }
+    // Offers as many as there is room for; for the last one alone the single picker, as this one asks for two at least.
+    val pickSome =
+        rememberLauncherForActivityResult(remember(room) { PickMultipleVisualMedia(room.coerceAtLeast(2)) }) { uris ->
+            if (uris.isNotEmpty()) actions.onAddPhotos(uris)
+        }
+    var taking by rememberSaveable { mutableStateOf<Uri?>(null) }
+    val camera =
+        rememberLauncherForActivityResult(TakePicture()) { taken ->
+            val uri = taking ?: return@rememberLauncherForActivityResult
+            taking = null
+            if (taken) actions.onAddPhotos(listOf(uri)) else scope.launch(Dispatchers.IO) { forgetCameraPhoto(context, uri) }
+        }
+    val hasCamera = remember(context) { context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) }
+    Column(Modifier.padding(top = if (photos.isEmpty()) Space.xxs else Space.m, bottom = if (room > 0) Space.xxs else Space.m)) {
+        if (photos.isNotEmpty()) {
+            Row(Modifier.padding(horizontal = ScreenMargin), horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
+                photos.forEachIndexed { index, photo ->
+                    key(photo.id) {
+                        // On a narrow screen, four share the row rather than run off it.
+                        PhotoThumbnail(photo, index + 1, editable, { actions.onRemovePhoto(photo) }, Modifier.weight(1f, fill = false))
+                    }
+                }
+            }
+        }
+        if (room > 0) {
+            Row(Modifier.padding(horizontal = ScreenMargin), horizontalArrangement = Arrangement.spacedBy(Space.l)) {
+                QuietLink(
+                    text = stringResource(R.string.add_photos_choose),
+                    onClick = {
+                        val request = PickVisualMediaRequest(PickVisualMedia.ImageOnly)
+                        if (room > 1) pickSome.launch(request) else pickOne.launch(request)
+                    },
+                    leadingIcon = R.drawable.ic_add_photo_alternate,
+                    enabled = editable,
+                )
+                if (hasCamera) {
+                    QuietLink(
+                        text = stringResource(R.string.add_photos_take),
+                        onClick = {
+                            scope.launch {
+                                val uri = withContext(Dispatchers.IO) { newCameraPhoto(context) }
+                                taking = uri
+                                try {
+                                    camera.launch(uri)
+                                } catch (_: ActivityNotFoundException) {
+                                    taking = null
+                                }
+                            }
+                        },
+                        leadingIcon = R.drawable.ic_photo_camera,
+                        enabled = editable,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A chosen photo, a soft pulse while Aroma scales it down; while it may be taken out, with the round button for that. */
+@Composable
+private fun PhotoThumbnail(
+    photo: ImportPhoto,
+    number: Int,
+    removable: Boolean,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier
+            .widthIn(max = PhotoSize)
+            .aspectRatio(1f),
+    ) {
+        if (photo.file == null) {
+            Placeholder(Modifier.matchParentSize(), shape = MaterialTheme.shapes.small)
+        } else {
+            AsyncImage(
+                model = photo.file,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier =
+                    Modifier
+                        .matchParentSize()
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            )
+            if (removable) {
+                RemovePhotoButton(
+                    number,
+                    onRemove,
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = RemoveReach, y = -RemoveReach),
+                )
+            }
+        }
+    }
+}
+
+/** A small paper disc with a cross, resting on the photo's corner like the larger buttons on photos; its target reaches past the photo. */
+@Composable
+private fun RemovePhotoButton(number: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val label = stringResource(R.string.add_photos_remove, number)
+    Box(
+        modifier
+            .size(TouchTarget)
+            .clickable(
+                interactionSource = null,
+                indication = ripple(bounded = false, radius = RemoveMark / 2),
+                role = Role.Button,
+                onClick = onClick,
+            ).semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .size(RemoveMark)
+                .photoButtonShadow(CircleShape)
+                .background(extras.raised, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_close),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(Glyph.s),
+            )
+        }
+    }
+}
+
+/**
+ * Mealie's smarter reading, on a card of its own; translating unfolds below the switch. Photos are
+ * always read with AI, so while there are some, the switch, which stands for a link or a text, steps aside.
+ */
 @Composable
 private fun AiOptions(state: AddRecipeUiState, actions: AddRecipeActions) {
     SoftCard {
-        SwitchRow(
-            title = stringResource(R.string.add_ai_title),
-            subtitle = stringResource(R.string.add_ai_hint),
-            checked = state.useAi,
-            onChange = actions.onUseAiChange,
-        )
-        AnimatedVisibility(
-            visible = state.useAi,
-            enter = expandVertically(tween(Motion.EXPAND, easing = Settle)) + fadeIn(tween(Motion.EXPAND, easing = LinearEasing)),
-            exit = shrinkVertically(tween(Motion.EXPAND, easing = Settle)) + fadeOut(tween(Motion.STATE, easing = LinearEasing)),
-        ) {
+        AnimatedVisibility(visible = state.photos.isEmpty(), enter = Unfold, exit = Fold) {
+            SwitchRow(
+                title = stringResource(R.string.add_ai_title),
+                subtitle = stringResource(R.string.add_ai_hint),
+                checked = state.useAi,
+                onChange = actions.onUseAiChange,
+            )
+        }
+        AnimatedVisibility(visible = state.usesAi, enter = Unfold, exit = Fold) {
             Column {
-                Hairline(Modifier.padding(horizontal = CardPadding))
+                if (state.photos.isEmpty()) Hairline(Modifier.padding(horizontal = CardPadding))
                 SwitchRow(
                     title = stringResource(R.string.add_ai_translate),
                     subtitle = null,
@@ -249,6 +450,9 @@ private fun AiOptions(state: AddRecipeUiState, actions: AddRecipeActions) {
         }
     }
 }
+
+private val Unfold = expandVertically(tween(Motion.EXPAND, easing = Settle)) + fadeIn(tween(Motion.EXPAND, easing = LinearEasing))
+private val Fold = shrinkVertically(tween(Motion.EXPAND, easing = Settle)) + fadeOut(tween(Motion.STATE, easing = LinearEasing))
 
 /**
  * How far the import has come, as a checklist on a card with the time it has taken, so a slow

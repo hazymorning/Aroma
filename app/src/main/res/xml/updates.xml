@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The one folder Android's installer may read: the update Aroma downloaded into its cache. -->
+<!-- The folders other apps may reach, each only through a uri Aroma grants: the update it downloaded,
+     for Android's installer, and the camera's folder, where the camera app saves a photo for an import. -->
 <paths>
     <cache-path name="update" path="update/" />
+    <cache-path name="camera" path="camera/" />
 </paths>

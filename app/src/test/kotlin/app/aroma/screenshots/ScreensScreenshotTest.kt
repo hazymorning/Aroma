@@ -1,11 +1,16 @@
 package app.aroma.screenshots
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.compose.ui.test.hasScrollToKeyAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
+import androidx.test.core.app.ApplicationProvider
 import app.aroma.core.format.MeasureSystem
 import app.aroma.core.model.Meal
 import app.aroma.core.model.ServerInfo
@@ -24,6 +29,7 @@ import app.aroma.feature.editor.EditorForm
 import app.aroma.feature.editor.EditorScreen
 import app.aroma.feature.editor.EditorUiState
 import app.aroma.feature.editor.ImportJob
+import app.aroma.feature.editor.ImportPhoto
 import app.aroma.feature.editor.ImportRequest
 import app.aroma.feature.editor.ImportStep
 import app.aroma.feature.home.Greeting
@@ -64,10 +70,20 @@ import app.aroma.feature.shopping.ShoppingActions
 import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingUiState
 import app.aroma.ui.navigation.Tab
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.annotation.DelicateCoilApi
+import coil3.asImage
+import coil3.decode.DataSource
+import coil3.request.SuccessResult
+import coil3.test.FakeImageLoaderEngine
+import kotlinx.coroutines.Dispatchers
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.io.File
 
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @Config(sdk = [36], qualifiers = "w411dp-h891dp-xxhdpi")
@@ -459,6 +475,48 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                 actions = AddRecipeActions(),
             )
         }
+    }
+
+    /** Two photos chosen for Mealie's AI: thumbnails on the page's edge, and the AI switch, needless with them, stepped aside. */
+    @Test
+    fun addRecipeWithPhotos() {
+        applyLocale()
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        // A phone with a camera, which the link to take a photo asks for.
+        shadowOf(context.packageManager).setSystemFeature(PackageManager.FEATURE_CAMERA_ANY, true)
+        val photos = sample.importPhotos.map { ImportPhoto(photoFile(context, it)) }
+        showFiles(context)
+        snapshot("add_photos_${variant.suffix}", variant.dark) {
+            AddRecipeScreen(
+                state = AddRecipeUiState(aiAvailable = true, photosAvailable = true, photos = photos),
+                actions = AddRecipeActions(),
+            )
+        }
+    }
+
+    /** The photo [url] stands for as a file on the phone, where the add screen keeps the photos it imports. */
+    private fun photoFile(context: Context, url: String) =
+        File(context.cacheDir, url.substringAfterLast('/')).apply {
+            outputStream().use { photoFor(url).compress(Bitmap.CompressFormat.JPEG, 90, it) }
+        }
+
+    /** Lets images load from files as well as from the server, drawn at once like the server's. */
+    @OptIn(DelicateCoilApi::class)
+    private fun showFiles(context: Context) {
+        val engine =
+            FakeImageLoaderEngine
+                .Builder()
+                .intercept({ it is File }) { chain ->
+                    val photo = BitmapFactory.decodeFile((chain.request.data as File).path)
+                    SuccessResult(image = photo.asImage(), request = chain.request, dataSource = DataSource.DISK)
+                }.build()
+        SingletonImageLoader.setUnsafe(
+            ImageLoader
+                .Builder(context)
+                .components { add(engine) }
+                .coroutineContext(Dispatchers.Unconfined)
+                .build(),
+        )
     }
 
     @Test

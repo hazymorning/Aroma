@@ -55,9 +55,11 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import retrofit2.HttpException
+import java.io.File
 import java.time.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
@@ -73,7 +75,7 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     private var ratingsSession: Session? = null
 
     @Volatile
-    private var aiImport: Pair<Session, Boolean>? = null
+    private var aiImport: Pair<Session, AiImport>? = null
 
     private val changeCount = MutableStateFlow(0)
 
@@ -331,40 +333,61 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         return importing(onProgress, stream = { importRecipeStream(body) }, plain = { importRecipe(body) }).also { changed() }
     }
 
-    /** Lets the group's AI provider build a recipe from a link, a text or both, optionally translated. */
-    suspend fun importWithAi(url: String?, text: String?, translateTo: String?, onProgress: (String) -> Unit): String {
+    /**
+     * Lets the group's AI provider build a recipe from a link, a text, [photos] or several of them,
+     * optionally translated. The photos are JPEGs, each with a file name of its own: Mealie keeps
+     * them by name while it reads them.
+     */
+    suspend fun importWithAi(
+        url: String?,
+        text: String?,
+        translateTo: String?,
+        photos: List<File> = emptyList(),
+        onProgress: (String) -> Unit,
+    ): String {
         val parts =
             buildList {
                 text?.takeIf { it.isNotBlank() }?.let { add(MultipartBody.Part.createFormData("content", it.trim())) }
                 url?.takeIf { it.isNotBlank() }?.let { add(MultipartBody.Part.createFormData("url", it.trim())) }
                 translateTo?.let { add(MultipartBody.Part.createFormData("translateLanguage", it)) }
+                photos.forEach { add(MultipartBody.Part.createFormData("images", it.name, it.asRequestBody(JPEG))) }
             }
         return importing(onProgress, stream = { importRecipeWithAiStream(parts) }, plain = { importRecipeWithAi(parts) }).also { changed() }
     }
 
+    /** Whether the server may read recipes with AI: Mealie 3.23, which brought the AI import, with a provider set up for the group. */
+    suspend fun canImportWithAi(): Boolean = aiImport().enabled
+
     /**
-     * Whether the server may read recipes with AI: Mealie 3.23, which brought the AI import, with a
-     * provider set up for the group. Asked once a session, as only an admin changes it.
+     * Whether the server's AI may read photos of a recipe too. Mealie's AI import takes them from
+     * 3.23 on, where the group also has a provider for images; without one Mealie refuses them.
      */
-    suspend fun canImportWithAi(): Boolean {
-        val session = sessions.current ?: return false
+    suspend fun canImportPhotosWithAi(): Boolean = aiImport().photos
+
+    /** What the group's AI may read, asked once a session, as only an admin changes it. */
+    private suspend fun aiImport(): AiImport {
+        val session = sessions.current ?: return AiImport.None
         aiImport?.let { (askedFor, answer) -> if (askedFor == session) return answer }
-        if (!MealieVersion.isAtLeast(session.serverVersion, 3, 23)) return false
-        val enabled =
+        if (!MealieVersion.isAtLeast(session.serverVersion, 3, 23)) return AiImport.None
+        val settings =
             try {
-                sessions
-                    .api()
-                    .group()
-                    .aiProviderSettings
-                    ?.aiEnabled == true
+                sessions.api().group().aiProviderSettings
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
                 // Asked again next time: the server may just have been out of reach.
-                return false
+                return AiImport.None
             }
-        aiImport = session to enabled
-        return enabled
+        val enabled = settings?.aiEnabled == true
+        val answer = AiImport(enabled, photos = enabled && settings?.imageProviderEnabled == true)
+        aiImport = session to answer
+        return answer
+    }
+
+    private data class AiImport(val enabled: Boolean, val photos: Boolean) {
+        companion object {
+            val None = AiImport(enabled = false, photos = false)
+        }
     }
 
     /** Uses the streaming endpoint where the server has one and maps rejected sources to [AromaError.ImportFailed]. */
@@ -569,6 +592,8 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         private const val NEWEST_WINDOW = 10
 
         private val CHANGES_SETTLE = 1.seconds
+
+        private val JPEG = "image/jpeg".toMediaType()
     }
 }
 

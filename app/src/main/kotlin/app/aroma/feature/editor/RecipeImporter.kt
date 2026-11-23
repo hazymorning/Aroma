@@ -15,6 +15,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
+import java.io.File
 import java.net.ConnectException
 import java.net.NoRouteToHostException
 import java.util.Locale
@@ -22,12 +23,16 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-/** What the user asked for on the import screen: a link, a text or both. */
+/**
+ * What the user asked for on the import screen: a link, a text, photos or several of them. The
+ * [photos] are JPEGs in the app's files, which only Mealie's AI reads.
+ */
 data class ImportRequest(
     val url: String,
     val text: String = "",
     val useAi: Boolean = false,
     val translateTo: String? = null,
+    val photos: List<File> = emptyList(),
 )
 
 /** One line of an import's checklist. */
@@ -80,6 +85,7 @@ class RecipeImporter(
      */
     suspend fun import(request: ImportRequest, onSending: suspend (Set<String>) -> Unit, onStep: (ImportStep) -> Unit): String {
         val sending = Sending(onStep, onSending)
+        if (request.photos.isNotEmpty()) return sending.fromPhotos(request)
         if (!SocialPosts.isPost(request.url)) return sending.fromWebsite(request)
         onStep(ImportStep.ReadingPost)
         val post = posts.read(request.url)
@@ -124,7 +130,8 @@ class RecipeImporter(
     ): String {
         onStep(ImportStep.StillWorking)
         val slug = awaitNewRecipe(known, request.url.ifBlank { null })
-        if (!SocialPosts.isPost(request.url)) return slug
+        // Photos go to Mealie's AI alone, so nothing of a post is left to finish.
+        if (request.photos.isNotEmpty() || !SocialPosts.isPost(request.url)) return slug
         val sending = Sending(onStep, onSending)
         if (recipes.recipeJson(slug).isLinkPreviewOnly()) {
             return sending.fromPreview(slug, request, request.text, image = null)
@@ -141,6 +148,14 @@ class RecipeImporter(
 
     /** The requests of one import that create a recipe, each preceded by [onSending]. */
     private inner class Sending(private val onStep: (ImportStep) -> Unit, private val onSending: suspend (Set<String>) -> Unit) {
+        /** Photos, which only Mealie's AI can read: with the text and the link that came with them, and nothing to fall back on. */
+        suspend fun fromPhotos(request: ImportRequest): String {
+            val url = request.url.ifBlank { null }
+            return onServer(source = url) {
+                recipes.importWithAi(url, request.text, request.translateTo, request.photos) { onStep(ImportStep.Server(it)) }
+            }
+        }
+
         /**
          * A website: Mealie's regular import, or its AI where text came with the link or the recipe
          * is to be translated. Pasted text that lists its ingredients and steps Aroma reads itself.
