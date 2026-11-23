@@ -156,7 +156,6 @@ data class RecipeActions(
     val onShare: () -> Unit = {},
     val onOpenUrl: (String) -> Unit = {},
     val onDelete: () -> Unit = {},
-    val onOpenRecipe: (String) -> Unit = {},
     val onOpenOrganizer: (OrganizerKind, Organizer) -> Unit = { _, _ -> },
     val onRetry: () -> Unit = {},
 )
@@ -647,7 +646,7 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
     val rows =
         remember(recipe.ingredients, state.scale, locale) {
             recipe.ingredients.map {
-                IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale), it.linkedRecipe?.slug)
+                IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale))
             }
         }
     Column(Modifier.padding(top = Space.xxl)) {

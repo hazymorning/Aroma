@@ -38,7 +38,7 @@ import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.tabular
 
 /** An ingredient as shown in a list, optionally starting a new section. */
-data class IngredientRow(val section: String?, val line: IngredientLine, val linkedRecipe: String? = null)
+data class IngredientRow(val section: String?, val line: IngredientLine)
 
 /**
  * Ingredients as a two-column table. The measure column is as wide as its widest entry
