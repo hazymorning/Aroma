@@ -41,8 +41,9 @@ object SocialCaption {
 }
 
 /**
- * A recipe read out of free text. Ingredient lines starting with "# " are section titles, as in
- * the editor. [name] is empty when the text does not start with anything that reads as a title.
+ * A recipe read out of free text, without its emoji. Ingredient lines starting with "# " are section
+ * titles, as in the editor. [name] is empty when the text does not start with anything that reads as
+ * a title.
  */
 data class CaptionRecipe(
     val name: String,
@@ -72,11 +73,14 @@ private class CaptionParser(caption: String) {
         var continuesStep = false
         var servings: Double? = null
         for (line in lines) {
-            if (line.isEmpty()) {
+            // Numbers, bullets and tips are read from the line as written, as some bullets are emoji ("▪️").
+            // Everything else leaves the emoji out, and a line of only emoji ends a step as an empty one does.
+            val text = line.withoutPictographs()
+            if (text.isEmpty()) {
                 continuesStep = false
                 continue
             }
-            val header = headerOf(line)
+            val header = headerOf(text)
             if (header != null) {
                 part = header
                 servings = servings ?: servingsIn(line)
@@ -89,7 +93,7 @@ private class CaptionParser(caption: String) {
             var addsToStep = false
             when {
                 inlineNote != null -> {
-                    notes += inlineNote
+                    notes += inlineNote.withoutPictographs()
                 }
 
                 numbered != null && part != Part.Notes -> {
@@ -100,12 +104,12 @@ private class CaptionParser(caption: String) {
                 }
 
                 part == Part.Steps && numberedSteps && continuesStep -> {
-                    steps[steps.lastIndex] = steps.last() + " " + line
+                    steps[steps.lastIndex] = steps.last() + " " + text
                     addsToStep = true
                 }
 
                 part == Part.Steps && numberedSteps -> {
-                    outro += line
+                    outro += text
                 }
 
                 part == Part.Steps -> {
@@ -114,7 +118,7 @@ private class CaptionParser(caption: String) {
                 }
 
                 part == Part.Ingredients -> {
-                    ingredients += if (isSubHeader(line, bullet)) "# " + plain(line) else withoutLeadingSymbols(bullet ?: line)
+                    ingredients += if (isSubHeader(text, bullet)) "# " + plain(text) else withoutLeadingSymbols(bullet ?: line)
                 }
 
                 part == Part.Notes -> {
@@ -126,11 +130,11 @@ private class CaptionParser(caption: String) {
                 }
 
                 ingredients.isEmpty() && steps.isEmpty() -> {
-                    intro += line
+                    intro += text
                 }
 
                 else -> {
-                    outro += line
+                    outro += text
                 }
             }
             continuesStep = addsToStep
@@ -258,30 +262,29 @@ private class CaptionParser(caption: String) {
             return text.replace(TrailingTags, "").replace(InlineTag, "$1").trim()
         }
 
-        private fun isPictograph(codePoint: Int): Boolean =
-            (Character.getType(codePoint) == Character.OTHER_SYMBOL.toInt() && codePoint != DEGREE) ||
-                codePoint in 0xFE00..0xFE0F ||
-                codePoint == ZERO_WIDTH_JOINER ||
-                codePoint in 0x1F3FB..0x1F3FF
+        /** Symbols that are not emoji, such as "✦" or "☆", still decorate a line or lead it as bullets do; "°" is a temperature's. */
+        private fun isSymbol(codePoint: Int): Boolean =
+            Character.getType(codePoint) == Character.OTHER_SYMBOL.toInt() && codePoint != DEGREE
 
+        /** [text] without emoji or the symbols that lead it. */
         private fun withoutLeadingSymbols(text: String): String {
+            val clean = text.withoutPictographs()
             var index = 0
-            while (index < text.length) {
-                val codePoint = text.codePointAt(index)
-                if (!isPictograph(codePoint) && !Character.isWhitespace(codePoint)) break
+            while (index < clean.length) {
+                val codePoint = clean.codePointAt(index)
+                if (!isSymbol(codePoint) && !Character.isWhitespace(codePoint)) break
                 index += Character.charCount(codePoint)
             }
-            return text.substring(index).trim()
+            return clean.substring(index).trim()
         }
 
-        /** Text without emoji, for names and headers. */
+        /** Text without emoji or symbols, for names and headers. */
         fun plain(text: String): String =
-            buildString { text.codePoints().forEach { if (!isPictograph(it)) appendCodePoint(it) } }
+            buildString { text.withoutPictographs().codePoints().forEach { if (!isSymbol(it)) appendCodePoint(it) } }
                 .replace(Regex("""\s+"""), " ")
                 .trim()
                 .trim('-', '–', '—', '|', ':', '·', '*', '_', ' ')
 
         private const val DEGREE = 0x00B0
-        private const val ZERO_WIDTH_JOINER = 0x200D
     }
 }

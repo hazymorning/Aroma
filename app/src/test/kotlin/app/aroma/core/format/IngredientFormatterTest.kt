@@ -17,6 +17,21 @@ class IngredientFormatterTest {
     private fun ingredient(quantity: Double = 0.0, unit: IngredientUnit? = null, food: IngredientFood? = null, note: String = "") =
         Ingredient(null, null, quantity, unit, food, note, display = "", linkedRecipe = null)
 
+    /** A tart's ingredients as a post lists them, which Mealie keeps as unparsed notes. */
+    private val tart =
+        listOf(
+            "🌾 500 g Mehl",
+            "🧈 300 g weiche Butter",
+            "🤍 150 g Zucker",
+            "🥚 4 Eigelb",
+            "🌼 2 TL Vanilleextrakt",
+            "🧂 1 Prise Salz",
+            "🍋 350 g Lemon Curd",
+        )
+
+    private fun tart(scale: Double, system: MeasureSystem = MeasureSystem.AsWritten) =
+        tart.map { IngredientFormatter.format(ingredient(note = it), scale, locale, system) }
+
     @Test
     fun `parsed ingredient uses plural food names above one`() {
         val line = IngredientFormatter.format(ingredient(3.0, food = egg), 1.0, locale)
@@ -83,5 +98,42 @@ class IngredientFormatterTest {
         val line = IngredientFormatter.format(ingredient(note = "1 rote Zwiebel"), 1.0, locale)
         assertEquals("1", line.measureText())
         assertEquals("rote Zwiebel", line.text)
+    }
+
+    @Test
+    fun `an emoji before free text no longer hides its amount`() {
+        val lines = tart(1.0)
+        assertEquals(listOf("500 g", "300 g", "150 g", "4", "2 TL", "1 Prise", "350 g"), lines.map { it.measureText() })
+        assertEquals(listOf("Mehl", "weiche Butter", "Zucker", "Eigelb", "Vanilleextrakt", "Salz", "Lemon Curd"), lines.map { it.text })
+        assertEquals(tart.map { it.substringAfter(' ') }, lines.map { it.toPlainText() })
+    }
+
+    @Test
+    fun `free text behind an emoji scales and converts`() {
+        assertEquals(listOf("1000 g", "600 g", "300 g", "8", "4 TL", "2 Prise", "700 g"), tart(2.0).map { it.measureText() })
+        val us = tart(1.0, MeasureSystem.US)
+        assertEquals(listOf("17 ½ oz", "10 ½ oz", "5 ¼ oz", "4", "2 TL", "1 Prise", "12 ½ oz"), us.map { it.measureText() })
+        assertEquals(listOf("Mehl", "weiche Butter", "Zucker", "Eigelb", "Vanilleextrakt", "Salz", "Lemon Curd"), us.map { it.text })
+        val doubledUs = tart(2.0, MeasureSystem.US)
+        assertEquals(listOf("2 ¼ lb", "1 ¼ lb", "10 ½ oz", "8", "4 TL", "2 Prise", "1 ½ lb"), doubledUs.map { it.measureText() })
+        assertEquals("2 ¼ lb Mehl", doubledUs.first().toPlainText())
+    }
+
+    @Test
+    fun `emoji anywhere in free text or in a note are left out`() {
+        val salt = IngredientFormatter.format(ingredient(note = "Salz 🧂 und Pfeffer 🌶️"), 2.0, locale)
+        assertNull(salt.amount)
+        assertEquals("Salz und Pfeffer", salt.text)
+        val cheese =
+            IngredientFormatter.format(
+                ingredient(100.0, gram, IngredientFood(null, "Bergkäse", null), note = "🧀 gerieben"),
+                1.0,
+                locale,
+            )
+        assertEquals("100 Gramm", cheese.measureText())
+        assertEquals("Bergkäse", cheese.text)
+        assertEquals("gerieben", cheese.note)
+        val oil = IngredientFormatter.format(ingredient(1.0, tablespoon, note = "Olivenöl 🫒"), 2.0, locale)
+        assertEquals("2 EL Olivenöl", oil.toPlainText())
     }
 }

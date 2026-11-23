@@ -40,7 +40,7 @@ object IngredientFormatter {
             freeText(ingredient.note.ifBlank { ingredient.display }, ingredient.quantity, scale, locale, system)
         }
 
-    /** Mirrors Mealie's own display rules for structured ingredients and shopping items. */
+    /** Mirrors Mealie's own display rules for structured ingredients and shopping items, leaving out emoji in the note. */
     fun parsed(
         quantity: Double,
         unit: IngredientUnit?,
@@ -55,7 +55,7 @@ object IngredientFormatter {
         val amount = Quantities.display(conversion?.amount ?: scaled, conversion?.fraction ?: unit?.useFraction ?: true, locale)
         val unitLabel = conversion?.unit ?: unit?.label(plural = scaled > 1)
         val foodLabel = food?.label(plural = quantity <= 0 || scaled > 1)
-        val cleanNote = note.trim().ifEmpty { null }
+        val cleanNote = note.withoutPictographs().trim().ifEmpty { null }
         return if (foodLabel.isNullOrBlank()) {
             IngredientLine(amount, null, unitLabel, cleanNote.orEmpty(), null)
         } else {
@@ -63,7 +63,10 @@ object IngredientFormatter {
         }
     }
 
-    /** Free text keeps its wording; a leading amount is detected so it can be scaled and converted. */
+    /**
+     * Free text keeps its wording but not its emoji, which would hide the amount of "🌾 500 g Mehl". A leading amount
+     * is detected so it can be scaled and converted.
+     */
     fun freeText(
         text: String,
         quantity: Double,
@@ -71,7 +74,7 @@ object IngredientFormatter {
         locale: Locale,
         system: MeasureSystem = MeasureSystem.AsWritten,
     ): IngredientLine {
-        val trimmed = text.trim()
+        val trimmed = text.withoutPictographs().trim()
         val leading = LeadingQuantityParser.parse(trimmed)
         if (leading == null || (quantity > 0 && abs(leading.value - quantity) > 0.001)) {
             val amount = if (quantity > 0) Quantities.display(quantity * scale, true, locale) else null

@@ -174,6 +174,77 @@ class SocialCaptionTest {
     }
 
     @Test
+    fun `emoji go from every part of the recipe`() {
+        val recipe =
+            SocialCaption.parse(
+                """
+                Lemon Curd 🍋 Tarte ✨
+
+                Zutaten 👇
+                🌾 500 g Mehl
+                🧈 300 g weiche Butter
+                🤍 150 g Zucker
+                🥚 4 Eigelb
+                🌼 2 TL Vanilleextrakt
+                🧂 1 Prise Salz
+                🍋 350 g Lemon Curd
+
+                Zubereitung 👩‍🍳
+                1️⃣ Mehl, Butter 🧈 und Zucker verkneten.
+                2️⃣ Eigelb 🥚 und Vanille unterarbeiten,
+                30 Minuten kühlen ❄️.
+                3️⃣ Lemon Curd 🍋 darauf verteilen und backen 🔥!
+                🍋🍋🍋
+                Schmeckt am besten frisch 😋🇩🇪
+
+                💡 Tipp: Mit Puderzucker 🤍 bestäuben.
+                #lemoncurd #backen
+                """.trimIndent(),
+            )
+        assertEquals("Lemon Curd Tarte", recipe.name)
+        assertEquals("Schmeckt am besten frisch", recipe.description)
+        assertEquals(
+            listOf(
+                "500 g Mehl",
+                "300 g weiche Butter",
+                "150 g Zucker",
+                "4 Eigelb",
+                "2 TL Vanilleextrakt",
+                "1 Prise Salz",
+                "350 g Lemon Curd",
+            ),
+            recipe.ingredients,
+        )
+        assertEquals(
+            listOf(
+                "Mehl, Butter und Zucker verkneten.",
+                "Eigelb und Vanille unterarbeiten, 30 Minuten kühlen.",
+                "Lemon Curd darauf verteilen und backen!",
+            ),
+            recipe.steps,
+        )
+        assertEquals(listOf("Mit Puderzucker bestäuben."), recipe.notes)
+    }
+
+    @Test
+    fun `bullets and numbers drawn as emoji are still understood`() {
+        val recipe =
+            SocialCaption.parse(
+                """
+                Schnelles Pesto 🌿
+                ▪️ 1 Bund Basilikum
+                ▪️ 50 g Pinienkerne 🌰
+                ✔️ 100 ml Olivenöl
+                1️⃣ Pinienkerne rösten 🔥
+                2️⃣ Alles fein mixen ✅.
+                """.trimIndent(),
+            )
+        assertEquals("Schnelles Pesto", recipe.name)
+        assertEquals(listOf("1 Bund Basilikum", "50 g Pinienkerne", "100 ml Olivenöl"), recipe.ingredients)
+        assertEquals(listOf("Pinienkerne rösten", "Alles fein mixen."), recipe.steps)
+    }
+
+    @Test
     fun `a caption that starts with the ingredients has no name`() {
         val recipe = SocialCaption.parse("Zutaten:\n- 2 Eier\n- 1 Prise Salz\nZubereitung:\n1. Verquirlen.")
         assertEquals("", recipe.name)
