@@ -478,6 +478,14 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
                     )
                 }
 
+                is MealPlanEvent.WeekAddedToList -> {
+                    launch {
+                        snackbar.showSnackbar(
+                            resources.getQuantityString(R.plurals.plan_week_added, event.count, event.count, event.listName),
+                        )
+                    }
+                }
+
                 is MealPlanEvent.Removed -> {
                     // Launched, so a second removal replaces this snackbar instead of queueing behind it.
                     snackbar.currentSnackbarData?.dismiss()
@@ -512,6 +520,8 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
                 onOpenEntry = { entry -> entry.recipe?.let { nav.navigate(RecipeRoute(it.slug)) } },
                 onDeleteEntry = vm::delete,
                 onShopEntry = vm::shop,
+                onShopWeek = vm::shopWeek,
+                onMoveEntry = vm::move,
                 onRefresh = vm::refresh,
             ),
     )

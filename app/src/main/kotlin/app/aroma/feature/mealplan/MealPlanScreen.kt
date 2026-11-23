@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -62,12 +63,16 @@ import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.MealPlanEntry
+import app.aroma.core.model.MealType
 import app.aroma.data.AromaError
+import app.aroma.feature.recipe.PlanSheet
+import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.CardPart
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.LocalBottomBarInset
@@ -119,6 +124,8 @@ data class MealPlanActions(
     val onOpenEntry: (MealPlanEntry) -> Unit = {},
     val onDeleteEntry: (MealPlanEntry) -> Unit = {},
     val onShopEntry: (MealPlanEntry) -> Unit = {},
+    val onShopWeek: () -> Unit = {},
+    val onMoveEntry: (MealPlanEntry, LocalDate, MealType) -> Unit = { _, _, _ -> },
     val onRefresh: () -> Unit = {},
 )
 
@@ -135,8 +142,9 @@ private val DayRowHeight = 40.dp
 fun MealPlanScreen(state: MealPlanUiState, actions: MealPlanActions, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
     ScrollToTopOnReselect(listState)
-    // By id, so the sheet survives rotation and closes by itself once its entry is gone.
+    // By id, so the sheets survive rotation and close by themselves once their entry is gone.
     var sheetEntryId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var movingEntryId by rememberSaveable { mutableStateOf<Int?>(null) }
     AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
@@ -164,13 +172,29 @@ fun MealPlanScreen(state: MealPlanUiState, actions: MealPlanActions, modifier: M
         }
         StatusBarScrim()
     }
-    val sheetEntry = sheetEntryId?.let { id -> state.days.firstNotNullOfOrNull { day -> day.entries.firstOrNull { it.id == id } } }
+    val sheetEntry = state.entry(sheetEntryId)
     if (sheetEntry != null) {
         EntrySheet(
             entry = sheetEntry,
             onShop = { actions.onShopEntry(sheetEntry) },
+            onMove = { movingEntryId = sheetEntry.id },
             onRemove = { actions.onDeleteEntry(sheetEntry) },
             onDismiss = { sheetEntryId = null },
+        )
+    }
+    val movingEntry = state.entry(movingEntryId)
+    if (movingEntry != null) {
+        PlanSheet(
+            today = state.today,
+            title = stringResource(R.string.plan_move),
+            actionLabel = stringResource(R.string.plan_move),
+            day = movingEntry.date,
+            type = movingEntry.type,
+            onPlan = { date, type ->
+                movingEntryId = null
+                actions.onMoveEntry(movingEntry, date, type)
+            },
+            onDismiss = { movingEntryId = null },
         )
     }
 }
@@ -184,7 +208,24 @@ private fun Header(state: MealPlanUiState, actions: MealPlanActions) {
     // The week row's 48 dp targets already hold the range off the title; the space below it is
     // larger, so the range reads as the title's second line rather than as the first day's.
     Column(Modifier.padding(bottom = Space.xs)) {
-        PageHeader(title = stringResource(R.string.nav_meal_plan), kicker = weekNumbers(state.weekStart, weekEnd))
+        val recipes = state.days.sumOf { day -> day.entries.count { it.recipe != null } }
+        var confirmShopping by rememberSaveable { mutableStateOf(false) }
+        PageHeader(title = stringResource(R.string.nav_meal_plan), kicker = weekNumbers(state.weekStart, weekEnd)) {
+            if (recipes > 0) HeaderAction(R.drawable.ic_basket_add, stringResource(R.string.plan_shop_week), { confirmShopping = true })
+        }
+        if (confirmShopping) {
+            AromaAlertDialog(
+                onDismissRequest = { confirmShopping = false },
+                title = stringResource(R.string.plan_shop_week),
+                text = pluralStringResource(R.plurals.plan_shop_week_message, recipes, recipes),
+                confirmLabel = stringResource(R.string.plan_shop_week_confirm),
+                onConfirm = {
+                    confirmShopping = false
+                    actions.onShopWeek()
+                },
+                dismissLabel = stringResource(R.string.action_cancel),
+            )
+        }
         Row(
             modifier =
                 Modifier
@@ -495,7 +536,13 @@ private fun EntryThumbnail(entry: MealPlanEntry) {
 /** What a long press offers: the shopping list for recipes, and removal from the plan. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EntrySheet(entry: MealPlanEntry, onShop: () -> Unit, onRemove: () -> Unit, onDismiss: () -> Unit) {
+private fun EntrySheet(
+    entry: MealPlanEntry,
+    onShop: () -> Unit,
+    onMove: () -> Unit,
+    onRemove: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val locale = currentLocale()
@@ -526,6 +573,8 @@ private fun EntrySheet(entry: MealPlanEntry, onShop: () -> Unit, onRemove: () ->
                 SheetAction(R.drawable.ic_basket_add, stringResource(R.string.recipe_add_to_list), onClick = { choose(onShop) })
                 Hairline(Modifier.padding(start = IconKeyline, end = ScreenMargin))
             }
+            SheetAction(R.drawable.ic_plan, stringResource(R.string.plan_move), onClick = { choose(onMove) })
+            Hairline(Modifier.padding(start = IconKeyline, end = ScreenMargin))
             SheetAction(R.drawable.ic_delete, stringResource(R.string.plan_remove), onClick = { choose(onRemove) }, destructive = true)
         }
     }
@@ -566,3 +615,13 @@ private fun TextLinePlaceholder(width: Dp) {
         shape = MaterialTheme.shapes.extraSmall,
     )
 }
+
+private fun MealPlanUiState.entry(id: Int?): MealPlanEntry? =
+    id?.let {
+        days.firstNotNullOfOrNull { day ->
+            day.entries.firstOrNull {
+                it.id ==
+                    id
+            }
+        }
+    }

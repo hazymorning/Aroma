@@ -6,6 +6,7 @@ import app.aroma.core.model.MealPlanEntry
 import app.aroma.core.model.MealType
 import app.aroma.core.model.RecipeQuery
 import app.aroma.core.model.RecipeSummary
+import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.RecipeRepository
@@ -33,6 +34,9 @@ data class PlanSearchState(val query: String = "", val results: List<RecipeSumma
 
 sealed interface MealPlanEvent {
     data class AddedToList(val listName: String) : MealPlanEvent
+
+    /** [count] recipes of the week went onto [listName]. */
+    data class WeekAddedToList(val count: Int, val listName: String) : MealPlanEvent
 
     /** [entry] is gone from the server; [MealPlanViewModel.restore] plans it again. */
     data class Removed(val entry: MealPlanEntry) : MealPlanEvent
@@ -132,6 +136,16 @@ class MealPlanViewModel(
             .onFailure { mutableEvents.emit(MealPlanEvent.Failed(it.toAromaError())) }
     }
 
+    fun move(entry: MealPlanEntry, date: LocalDate, type: MealType) =
+        viewModelScope.launch {
+            try {
+                mealPlans.move(entry.id, date, type)
+                load(refreshing = false)
+            } catch (error: AromaError) {
+                mutableEvents.emit(MealPlanEvent.Failed(error))
+            }
+        }
+
     /** Undoes a removal; the server gives the entry a new id, everything else stays as it was. */
     fun restore(entry: MealPlanEntry) = add(entry.date, entry.type, entry.recipe, entry.title, entry.note)
 
@@ -139,15 +153,37 @@ class MealPlanViewModel(
     fun shop(entry: MealPlanEntry) =
         viewModelScope.launch {
             val recipe = entry.recipe ?: return@launch
-            runCatching {
-                val lists = shopping.lists().first { !it.isRefreshing }.data
-                val preferred = settings.settings.first().lastShoppingList
-                val list = lists.firstOrNull { it.id == preferred } ?: lists.firstOrNull() ?: throw AromaError.NotFound()
+            try {
+                val list = shoppingList()
                 shopping.addRecipe(list.id, recipe.id, 1.0, ingredients = null)
-                list.name
-            }.onSuccess { mutableEvents.emit(MealPlanEvent.AddedToList(it)) }
-                .onFailure { mutableEvents.emit(MealPlanEvent.Failed(it.toAromaError())) }
+                mutableEvents.emit(MealPlanEvent.AddedToList(list.name))
+            } catch (error: AromaError) {
+                mutableEvents.emit(MealPlanEvent.Failed(error))
+            }
         }
+
+    /** Puts the ingredients of every recipe planned in the shown week on the most recently used list. */
+    fun shopWeek() =
+        viewModelScope.launch {
+            val recipes =
+                state.value.days
+                    .flatMap { day -> day.entries.mapNotNull { it.recipe } }
+                    .distinctBy { it.id }
+            if (recipes.isEmpty()) return@launch
+            try {
+                val list = shoppingList()
+                recipes.forEach { shopping.addRecipe(list.id, it.id, 1.0, ingredients = null) }
+                mutableEvents.emit(MealPlanEvent.WeekAddedToList(recipes.size, list.name))
+            } catch (error: AromaError) {
+                mutableEvents.emit(MealPlanEvent.Failed(error))
+            }
+        }
+
+    private suspend fun shoppingList(): ShoppingListInfo {
+        val lists = shopping.lists().first { !it.isRefreshing }.data
+        val preferred = settings.settings.first().lastShoppingList
+        return lists.firstOrNull { it.id == preferred } ?: lists.firstOrNull() ?: throw AromaError.NotFound()
+    }
 
     fun onSearchChange(text: String) {
         mutableSearch.update { it.copy(query = text) }

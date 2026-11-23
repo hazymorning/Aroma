@@ -223,6 +223,17 @@ interface MealieApi {
         @Path("id") id: Int,
     )
 
+    @GET("api/households/mealplans/{id}")
+    suspend fun mealPlanEntryJson(
+        @Path("id") id: Int,
+    ): JsonObject
+
+    @PUT("api/households/mealplans/{id}")
+    suspend fun updateMealPlanEntry(
+        @Path("id") id: Int,
+        @Body body: JsonObject,
+    )
+
     @GET("api/households/shopping/lists")
     suspend fun shoppingLists(
         @Query("perPage") perPage: Int = -1,

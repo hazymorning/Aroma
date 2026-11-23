@@ -12,6 +12,8 @@ import app.aroma.data.session.SessionManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.time.LocalDate
 
 class MealPlanRepository(private val sessions: SessionManager, private val cache: JsonCache) {
@@ -46,4 +48,15 @@ class MealPlanRepository(private val sessions: SessionManager, private val cache
     }
 
     suspend fun delete(id: Int) = mealieCall { sessions.api().deleteMealPlanEntry(id) }
+
+    /** Moves an entry to another day and meal. Mealie wants the whole entry back, its ids included. */
+    suspend fun move(id: Int, date: LocalDate, type: MealType) =
+        mealieCall {
+            val api = sessions.api()
+            val entry = api.mealPlanEntryJson(id) - "recipe"
+            api.updateMealPlanEntry(
+                id,
+                JsonObject(entry + ("date" to JsonPrimitive(date.toString())) + ("entryType" to JsonPrimitive(type.apiValue))),
+            )
+        }
 }

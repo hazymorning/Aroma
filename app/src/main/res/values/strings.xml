@@ -223,6 +223,17 @@
     <string name="plan_day_empty">Nothing planned</string>
     <string name="plan_remove">Remove from plan</string>
     <string name="plan_removed">Removed from the plan</string>
+    <string name="plan_shop_week">Shop for the week</string>
+    <string name="plan_move">Move</string>
+    <string name="plan_shop_week_confirm">Add</string>
+    <plurals name="plan_shop_week_message">
+        <item quantity="one">The ingredients of the %1$d recipe planned this week go on your shopping list.</item>
+        <item quantity="other">The ingredients of the %1$d recipes planned this week go on your shopping list.</item>
+    </plurals>
+    <plurals name="plan_week_added">
+        <item quantity="one">%1$d recipe added to “%2$s”</item>
+        <item quantity="other">%1$d recipes added to “%2$s”</item>
+    </plurals>
     <string name="plan_tomorrow">Tomorrow</string>
     <string name="plan_day">Day</string>
     <string name="plan_meal">Meal</string>

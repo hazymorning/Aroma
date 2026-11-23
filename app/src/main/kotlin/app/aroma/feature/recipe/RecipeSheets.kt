@@ -225,18 +225,30 @@ private fun IngredientChoice(line: IngredientLine, checked: Boolean, onToggle: (
     }
 }
 
-/** Day and meal for planning a recipe; days are the coming week. */
+/**
+ * Day and meal for planning a recipe, or for moving a planned one ([title], [actionLabel] and the
+ * current [day] and [type] then say so); days are the coming week.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlanSheet(today: LocalDate, onPlan: (LocalDate, MealType) -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun PlanSheet(
+    today: LocalDate,
+    onPlan: (LocalDate, MealType) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    title: String = stringResource(R.string.recipe_add_to_plan),
+    actionLabel: String = stringResource(R.string.action_plan),
+    day: LocalDate = today,
+    type: MealType = MealType.Dinner,
+) {
     val locale = currentLocale()
-    var day by rememberSaveable { mutableLongStateOf(today.toEpochDay()) }
-    var type by rememberSaveable { mutableStateOf(MealType.Dinner) }
+    var chosenDay by rememberSaveable { mutableLongStateOf(day.toEpochDay()) }
+    var chosenType by rememberSaveable { mutableStateOf(type) }
     val days = remember(today) { (0L until 7L).map { today.plusDays(it) } }
     val todayLabel = stringResource(R.string.home_today)
     val tomorrowLabel = stringResource(R.string.plan_tomorrow)
     AromaBottomSheet(onDismissRequest = onDismiss, modifier = modifier, sheetState = rememberFullSheetState()) {
-        SheetTitle(stringResource(R.string.recipe_add_to_plan))
+        SheetTitle(title)
         ChipGroup(stringResource(R.string.plan_day)) {
             items(days, key = { it.toEpochDay() }) { date ->
                 val label =
@@ -245,18 +257,18 @@ fun PlanSheet(today: LocalDate, onPlan: (LocalDate, MealType) -> Unit, onDismiss
                         today.plusDays(1) -> tomorrowLabel
                         else -> shortDayLabel(date, locale)
                     }
-                AromaFilterChip(selected = day == date.toEpochDay(), label = label, onClick = { day = date.toEpochDay() })
+                AromaFilterChip(selected = chosenDay == date.toEpochDay(), label = label, onClick = { chosenDay = date.toEpochDay() })
             }
         }
         ChipGroup(stringResource(R.string.plan_meal), Modifier.padding(top = Space.l, bottom = Space.l)) {
             items(MealType.entries) { option ->
-                AromaFilterChip(selected = type == option, label = mealTypeLabel(option), onClick = { type = option })
+                AromaFilterChip(selected = chosenType == option, label = mealTypeLabel(option), onClick = { chosenType = option })
             }
         }
         SheetFooter {
             PrimaryButton(
-                text = stringResource(R.string.action_plan),
-                onClick = { onPlan(LocalDate.ofEpochDay(day), type) },
+                text = actionLabel,
+                onClick = { onPlan(LocalDate.ofEpochDay(chosenDay), chosenType) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
