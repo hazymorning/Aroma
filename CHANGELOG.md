@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0 – 2026-11-23
+
+**New**
+- Posts from Instagram, TikTok and Facebook now arrive as one finished recipe. You can watch each step, and a notification tells you when it's ready.
+- Cookbooks, the timeline and quick filters for each meal in the Recipes tab.
+- Long-press a recipe or the app icon for what you do most.
+- Put the whole week on your shopping list, and move planned meals.
+
+**Better**
+- Home suggests what fits the time of day, and the ingredients can show under every cooking step.
+- A new app icon, and updates install right from the settings.
+
+**Fixed**
+- Lists refresh by themselves, and signing out works without a connection.
+
 ## 0.2.0 – 2026-11-23
 
 Ein neues, ruhiges Erscheinungsbild, robustere Importe und kleine Helfer im Alltag.
