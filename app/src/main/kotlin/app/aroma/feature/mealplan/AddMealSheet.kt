@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,9 +25,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,8 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -53,17 +47,17 @@ import app.aroma.core.model.MealType
 import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaFilterChip
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.PillTextField
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RecipeListItem
 import app.aroma.ui.components.SegmentedControl
+import app.aroma.ui.components.SheetFooter
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
+import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
@@ -89,64 +83,50 @@ fun AddMealSheet(
     var noteMode by rememberSaveable { mutableStateOf(false) }
     var title by rememberSaveable { mutableStateOf("") }
     var note by rememberSaveable { mutableStateOf("") }
-    val sheetState = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
+    val sheetState = rememberFullSheetState()
     val scope = rememberCoroutineScope()
     val plan = { recipe: RecipeSummary?, planTitle: String, planNote: String ->
         scope.hideThen(sheetState) { onAdd(type, recipe, planTitle, planNote) }
     }
-    AromaBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
-        Column(
-            Modifier
-                .navigationBarsPadding()
-                .imePadding(),
-        ) {
-            SheetHeading(date)
-            MealTypeChips(selected = type, onSelect = { type = it })
-            SegmentedControl(
-                options = listOf(stringResource(R.string.plan_mode_recipe), stringResource(R.string.plan_mode_note)),
-                selectedIndex = if (noteMode) 1 else 0,
-                onSelect = { noteMode = it == 1 },
-                modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
-            )
-            // The sheet grows or shrinks with the form instead of jumping to its new height.
-            AnimatedContent(
-                targetState = noteMode,
-                transitionSpec = {
-                    fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) using
-                        SizeTransform(clip = false) { _, _ -> tween(Motion.EXPAND, easing = Settle) }
-                },
-                label = "addMealMode",
-            ) { notes ->
-                if (notes) {
-                    NoteForm(
-                        title = title,
-                        onTitleChange = { title = it },
-                        note = note,
-                        onNoteChange = { note = it },
-                        onPlan = { plan(null, title, note) },
-                    )
-                } else {
-                    RecipePicker(search, onSearch, onPick = { plan(it, "", "") })
-                }
-            }
-        }
-    }
-}
-
-/** The day as a kicker over the serif title, so a day of next week is never mistaken for this one's. */
-@Composable
-private fun SheetHeading(date: LocalDate) {
     val locale = currentLocale()
+    // The day stands above the title, so a day of next week is never mistaken for this one's.
     val day =
         remember(date, locale) { date.format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMMd"), locale)) }
-    Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs, bottom = Space.m)) {
-        Kicker(day)
-        Spacer(Modifier.height(Space.xs))
-        Text(
-            text = stringResource(R.string.plan_for_day, date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() },
+    AromaBottomSheet(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.plan_for_day, date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)),
+        modifier = modifier,
+        sheetState = sheetState,
+        kicker = day,
+    ) {
+        MealTypeChips(selected = type, onSelect = { type = it })
+        SegmentedControl(
+            options = listOf(stringResource(R.string.plan_mode_recipe), stringResource(R.string.plan_mode_note)),
+            selectedIndex = if (noteMode) 1 else 0,
+            onSelect = { noteMode = it == 1 },
+            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
         )
+        // The sheet grows or shrinks with the form instead of jumping to its new height.
+        AnimatedContent(
+            targetState = noteMode,
+            transitionSpec = {
+                fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) using
+                    SizeTransform(clip = false) { _, _ -> tween(Motion.EXPAND, easing = Settle) }
+            },
+            label = "addMealMode",
+        ) { notes ->
+            if (notes) {
+                NoteForm(
+                    title = title,
+                    onTitleChange = { title = it },
+                    note = note,
+                    onNoteChange = { note = it },
+                    onPlan = { plan(null, title, note) },
+                )
+            } else {
+                RecipePicker(search, onSearch, onPick = { plan(it, "", "") })
+            }
+        }
     }
 }
 
@@ -258,15 +238,13 @@ private fun NoteForm(
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             )
         }
-        Hairline()
-        PrimaryButton(
-            text = stringResource(R.string.action_plan),
-            onClick = onPlan,
-            enabled = title.isNotBlank(),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ScreenMargin, vertical = Space.m),
-        )
+        SheetFooter {
+            PrimaryButton(
+                text = stringResource(R.string.action_plan),
+                onClick = onPlan,
+                enabled = title.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }

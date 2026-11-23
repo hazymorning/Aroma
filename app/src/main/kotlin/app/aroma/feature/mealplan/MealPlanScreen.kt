@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,7 +30,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +82,7 @@ import app.aroma.ui.components.SwipeToRemove
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
+import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.CardTitle
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
@@ -487,7 +486,7 @@ private fun EntrySheet(
     onRemove: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberFullSheetState()
     val scope = rememberCoroutineScope()
     val locale = currentLocale()
     val choose = { action: () -> Unit ->
@@ -496,23 +495,13 @@ private fun EntrySheet(
             action()
         }
     }
-    AromaBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            Modifier
-                .navigationBarsPadding()
-                .padding(bottom = Space.m),
-        ) {
-            Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs, bottom = Space.m)) {
-                Kicker("${weekday(entry.date, locale)} · ${mealTypeLabel(entry.type)}")
-                Spacer(Modifier.height(Space.xs))
-                Text(
-                    text = entry.recipe?.name ?: entry.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.semantics { heading() },
-                )
-            }
+    AromaBottomSheet(
+        onDismissRequest = onDismiss,
+        title = entry.recipe?.name ?: entry.title,
+        sheetState = sheetState,
+        kicker = "${weekday(entry.date, locale)} · ${mealTypeLabel(entry.type)}",
+    ) {
+        Column(Modifier.padding(bottom = Space.m)) {
             if (entry.recipe != null) {
                 SheetAction(R.drawable.ic_basket_add, stringResource(R.string.recipe_add_to_list), onClick = { choose(onShop) })
                 Hairline(Modifier.padding(start = IconKeyline, end = ScreenMargin))

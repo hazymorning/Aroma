@@ -3,14 +3,12 @@ package app.aroma.feature.recipe
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +20,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -56,10 +53,12 @@ import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.SegmentedControl
+import app.aroma.ui.components.SheetFooter
 import app.aroma.ui.components.Stepper
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
+import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
@@ -102,8 +101,7 @@ fun AddToListSheet(
             recipe.ingredients.withIndex().filter { (_, it) -> it.note.isNotBlank() || it.isParsed || it.display.isNotBlank() }
         }
     val allSelected = selected.size == recipe.ingredients.size
-    AromaBottomSheet(onDismissRequest = onDismiss, modifier = modifier, sheetState = rememberFullSheetState()) {
-        SheetTitle(stringResource(R.string.recipe_add_to_list))
+    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.recipe_add_to_list), modifier = modifier) {
         if (lists != null && lists.size > 1) {
             ListChoice(lists, selected = list, onSelect = { listId = it.id }, modifier = Modifier.padding(bottom = Space.m))
         }
@@ -247,8 +245,7 @@ fun PlanSheet(
     val days = remember(today) { (0L until 7L).map { today.plusDays(it) } }
     val todayLabel = stringResource(R.string.home_today)
     val tomorrowLabel = stringResource(R.string.plan_tomorrow)
-    AromaBottomSheet(onDismissRequest = onDismiss, modifier = modifier, sheetState = rememberFullSheetState()) {
-        SheetTitle(title)
+    AromaBottomSheet(onDismissRequest = onDismiss, title = title, modifier = modifier) {
         ChipGroup(stringResource(R.string.plan_day)) {
             items(days, key = { it.toEpochDay() }) { date ->
                 val label =
@@ -299,8 +296,12 @@ internal fun RatingSheet(rating: Double?, onRate: (Int) -> Unit, onDismiss: () -
     val sheetState = rememberFullSheetState()
     val scope = rememberCoroutineScope()
     var chosen by remember { mutableStateOf(rating) }
-    AromaBottomSheet(onDismissRequest = onDismiss, modifier = modifier, sheetState = sheetState) {
-        SheetTitle(stringResource(R.string.recipe_rate))
+    AromaBottomSheet(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.recipe_rate),
+        modifier = modifier,
+        sheetState = sheetState,
+    ) {
         RatingStars(
             rating = chosen,
             starSize = STAR_SIZE,
@@ -313,35 +314,8 @@ internal fun RatingSheet(rating: Double?, onRate: (Int) -> Unit, onDismiss: () -
                         sheetState.hide()
                     }.invokeOnCompletion { onDismiss() }
             },
-            modifier =
-                Modifier
-                    .navigationBarsPadding()
-                    .padding(start = ScreenMargin - ratingTouchInset(STAR_SIZE), bottom = Space.l),
+            modifier = Modifier.padding(start = ScreenMargin - ratingTouchInset(STAR_SIZE), bottom = Space.l),
         )
-    }
-}
-
-/** Opens a sheet at its full height, so its pinned action is never below the screen's edge. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun rememberFullSheetState() = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-/** A sheet's serif title on the margin, 16 dp above what it introduces. */
-@Composable
-private fun SheetTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.headlineSmall,
-        modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.m),
-    )
-}
-
-/** The sheet's one action, pinned under a hairline above the navigation bar. */
-@Composable
-private fun SheetFooter(action: @Composable () -> Unit) {
-    Column(Modifier.navigationBarsPadding()) {
-        Hairline(Modifier.padding(horizontal = ScreenMargin))
-        Box(Modifier.padding(horizontal = ScreenMargin, vertical = Space.m)) { action() }
     }
 }
 

@@ -94,7 +94,6 @@ import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SecondaryButton
-import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatClock
@@ -106,6 +105,7 @@ import app.aroma.ui.theme.CookStep
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TimerDigits
 import kotlinx.coroutines.launch
 
@@ -651,15 +651,13 @@ private fun IngredientsSheet(
     onInSteps: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AromaBottomSheet(onDismissRequest = onDismiss) {
+    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.recipe_ingredients)) {
         Column(
             Modifier
-                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 24.dp),
+                .padding(bottom = Space.l),
         ) {
-            SectionHeader(stringResource(R.string.recipe_ingredients))
-            IngredientList(rows, Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp), checked, onToggle)
+            IngredientList(rows, Modifier.padding(horizontal = ScreenMargin), checked, onToggle)
             Hairline(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp))
             SwitchRow(
                 title = stringResource(R.string.settings_ingredients_in_steps),

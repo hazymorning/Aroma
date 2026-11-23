@@ -3,9 +3,6 @@ package app.aroma.feature.recipe
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -14,9 +11,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import app.aroma.R
 import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.components.AromaBottomSheet
@@ -24,6 +18,7 @@ import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.RecipeMeta
 import app.aroma.ui.components.SheetAction
 import app.aroma.ui.components.hideThen
+import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
@@ -61,7 +56,7 @@ fun RecipeActionsSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberFullSheetState()
     val scope = rememberCoroutineScope()
     val choose = { action: () -> Unit ->
         scope.hideThen(sheetState) {
@@ -69,18 +64,14 @@ fun RecipeActionsSheet(
             action()
         }
     }
-    AromaBottomSheet(onDismissRequest = onDismiss, modifier = modifier, sheetState = sheetState) {
+    AromaBottomSheet(
+        onDismissRequest = onDismiss,
+        title = recipe.name,
+        modifier = modifier,
+        sheetState = sheetState,
+        meta = { RecipeMeta(recipe) },
+    ) {
         Column(Modifier.padding(bottom = Space.m)) {
-            Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs, bottom = Space.m)) {
-                Text(
-                    text = recipe.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.semantics { heading() },
-                )
-                RecipeMeta(recipe, Modifier.padding(top = Space.xxs))
-            }
             SheetAction(R.drawable.ic_cooking, stringResource(R.string.recipe_start_cooking), onClick = { choose(onCook) })
             ActionDivider()
             SheetAction(R.drawable.ic_calendar_add, stringResource(R.string.recipe_add_to_plan), onClick = { choose(onPlan) })

@@ -80,8 +80,11 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
    `SecondaryButton`, a `QuietLink` or an icon action.
 10. **Headers.** Tab pages start with `PageHeader`; pushed pages with `DetailTopBar` over a
     `LargeTitle`; sections with `SectionHeader` (serif) or a `Kicker` above a card.
-11. **Sheets.** `AromaBottomSheet` for every sheet; rows of actions are `SheetAction`; an action
-    that changes the page underneath runs after `hideThen`.
+11. **Sheets.** `AromaBottomSheet` for every sheet: it opens at full height under the sheet's title,
+    with a kicker above it or a meta line below where needed. Rows of actions are `SheetAction`;
+    the one action of a form sits in a `SheetFooter`; an action that changes the page underneath
+    runs after `hideThen`. A sheet's content is already clear of the navigation bar and the
+    keyboard.
 12. **Progress.** `InlineProgress` for work in place, `Placeholder` shapes while a page loads,
     `PrimaryButton(loading = true)` while its own action runs.
 13. **Touch.** Every target is at least 48 dp; the glyph, not its target, stands on the keyline.
@@ -102,6 +105,6 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
 | `QuietPress`, `PhotoPress` | Pressing what has no ripple |
 | `SwitchRow`, `SegmentedControl`, `AromaFilterChip`, `Stepper`, `RatingStars`, `CheckCircle` | Choices |
 | `LabeledTextField`, `LabeledSecureTextField`, `PillTextField` | Input |
-| `AromaBottomSheet`, `SheetAction`, `AromaAlertDialog`, `AromaDropdownMenu`, `AromaMenuItem` | Layers |
+| `AromaBottomSheet`, `SheetAction`, `SheetFooter`, `AromaAlertDialog`, `AromaDropdownMenu`, `AromaMenuItem` | Layers |
 | `PhotoCard`, `RecipeCard`, `RecipeListItem`, `RecipeImage`, `Avatar`, `IngredientList` | Content |
 | `InlineProgress`, `Placeholder`, `PlaceholderLines`, `MessageState`, `ErrorState`, `OfflineNotice` | States |

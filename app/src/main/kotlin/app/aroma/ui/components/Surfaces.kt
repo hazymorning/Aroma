@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,13 +31,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,13 +56,20 @@ import kotlinx.coroutines.launch
 
 private val SheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
 
-/** A bottom sheet on paper, with a fine handle and no tonal tint. */
+/**
+ * A bottom sheet on paper, with a fine handle and no tonal tint, that opens at its full height under
+ * its [title]: a heading, with a [kicker] above it or a [meta] line below where the sheet needs one.
+ * The content is already clear of the navigation bar and the keyboard.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AromaBottomSheet(
     onDismissRequest: () -> Unit,
+    title: String,
     modifier: Modifier = Modifier,
-    sheetState: SheetState = rememberModalBottomSheetState(),
+    sheetState: SheetState = rememberFullSheetState(),
+    kicker: String? = null,
+    meta: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ModalBottomSheet(
@@ -79,8 +88,37 @@ fun AromaBottomSheet(
                     .background(extras.hairlineStrong, CircleShape),
             )
         },
-        content = content,
-    )
+    ) {
+        Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs, bottom = Space.m)) {
+            if (kicker != null) {
+                Kicker(kicker)
+                Spacer(Modifier.height(Space.xs))
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() },
+            )
+            if (meta != null) Box(Modifier.padding(top = Space.xxs)) { meta() }
+        }
+        content()
+    }
+}
+
+/** A sheet that opens at its full height, so its footer is never below the screen's edge. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun rememberFullSheetState(): SheetState = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
+
+/** A sheet's one action, at its foot under a hairline. */
+@Composable
+fun SheetFooter(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Column(modifier) {
+        Hairline(Modifier.padding(horizontal = ScreenMargin))
+        Box(Modifier.padding(horizontal = ScreenMargin, vertical = Space.m)) { content() }
+    }
 }
 
 /** A menu on paper with a hairline edge and a soft shadow. */

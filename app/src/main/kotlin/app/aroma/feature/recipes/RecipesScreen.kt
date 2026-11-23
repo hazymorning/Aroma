@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,7 +29,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,8 +45,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.aroma.R
@@ -75,12 +71,13 @@ import app.aroma.ui.components.RecipeGrid
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.StatusBarScrim
+import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.pageItem
 import app.aroma.ui.components.recipeGridPlaceholders
+import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
-import kotlinx.coroutines.launch
 
 data class RecipeFilter(
     val query: String = "",
@@ -358,9 +355,8 @@ private fun OrganizerSheet(
     onToggle: (Organizer) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AromaBottomSheet(onDismissRequest = onDismiss) {
-        SheetTitle(stringResource(kind.labelRes()))
-        LazyColumn(Modifier.navigationBarsPadding(), contentPadding = PaddingValues(bottom = 16.dp)) {
+    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(kind.labelRes())) {
+        LazyColumn(contentPadding = PaddingValues(bottom = Space.m)) {
             itemsIndexed(options, key = { _, option -> option.id }) { index, option ->
                 val checked = selected.any { it.id == option.id }
                 if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
@@ -378,16 +374,14 @@ private fun OrganizerSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SortSheet(current: RecipeSort, onSelect: (RecipeSort) -> Unit, onDismiss: () -> Unit) {
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberFullSheetState()
     val scope = rememberCoroutineScope()
     var choice by rememberSaveable { mutableStateOf(current) }
-    AromaBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        SheetTitle(stringResource(R.string.sort_title))
+    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.sort_title), sheetState = sheetState) {
         Column(
             Modifier
                 .selectableGroup()
-                .navigationBarsPadding()
-                .padding(bottom = 16.dp),
+                .padding(bottom = Space.m),
         ) {
             RecipeSort.entries.forEachIndexed { index, sort ->
                 if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
@@ -398,24 +392,12 @@ private fun SortSheet(current: RecipeSort, onSelect: (RecipeSort) -> Unit, onDis
                         Modifier.selectable(selected = sort == choice, role = Role.RadioButton) {
                             choice = sort
                             onSelect(sort)
-                            scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+                            scope.hideThen(sheetState, onDismiss)
                         },
                 )
             }
         }
     }
-}
-
-@Composable
-private fun SheetTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.headlineSmall,
-        modifier =
-            Modifier
-                .padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp, bottom = 16.dp)
-                .semantics { heading() },
-    )
 }
 
 /** A 56 dp option on the sheet's margins; a sage check fades in at its end once it is chosen. */
