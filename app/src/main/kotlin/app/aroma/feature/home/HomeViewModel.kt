@@ -49,6 +49,7 @@ class HomeViewModel(
         load(refreshing = false)
         watchUser()
         watchReminder()
+        viewModelScope.launch { recipes.changes.collect { load(refreshing = false) } }
     }
 
     private fun watchUser() {

@@ -82,6 +82,7 @@ class TimelineViewModel(private val timeline: TimelineRepository) : ViewModel() 
 
     init {
         reload()
+        viewModelScope.launch { timeline.changes.collect { reload() } }
     }
 
     fun reload() {

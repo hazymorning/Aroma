@@ -39,6 +39,7 @@ class RecipesViewModel(
         reload()
         loadOrganizers()
         observeQuery()
+        viewModelScope.launch { recipes.changes.collect { reload() } }
     }
 
     @OptIn(FlowPreview::class)

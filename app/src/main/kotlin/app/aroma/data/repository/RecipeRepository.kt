@@ -30,6 +30,7 @@ import app.aroma.data.remote.toModel
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -37,9 +38,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -54,12 +58,24 @@ import retrofit2.HttpException
 import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.seconds
 
 class RecipeRepository(private val sessions: SessionManager, private val dao: RecipeDao, private val cache: JsonCache) {
     private val mutableRatings = MutableStateFlow<Map<String, UserRating>>(emptyMap())
 
     /** The signed-in user's ratings and favorites by recipe id. */
     val ratings: StateFlow<Map<String, UserRating>> = mutableRatings.asStateFlow()
+
+    private val changeCount = MutableStateFlow(0)
+
+    /**
+     * Fires once recipes were created, imported, changed or deleted here, so lists load again. An
+     * import changes several recipes within moments; they settle into one signal.
+     */
+    @OptIn(FlowPreview::class)
+    val changes: Flow<Unit> = changeCount.drop(1).debounce(CHANGES_SETTLE).map { }
+
+    private fun changed() = changeCount.update { it + 1 }
 
     suspend fun page(query: RecipeQuery, page: Int, perPage: Int = PAGE_SIZE): RecipePage {
         val server = sessions.requireServerUrl()
@@ -270,12 +286,13 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         mealieCall { sessions.api().deleteRecipe(slug) }
         dao.deleteDetail(slug)
         dao.deleteSummary(slug)
+        changed()
     }
 
     /** Imports a recipe from a link. [onProgress] gets Mealie's description of each step where the server reports them. */
     suspend fun importFromUrl(url: String, onProgress: (String) -> Unit = {}): String {
-        val body = ImportRecipeDto(url.trim())
-        return importing(onProgress, stream = { importRecipeStream(body) }, plain = { importRecipe(body) })
+        val body = ImportRecipeDto(url.trim(), includeTags = true)
+        return importing(onProgress, stream = { importRecipeStream(body) }, plain = { importRecipe(body) }).also { changed() }
     }
 
     /** Lets the group's AI provider build a recipe from a link, a text or both, optionally translated. */
@@ -286,7 +303,7 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                 url?.takeIf { it.isNotBlank() }?.let { add(MultipartBody.Part.createFormData("url", it.trim())) }
                 translateTo?.let { add(MultipartBody.Part.createFormData("translateLanguage", it)) }
             }
-        return importing(onProgress, stream = { importRecipeWithAiStream(parts) }, plain = { importRecipeWithAi(parts) })
+        return importing(onProgress, stream = { importRecipeWithAiStream(parts) }, plain = { importRecipeWithAi(parts) }).also { changed() }
     }
 
     /** Whether the server may read recipes with AI: Mealie 3 with an AI provider set up for the group. */
@@ -374,22 +391,27 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
             .recipes(page = 1, perPage = NEWEST_WINDOW, orderBy = "created_at", orderDirection = "desc")
             .items
 
-    suspend fun create(name: String): String = mealieCall { sessions.api().createRecipe(CreateRecipeDto(name.trim())) }
+    suspend fun create(name: String): String = mealieCall { sessions.api().createRecipe(CreateRecipeDto(name.trim())) }.also { changed() }
 
+    /** Saves [patch]; a new name gives the recipe a new slug, which is returned. */
     suspend fun update(slug: String, patch: JsonObject): String {
         val dto = mealieCall { sessions.api().patchRecipe(slug, patch) }
         dao.upsertDetail(
             RecipeDetailEntity(dto.slug, dto.id, MealieJson.encodeToString(RecipeDto.serializer(), dto), System.currentTimeMillis()),
         )
+        if (dto.slug != slug) dao.deleteDetail(slug)
+        changed()
         return dto.slug
     }
 
-    suspend fun uploadImage(slug: String, bytes: ByteArray, extension: String) =
+    suspend fun uploadImage(slug: String, bytes: ByteArray, extension: String) {
         mealieCall {
             val image = MultipartBody.Part.createFormData("image", "image.$extension", bytes.toRequestBody("image/*".toMediaType()))
             val ext = MultipartBody.Part.createFormData("extension", extension)
             sessions.api().uploadImage(slug, image, ext)
         }
+        changed()
+    }
 
     fun organizers(): Flow<Loadable<Organizers>> =
         cache
@@ -500,6 +522,8 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
 
         /** Enough of the newest recipes to spot one added meanwhile, even if others arrive at the same time. */
         private const val NEWEST_WINDOW = 10
+
+        private val CHANGES_SETTLE = 1.seconds
     }
 }
 
