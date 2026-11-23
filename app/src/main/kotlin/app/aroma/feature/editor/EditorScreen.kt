@@ -42,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -386,44 +387,76 @@ private fun EditableRows(
     @StringRes removeLabel: Int,
     numbered: Boolean,
 ) {
-    val requesters = remember(rows.size) { List(rows.size) { FocusRequester() } }
+    val keys = remember { RowKeys() }
+    val rowKeys = keys.of(rows.size)
     var focusRow by remember { mutableStateOf<Int?>(null) }
-    // The new row arrives with the next state, so wait for it before moving the cursor there.
-    LaunchedEffect(focusRow, rows.size) {
-        val requester = focusRow?.let(requesters::getOrNull) ?: return@LaunchedEffect
-        requester.requestFocus()
-        focusRow = null
-    }
     val addRow = {
         onChange(rows + "")
         focusRow = rows.size
     }
     Column {
         rows.forEachIndexed { index, text ->
-            if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
-            EditableRow(
-                text = text,
-                onTextChange = { value -> onChange(rows.toMutableList().also { it[index] = value }) },
-                placeholder = placeholder,
-                number = if (numbered) index + 1 else null,
-                removeLabel = stringResource(removeLabel, index + 1),
-                onRemove = if (rows.size > 1) ({ onChange(rows.filterIndexed { i, _ -> i != index }) }) else null,
-                onNext =
-                    if (numbered) {
-                        null
-                    } else {
-                        {
-                            if (index == rows.lastIndex) {
-                                addRow()
-                            } else {
-                                focusRow = index + 1
+            key(rowKeys[index]) {
+                val focusRequester = remember { FocusRequester() }
+                // A new row arrives with the next state; the cursor moves into it once it is here.
+                if (focusRow == index) {
+                    LaunchedEffect(Unit) {
+                        focusRequester.requestFocus()
+                        focusRow = null
+                    }
+                }
+                if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
+                EditableRow(
+                    text = text,
+                    onTextChange = { value -> onChange(rows.toMutableList().also { it[index] = value }) },
+                    placeholder = placeholder,
+                    number = if (numbered) index + 1 else null,
+                    removeLabel = stringResource(removeLabel, index + 1),
+                    onRemove =
+                        if (rows.size > 1) {
+                            {
+                                keys.remove(index)
+                                onChange(rows.filterIndexed { i, _ -> i != index })
                             }
-                        }
-                    },
-                focusRequester = requesters[index],
-            )
+                        } else {
+                            null
+                        },
+                    onNext =
+                        if (numbered) {
+                            null
+                        } else {
+                            {
+                                if (index == rows.lastIndex) {
+                                    addRow()
+                                } else {
+                                    focusRow = index + 1
+                                }
+                            }
+                        },
+                    focusRequester = focusRequester,
+                )
+            }
         }
         AddRowLink(addLabel, onClick = addRow)
+    }
+}
+
+/**
+ * A key per row that stays with it when a row before it is removed, so each field keeps its text,
+ * cursor and focus. Rows that arrive another way, such as lines pasted into one, get new keys.
+ */
+private class RowKeys {
+    private val keys = mutableListOf<Int>()
+    private var next = 0
+
+    fun of(rows: Int): List<Int> {
+        while (keys.size < rows) keys += next++
+        while (keys.size > rows) keys.removeAt(keys.lastIndex)
+        return keys
+    }
+
+    fun remove(row: Int) {
+        keys.removeAt(row)
     }
 }
 
