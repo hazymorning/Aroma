@@ -141,29 +141,20 @@ fun SecondaryButton(
     }
 }
 
-/** How a [QuietLink] reads: [Accent] for a way to more, [Soft] for a way back or aside, [Ink] for an action in place. */
-enum class LinkTone { Accent, Soft, Ink }
-
 /**
- * A text link with no container: the text, or the [leadingIcon] before it, sits exactly on the
- * keyline and the touch area grows away from it. Pressing dims it instead of blooming a ripple.
+ * A text link in sage with no container: the text, or the [leadingIcon] before it, sits exactly on
+ * the keyline and the touch area grows away from it. Pressing dims it instead of blooming a ripple.
  */
 @Composable
 fun QuietLink(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    tone: LinkTone = LinkTone.Accent,
     @DrawableRes leadingIcon: Int? = null,
     chevron: Boolean = false,
     enabled: Boolean = true,
 ) {
-    val color =
-        when (tone) {
-            LinkTone.Accent -> MaterialTheme.colorScheme.primary
-            LinkTone.Soft -> MaterialTheme.colorScheme.onSurfaceVariant
-            LinkTone.Ink -> MaterialTheme.colorScheme.onSurface
-        }
+    val color = MaterialTheme.colorScheme.primary
     Row(
         modifier =
             modifier
