@@ -98,6 +98,9 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
     code where a formatted string can say it.
 15. **Accessibility.** Page, section and sheet titles are headings; every control without words
     has a description; live regions announce changes of state, not progress ticks.
+16. **Insets.** The root keeps every page clear of the system bars and cutouts at the sides. Tab
+    pages end above the bar through `LocalBottomBarInset`; pushed pages keep clear of the bars at
+    top and bottom themselves, as `DetailPage` does; a sheet's content is clear already.
 
 ## Components
 

@@ -9,13 +9,16 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -107,7 +110,13 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
     // resizes the screen underneath, and tab pages scroll on below it.
     val navigationInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val barInset = FloatingBarHeight + FloatingBarGap + navigationInset
-    Box(modifier.fillMaxSize()) {
+    // A phone on its side has its navigation bar or cutout at a side edge. Keeping clear of them once,
+    // here, keeps every page's actions and margins out from under them.
+    Box(
+        modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+    ) {
         // Only tab pages lie under the bar, so only they keep its space free.
         val underBar: @Composable (Tab, @Composable () -> Unit) -> Unit = { tab, page ->
             val scrollToTop = remember(tab) { reselected.filter { it == tab }.map { } }
