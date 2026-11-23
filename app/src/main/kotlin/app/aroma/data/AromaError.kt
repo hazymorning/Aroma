@@ -1,7 +1,6 @@
 package app.aroma.data
 
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.SerializationException
 import retrofit2.HttpException
 import java.io.IOException
 import java.net.UnknownHostException
@@ -57,7 +56,7 @@ val AromaError.isConnectivity: Boolean get() = this is AromaError.Offline || thi
 
 fun Throwable.toAromaError(): AromaError =
     when (this) {
-        is CancellationException -> {
+        is CancellationException, is Error -> {
             throw this
         }
 
@@ -88,12 +87,12 @@ fun Throwable.toAromaError(): AromaError =
                 401 -> AromaError.Unauthorized()
                 403 -> AromaError.Forbidden()
                 404 -> AromaError.NotFound()
-                in 500..599 -> AromaError.Server(code())
                 else -> AromaError.Server(code())
             }
         }
 
-        is SerializationException, is IllegalArgumentException -> {
+        // SerializationException is one, and so is .jsonObject on JSON that is not an object.
+        is IllegalArgumentException -> {
             AromaError.NotMealie(this)
         }
 
