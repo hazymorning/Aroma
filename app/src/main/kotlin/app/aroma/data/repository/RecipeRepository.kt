@@ -11,6 +11,7 @@ import app.aroma.core.model.UserRating
 import app.aroma.data.AromaError
 import app.aroma.data.JsonCache
 import app.aroma.data.Loadable
+import app.aroma.data.isConnectivity
 import app.aroma.data.local.RecipeDao
 import app.aroma.data.local.RecipeDetailEntity
 import app.aroma.data.local.RecipeSummaryEntity
@@ -115,8 +116,8 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
             RecipePage(result.items.map { it.toModel(server) }, result.total, page, page < result.totalPages, isOffline = false)
         } catch (error: Throwable) {
             val failure = error.toAromaError()
-            val canFallBack = failure is AromaError.Offline || failure is AromaError.HostNotFound
-            if (!canFallBack || page > 1) throw failure
+            // The stored summaries know neither cookbooks nor tools, so those cannot be answered offline.
+            if (!failure.isConnectivity || page > 1 || query.cookbook != null || query.tools.isNotEmpty()) throw failure
             offlinePage(query, server)
         }
     }
