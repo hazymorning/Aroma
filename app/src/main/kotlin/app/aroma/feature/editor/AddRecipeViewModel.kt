@@ -1,5 +1,6 @@
 package app.aroma.feature.editor
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.format.SharedLink
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.Locale
 
 /** Where to go after a recipe was added: imported recipes open directly, new ones in the editor. */
@@ -32,13 +34,21 @@ class AddRecipeViewModel(
     private val settings: SettingsRepository,
     sharedUrl: String?,
     private val appScope: CoroutineScope,
+    saved: SavedStateHandle,
 ) : ViewModel() {
+    /**
+     * Whether a link shared from another app is imported at once. Any app can share to Aroma, so
+     * only a web link starts without a tap; and only once, as Android brings the screen back with
+     * the same link after it ended the app, when that import may be done already.
+     */
+    private val importsSharedLink = sharedUrl?.toHttpUrlOrNull() != null && saved.get<Boolean>(SHARED_LINK_IMPORTED) != true
+
     private val mutableState =
         MutableStateFlow(
-            if (sharedUrl.isNullOrBlank()) {
-                AddRecipeUiState()
+            if (importsSharedLink) {
+                AddRecipeUiState(url = sharedUrl.orEmpty(), working = AddMode.Import, step = ImportStep.Waiting)
             } else {
-                AddRecipeUiState(url = sharedUrl, working = AddMode.Import, step = ImportStep.Waiting)
+                AddRecipeUiState(url = sharedUrl.orEmpty())
             },
         )
     val state: StateFlow<AddRecipeUiState> = mutableState.asStateFlow()
@@ -47,6 +57,7 @@ class AddRecipeViewModel(
     val results: SharedFlow<AddRecipeResult> = mutableResults.asSharedFlow()
 
     init {
+        if (importsSharedLink) saved[SHARED_LINK_IMPORTED] = true
         viewModelScope.launch {
             val preferences = settings.settings.first()
             val aiAvailable = recipes.canImportWithAi()
@@ -54,7 +65,7 @@ class AddRecipeViewModel(
                 it.copy(aiAvailable = aiAvailable, useAi = preferences.importWithAi, translate = preferences.translateImports)
             }
             // A link shared from another app starts right away, with the user's usual import settings.
-            if (!sharedUrl.isNullOrBlank()) start(AddMode.Import) { importNow() }
+            if (importsSharedLink) start(AddMode.Import) { importNow() }
         }
     }
 
@@ -109,3 +120,5 @@ class AddRecipeViewModel(
         }
     }
 }
+
+private const val SHARED_LINK_IMPORTED = "sharedLinkImported"

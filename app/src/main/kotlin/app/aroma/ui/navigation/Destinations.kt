@@ -593,7 +593,7 @@ fun ShoppingDestination() {
 fun AddRecipeDestination(sharedUrl: String?, nav: NavController) {
     val untitled = stringResource(R.string.add_untitled)
     val vm =
-        aromaViewModel { AddRecipeViewModel(recipes, RecipeImporter(recipes, untitled, lock = importLock), settings, sharedUrl, scope) }
+        aromaViewModel { AddRecipeViewModel(recipes, RecipeImporter(recipes, untitled, lock = importLock), settings, sharedUrl, scope, it) }
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
