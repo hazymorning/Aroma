@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.aroma.data.remote.MealieJson
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -28,20 +30,26 @@ data class Session(
     val photoUrl: String? get() = photoKey?.let { "$serverUrl/api/media/users/$userId/profile.webp?cacheKey=$it" }
 }
 
-/** Keeps the session encrypted at rest; the token is never written in plain text. */
+/**
+ * Keeps the session encrypted at rest; the token is never written in plain text. The Keystore
+ * answers through another process and can take a while, so the cipher is used off the main thread.
+ */
 class SessionStore(private val dataStore: DataStore<Preferences>, private val cipher: SecretCipher) {
     private val key = stringPreferencesKey("session")
 
     suspend fun load(): Session? {
         val stored = dataStore.data.first()[key] ?: return null
-        return runCatching {
-            val plain = cipher.decrypt(Base64.decode(stored, Base64.NO_WRAP))
-            MealieJson.decodeFromString(Session.serializer(), plain.decodeToString())
-        }.getOrNull()
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val plain = cipher.decrypt(Base64.decode(stored, Base64.NO_WRAP))
+                MealieJson.decodeFromString(Session.serializer(), plain.decodeToString())
+            }.getOrNull()
+        }
     }
 
     suspend fun save(session: Session) {
-        val encrypted = cipher.encrypt(MealieJson.encodeToString(Session.serializer(), session).encodeToByteArray())
+        val plain = MealieJson.encodeToString(Session.serializer(), session).encodeToByteArray()
+        val encrypted = withContext(Dispatchers.IO) { cipher.encrypt(plain) }
         dataStore.edit { it[key] = Base64.encodeToString(encrypted, Base64.NO_WRAP) }
     }
 

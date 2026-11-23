@@ -15,15 +15,15 @@ interface SecretCipher {
 }
 
 /** AES-GCM with a key that never leaves the Android Keystore. Output is IV followed by ciphertext. */
-class KeystoreCipher(private val alias: String = "aroma_session") : SecretCipher {
+class KeystoreCipher : SecretCipher {
     private val keyStore by lazy { KeyStore.getInstance(KEYSTORE).apply { load(null) } }
 
     private fun key(): SecretKey {
-        (keyStore.getEntry(alias, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
+        (keyStore.getEntry(ALIAS, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
         generator.init(
             KeyGenParameterSpec
-                .Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+                .Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setKeySize(256)
@@ -46,6 +46,7 @@ class KeystoreCipher(private val alias: String = "aroma_session") : SecretCipher
 
     private companion object {
         const val KEYSTORE = "AndroidKeyStore"
+        const val ALIAS = "aroma_session"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val IV_SIZE = 12
     }
