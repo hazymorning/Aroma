@@ -307,7 +307,7 @@
     <string name="add_paste">Paste</string>
     <string name="add_import">Import</string>
     <string name="add_ai_title">Read with AI</string>
-    <string name="add_ai_hint">Helps with pages without recipe data and with posts from Instagram, TikTok and similar sites.</string>
+    <string name="add_ai_hint">For pages without recipe data and posts told in running text. Posts that list ingredients and steps Aroma reads itself, at once.</string>
     <string name="add_text_label">Recipe text (optional)</string>
     <string name="add_text_hint">For example the caption of a post</string>
     <string name="add_ai_translate">Translate into English</string>

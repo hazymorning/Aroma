@@ -304,7 +304,7 @@
     <string name="add_paste">Einfügen</string>
     <string name="add_import">Importieren</string>
     <string name="add_ai_title">Mit KI auslesen</string>
-    <string name="add_ai_hint">Hilft bei Seiten ohne Rezeptdaten und bei Beiträgen von Instagram, TikTok &amp; Co.</string>
+    <string name="add_ai_hint">Für Seiten ohne Rezeptdaten und Beiträge in Fließtext. Beiträge mit Zutaten und Schritten liest Aroma sofort selbst.</string>
     <string name="add_text_label">Rezepttext (optional)</string>
     <string name="add_text_hint">Zum Beispiel die Bildunterschrift eines Beitrags</string>
     <string name="add_ai_translate">Ins Deutsche übersetzen</string>

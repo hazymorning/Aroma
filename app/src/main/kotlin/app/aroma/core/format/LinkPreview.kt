@@ -37,7 +37,7 @@ data class LinkPreview(val title: String, val description: String, val image: St
         }
 
         /** Resolves character references, keeping line breaks: a caption's lines carry its structure. */
-        private fun decode(text: String): String =
+        internal fun decode(text: String): String =
             Entity.replace(text) { match ->
                 val name = match.groupValues[1]
                 val codePoint =

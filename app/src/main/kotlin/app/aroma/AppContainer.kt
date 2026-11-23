@@ -61,9 +61,12 @@ class AppContainer(context: Context) {
     val appSettings: StateFlow<AppSettings?> = settings.settings.stateIn(scope, SharingStarted.Eagerly, null)
     val ratingReminder = RatingReminder(dataStore)
 
+    /** How Aroma names itself: to Mealie, and to a platform whose embed shows a post only to apps, not to browsers. */
+    private val appUserAgent = "Aroma/${BuildConfig.VERSION_NAME} (Android ${Build.VERSION.RELEASE})"
+
     // The client reads the session only when it sends a request, after both exist.
     val clients: MealieClientFactory =
-        MealieClientFactory("Aroma/${BuildConfig.VERSION_NAME} (Android ${Build.VERSION.RELEASE})") { sessions.credentials() }
+        MealieClientFactory(appUserAgent) { sessions.credentials() }
     val sessions: SessionManager = SessionManager(SessionStore(dataStore, KeystoreCipher()), clients)
 
     val auth = AuthRepository(clients, sessions, database, deviceName = Build.MODEL)
@@ -94,7 +97,7 @@ class AppContainer(context: Context) {
         RecipeImports(
             appContext,
             recipes,
-            RecipeImporter(recipes, SocialPosts(clients.httpClient) { browserUserAgent }, untitled = {
+            RecipeImporter(recipes, SocialPosts(clients.httpClient, appUserAgent) { browserUserAgent }, untitled = {
                 appContext.inAppLanguage().getString(R.string.add_untitled)
             }),
         )

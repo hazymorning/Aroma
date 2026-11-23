@@ -109,22 +109,41 @@ class RecipeImporterTest {
     }
 
     @Test
-    fun `a post is read on the phone, Mealie's AI gets its text alone, and its link and photo follow`() =
+    fun `a caption that lists its ingredients and steps becomes the recipe at once, without the AI`() =
         runBlocking<Unit> {
             val steps = mutableListOf<ImportStep>()
 
-            val slug = importer().run(ImportRequest(post, useAi = true, translateTo = "de-DE")) { steps += it }
+            val slug = importer().run(ImportRequest(post, useAi = true)) { steps += it }
 
             assertEquals("gnocchi", slug)
+            assertEquals("neither Mealie's import nor its AI is asked", emptyList<String>(), creations())
+            assertFalse("the post's page is not loaded, its embed has it all", requests.any { it.url.encodedPath == "/p/AromaTest02/" })
+            val saved = requests.single { it.method == "PATCH" && it.body!!.utf8().contains("recipeIngredient") }.body!!.utf8()
+            assertTrue(saved.contains("500 g Gnocchi") && saved.contains(post))
+            assertTrue(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
+            assertEquals(listOf(ImportStep.ReadingPost, ImportStep.Saving, ImportStep.AddingPhoto), steps)
+        }
+
+    @Test
+    fun `a caption in prose goes to Mealie's AI as text alone, and its link and photo follow`() =
+        runBlocking<Unit> {
+            caption = PROSE
+
+            assertEquals("gnocchi", importer().run(ImportRequest(post, useAi = true)))
             assertEquals(listOf("/api/recipes/create/ai/stream"), creations())
             val sent = requests.single { it.url.encodedPath == "/api/recipes/create/ai/stream" }.body!!.utf8()
-            assertTrue("the caption goes to the AI", sent.contains("- 500 g Gnocchi"))
-            assertTrue(sent.contains("de-DE"))
+            assertTrue("the caption goes to the AI", sent.contains("Gnocchi in Butter goldbraun braten"))
             assertFalse("Mealie does not load the post itself", sent.contains("name=\"url\""))
             assertTrue(requests.any { it.method == "PATCH" && it.body!!.utf8().contains(post) })
             assertTrue(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
-            assertEquals(ImportStep.ReadingPost, steps.first())
-            assertTrue(ImportStep.AddingPhoto in steps)
+        }
+
+    @Test
+    fun `a caption to be translated goes to Mealie's AI, ordered or not`() =
+        runBlocking<Unit> {
+            assertEquals("gnocchi", importer().run(ImportRequest(post, useAi = true, translateTo = "en-US")))
+            val sent = requests.single { it.url.encodedPath == "/api/recipes/create/ai/stream" }.body!!.utf8()
+            assertTrue(sent.contains("- 500 g Gnocchi") && sent.contains("en-US"))
         }
 
     @Test
@@ -136,11 +155,18 @@ class RecipeImporterTest {
 
             val slug = importer().run(ImportRequest(post, useAi = true))
 
-            assertEquals("vorschau", slug)
+            assertEquals("gnocchi", slug)
             assertEquals(listOf("/api/recipes/create/ai/stream", "/api/recipes/create/url/stream"), creations())
-            val saved = requests.single { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/vorschau" }.body!!.utf8()
+            val saved = requests.single { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/gnocchi" }.body!!.utf8()
             assertTrue(saved.contains("Das Rezept steht im Video!"))
-            assertTrue("the placeholders go", saved.contains("\"recipeIngredient\":[]"))
+            assertTrue("no placeholders", saved.contains("\"recipeIngredient\":[]"))
+            assertTrue(
+                "the preview gives its photo and goes",
+                requests.any {
+                    it.method == "DELETE" &&
+                        it.url.encodedPath == "/api/recipes/vorschau"
+                },
+            )
         }
 
     @Test
@@ -166,26 +192,37 @@ class RecipeImporterTest {
 
             val slug = importer().run(ImportRequest(post)) { steps += it }
 
-            assertEquals("vorschau", slug)
+            assertEquals("gnocchi", slug)
             assertEquals(listOf("/api/recipes/create/url/stream"), creations())
-            val saved = requests.single { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/vorschau" }.body!!.utf8()
-            assertTrue(saved.contains("500 g Gnocchi") && saved.contains("\"name\":\"Tomaten-Gnocchi\""))
-            assertFalse("the preview keeps its photo and stays the recipe", requests.any { it.method == "DELETE" })
-            assertEquals(listOf(ImportStep.ReadingPost, ImportStep.Waiting, ImportStep.Saving), steps)
+            assertTrue(
+                "named by the caption",
+                requests
+                    .single {
+                        it.method == "POST" && it.url.encodedPath == "/api/recipes"
+                    }.body!!
+                    .utf8()
+                    .contains("Tomaten-Gnocchi"),
+            )
+            val saved = requests.single { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/gnocchi" }.body!!.utf8()
+            assertTrue(saved.contains("500 g Gnocchi") && saved.contains(post))
+            assertTrue(requests.any { it.method == "GET" && it.url.encodedPath == "/api/media/recipes/id-vorschau/images/original.webp" })
+            assertTrue(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
+            assertTrue(requests.any { it.method == "DELETE" && it.url.encodedPath == "/api/recipes/vorschau" })
+            assertEquals(listOf(ImportStep.ReadingPost, ImportStep.Waiting, ImportStep.Saving, ImportStep.AddingPhoto), steps)
         }
 
     @Test
-    fun `with AI, the caption Mealie read goes to the AI as text, and the new recipe takes the preview's photo`() =
+    fun `with AI, a caption in prose Mealie read goes to the AI as text, and the new recipe takes the preview's photo`() =
         runBlocking<Unit> {
             caption = null
-            preview(CAPTION)
+            preview(PROSE)
 
             val slug = importer().run(ImportRequest(post, useAi = true))
 
             assertEquals("gnocchi", slug)
             assertEquals(listOf("/api/recipes/create/url/stream", "/api/recipes/create/ai/stream"), creations())
             val sent = requests.single { it.url.encodedPath == "/api/recipes/create/ai/stream" }.body!!.utf8()
-            assertTrue(sent.contains("- 500 g Gnocchi"))
+            assertTrue(sent.contains("Gnocchi in Butter goldbraun braten"))
             assertFalse("the AI never gets the post's link, which shows it the sign-in page", sent.contains("name=\"url\""))
             assertTrue(requests.any { it.method == "GET" && it.url.encodedPath == "/api/media/recipes/id-vorschau/images/original.webp" })
             assertTrue(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
@@ -213,15 +250,24 @@ class RecipeImporterTest {
         }
 
     @Test
-    fun `a name another recipe has already gets a number, the way Mealie numbers new recipes`() =
+    fun `a post imported again is named by Mealie, which numbers a name another recipe has`() =
         runBlocking<Unit> {
             caption = null
             preview(CAPTION)
             takenNames += "Tomaten-Gnocchi"
 
-            assertEquals("vorschau", importer().run(ImportRequest(post)))
-            val renamed = requests.filter { it.method == "PATCH" }.map { it.body!!.utf8() }
-            assertTrue(renamed.last().contains("\"name\":\"Tomaten-Gnocchi (2)\""))
+            assertEquals("gnocchi", importer().run(ImportRequest(post)))
+            assertTrue(
+                requests
+                    .single { it.method == "POST" && it.url.encodedPath == "/api/recipes" }
+                    .body!!
+                    .utf8()
+                    .contains("Tomaten-Gnocchi"),
+            )
+            assertFalse(
+                "nothing is renamed to a name taken",
+                requests.any { it.method == "PATCH" && it.body!!.utf8().contains("\"name\"") },
+            )
         }
 
     @Test
@@ -306,11 +352,21 @@ class RecipeImporterTest {
         }
 
     @Test
-    fun `when Mealie's AI fails on a post, Aroma reads the caption itself`() =
+    fun `text pasted for a website that lists its ingredients and steps is read without the AI`() =
         runBlocking<Unit> {
+            assertEquals("gnocchi", importer().run(ImportRequest(PAGE, text = CAPTION, useAi = true)))
+            assertEquals(emptyList<String>(), creations())
+            assertTrue(requests.any { it.method == "PATCH" && it.body!!.utf8().contains("500 g Gnocchi") })
+        }
+
+    @Test
+    fun `when Mealie's AI fails on a caption Aroma can read in part, Aroma reads it itself`() =
+        runBlocking<Unit> {
+            caption = "Tomaten-Gnocchi\n\nZutaten:\n- 500 g Gnocchi\n- 250 g Kirschtomaten\n\nAlles Weitere im Video!"
             aiFails = true
 
             assertEquals("gnocchi", importer().run(ImportRequest(post, useAi = true)))
+            assertEquals(listOf("/api/recipes/create/ai/stream"), creations())
             assertTrue(requests.any { it.method == "POST" && it.url.encodedPath == "/api/recipes" })
         }
 
@@ -319,6 +375,7 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             // Saved by the import queued before this one, while this one waited.
             listed.add(0, summary("id-frueher", "frueheres-rezept"))
+            caption = PROSE
             cut = Cut("ai", arrives = "gnocchi")
 
             assertEquals("gnocchi", importer().run(ImportRequest(post, useAi = true)))
@@ -359,6 +416,7 @@ class RecipeImporterTest {
     @Test
     fun `a post whose AI import was cut off keeps its link and photo once the recipe arrives`() =
         runBlocking<Unit> {
+            caption = PROSE
             cut = Cut("ai", arrives = "gnocchi")
 
             assertEquals("gnocchi", importer().run(ImportRequest(post, useAi = true)))
@@ -393,6 +451,7 @@ class RecipeImporterTest {
     @Test
     fun `when no recipe turns up the import says Mealie did not answer, and creates nothing itself`() =
         runBlocking<Unit> {
+            caption = PROSE
             cut = Cut("ai", arrives = null)
             try {
                 importer(patience = 200.milliseconds).run(ImportRequest(post, useAi = true))
@@ -476,6 +535,11 @@ class RecipeImporterTest {
                     .code(302)
                     .addHeader("Location", "/accounts/login/")
                     .build()
+            }
+
+            path == "/p/AromaTest02/embed/captioned/" -> {
+                // Without a caption the embed is the page a browser gets, which loads the post by script.
+                html(caption?.let(::embedPage) ?: "", inBody = true)
             }
 
             path == "/accounts/login/" -> {
@@ -588,12 +652,19 @@ class RecipeImporterTest {
             .body(body)
             .build()
 
-    private fun html(head: String) =
+    private fun html(content: String, inBody: Boolean = false) =
         MockResponse
             .Builder()
             .addHeader("Content-Type", "text/html; charset=utf-8")
-            .body("<html><head>$head</head><body></body></html>")
+            .body(if (inBody) "<html><body>$content</body></html>" else "<html><head>$content</head><body></body></html>")
             .build()
+
+    /** The post's embed as Instagram serves it to Aroma: the caption and the photo in the page. */
+    private fun embedPage(caption: String) =
+        """<img class="EmbeddedMediaImage" alt="" src="http://www.instagram.com:${server.port}/photo.jpg">""" +
+            """<div class="Caption"><a class="CaptionUsername" href="/kochmitmir/">kochmitmir</a><br /><br />""" +
+            caption.replace("&", "&amp;").replace("<", "&lt;").replace("\n", "<br />") +
+            """<div class="CaptionComments"><a href="#">View all comments</a></div></div>"""
 
     /** The post's page as Instagram shows it: the caption in the link preview, framed by the platform. */
     private fun postPage(caption: String) =
@@ -633,6 +704,11 @@ class RecipeImporterTest {
     private companion object {
         const val USER = "user-1"
         const val PAGE = "https://www.example.com/gnocchi"
+
+        /** A recipe told in sentences, as many captions tell it: no list Aroma could sort. */
+        const val PROSE =
+            "Tomaten-Gnocchi für zwei: Gnocchi in Butter goldbraun braten, eine Handvoll Kirschtomaten halbieren und " +
+                "mitbraten, mit einem Schuss Sahne ablöschen und mit Parmesan servieren."
         val CAPTION =
             """
             Tomaten-Gnocchi
