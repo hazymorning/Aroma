@@ -93,7 +93,6 @@ import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
-import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
@@ -637,7 +636,7 @@ private fun ExactAlarmHint(onAllow: () -> Unit) {
                     .weight(1f)
                     .padding(end = Space.m),
         )
-        QuietLink(stringResource(R.string.cook_exact_alarm_allow), onAllow, tone = LinkTone.Ink)
+        QuietLink(stringResource(R.string.cook_exact_alarm_allow), onAllow)
     }
 }
 

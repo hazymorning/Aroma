@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -35,7 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -64,12 +67,16 @@ fun PageHeader(
     actions: @Composable RowScope.(tall: Boolean) -> Unit = {},
 ) {
     var titleLines by remember { mutableIntStateOf(1) }
+    val tall = titleLines + (if (accent != null) 1 else 0) > 1
+    // A title of one line stands at the same height on every tab, with or without actions: they
+    // centre on its line without making the header taller. Beside two lines they centre on both.
+    val lineHeight = with(LocalDensity.current) { AromaType.PageTitle.lineHeight.toDp() }
     Row(
         modifier
             .fillMaxWidth()
             .statusBarsPadding()
             .padding(start = ScreenMargin, end = EdgeActionPadding, top = Space.l),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = if (tall) Alignment.CenterVertically else Alignment.Top,
     ) {
         Column(Modifier.weight(1f)) {
             Text(
@@ -90,8 +97,17 @@ fun PageHeader(
                 )
             }
         }
-        val tall = titleLines + (if (accent != null) 1 else 0) > 1
-        Row(verticalAlignment = Alignment.CenterVertically) { actions(tall) }
+        Row(
+            modifier =
+                if (tall) {
+                    Modifier
+                } else {
+                    Modifier
+                        .height(lineHeight)
+                        .wrapContentHeight(unbounded = true)
+                },
+            verticalAlignment = Alignment.CenterVertically,
+        ) { actions(tall) }
     }
 }
 
@@ -188,7 +204,8 @@ fun DetailPage(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     var titleEnd by remember { mutableIntStateOf(Int.MAX_VALUE) }
-    val collapsed by remember(scroll) { derivedStateOf { scroll.value > titleEnd } }
+    // The bar takes up the title once half of it has gone beneath, as the large title fades away.
+    val collapsed by remember(scroll) { derivedStateOf { scroll.value > titleEnd / 2 } }
     Box(modifier.fillMaxSize()) {
         Column(
             Modifier
@@ -206,13 +223,21 @@ fun DetailPage(
                     .widthIn(max = ContentMaxWidth)
                     .fillMaxWidth(),
             ) {
-                LargeTitle(title, Modifier.onSizeChanged { titleEnd = it.height })
+                LargeTitle(
+                    title,
+                    Modifier
+                        .onSizeChanged { titleEnd = it.height }
+                        .graphicsLayer { alpha = (1f - scroll.value / (titleEnd * TITLE_FADE)).coerceIn(0f, 1f) },
+                )
                 content()
             }
         }
         DetailTopBar(onBack = onBack, title = title, collapsed = collapsed, actions = actions)
     }
 }
+
+/** How much of a large title has scrolled away by the time it has faded out. */
+private const val TITLE_FADE = 0.6f
 
 /** Keeps the status bar legible over content scrolled beneath it, by fading the page in from the top. */
 @Composable

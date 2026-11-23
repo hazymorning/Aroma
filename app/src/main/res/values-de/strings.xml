@@ -257,7 +257,6 @@
     <string name="shopping_mode_hint">Große Schrift, der Bildschirm bleibt an.</string>
     <string name="shopping_add_hint">Artikel hinzufügen</string>
     <string name="shopping_add">Hinzufügen</string>
-    <string name="shopping_switch_list">Liste wechseln</string>
     <string name="shopping_create_list">Neue Liste</string>
     <string name="shopping_rename_list">Liste umbenennen</string>
     <string name="shopping_delete_list">Liste löschen</string>

@@ -67,7 +67,6 @@ import app.aroma.ui.components.EdgeActionPadding
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.IconAction
-import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PageHeader
@@ -233,7 +232,6 @@ private fun Header(state: MealPlanUiState, actions: MealPlanActions) {
                 QuietLink(
                     text = stringResource(R.string.plan_this_week),
                     onClick = actions.onToday,
-                    tone = LinkTone.Ink,
                     modifier = Modifier.padding(start = Space.m, end = Space.xs),
                 )
             }

@@ -96,7 +96,7 @@ fun PhotoCard(
                     .indication(interaction, PhotoPress),
         )
         Spacer(Modifier.height(Space.xs))
-        Text(text = title, style = AromaType.Name, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(text = title, style = AromaType.Name, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Box(Modifier.padding(top = Space.xxs)) { meta() }
     }
 }

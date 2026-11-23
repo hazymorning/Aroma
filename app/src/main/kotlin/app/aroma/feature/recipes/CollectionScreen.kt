@@ -66,7 +66,7 @@ fun CollectionScreen(
 ) {
     val grid = rememberLazyGridState()
     var titleEnd by remember { mutableIntStateOf(Int.MAX_VALUE) }
-    val collapsed by remember { derivedStateOf { grid.firstVisibleItemIndex > 0 || grid.firstVisibleItemScrollOffset > titleEnd } }
+    val collapsed by remember { derivedStateOf { grid.firstVisibleItemIndex > 0 || grid.firstVisibleItemScrollOffset > titleEnd / 2 } }
     Box(modifier.fillMaxSize()) {
         RecipeGrid(
             recipes = state.recipes,

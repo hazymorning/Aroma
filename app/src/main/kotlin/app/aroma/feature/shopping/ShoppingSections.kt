@@ -62,7 +62,6 @@ import app.aroma.ui.components.CardPart
 import app.aroma.ui.components.CheckCircle
 import app.aroma.ui.components.GroupLabel
 import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.SoftCard
@@ -210,7 +209,7 @@ private fun BasketHeader(count: Int, onClear: () -> Unit, modifier: Modifier = M
                     .weight(1f)
                     .semantics { heading() },
         )
-        QuietLink(stringResource(R.string.shopping_clear_checked), onClear, tone = LinkTone.Ink)
+        QuietLink(stringResource(R.string.shopping_clear_checked), onClear)
     }
 }
 

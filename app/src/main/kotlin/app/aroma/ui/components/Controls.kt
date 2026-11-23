@@ -121,7 +121,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, actionLabel: Str
                     .weight(1f)
                     .semantics { heading() },
         )
-        if (actionLabel != null && onAction != null) QuietLink(actionLabel, onAction, tone = LinkTone.Accent, chevron = true)
+        if (actionLabel != null && onAction != null) QuietLink(actionLabel, onAction, chevron = true)
     }
 }
 
@@ -170,10 +170,29 @@ private val StepperValueWidth = 80.dp
 
 /**
  * Five stars. Without [onRate] they show a rating in ink; with it they are 48 dp targets that
- * fill in sage up to the tapped star, one after another.
+ * fill in sage up to the tapped star, one after another. Where five targets do not fit, they
+ * share the width, so the fifth star never falls off the edge.
  */
 @Composable
 fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 14, onRate: ((Int) -> Unit)? = null) {
+    if (onRate == null) {
+        Stars(rating, starSize, onRate = null, target = 0.dp, modifier)
+        return
+    }
+    BoxWithConstraints(modifier) {
+        val target = if (constraints.hasBoundedWidth) minOf(TouchTarget, maxWidth / 5).coerceAtLeast(starSize.dp) else TouchTarget
+        Stars(rating, starSize, onRate, target)
+    }
+}
+
+@Composable
+private fun Stars(
+    rating: Double?,
+    starSize: Int,
+    onRate: ((Int) -> Unit)?,
+    target: Dp,
+    modifier: Modifier = Modifier,
+) {
     val value = rating ?: 0.0
     val description = ratingDescription(rating)
     // Screen readers hear the stars as one choice among five: only the rated star is selected.
@@ -214,7 +233,7 @@ fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 
                 Box(
                     modifier =
                         Modifier
-                            .size(TouchTarget)
+                            .size(target)
                             .selectable(selected = star == chosen, role = Role.RadioButton, onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                                 onRate(star)
@@ -304,7 +323,8 @@ fun AromaSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifie
                 checkedTrackColor = extras.cta,
                 checkedThumbColor = extras.onCta,
                 checkedBorderColor = Color.Transparent,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                // A step darker than the card it sits on, so an open switch still reads as one.
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceDim,
                 uncheckedThumbColor = MaterialTheme.colorScheme.outline,
                 uncheckedBorderColor = Color.Transparent,
             ),

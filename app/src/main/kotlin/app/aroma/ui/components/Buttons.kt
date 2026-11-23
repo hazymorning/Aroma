@@ -153,7 +153,7 @@ fun QuietLink(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    tone: LinkTone = LinkTone.Soft,
+    tone: LinkTone = LinkTone.Accent,
     @DrawableRes leadingIcon: Int? = null,
     chevron: Boolean = false,
     enabled: Boolean = true,

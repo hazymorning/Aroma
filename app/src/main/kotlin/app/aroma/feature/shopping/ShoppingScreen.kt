@@ -62,6 +62,7 @@ import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaDropdownMenu
+import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.AromaMenuItem
 import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.AromaSnackbarHost
@@ -376,45 +377,15 @@ private fun ListMenu(openDialog: (ShoppingDialog) -> Unit) {
     }
 }
 
-/**
- * The list's name under the page title, on the margin. With more than one list it opens a menu
- * of the others; pressing dims it instead of blooming a ripple.
- */
+/** The list's name under the page title; with more than one list, a chip that opens a menu of the others. */
 @Composable
 private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    val switchable = lists.size > 1
-    Box(
-        Modifier
-            .padding(horizontal = ScreenMargin)
-            .heightIn(min = TouchTarget)
-            .clickable(
-                interactionSource = null,
-                indication = QuietPress,
-                enabled = switchable,
-                onClickLabel = stringResource(R.string.shopping_switch_list),
-                role = Role.Button,
-                onClick = { open = true },
-            ).padding(top = Space.xxs),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = current.name,
-                style = AromaType.BodyStrong,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            if (switchable) {
-                Spacer(Modifier.width(Space.xxs))
-                Icon(
-                    painterResource(R.drawable.ic_expand_more),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(Glyph.s),
-                )
-            }
+    Box(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs)) {
+        if (lists.size > 1) {
+            AromaFilterChip(selected = false, label = current.name, onClick = { open = true }, trailingIcon = R.drawable.ic_expand_more)
+        } else {
+            Text(text = current.name, style = AromaType.BodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             lists.forEach { info ->

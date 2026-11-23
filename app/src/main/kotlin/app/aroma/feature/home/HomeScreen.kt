@@ -292,41 +292,54 @@ private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions) {
 @Composable
 private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
     SoftCard(Modifier.padding(top = Space.l)) {
-        Row(Modifier.padding(start = CardPadding, top = Space.s, bottom = Space.xs)) {
-            RecipeImage(
-                image = toRate.image,
-                size = ImageSize.Thumbnail,
-                shape = MaterialTheme.shapes.small,
-                fallbackIconSize = Glyph.m,
+        Box {
+            Row(Modifier.padding(start = CardPadding, top = Space.s, bottom = Space.xs)) {
+                RecipeImage(
+                    image = toRate.image,
+                    size = ImageSize.Thumbnail,
+                    shape = MaterialTheme.shapes.small,
+                    fallbackIconSize = Glyph.m,
+                    modifier =
+                        Modifier
+                            .padding(top = Space.xxs)
+                            .size(ThumbnailSize)
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable(onClickLabel = stringResource(R.string.home_rate_open)) { actions.onOpenRecipe(toRate.slug) },
+                )
+                Spacer(Modifier.width(Space.m))
+                // The words keep clear of the close button; the stars may pass under it, so five fit on a small phone.
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.cook_rate_question),
+                        style = AromaType.Small,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = TouchTarget),
+                    )
+                    Text(
+                        text = toRate.name,
+                        style = AromaType.Name,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(end = TouchTarget),
+                    )
+                    RatingStars(
+                        rating = toRate.stars?.toDouble(),
+                        starSize = RATE_STAR_SIZE,
+                        onRate = actions.onRateCooked,
+                        // The stars' touch areas reach past the text column; the first glyph stands on it.
+                        modifier = Modifier.offset(x = -ratingTouchInset(RATE_STAR_SIZE)),
+                    )
+                }
+            }
+            IconAction(
+                R.drawable.ic_close,
+                stringResource(R.string.home_rate_dismiss),
+                actions.onDismissReminder,
                 modifier =
                     Modifier
-                        .padding(top = Space.xxs)
-                        .size(ThumbnailSize)
-                        .clip(MaterialTheme.shapes.small)
-                        .clickable(onClickLabel = stringResource(R.string.home_rate_open)) { actions.onOpenRecipe(toRate.slug) },
+                        .align(Alignment.TopEnd)
+                        .padding(top = Space.s),
             )
-            Spacer(Modifier.width(Space.m))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.cook_rate_question),
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = toRate.name,
-                    style = AromaType.Name,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                RatingStars(
-                    rating = toRate.stars?.toDouble(),
-                    starSize = RATE_STAR_SIZE,
-                    onRate = actions.onRateCooked,
-                    // The stars' touch areas reach past the text column; the first glyph stands on it.
-                    modifier = Modifier.offset(x = -ratingTouchInset(RATE_STAR_SIZE)),
-                )
-            }
-            IconAction(R.drawable.ic_close, stringResource(R.string.home_rate_dismiss), actions.onDismissReminder)
         }
     }
 }

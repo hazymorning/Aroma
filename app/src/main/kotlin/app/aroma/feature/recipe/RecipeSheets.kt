@@ -47,7 +47,6 @@ import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.CheckCircle
 import app.aroma.ui.components.GroupLabel
 import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
@@ -124,7 +123,6 @@ fun AddToListSheet(
             QuietLink(
                 text = stringResource(if (allSelected) R.string.select_none else R.string.select_all),
                 onClick = { selected = if (allSelected) emptySet() else recipe.ingredients.indices.toSet() },
-                tone = LinkTone.Ink,
             )
         }
         LazyColumn(
