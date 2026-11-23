@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,10 +40,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
@@ -55,9 +60,11 @@ import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
 
 /**
- * The head of a tab page: a large serif title on the margin (with an optional second line in sage,
- * as in the greeting) and plain icon actions whose last glyph ends on the right margin. The actions
- * stand centred beside the title; [actions] learns whether it runs over two lines or more.
+ * The head of a tab page: a large serif title on the margin, with an optional [accent] in sage (the
+ * name in the greeting), and plain icon actions whose last glyph ends on the right margin. The
+ * accent follows the title on its line where both fit, and takes a line of its own where they do
+ * not. The actions stand centred beside the title; [actions] learns whether it runs over two lines
+ * or more.
  */
 @Composable
 fun PageHeader(
@@ -67,7 +74,13 @@ fun PageHeader(
     actions: @Composable RowScope.(tall: Boolean) -> Unit = {},
 ) {
     var titleLines by remember { mutableIntStateOf(1) }
-    val tall = titleLines + (if (accent != null) 1 else 0) > 1
+    val window = LocalWindowInfo.current.containerSize.width
+    val fontScale = LocalDensity.current.fontScale
+    // Tried on one line first, beside the actions as they stand next to one line. Once the pair runs
+    // over, the accent keeps a line of its own until the window or the text size changes, so actions
+    // that grow beside two lines cannot squeeze the pair back and forth.
+    var accentApart by remember(title, accent, window, fontScale) { mutableStateOf(false) }
+    val tall = if (accent == null) titleLines > 1 else accentApart
     // A title of one line stands at the same height on every tab, with or without actions: they
     // centre on its line without making the header taller. Beside two lines they centre on both.
     val lineHeight = with(LocalDensity.current) { AromaType.PageTitle.lineHeight.toDp() }
@@ -79,22 +92,37 @@ fun PageHeader(
         verticalAlignment = if (tall) Alignment.CenterVertically else Alignment.Top,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = AromaType.PageTitle,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                onTextLayout = { titleLines = it.lineCount },
-                modifier = Modifier.semantics { heading() },
-            )
-            if (accent != null) {
+            if (accent != null && !accentApart) {
                 Text(
-                    text = accent,
+                    text =
+                        buildAnnotatedString {
+                            append(title)
+                            append(' ')
+                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) { append(accent) }
+                        },
                     style = AromaType.PageTitle,
-                    color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { if (it.hasVisualOverflow) accentApart = true },
+                    modifier = Modifier.semantics { heading() },
                 )
+            } else {
+                Text(
+                    text = title,
+                    style = AromaType.PageTitle,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { titleLines = it.lineCount },
+                    modifier = Modifier.semantics { heading() },
+                )
+                if (accent != null) {
+                    Text(
+                        text = accent,
+                        style = AromaType.PageTitle,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
         Row(
