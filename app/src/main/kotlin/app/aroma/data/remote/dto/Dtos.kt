@@ -123,6 +123,9 @@ data class UnitDto(
     val pluralAbbreviation: String? = null,
     val useAbbreviation: Boolean = false,
     val fraction: Boolean = true,
+    /** Sent by Mealie 3.13 and newer. */
+    val standardQuantity: Double? = null,
+    val standardUnit: String? = null,
 )
 
 @Serializable

@@ -57,6 +57,10 @@ data class Recipe(
     val nutrition: List<NutritionValue>,
 )
 
+/**
+ * A unit of Mealie's. Since Mealie 3.13 a unit may say what it is in standard terms: [standardQuantity]
+ * times [standardUnit], such as 0.5 "fluid_ounce" for a tablespoon. Older servers send neither.
+ */
 data class IngredientUnit(
     val id: String?,
     val name: String,
@@ -65,6 +69,8 @@ data class IngredientUnit(
     val pluralAbbreviation: String?,
     val useAbbreviation: Boolean,
     val useFraction: Boolean,
+    val standardQuantity: Double? = null,
+    val standardUnit: String? = null,
 ) {
     fun label(plural: Boolean): String {
         if (useAbbreviation && abbreviation.isNotBlank()) {

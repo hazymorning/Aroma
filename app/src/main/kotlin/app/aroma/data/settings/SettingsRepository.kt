@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import app.aroma.core.format.MeasureSystem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -28,6 +29,7 @@ data class AppSettings(
     val importWithAi: Boolean = true,
     val translateImports: Boolean = false,
     val checkUpdatesAtStart: Boolean = false,
+    val measureSystem: MeasureSystem = MeasureSystem.AsWritten,
 )
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -41,6 +43,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val importWithAi = booleanPreferencesKey("import_with_ai")
         val translateImports = booleanPreferencesKey("translate_imports")
         val checkUpdatesAtStart = booleanPreferencesKey("check_updates_at_start")
+        val measureSystem = stringPreferencesKey("measure_system")
     }
 
     val settings: Flow<AppSettings> =
@@ -55,6 +58,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 importWithAi = prefs[Keys.importWithAi] ?: true,
                 translateImports = prefs[Keys.translateImports] ?: false,
                 checkUpdatesAtStart = prefs[Keys.checkUpdatesAtStart] ?: false,
+                measureSystem = MeasureSystem.entries.firstOrNull { it.name == prefs[Keys.measureSystem] } ?: MeasureSystem.AsWritten,
             )
         }
 
@@ -69,6 +73,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setOfflineRecipes(enabled: Boolean) = dataStore.edit { it[Keys.offlineRecipes] = enabled }
 
     suspend fun setCheckUpdatesAtStart(enabled: Boolean) = dataStore.edit { it[Keys.checkUpdatesAtStart] = enabled }
+
+    suspend fun setMeasureSystem(system: MeasureSystem) = dataStore.edit { it[Keys.measureSystem] = system.name }
 
     /** Forgets what belonged to the signed-out account; look and feel stay as they are. */
     suspend fun forgetAccount() =

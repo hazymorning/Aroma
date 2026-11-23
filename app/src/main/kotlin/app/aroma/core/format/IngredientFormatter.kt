@@ -32,11 +32,12 @@ data class IngredientLine(
 }
 
 object IngredientFormatter {
-    fun format(ingredient: Ingredient, scale: Double, locale: Locale): IngredientLine =
+    /** [ingredient] scaled by [scale], with its amount converted to [system] where that reads well. */
+    fun format(ingredient: Ingredient, scale: Double, locale: Locale, system: MeasureSystem = MeasureSystem.AsWritten): IngredientLine =
         if (ingredient.isParsed) {
-            parsed(ingredient.quantity, ingredient.unit, ingredient.food, ingredient.note, scale, locale)
+            parsed(ingredient.quantity, ingredient.unit, ingredient.food, ingredient.note, scale, locale, system)
         } else {
-            freeText(ingredient.note.ifBlank { ingredient.display }, ingredient.quantity, scale, locale)
+            freeText(ingredient.note.ifBlank { ingredient.display }, ingredient.quantity, scale, locale, system)
         }
 
     /** Mirrors Mealie's own display rules for structured ingredients and shopping items. */
@@ -47,10 +48,12 @@ object IngredientFormatter {
         note: String,
         scale: Double,
         locale: Locale,
+        system: MeasureSystem = MeasureSystem.AsWritten,
     ): IngredientLine {
         val scaled = quantity * scale
-        val amount = Quantities.display(scaled, unit?.useFraction ?: true, locale)
-        val unitLabel = unit?.label(plural = scaled > 1)
+        val conversion = unit?.let { parsedConversion(scaled, it, food, note, system) }
+        val amount = Quantities.display(conversion?.amount ?: scaled, conversion?.fraction ?: unit?.useFraction ?: true, locale)
+        val unitLabel = conversion?.unit ?: unit?.label(plural = scaled > 1)
         val foodLabel = food?.label(plural = quantity <= 0 || scaled > 1)
         val cleanNote = note.trim().ifEmpty { null }
         return if (foodLabel.isNullOrBlank()) {
@@ -60,19 +63,57 @@ object IngredientFormatter {
         }
     }
 
-    /** Free text keeps its wording; a leading amount is detected so it can be scaled. */
-    fun freeText(text: String, quantity: Double, scale: Double, locale: Locale): IngredientLine {
+    /** Free text keeps its wording; a leading amount is detected so it can be scaled and converted. */
+    fun freeText(
+        text: String,
+        quantity: Double,
+        scale: Double,
+        locale: Locale,
+        system: MeasureSystem = MeasureSystem.AsWritten,
+    ): IngredientLine {
         val trimmed = text.trim()
         val leading = LeadingQuantityParser.parse(trimmed)
         if (leading == null || (quantity > 0 && abs(leading.value - quantity) > 0.001)) {
             val amount = if (quantity > 0) Quantities.display(quantity * scale, true, locale) else null
             return IngredientLine(amount, null, null, trimmed, null)
         }
+        convertedFreeText(leading, scale, locale, system)?.let { return it }
         val (unit, rest) = splitUnit(leading.rest)
         return IngredientLine(
             amount = Quantities.display(leading.value * scale, true, locale),
             amountUpper = leading.upper?.let { Quantities.display(it * scale, true, locale) },
             unit = unit,
+            text = rest,
+            note = null,
+        )
+    }
+
+    /** An amount of a Mealie unit in [system], unless the [note] gives an amount too. */
+    private fun parsedConversion(
+        amount: Double,
+        unit: IngredientUnit,
+        food: IngredientFood?,
+        note: String,
+        system: MeasureSystem,
+    ): Conversion? {
+        if (system == MeasureSystem.AsWritten || Measures.mentioned(note)) return null
+        val weight = food?.let { CupWeight.of(it.name, note) ?: it.pluralName?.let { plural -> CupWeight.of(plural, note) } }
+        val measure = Measures.of(unit, weight) ?: return null
+        return UnitConversion.convert(amount, null, measure, weight, system)
+    }
+
+    /** "2 cups flour" as "240 g flour", unless the text gives another amount, as "2 cups (250 g) flour" does. */
+    private fun convertedFreeText(leading: LeadingQuantity, scale: Double, locale: Locale, system: MeasureSystem): IngredientLine? {
+        if (system == MeasureSystem.AsWritten) return null
+        val (unit, rest) = Measures.leading(leading.rest) ?: return null
+        if (Measures.mentioned(rest)) return null
+        val weight = CupWeight.of(rest)
+        val measure = Measures.named(unit, weight) ?: return null
+        val conversion = UnitConversion.convert(leading.value * scale, leading.upper?.times(scale), measure, weight, system) ?: return null
+        return IngredientLine(
+            amount = Quantities.display(conversion.amount, conversion.fraction, locale),
+            amountUpper = conversion.upper?.let { Quantities.display(it, conversion.fraction, locale) },
+            unit = conversion.unit,
             text = rest,
             note = null,
         )

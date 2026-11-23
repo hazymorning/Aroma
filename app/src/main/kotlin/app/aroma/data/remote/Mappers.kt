@@ -132,6 +132,8 @@ fun UnitDto.toModel() =
         pluralAbbreviation = pluralAbbreviation,
         useAbbreviation = useAbbreviation,
         useFraction = fraction,
+        standardQuantity = standardQuantity,
+        standardUnit = standardUnit,
     )
 
 fun FoodDto.toModel() = IngredientFood(id = id, name = name, pluralName = pluralName)

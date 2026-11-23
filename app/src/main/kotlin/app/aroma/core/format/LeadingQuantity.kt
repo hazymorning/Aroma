@@ -30,6 +30,12 @@ object LeadingQuantityParser {
         return LeadingQuantity(value, upper, rest)
     }
 
+    /** The amount that is all of [text], such as "1 1/2", "½" or "2,5". */
+    fun amount(text: String): Double? {
+        val reader = Reader(text.trim())
+        return reader.readAmount()?.takeIf { reader.position == reader.text.length }
+    }
+
     private class Reader(val text: String) {
         var position = 0
 
