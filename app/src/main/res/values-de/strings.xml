@@ -257,14 +257,14 @@
     <string name="add_import">Importieren</string>
     <string name="add_importing">Mealie liest die Seite. Das kann ein paar Sekunden dauern.</string>
     <string name="add_ai_title">Mit KI auslesen</string>
-    <string name="add_ai_hint">Mealies KI liest das Rezept. Hilft bei Seiten ohne Rezeptdaten und bei Beiträgen von Instagram, TikTok &amp; Co.</string>
+    <string name="add_ai_hint">Hilft bei Seiten ohne Rezeptdaten und bei Beiträgen von Instagram, TikTok &amp; Co.</string>
     <string name="add_ai_text_label">Rezepttext (optional)</string>
     <string name="add_ai_text_hint">Zum Beispiel die Bildunterschrift eines Beitrags</string>
     <string name="add_ai_translate">Ins Deutsche übersetzen</string>
     <string name="add_progress_waiting">Rezept wird importiert</string>
-    <string name="add_progress_rebuilding">KI macht aus dem Beitrag ein Rezept</string>
-    <string name="add_progress_tidying">Beitrag wird in Zutaten und Schritte gegliedert</string>
-    <string name="add_progress_still_working">Mealie arbeitet noch am Rezept</string>
+    <string name="add_progress_rebuilding">Mealie schreibt das Rezept</string>
+    <string name="add_progress_tidying">Beitrag wird gegliedert</string>
+    <string name="add_progress_still_working">Mealie arbeitet noch</string>
     <string name="add_progress_ai_hint">Mit KI kann das ein, zwei Minuten dauern.</string>
     <string name="add_untitled">Importiertes Rezept</string>
     <string name="add_manual">Selbst schreiben</string>
@@ -277,10 +277,15 @@
     <string name="editor_prep_minutes">Vorber. (Min.)</string>
     <string name="editor_cook_minutes">Kochen (Min.)</string>
     <string name="editor_total_minutes">Gesamt (Min.)</string>
-    <string name="editor_ingredients_hint">Eine Zutat pro Zeile. Zeilen, die mit # beginnen, werden zu Zwischenüberschriften.</string>
+    <string name="editor_ingredients_hint">Beginnt eine Zeile mit #, wird sie zur Zwischenüberschrift.</string>
+    <string name="editor_ingredient_hint">z. B. 200 g Mehl</string>
+    <string name="editor_add_ingredient">Zutat hinzufügen</string>
+    <string name="editor_remove_ingredient">Zutat %1$d entfernen</string>
+    <string name="editor_step_hint">Beschreibe diesen Schritt</string>
     <string name="editor_step">Schritt %1$d</string>
     <string name="editor_remove_step">Schritt %1$d entfernen</string>
     <string name="editor_add_step">Schritt hinzufügen</string>
+    <string name="editor_pick_photo">Foto wählen</string>
     <string name="editor_change_photo">Foto ändern</string>
 
     <!-- Settings -->

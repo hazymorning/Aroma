@@ -58,14 +58,14 @@ class AddRecipeViewModel(
         }
     }
 
-    fun onUrlChange(text: String) = mutableState.update { it.copy(url = text, error = null) }
+    fun onUrlChange(text: String) = mutableState.update { it.copy(url = text, failure = null) }
 
-    fun onTextChange(text: String) = mutableState.update { it.copy(text = text, error = null) }
+    fun onTextChange(text: String) = mutableState.update { it.copy(text = text, failure = null) }
 
-    fun onNameChange(text: String) = mutableState.update { it.copy(name = text, error = null) }
+    fun onNameChange(text: String) = mutableState.update { it.copy(name = text, failure = null) }
 
     fun onUseAiChange(enabled: Boolean) {
-        mutableState.update { it.copy(useAi = enabled, error = null) }
+        mutableState.update { it.copy(useAi = enabled, failure = null) }
         viewModelScope.launch { settings.setImportWithAi(enabled) }
     }
 
@@ -101,10 +101,10 @@ class AddRecipeViewModel(
 
     private fun start(mode: AddMode, block: suspend () -> AddRecipeResult) {
         viewModelScope.launch {
-            mutableState.update { it.copy(working = mode, error = null) }
+            mutableState.update { it.copy(working = mode, failure = null) }
             runCatching { block() }
                 .onSuccess { mutableResults.emit(it) }
-                .onFailure { error -> mutableState.update { it.copy(error = error.toAromaError()) } }
+                .onFailure { error -> mutableState.update { it.copy(failure = AddFailure(mode, error.toAromaError())) } }
             mutableState.update { it.copy(working = null, step = null) }
         }
     }

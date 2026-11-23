@@ -2,7 +2,9 @@ package app.aroma.screenshots
 
 import androidx.compose.ui.test.hasScrollToKeyAction
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.ShoppingListInfo
@@ -16,6 +18,10 @@ import app.aroma.feature.editor.AddMode
 import app.aroma.feature.editor.AddRecipeActions
 import app.aroma.feature.editor.AddRecipeScreen
 import app.aroma.feature.editor.AddRecipeUiState
+import app.aroma.feature.editor.EditorActions
+import app.aroma.feature.editor.EditorForm
+import app.aroma.feature.editor.EditorScreen
+import app.aroma.feature.editor.EditorUiState
 import app.aroma.feature.editor.ImportStep
 import app.aroma.feature.home.Greeting
 import app.aroma.feature.home.HomeActions
@@ -327,6 +333,56 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                 actions = AddRecipeActions(),
             )
         }
+    }
+
+    @Test
+    fun editor() {
+        applyLocale()
+        snapshot("editor_${variant.suffix}", variant.dark) {
+            EditorScreen(state = editorState(), actions = EditorActions())
+        }
+    }
+
+    @Test
+    fun editorRows() {
+        applyLocale()
+        val firstStep = sample.recipe.steps[0].text
+        snapshot(
+            "editor_rows_${variant.suffix}",
+            variant.dark,
+            interact = { composeRule.onNodeWithText(firstStep).performScrollTo() },
+        ) {
+            EditorScreen(state = editorState(), actions = EditorActions())
+        }
+    }
+
+    private fun editorState(): EditorUiState {
+        val recipe = sample.recipe
+        val german = variant.locale == "de"
+        return EditorUiState(
+            form =
+                EditorForm(
+                    name = recipe.name,
+                    description = recipe.description,
+                    servings = "4",
+                    prepMinutes = "10",
+                    cookMinutes = "15",
+                    totalMinutes = "25",
+                    ingredients =
+                        if (german) {
+                            "# Für den Teig\n250 g Mehl\n2 EL Zucker\n1 ½ TL Backpulver\n1 Prise Salz\n2 Eier\n300 ml Milch"
+                        } else {
+                            "# For the batter\n250 g flour\n2 tbsp sugar\n1 ½ tsp baking powder\n1 pinch salt\n2 eggs\n300 ml milk"
+                        },
+                    steps = recipe.steps.map { it.text },
+                    categories = recipe.categories,
+                    tags = recipe.tags,
+                ),
+            allCategories = recipe.categories,
+            allTags = recipe.tags + recipe.tools,
+            currentImage = recipe.image,
+            isLoading = false,
+        )
     }
 
     @Test

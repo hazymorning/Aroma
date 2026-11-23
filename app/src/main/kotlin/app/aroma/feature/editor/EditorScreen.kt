@@ -1,54 +1,94 @@
 package app.aroma.feature.editor
 
 import android.net.Uri
+import androidx.annotation.StringRes
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.RecipeImage
 import app.aroma.ui.components.AromaFilterChip
+import app.aroma.ui.components.DetailTopBar
+import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.LabeledTextField
+import app.aroma.ui.components.LargeTitle
+import app.aroma.ui.components.LinkTone
+import app.aroma.ui.components.OnPhotoButton
+import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.PlaceholderLines
+import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RecipeImage
-import app.aroma.ui.components.messageRes
+import app.aroma.ui.components.SectionHeader
+import app.aroma.ui.theme.IconKeyline
+import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.tabular
 import coil3.compose.AsyncImage
 
 data class EditorActions(
@@ -59,239 +99,456 @@ data class EditorActions(
     val onRetry: () -> Unit = {},
 )
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EditorScreen(state: EditorUiState, actions: EditorActions, modifier: Modifier = Modifier) {
-    Column(
-        modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .imePadding(),
-    ) {
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = actions.onBack) {
-                Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.action_cancel))
-            }
-            Text(stringResource(R.string.editor_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            Button(onClick = { if (!state.isSaving) actions.onSave() }, enabled = !state.isLoading && state.form.name.isNotBlank()) {
-                if (state.isSaving) {
-                    CircularProgressIndicator(
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                } else {
-                    Text(stringResource(R.string.action_save))
-                }
-            }
-        }
+    val title = stringResource(R.string.editor_title)
+    val scroll = rememberScrollState()
+    var titleEnd by remember { mutableIntStateOf(Int.MAX_VALUE) }
+    val collapsed by remember { derivedStateOf { scroll.value > titleEnd } }
+    Box(modifier.fillMaxSize()) {
         when {
             state.isLoading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                Loading(title)
             }
 
             state.error != null && state.form.name.isEmpty() -> {
                 ErrorState(
                     state.error,
                     onRetry = actions.onRetry,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier =
+                        Modifier
+                            .statusBarsPadding()
+                            .padding(top = DetailTopBarHeight),
                 )
             }
 
             else -> {
-                Form(state, actions)
+                Form(state, actions, scroll, title, onTitleLaidOut = { titleEnd = it })
             }
+        }
+        DetailTopBar(onBack = actions.onBack, title = title, collapsed = collapsed) {
+            SaveLink(
+                saving = state.isSaving,
+                enabled = !state.isLoading && state.form.name.isNotBlank(),
+                onSave = actions.onSave,
+            )
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Save as a quiet ink link; while saving, a small spinner holds its place. */
 @Composable
-private fun Form(state: EditorUiState, actions: EditorActions) {
-    val form = state.form
+private fun SaveLink(saving: Boolean, enabled: Boolean, onSave: () -> Unit) {
+    // The bar already insets its actions by 8 dp; 16 more puts the text on the right margin.
+    Box(Modifier.padding(end = Space.m), contentAlignment = Alignment.Center) {
+        QuietLink(
+            text = stringResource(R.string.action_save),
+            onClick = onSave,
+            tone = LinkTone.Ink,
+            enabled = enabled && !saving,
+            modifier = Modifier.alpha(if (saving) 0f else 1f),
+        )
+        if (saving) {
+            CircularProgressIndicator(
+                strokeWidth = 1.5.dp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun Loading(title: String) {
     Column(
         Modifier
-            .verticalScroll(rememberScrollState())
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .statusBarsPadding()
+            .padding(top = DetailTopBarHeight),
     ) {
-        state.error?.let { error ->
-            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.errorContainer) {
-                Text(
-                    text = stringResource(error.messageRes()),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                )
+        LargeTitle(title)
+        Placeholder(
+            Modifier
+                .padding(horizontal = ScreenMargin)
+                .fillMaxWidth()
+                .aspectRatio(PHOTO_RATIO),
+        )
+        Spacer(Modifier.height(Space.l))
+        PlaceholderLines(3, Modifier.padding(horizontal = ScreenMargin))
+    }
+}
+
+@Composable
+private fun Form(
+    state: EditorUiState,
+    actions: EditorActions,
+    scroll: ScrollState,
+    title: String,
+    onTitleLaidOut: (Int) -> Unit,
+) {
+    val form = state.form
+    val change = actions.onChange
+    // A failed save is reported under the title, so bring it into view.
+    LaunchedEffect(state.error) { if (state.error != null) scroll.animateScrollTo(0) }
+    Column(
+        Modifier
+            .fillMaxSize()
+            .imePadding()
+            .verticalScroll(scroll)
+            .statusBarsPadding()
+            .padding(top = DetailTopBarHeight)
+            .navigationBarsPadding()
+            .padding(bottom = Space.xl),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(
+            Modifier
+                .widthIn(max = FormMaxWidth)
+                .fillMaxWidth(),
+        ) {
+            LargeTitle(title, Modifier.onSizeChanged { onTitleLaidOut(it.height) }, bottomSpacing = 0.dp)
+            state.error?.let { InlineError(it, Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m)) }
+            Spacer(Modifier.height(Space.l))
+            Photo(
+                newImage = state.newImage,
+                current = state.currentImage,
+                onPick = actions.onPickImage,
+                modifier = Modifier.padding(horizontal = ScreenMargin),
+            )
+            Spacer(Modifier.height(Space.l))
+            Basics(form, change)
+            Spacer(Modifier.height(Space.xxl))
+            SectionHeader(stringResource(R.string.recipe_ingredients))
+            Text(
+                text = stringResource(R.string.editor_ingredients_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = ScreenMargin),
+            )
+            EditableRows(
+                rows = form.ingredients.lines(),
+                onChange = { lines -> change { it.copy(ingredients = lines.joinToString("\n")) } },
+                placeholder = stringResource(R.string.editor_ingredient_hint),
+                addLabel = stringResource(R.string.editor_add_ingredient),
+                removeLabel = R.string.editor_remove_ingredient,
+                numbered = false,
+            )
+            Spacer(Modifier.height(Space.xxl))
+            SectionHeader(stringResource(R.string.recipe_steps))
+            EditableRows(
+                rows = form.steps,
+                onChange = { steps -> change { it.copy(steps = steps) } },
+                placeholder = stringResource(R.string.editor_step_hint),
+                addLabel = stringResource(R.string.editor_add_step),
+                removeLabel = R.string.editor_remove_step,
+                numbered = true,
+            )
+            OrganizerPicker(stringResource(R.string.recipes_categories), state.allCategories, form.categories) { picked ->
+                change { it.copy(categories = picked) }
+            }
+            OrganizerPicker(stringResource(R.string.recipes_tags), state.allTags, form.tags) { picked ->
+                change { it.copy(tags = picked) }
             }
         }
-        Photo(state.newImage, state.currentImage, actions.onPickImage)
-        Field(
-            label = stringResource(R.string.editor_name),
+    }
+}
+
+/** Name, description, servings and times: the facts at the top of a recipe. */
+@Composable
+private fun Basics(form: EditorForm, change: ((EditorForm) -> EditorForm) -> Unit) {
+    Column(Modifier.padding(horizontal = ScreenMargin), verticalArrangement = Arrangement.spacedBy(Space.m)) {
+        LabeledTextField(
             value = form.name,
-            onValueChange = { value -> actions.onChange { it.copy(name = value) } },
+            onValueChange = { value -> change { it.copy(name = value) } },
+            label = stringResource(R.string.editor_name),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
         )
-        Field(
-            label = stringResource(R.string.editor_description),
+        LabeledTextField(
             value = form.description,
-            onValueChange = { value -> actions.onChange { it.copy(description = value) } },
+            onValueChange = { value -> change { it.copy(description = value) } },
+            label = stringResource(R.string.editor_description),
             singleLine = false,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
         )
-        Field(
-            label = stringResource(R.string.editor_servings),
-            value = form.servings,
-            onValueChange = { value -> actions.onChange { it.copy(servings = value) } },
-            number = true,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Field(
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+            NumberField(
+                label = stringResource(R.string.editor_servings),
+                value = form.servings,
+                onValueChange = { value -> change { it.copy(servings = value) } },
+                modifier = Modifier.weight(1f),
+            )
+            NumberField(
                 label = stringResource(R.string.editor_prep_minutes),
                 value = form.prepMinutes,
-                onValueChange = { value -> actions.onChange { it.copy(prepMinutes = value) } },
-                number = true,
+                onValueChange = { value -> change { it.copy(prepMinutes = value) } },
                 modifier = Modifier.weight(1f),
             )
-            Field(
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+            NumberField(
                 label = stringResource(R.string.editor_cook_minutes),
                 value = form.cookMinutes,
-                onValueChange = { value -> actions.onChange { it.copy(cookMinutes = value) } },
-                number = true,
+                onValueChange = { value -> change { it.copy(cookMinutes = value) } },
                 modifier = Modifier.weight(1f),
             )
-            Field(
+            NumberField(
                 label = stringResource(R.string.editor_total_minutes),
                 value = form.totalMinutes,
-                onValueChange = { value -> actions.onChange { it.copy(totalMinutes = value) } },
-                number = true,
+                onValueChange = { value -> change { it.copy(totalMinutes = value) } },
                 modifier = Modifier.weight(1f),
             )
         }
-        Heading(stringResource(R.string.recipe_ingredients))
-        Text(
-            text = stringResource(R.string.editor_ingredients_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Field(
-            label = stringResource(R.string.recipe_ingredients),
-            value = form.ingredients,
-            onValueChange = { value -> actions.onChange { it.copy(ingredients = value) } },
-            singleLine = false,
-            minLines = 6,
-        )
-        Heading(stringResource(R.string.recipe_steps))
-        form.steps.forEachIndexed { index, step ->
-            Row(verticalAlignment = Alignment.Top) {
-                Field(
-                    label = stringResource(R.string.editor_step, index + 1),
-                    value = step,
-                    onValueChange = { value ->
-                        actions.onChange { current -> current.copy(steps = current.steps.toMutableList().also { it[index] = value }) }
-                    },
-                    singleLine = false,
-                    minLines = 2,
-                    modifier = Modifier.weight(1f),
-                )
-                if (form.steps.size > 1) {
-                    IconButton(onClick = {
-                        actions.onChange { current -> current.copy(steps = current.steps.filterIndexed { i, _ -> i != index }) }
-                    }) {
-                        Icon(
-                            painterResource(R.drawable.ic_delete),
-                            contentDescription =
-                                stringResource(
-                                    R.string.editor_remove_step,
-                                    index + 1,
-                                ),
-                        )
-                    }
-                }
-            }
-        }
-        TextButton(onClick = { actions.onChange { it.copy(steps = it.steps + "") } }) {
-            Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.editor_add_step))
-        }
-        OrganizerPicker(stringResource(R.string.recipes_categories), state.allCategories, form.categories) { picked ->
-            actions.onChange { it.copy(categories = picked) }
-        }
-        OrganizerPicker(
-            stringResource(R.string.recipes_tags),
-            state.allTags,
-            form.tags,
-        ) { picked -> actions.onChange { it.copy(tags = picked) } }
-        Spacer(Modifier.height(24.dp))
     }
 }
 
 @Composable
-private fun Photo(newImage: Uri?, current: RecipeImage?, onPick: () -> Unit) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f)
-            .clip(MaterialTheme.shapes.large),
-    ) {
-        if (newImage != null) {
-            AsyncImage(model = newImage, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        } else {
-            RecipeImage(current, ImageSize.Medium, modifier = Modifier.fillMaxSize(), fallbackIconSize = 40.dp)
-        }
-        FilledTonalButton(onClick = onPick, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
-            Icon(painterResource(R.drawable.ic_add_photo_alternate), contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.editor_change_photo))
-        }
-    }
-}
-
-@Composable
-private fun Heading(text: String) {
-    Text(text, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 12.dp))
-}
-
-@Composable
-private fun Field(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    singleLine: Boolean = true,
-    minLines: Int = 1,
-    number: Boolean = false,
-) {
-    OutlinedTextField(
+private fun NumberField(label: String, value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    LabeledTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, maxLines = 1) },
-        singleLine = singleLine,
-        minLines = minLines,
-        keyboardOptions =
-            if (number) {
-                KeyboardOptions(keyboardType = KeyboardType.Decimal)
-            } else {
-                KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
-            },
-        shape = MaterialTheme.shapes.medium,
-        modifier = modifier.fillMaxWidth(),
+        label = label,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+        modifier = modifier,
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * The photo at 4:3 with a paper button to change it, or, without one yet, a quiet invitation to
+ * choose it.
+ */
+@Composable
+private fun Photo(newImage: Uri?, current: RecipeImage?, onPick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .aspectRatio(PHOTO_RATIO)
+            .clip(MaterialTheme.shapes.medium),
+    ) {
+        when {
+            newImage != null -> {
+                AsyncImage(model = newImage, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            }
+
+            current != null -> {
+                RecipeImage(current, ImageSize.Medium, modifier = Modifier.fillMaxSize(), fallbackIconSize = 32.dp)
+            }
+
+            else -> {
+                NoPhoto(onPick)
+            }
+        }
+        if (newImage != null || current != null) {
+            OnPhotoButton(
+                icon = R.drawable.ic_add_photo_alternate,
+                contentDescription = stringResource(R.string.editor_change_photo),
+                onClick = onPick,
+                modifier =
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(Space.xs),
+            )
+        }
+    }
+}
+
+/** The empty photo: the plate a missing picture shows everywhere, and the whole area picks one. */
+@Composable
+private fun NoPhoto(onPick: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable(role = Role.Button, onClick = onPick),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_plate),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(32.dp),
+        )
+        Spacer(Modifier.height(Space.s))
+        Text(stringResource(R.string.editor_pick_photo), style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+/**
+ * Ingredients and steps as rows of plain text between hairlines, each with a quiet remove glyph,
+ * and a link to add one more. Adding a row, or pressing next on the keyboard in the last
+ * ingredient, moves the cursor into the new row.
+ */
+@Composable
+private fun EditableRows(
+    rows: List<String>,
+    onChange: (List<String>) -> Unit,
+    placeholder: String,
+    addLabel: String,
+    @StringRes removeLabel: Int,
+    numbered: Boolean,
+) {
+    val requesters = remember(rows.size) { List(rows.size) { FocusRequester() } }
+    var focusRow by remember { mutableStateOf<Int?>(null) }
+    // The new row arrives with the next state, so wait for it before moving the cursor there.
+    LaunchedEffect(focusRow, rows.size) {
+        val requester = focusRow?.let(requesters::getOrNull) ?: return@LaunchedEffect
+        requester.requestFocus()
+        focusRow = null
+    }
+    val addRow = {
+        onChange(rows + "")
+        focusRow = rows.size
+    }
+    Column {
+        rows.forEachIndexed { index, text ->
+            if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
+            EditableRow(
+                text = text,
+                onTextChange = { value -> onChange(rows.toMutableList().also { it[index] = value }) },
+                placeholder = placeholder,
+                number = if (numbered) index + 1 else null,
+                removeLabel = stringResource(removeLabel, index + 1),
+                onRemove = if (rows.size > 1) ({ onChange(rows.filterIndexed { i, _ -> i != index }) }) else null,
+                onNext =
+                    if (numbered) {
+                        null
+                    } else {
+                        {
+                            if (index == rows.lastIndex) {
+                                addRow()
+                            } else {
+                                focusRow = index + 1
+                            }
+                        }
+                    },
+                focusRequester = requesters[index],
+            )
+        }
+        AddRowLink(addLabel, onClick = addRow)
+    }
+}
+
+/**
+ * One row of [EditableRows]. Steps carry their number in the gutter, like the recipe page.
+ * Ingredients stay on one line of thought: the keyboard's action moves on instead of breaking it.
+ */
+@Composable
+private fun EditableRow(
+    text: String,
+    onTextChange: (String) -> Unit,
+    placeholder: String,
+    number: Int?,
+    removeLabel: String,
+    onRemove: (() -> Unit)?,
+    onNext: (() -> Unit)?,
+    focusRequester: FocusRequester,
+) {
+    val body = MaterialTheme.typography.bodyLarge
+    // Lines starting with # become section headings; setting them in Medium shows that while typing.
+    val style = if (text.trimStart().startsWith("#")) body.copy(fontWeight = FontWeight.Medium) else body
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = ScreenMargin, end = if (onRemove != null) Space.xs else ScreenMargin),
+        verticalAlignment = Alignment.Top,
+    ) {
+        BasicTextField(
+            value = text,
+            onValueChange = onTextChange,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester),
+            textStyle = style.copy(color = MaterialTheme.colorScheme.onSurface),
+            keyboardOptions =
+                KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = if (onNext != null) ImeAction.Next else ImeAction.Default,
+                ),
+            keyboardActions = KeyboardActions(onNext = { onNext?.invoke() }),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            decorationBox = { field ->
+                // The whole 56 dp row takes the tap, not just the line of text.
+                Row(
+                    Modifier
+                        .heightIn(min = 56.dp)
+                        .padding(vertical = Space.m),
+                ) {
+                    if (number != null) StepNumber(number)
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .alignByBaseline(),
+                    ) {
+                        if (text.isEmpty()) {
+                            Text(placeholder, style = body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        field()
+                    }
+                }
+            },
+        )
+        if (onRemove != null) {
+            // Level with the first line of text.
+            IconButton(onClick = onRemove, modifier = Modifier.padding(top = Space.xxs)) {
+                Icon(
+                    painterResource(R.drawable.ic_close),
+                    contentDescription = removeLabel,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.StepNumber(number: Int) {
+    val label = stringResource(R.string.editor_step, number)
+    Text(
+        text = number.toString(),
+        style =
+            MaterialTheme.typography.titleLarge
+                .copy(lineHeight = 24.sp)
+                .tabular(),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier =
+            Modifier
+                // Step text starts on the 64 dp keyline, as text after an icon does.
+                .width(IconKeyline - ScreenMargin)
+                .alignByBaseline()
+                .semantics { contentDescription = label },
+    )
+}
+
+/** A quiet ink link with a small plus on the margin, like [QuietLink] with a leading glyph. */
+@Composable
+private fun AddRowLink(text: String, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val alpha by animateFloatAsState(if (pressed) 0.6f else 1f, tween(Motion.PRESS), label = "addRowAlpha")
+    Row(
+        Modifier
+            .padding(horizontal = ScreenMargin)
+            .heightIn(min = 48.dp)
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
+            .alpha(alpha),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Space.xs),
+    ) {
+        Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(16.dp))
+        Text(text, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
 @Composable
 private fun OrganizerPicker(title: String, options: List<Organizer>, selected: List<Organizer>, onChange: (List<Organizer>) -> Unit) {
     if (options.isEmpty()) return
-    Column {
-        Heading(title)
+    Column(Modifier.padding(top = Space.xxl)) {
+        SectionHeader(title)
         FlowRow(
-            modifier = Modifier.padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
+            horizontalArrangement = Arrangement.spacedBy(Space.xs),
+            verticalArrangement = Arrangement.spacedBy(Space.xs),
         ) {
             options.forEach { option ->
                 val isSelected = selected.any { it.id == option.id }
@@ -304,3 +561,5 @@ private fun OrganizerPicker(title: String, options: List<Organizer>, selected: L
         }
     }
 }
+
+private const val PHOTO_RATIO = 4f / 3f

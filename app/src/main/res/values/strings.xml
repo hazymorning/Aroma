@@ -260,14 +260,14 @@
     <string name="add_import">Import</string>
     <string name="add_importing">Mealie is reading the page. This can take a few seconds.</string>
     <string name="add_ai_title">Read with AI</string>
-    <string name="add_ai_hint">Mealie’s AI reads the recipe. Helps with pages without recipe data and with posts from Instagram, TikTok and similar sites.</string>
+    <string name="add_ai_hint">Helps with pages without recipe data and with posts from Instagram, TikTok and similar sites.</string>
     <string name="add_ai_text_label">Recipe text (optional)</string>
     <string name="add_ai_text_hint">For example the caption of a post</string>
     <string name="add_ai_translate">Translate into English</string>
     <string name="add_progress_waiting">Importing the recipe</string>
-    <string name="add_progress_rebuilding">Turning the post into a recipe with AI</string>
-    <string name="add_progress_tidying">Sorting the post into ingredients and steps</string>
-    <string name="add_progress_still_working">Mealie is still working on the recipe</string>
+    <string name="add_progress_rebuilding">Mealie is writing the recipe</string>
+    <string name="add_progress_tidying">Sorting the post</string>
+    <string name="add_progress_still_working">Mealie is still working</string>
     <string name="add_progress_ai_hint">With AI this can take a minute or two.</string>
     <string name="add_untitled">Imported recipe</string>
     <string name="add_manual">Write it yourself</string>
@@ -280,10 +280,15 @@
     <string name="editor_prep_minutes">Prep (min)</string>
     <string name="editor_cook_minutes">Cook (min)</string>
     <string name="editor_total_minutes">Total (min)</string>
-    <string name="editor_ingredients_hint">One ingredient per line. Lines starting with # become section headings.</string>
+    <string name="editor_ingredients_hint">Start a line with # to turn it into a section heading.</string>
+    <string name="editor_ingredient_hint">e.g. 200 g flour</string>
+    <string name="editor_add_ingredient">Add ingredient</string>
+    <string name="editor_remove_ingredient">Remove ingredient %1$d</string>
+    <string name="editor_step_hint">Describe this step</string>
     <string name="editor_step">Step %1$d</string>
     <string name="editor_remove_step">Remove step %1$d</string>
     <string name="editor_add_step">Add step</string>
+    <string name="editor_pick_photo">Choose a photo</string>
     <string name="editor_change_photo">Change photo</string>
 
     <!-- Settings -->
