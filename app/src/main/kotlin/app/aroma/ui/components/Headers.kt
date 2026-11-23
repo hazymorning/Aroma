@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.ui.theme.Motion
@@ -109,7 +110,7 @@ fun DetailTopBar(
         Row(
             Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(DetailTopBarHeight)
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -135,15 +136,18 @@ fun DetailTopBar(
     }
 }
 
+/** Height of [DetailTopBar] below the status bar, for content that scrolls beneath it. */
+val DetailTopBarHeight = 56.dp
+
 /** The large title of a pushed screen, set in the content under [DetailTopBar]. */
 @Composable
-fun LargeTitle(text: String, modifier: Modifier = Modifier) {
+fun LargeTitle(text: String, modifier: Modifier = Modifier, bottomSpacing: Dp = 24.dp) {
     Text(
         text = text,
         style = MaterialTheme.typography.displaySmall,
         modifier =
             modifier
-                .padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp, bottom = 24.dp)
+                .padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp, bottom = bottomSpacing)
                 .semantics { heading() },
     )
 }

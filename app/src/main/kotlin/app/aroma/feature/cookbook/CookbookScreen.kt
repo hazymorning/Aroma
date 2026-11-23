@@ -28,9 +28,9 @@ import app.aroma.R
 import app.aroma.core.model.RecipeSummary
 import app.aroma.feature.recipes.RecipeCount
 import app.aroma.feature.recipes.RecipesUiState
-import app.aroma.feature.recipes.hangIntoRowGap
 import app.aroma.feature.recipes.pageItem
 import app.aroma.ui.components.DetailTopBar
+import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
@@ -40,7 +40,6 @@ import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Standfirst
 
 /** The height of [DetailTopBar] below the status bar; the grid starts under it and scrolls beneath. */
-private val TopBarHeight = 56.dp
 
 @Composable
 fun CookbookScreen(
@@ -69,7 +68,7 @@ fun CookbookScreen(
                 PaddingValues(
                     start = ScreenMargin,
                     end = ScreenMargin,
-                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + TopBarHeight,
+                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + DetailTopBarHeight,
                     bottom = 32.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
                 ),
             header = {
@@ -102,7 +101,7 @@ fun CookbookScreen(
 /** The cookbook's name as the large title, its description as a serif lead, then the count. */
 @Composable
 private fun Header(name: String, description: String, state: RecipesUiState, onTitleLaidOut: (Int) -> Unit) {
-    Column(Modifier.hangIntoRowGap()) {
+    Column {
         Text(
             text = name,
             style = MaterialTheme.typography.displaySmall,

@@ -85,7 +85,7 @@ import kotlin.math.floor
 fun Kicker(text: String, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Text(
         text = text.uppercase(currentLocale()),
-        style = KickerStyle,
+        style = KickerStyle.tabular(),
         color = color,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -106,6 +106,8 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, actionLabel: Str
         modifier =
             modifier
                 .fillMaxWidth()
+                // The same height with or without a link, so sections keep one rhythm on every screen.
+                .heightIn(min = 48.dp)
                 .padding(horizontal = ScreenMargin),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -214,7 +216,6 @@ fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 
 }
 
 /** Interactive stars leave this much room before the first glyph; offset the row by it to keep the keyline. */
-@Composable
 fun ratingTouchInset(starSize: Int): Dp = (48.dp - starSize.dp) / 2
 
 /** A recipe's category or tag as a quiet hairline chip. */

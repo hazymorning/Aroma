@@ -62,12 +62,17 @@ fun RecipeGrid(
         state = state,
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(32.dp),
         modifier = modifier,
     ) {
         header()
         items(recipes, key = { it.id }) { recipe ->
-            RecipeCard(recipe = recipe, onClick = { onOpen(recipe) }, imageAspectRatio = 1f)
+            // Each card carries the row gap below it, so header items above the grid set their own spacing.
+            RecipeCard(
+                recipe = recipe,
+                onClick = { onOpen(recipe) },
+                imageAspectRatio = 1f,
+                modifier = Modifier.padding(bottom = GridRowGap),
+            )
         }
         if (isLoadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "more") {
@@ -88,9 +93,13 @@ fun LazyGridScope.recipeGridPlaceholders(count: Int = 6) {
     items(count) {
         Placeholder(
             Modifier
+                .padding(bottom = GridRowGap)
                 .fillMaxWidth()
                 .aspectRatio(1f),
             shape = MaterialTheme.shapes.medium,
         )
     }
 }
+
+/** Space between rows of recipe cards. */
+private val GridRowGap = 32.dp

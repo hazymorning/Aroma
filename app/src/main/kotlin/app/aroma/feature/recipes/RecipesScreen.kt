@@ -214,7 +214,7 @@ private fun LazyGridScope.body(state: RecipesUiState, actions: RecipesActions) {
 
 @Composable
 private fun Header(state: RecipesUiState, actions: RecipesActions, searchFocus: FocusRequester?, openSheet: (RecipesSheet) -> Unit) {
-    Column(Modifier.hangIntoRowGap()) {
+    Column {
         PageHeader(title = stringResource(R.string.nav_recipes)) {
             HeaderAction(R.drawable.ic_add, stringResource(R.string.recipes_add), actions.onAddRecipe)
         }
@@ -292,19 +292,6 @@ internal fun LazyGridScope.pageItem(key: String, content: @Composable () -> Unit
     item(span = { GridItemSpan(maxLineSpan) }, key = key, contentType = key) {
         Box(Modifier.fullBleed(ScreenMargin)) { content() }
     }
-
-/**
- * [RecipeGrid] leaves the same 32 dp after every row, the page head included. The head hangs its
- * last 32 dp into that gap, so it alone decides how close the first photos sit beneath it. The
- * overhang has slid under the status bar or the top bar by the time the grid lets go of the head.
- */
-internal fun Modifier.hangIntoRowGap(): Modifier =
-    layout { measurable, constraints ->
-        val placeable = measurable.measure(constraints)
-        layout(placeable.width, (placeable.height - GridRowGap.roundToPx()).coerceAtLeast(0)) { placeable.place(0, 0) }
-    }
-
-private val GridRowGap = 32.dp
 
 private fun OrganizerKind.labelRes() =
     when (this) {
