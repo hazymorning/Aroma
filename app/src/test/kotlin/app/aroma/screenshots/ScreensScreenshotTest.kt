@@ -304,7 +304,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
             SettingsScreen(
                 state =
                     SettingsUiState(
-                        user = User("1", "mara", "Mara Berger", "mara@example.com", isAdmin = false),
+                        user = User("1", "mara", "Mara Berger", "mara@example.com"),
                         server = ServerInfo("https://mealie.example.com", "3.31.0", true),
                         dynamicColorAvailable = true,
                         offlineCount = 18,

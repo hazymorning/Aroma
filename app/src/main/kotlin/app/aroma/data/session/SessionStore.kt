@@ -20,7 +20,6 @@ data class Session(
     val username: String,
     val fullName: String = "",
     val email: String = "",
-    val isAdmin: Boolean = false,
     val groupSlug: String? = null,
     val serverVersion: String = "",
     val allowPasswordLogin: Boolean = true,

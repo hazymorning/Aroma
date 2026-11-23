@@ -115,8 +115,6 @@ class SampleData(private val german: Boolean) {
             prepTime = RecipeTime(600, null),
             cookTime = RecipeTime(900, null),
             servings = 4.0,
-            yieldQuantity = 0.0,
-            yieldText = "",
             rating = 4.5,
             categories = listOf(organizer(t("Frühstück", "Breakfast"))),
             tags = listOf(organizer(t("Vegetarisch", "Vegetarian")), organizer(t("Schnell", "Quick"))),
@@ -174,8 +172,6 @@ class SampleData(private val german: Boolean) {
                     NutritionValue(NutritionKind.Fat, "10"),
                     NutritionValue(NutritionKind.Carbohydrates, "58"),
                 ),
-            dateAdded = LocalDate.of(2026, 11, 22),
-            lastMade = null,
         )
 
     val today: LocalDate = LocalDate.of(2026, 11, 23)

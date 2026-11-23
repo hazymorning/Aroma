@@ -46,8 +46,6 @@ data class Recipe(
     val prepTime: RecipeTime?,
     val cookTime: RecipeTime?,
     val servings: Double,
-    val yieldQuantity: Double,
-    val yieldText: String,
     val rating: Double?,
     val categories: List<Organizer>,
     val tags: List<Organizer>,
@@ -57,8 +55,6 @@ data class Recipe(
     val steps: List<Step>,
     val notes: List<RecipeNote>,
     val nutrition: List<NutritionValue>,
-    val dateAdded: LocalDate?,
-    val lastMade: Instant?,
 )
 
 data class IngredientUnit(

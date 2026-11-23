@@ -60,14 +60,11 @@ class AppContainer(context: Context) {
     /** The settings, held from the start, so the first frame already has the right theme; null until read. */
     val appSettings: StateFlow<AppSettings?> = settings.settings.stateIn(scope, SharingStarted.Eagerly, null)
     val ratingReminder = RatingReminder(dataStore)
-    val sessions = SessionManager(SessionStore(dataStore, KeystoreCipher()))
 
-    val clients =
-        MealieClientFactory(
-            userAgent = "Aroma/${BuildConfig.VERSION_NAME} (Android ${Build.VERSION.RELEASE})",
-            cache = null,
-            credentials = { sessions.credentials() },
-        ).also { sessions.clientFactory = it }
+    // The client reads the session only when it sends a request, after both exist.
+    val clients: MealieClientFactory =
+        MealieClientFactory("Aroma/${BuildConfig.VERSION_NAME} (Android ${Build.VERSION.RELEASE})") { sessions.credentials() }
+    val sessions: SessionManager = SessionManager(SessionStore(dataStore, KeystoreCipher()), clients)
 
     val auth = AuthRepository(clients, sessions, database, deviceName = Build.MODEL)
     val recipes = RecipeRepository(sessions, database.recipes(), cache)

@@ -1,7 +1,6 @@
 package app.aroma.data.remote
 
 import kotlinx.serialization.json.Json
-import okhttp3.Cache
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -23,8 +22,8 @@ val MealieJson =
 /** Server and token of the signed-in account. */
 data class Credentials(val server: HttpUrl, val token: String)
 
-/** Creates HTTP clients for a Mealie server. Credentials are read on every request. */
-class MealieClientFactory(private val userAgent: String, private val cache: Cache?, private val credentials: () -> Credentials?) {
+/** Holds the app's HTTP client and creates Mealie APIs on it. Credentials are read on every request. */
+class MealieClientFactory(private val userAgent: String, private val credentials: () -> Credentials?) {
     /** Shared client, also used by the image loader so both honor user-installed certificates. */
     val httpClient: OkHttpClient =
         OkHttpClient
@@ -34,7 +33,6 @@ class MealieClientFactory(private val userAgent: String, private val cache: Cach
             .writeTimeout(60, TimeUnit.SECONDS)
             .addInterceptor(HeadersInterceptor())
             .addInterceptor(ImportTimeouts)
-            .apply { if (cache != null) cache(cache) }
             .build()
 
     fun create(baseUrl: HttpUrl): MealieApi =

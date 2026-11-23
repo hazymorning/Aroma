@@ -11,7 +11,7 @@ import kotlinx.serialization.json.JsonObject
  */
 
 @Serializable
-data class AboutDto(val version: String = "", val production: Boolean = true, val allowPasswordLogin: Boolean = true)
+data class AboutDto(val version: String = "", val allowPasswordLogin: Boolean = true)
 
 @Serializable
 data class TokenDto(
@@ -24,7 +24,6 @@ data class UserDto(
     val username: String = "",
     val fullName: String? = null,
     val email: String = "",
-    val admin: Boolean = false,
     val groupSlug: String? = null,
     /** Changes whenever the user uploads a new photo. */
     val cacheKey: String? = null,
@@ -38,8 +37,6 @@ data class ApiTokenDto(val id: Int, val name: String = "", val token: String)
 
 @Serializable
 data class PageDto<T>(
-    val page: Int = 1,
-    @SerialName("per_page") val perPage: Int = 0,
     val total: Int = 0,
     @SerialName("total_pages") val totalPages: Int = 0,
     val items: List<T> = emptyList(),
@@ -58,7 +55,6 @@ data class RecipeSummaryDto(
     val description: String? = null,
     val image: String? = null,
     val recipeServings: Double? = null,
-    val recipeYieldQuantity: Double? = null,
     val recipeYield: String? = null,
     val totalTime: String? = null,
     val prepTime: String? = null,
@@ -83,7 +79,6 @@ data class RecipeDto(
     val description: String? = null,
     val image: String? = null,
     val recipeServings: Double? = null,
-    val recipeYieldQuantity: Double? = null,
     val recipeYield: String? = null,
     val totalTime: String? = null,
     val prepTime: String? = null,
@@ -97,10 +92,8 @@ data class RecipeDto(
     val tags: List<OrganizerDto> = emptyList(),
     val tools: List<OrganizerDto> = emptyList(),
     val orgURL: String? = null,
-    val dateAdded: String? = null,
     /** When the recipe last changed, to refresh offline copies only when needed. */
     val updatedAt: String? = null,
-    val lastMade: String? = null,
     val recipeIngredient: List<IngredientDto> = emptyList(),
     val recipeInstructions: List<StepDto>? = null,
     val notes: List<NoteDto>? = null,
@@ -172,7 +165,7 @@ data class NutritionDto(
 )
 
 @Serializable
-data class RecipeSettingsDto(val showNutrition: Boolean = false, val locked: Boolean = false)
+data class RecipeSettingsDto(val showNutrition: Boolean = false)
 
 @Serializable
 data class RatingsDto(val ratings: List<RatingDto> = emptyList())

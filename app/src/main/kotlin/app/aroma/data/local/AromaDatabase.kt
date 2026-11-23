@@ -61,9 +61,6 @@ interface RecipeDao {
     @Query("SELECT * FROM recipe_detail WHERE slug = :slug")
     suspend fun detail(slug: String): RecipeDetailEntity?
 
-    @Query("SELECT slug FROM recipe_detail")
-    suspend fun cachedSlugs(): List<String>
-
     @Query("SELECT COUNT(*) FROM recipe_detail")
     fun detailCount(): Flow<Int>
 

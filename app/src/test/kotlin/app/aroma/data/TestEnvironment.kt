@@ -27,11 +27,8 @@ class TestEnvironment {
             .allowMainThreadQueries()
             .build()
 
-    val sessions = SessionManager(SessionStore(PreferenceDataStoreFactory.create { dataStoreFile }, PlainCipher))
-
-    val clients =
-        MealieClientFactory("Aroma-Test", cache = null, credentials = { sessions.credentials() })
-            .also { sessions.clientFactory = it }
+    val clients: MealieClientFactory = MealieClientFactory("Aroma-Test") { sessions.credentials() }
+    val sessions: SessionManager = SessionManager(SessionStore(PreferenceDataStoreFactory.create { dataStoreFile }, PlainCipher), clients)
 
     private val cache = JsonCache(database.cache())
     val auth = AuthRepository(clients, sessions, database, deviceName = "Test")

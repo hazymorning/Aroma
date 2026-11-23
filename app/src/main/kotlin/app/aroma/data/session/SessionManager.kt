@@ -21,11 +21,9 @@ sealed interface SessionState {
 }
 
 /** Single source of truth for who is signed in and which server to talk to. */
-class SessionManager(private val store: SessionStore) {
+class SessionManager(private val store: SessionStore, private val clientFactory: MealieClientFactory) {
     private val mutableState = MutableStateFlow<SessionState>(SessionState.Loading)
     val state: StateFlow<SessionState> = mutableState.asStateFlow()
-
-    lateinit var clientFactory: MealieClientFactory
 
     @Volatile
     private var cachedApi: Pair<String, MealieApi>? = null

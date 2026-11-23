@@ -59,7 +59,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import retrofit2.HttpException
 import java.time.LocalDate
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
@@ -318,13 +317,13 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     }
 
     /** Imports a recipe from a link. [onProgress] gets Mealie's description of each step where the server reports them. */
-    suspend fun importFromUrl(url: String, onProgress: (String) -> Unit = {}): String {
+    suspend fun importFromUrl(url: String, onProgress: (String) -> Unit): String {
         val body = ImportRecipeDto(url.trim(), includeTags = true)
         return importing(onProgress, stream = { importRecipeStream(body) }, plain = { importRecipe(body) }).also { changed() }
     }
 
     /** Lets the group's AI provider build a recipe from a link, a text or both, optionally translated. */
-    suspend fun importWithAi(url: String?, text: String?, translateTo: String?, onProgress: (String) -> Unit = {}): String {
+    suspend fun importWithAi(url: String?, text: String?, translateTo: String?, onProgress: (String) -> Unit): String {
         val parts =
             buildList {
                 text?.takeIf { it.isNotBlank() }?.let { add(MultipartBody.Part.createFormData("content", it.trim())) }
@@ -491,7 +490,7 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
      * Keeps a copy of every recipe for offline use: fetches new and changed ones a few at a time
      * and forgets the ones deleted or renamed on the server. Returns how many are stored.
      */
-    suspend fun downloadAll(onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }): Int {
+    suspend fun downloadAll() {
         val listing = mealieCall { sessions.api().recipes(page = 1, perPage = -1, orderBy = "name", orderDirection = "asc") }.items
         dao.upsertSummaries(listing.map { it.toEntity() })
         val stored =
@@ -504,8 +503,6 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         dao.summaryIds().filterNot { it in ids }.forEach { dao.deleteSummaryById(it) }
 
         val stale = listing.filter { it.slug !in stored || (it.updatedAt != null && stored[it.slug] != it.updatedAt) }
-        val done = AtomicInteger(listing.size - stale.size)
-        onProgress(done.get(), listing.size)
         val downloads = Semaphore(PARALLEL_DOWNLOADS)
         coroutineScope {
             stale.forEach { summary ->
@@ -519,11 +516,9 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                             // The next run tries again; one failing recipe must not stop the others.
                         }
                     }
-                    onProgress(done.incrementAndGet(), listing.size)
                 }
             }
         }
-        return dao.cachedSlugs().size
     }
 
     fun offlineCount(): Flow<Int> = dao.detailCount()

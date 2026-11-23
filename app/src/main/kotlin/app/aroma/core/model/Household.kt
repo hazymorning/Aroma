@@ -65,7 +65,6 @@ data class User(
     val username: String,
     val fullName: String,
     val email: String,
-    val isAdmin: Boolean,
     val photo: String? = null,
 )
 

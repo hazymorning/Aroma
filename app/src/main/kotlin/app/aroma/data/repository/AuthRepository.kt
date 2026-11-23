@@ -25,8 +25,8 @@ class AuthRepository(
     private val deviceName: String,
 ) {
     /**
-     * Finds the Mealie server behind what the user typed. Without a scheme, https is tried
-     * first and plain http second, which covers most home setups.
+     * Finds the Mealie server behind what the user typed. Without a scheme, https is tried first;
+     * plain http only for hosts on a home network (see [ServerAddress]).
      */
     suspend fun probe(input: String): ServerInfo {
         val candidates = ServerAddress.candidates(input)
@@ -99,7 +99,6 @@ class AuthRepository(
                     username = user.username,
                     fullName = user.fullName.orEmpty(),
                     email = user.email,
-                    isAdmin = user.admin,
                     photoKey = user.cacheKey,
                 )
             }
@@ -116,7 +115,6 @@ class AuthRepository(
                 username = user.username,
                 fullName = user.fullName.orEmpty(),
                 email = user.email,
-                isAdmin = user.admin,
                 groupSlug = user.groupSlug,
                 serverVersion = server.version,
                 allowPasswordLogin = server.allowPasswordLogin,

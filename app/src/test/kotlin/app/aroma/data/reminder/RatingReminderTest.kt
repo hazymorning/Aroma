@@ -60,8 +60,6 @@ class RatingReminderTest {
             prepTime = null,
             cookTime = null,
             servings = 2.0,
-            yieldQuantity = 0.0,
-            yieldText = "",
             rating = null,
             categories = emptyList(),
             tags = emptyList(),
@@ -71,7 +69,5 @@ class RatingReminderTest {
             steps = emptyList(),
             notes = emptyList(),
             nutrition = emptyList(),
-            dateAdded = null,
-            lastMade = null,
         )
 }

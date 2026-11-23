@@ -85,8 +85,6 @@ fun RecipeDto.toModel(serverUrl: String) =
         prepTime = time(prepTimeSeconds, prepTime),
         cookTime = time(performTimeSeconds, performTime ?: cookTime),
         servings = servingsFrom(recipeServings, recipeYield),
-        yieldQuantity = recipeYieldQuantity ?: 0.0,
-        yieldText = recipeYield.orEmpty(),
         rating = rating,
         categories = recipeCategory.map { it.toModel() },
         tags = tags.map { it.toModel() },
@@ -111,8 +109,6 @@ fun RecipeDto.toModel(serverUrl: String) =
                 if (text.isEmpty() && note.title.isNullOrBlank()) null else RecipeNote(note.title.orEmpty().trim(), text)
             },
         nutrition = if (settings?.showNutrition == true) nutrition?.toModel().orEmpty() else emptyList(),
-        dateAdded = date(dateAdded),
-        lastMade = instant(lastMade),
     )
 
 fun IngredientDto.toModel() =
@@ -172,5 +168,3 @@ fun MealPlanEntryDto.toModel(serverUrl: String): MealPlanEntry? {
         recipe = recipe?.toModel(serverUrl),
     )
 }
-
-fun UserDto.toModel() = User(id = id, username = username, fullName = fullName.orEmpty(), email = email, isAdmin = admin)

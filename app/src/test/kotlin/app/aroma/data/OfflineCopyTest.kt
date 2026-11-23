@@ -1,6 +1,7 @@
 package app.aroma.data
 
 import app.aroma.data.session.Session
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
@@ -58,12 +59,14 @@ class OfflineCopyTest {
     @Test
     fun `the offline copy follows changes, additions and deletions on the server`() =
         runBlocking<Unit> {
-            assertEquals(2, env.recipes.downloadAll())
+            env.recipes.downloadAll()
+            assertEquals(2, env.recipes.offlineCount().first())
             assertEquals(setOf("gnocchi", "linsensuppe"), fetched.toSet())
 
             fetched.clear()
             onServer = mapOf("gnocchi" to "2026-11-20T18:30:00", "ofenkuerbis" to "2026-11-20T18:30:00")
-            assertEquals(2, env.recipes.downloadAll())
+            env.recipes.downloadAll()
+            assertEquals(2, env.recipes.offlineCount().first())
 
             assertEquals("only what changed or is new is fetched again", setOf("gnocchi", "ofenkuerbis"), fetched.toSet())
             assertNull("a recipe deleted on the server is not kept", env.database.recipes().detail("linsensuppe"))
