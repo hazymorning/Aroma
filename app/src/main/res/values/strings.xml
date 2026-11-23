@@ -96,7 +96,8 @@
     <string name="recipe_cook_time">Cook</string>
     <string name="recipe_total_time">Total</string>
     <string name="recipe_add_to_list">Add to shopping list</string>
-    <string name="recipe_tools">You’ll need: %1$s</string>
+    <string name="recipe_tools">Equipment</string>
+    <string name="recipe_rate">Rate this recipe</string>
     <string name="recipe_multiplier">Amount ×%1$s</string>
     <plurals name="servings">
         <item quantity="one">%1$s serving</item>

@@ -1,7 +1,9 @@
 package app.aroma.screenshots
 
+import androidx.compose.ui.test.hasScrollToKeyAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToKey
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.core.model.User
@@ -89,6 +91,21 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
     fun recipe() {
         applyLocale()
         snapshot("recipe_${variant.suffix}", variant.dark) {
+            RecipeScreen(
+                state = RecipeUiState(recipe = sample.recipe, isLoading = false, isFavorite = true, checkedIngredients = setOf(1)),
+                actions = RecipeActions(),
+            )
+        }
+    }
+
+    @Test
+    fun recipeScrolled() {
+        applyLocale()
+        snapshot(
+            "recipe_scrolled_${variant.suffix}",
+            variant.dark,
+            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("facts") },
+        ) {
             RecipeScreen(
                 state = RecipeUiState(recipe = sample.recipe, isLoading = false, isFavorite = true, checkedIngredients = setOf(1)),
                 actions = RecipeActions(),
