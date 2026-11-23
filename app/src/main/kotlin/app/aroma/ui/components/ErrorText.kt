@@ -63,6 +63,7 @@ fun AromaError.messageRes(): Int =
                 AromaError.ImportFailed.Reason.NoRecipe -> R.string.error_import_message
                 AromaError.ImportFailed.Reason.PageUnreachable -> R.string.error_import_unreachable
                 AromaError.ImportFailed.Reason.NoAnswer -> R.string.error_import_no_answer
+                AromaError.ImportFailed.Reason.PostUnreadable -> R.string.error_import_post_unreadable
             }
         }
 

@@ -9,10 +9,21 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import app.aroma.MainActivity
 import app.aroma.R
+import java.util.UUID
 
-/** What Aroma was opened for: a link shared to it, or one of its launcher shortcuts. */
+/** What Aroma was opened for: a link shared to it, one of its launcher shortcuts, or a notification. */
 sealed interface LaunchRequest {
     data class Import(val url: String) : LaunchRequest
+
+    /** A recipe an import added. */
+    data class Recipe(val slug: String) : LaunchRequest {
+        fun intent(context: Context): Intent = Intent(OPEN_RECIPE, null, context, MainActivity::class.java).putExtra(EXTRA, slug)
+    }
+
+    /** An import as its screen shows it, running or ended. */
+    data class ShowImport(val job: UUID) : LaunchRequest {
+        fun intent(context: Context): Intent = Intent(SHOW_IMPORT, null, context, MainActivity::class.java).putExtra(EXTRA, job.toString())
+    }
 
     data object Search : LaunchRequest
 
@@ -32,12 +43,32 @@ sealed interface LaunchRequest {
                     text?.let { link.find(it)?.value?.trimEnd('.', ',', ')', '!', '?', '"', '\u201D') }?.let(::Import)
                 }
 
+                OPEN_RECIPE -> {
+                    intent.getStringExtra(EXTRA)?.let(::Recipe)
+                }
+
+                SHOW_IMPORT -> {
+                    importId(intent.getStringExtra(EXTRA))?.let(::ShowImport)
+                }
+
                 else -> {
                     Shortcut.entries.firstOrNull { it.action == intent?.action }?.request
                 }
             }
 
+        private const val OPEN_RECIPE = "app.aroma.action.OPEN_RECIPE"
+        private const val SHOW_IMPORT = "app.aroma.action.SHOW_IMPORT"
+        private const val EXTRA = "id"
+
         private val link = Regex("""https?://\S+""")
+
+        /** Any app can send these actions, so an id that is none opens nothing. */
+        private fun importId(text: String?): UUID? =
+            try {
+                text?.let(UUID::fromString)
+            } catch (_: IllegalArgumentException) {
+                null
+            }
     }
 }
 

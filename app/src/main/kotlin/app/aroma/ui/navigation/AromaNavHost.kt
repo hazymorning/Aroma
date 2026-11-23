@@ -71,6 +71,14 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                 nav.navigate(AddRecipeRoute())
             }
 
+            is LaunchRequest.ShowImport -> {
+                nav.navigate(AddRecipeRoute(job = launch.job.toString()))
+            }
+
+            is LaunchRequest.Recipe -> {
+                nav.navigate(RecipeRoute(launch.slug))
+            }
+
             LaunchRequest.Search -> {
                 focusSearch.value = true
                 nav.navigateToTab(Tab.Recipes)
@@ -133,7 +141,7 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                 CookDestination(route.slug, route.scale, nav)
             }
             composable<CollectionRoute> { CollectionDestination(it.toRoute(), nav, snackbar) }
-            composable<AddRecipeRoute> { AddRecipeDestination(it.toRoute<AddRecipeRoute>().sharedUrl, nav) }
+            composable<AddRecipeRoute> { AddRecipeDestination(it.toRoute(), nav) }
             composable<EditorRoute> { EditorDestination(it.toRoute<EditorRoute>().slug, nav) }
             composable<SettingsRoute> { SettingsDestination(nav) }
             composable<LicensesRoute> { LicensesDestination(nav) }

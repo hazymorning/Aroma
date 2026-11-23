@@ -117,14 +117,14 @@ interface MealieApi {
         @Body body: ImportRecipeDto,
     ): String
 
-    /** Same as [importRecipe], reporting each step as a server-sent event (Mealie 3 and newer). */
+    /** Same as [importRecipe], reporting each step as a server-sent event (Mealie 3.13 and newer). */
     @Streaming
     @POST("api/recipes/create/url/stream")
     suspend fun importRecipeStream(
         @Body body: ImportRecipeDto,
     ): ResponseBody
 
-    /** Builds a recipe from a link, text or both with the group's AI provider (Mealie 3 and newer). */
+    /** Builds a recipe from a link, text or both with the group's AI provider (Mealie 3.23 and newer). */
     @Multipart
     @POST("api/recipes/create/ai")
     suspend fun importRecipeWithAi(
@@ -140,12 +140,6 @@ interface MealieApi {
 
     @GET("api/groups/self")
     suspend fun group(): GroupDto
-
-    @Streaming
-    @GET("api/media/recipes/{id}/images/original.webp")
-    suspend fun recipeImage(
-        @Path("id") id: String,
-    ): ResponseBody
 
     @Multipart
     @PUT("api/recipes/{slug}/image")

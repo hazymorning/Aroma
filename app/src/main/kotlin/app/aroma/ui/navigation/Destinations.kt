@@ -44,13 +44,12 @@ import app.aroma.feature.cook.CookActions
 import app.aroma.feature.cook.CookScreen
 import app.aroma.feature.cook.CookViewModel
 import app.aroma.feature.editor.AddRecipeActions
-import app.aroma.feature.editor.AddRecipeResult
 import app.aroma.feature.editor.AddRecipeScreen
 import app.aroma.feature.editor.AddRecipeViewModel
 import app.aroma.feature.editor.EditorActions
 import app.aroma.feature.editor.EditorScreen
 import app.aroma.feature.editor.EditorViewModel
-import app.aroma.feature.editor.RecipeImporter
+import app.aroma.feature.editor.ImportOutcome
 import app.aroma.feature.editor.readPickedPhoto
 import app.aroma.feature.home.HomeActions
 import app.aroma.feature.home.HomeScreen
@@ -590,22 +589,26 @@ fun ShoppingDestination() {
 }
 
 @Composable
-fun AddRecipeDestination(sharedUrl: String?, nav: NavController) {
-    val untitled = stringResource(R.string.add_untitled)
-    val vm =
-        aromaViewModel { AddRecipeViewModel(recipes, RecipeImporter(recipes, untitled, lock = importLock), settings, sharedUrl, scope, it) }
+fun AddRecipeDestination(route: AddRecipeRoute, nav: NavController) {
+    val vm = aromaViewModel { AddRecipeViewModel(recipes, imports, settings, route.sharedUrl, route.job, it) }
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboard.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     LaunchedEffect(vm) {
-        vm.results.collect { result ->
-            val target =
-                when (result) {
-                    is AddRecipeResult.Imported -> RecipeRoute(result.slug)
-                    is AddRecipeResult.Created -> EditorRoute(result.slug)
-                }
-            nav.navigate(target) { popUpTo<AddRecipeRoute> { inclusive = true } }
-        }
+        vm.created.collect { slug -> nav.navigate(EditorRoute(slug)) { popUpTo<AddRecipeRoute> { inclusive = true } } }
+    }
+    val outcome = state.import?.outcome
+    LaunchedEffect(outcome) {
+        if (outcome != null) vm.onOutcomeShown()
+        if (outcome is ImportOutcome.Added) nav.navigate(RecipeRoute(outcome.slug)) { popUpTo<AddRecipeRoute> { inclusive = true } }
+    }
+    // An import may outlast the screen; a notification then says how it ended.
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(state.isImporting) {
+        val needsPermission =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+        if (state.isImporting && needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
     AddRecipeScreen(
         state = state,

@@ -59,6 +59,7 @@
     <string name="error_import_message">Mealie hat auf dieser Seite kein Rezept gefunden.</string>
     <string name="error_import_unreachable">Mealie konnte diese Seite nicht öffnen. Prüfe den Link oder versuche es später noch einmal.</string>
     <string name="error_import_no_answer">Mealie hat zu lange nicht geantwortet. Kommt das Rezept noch an, findest du es unter Rezepte.</string>
+    <string name="error_import_post_unreadable">Der Beitrag ist nur angemeldet zu sehen. Kopiere seinen Text in „Rezepttext“ und importiere noch einmal.</string>
     <string name="error_generic_title">Da ist etwas schiefgelaufen</string>
     <string name="error_generic_message">Der Server hat mit einem Fehler geantwortet. Versuche es gleich noch einmal.</string>
 
@@ -296,22 +297,27 @@
     <string name="timeline_empty_message">Was ihr kocht und neu hinzufügt, erscheint hier.</string>
 
     <!-- Add and edit -->
-    <string name="add_from_web">Von einer Webseite</string>
-    <string name="add_from_web_hint">Mealie liest Zutaten, Schritte und Foto direkt von der Seite.</string>
+    <string name="add_from_web">Aus Link oder Text</string>
+    <string name="add_from_web_hint">Füge einen Link ein, den Text eines Rezepts oder beides. Zutaten, Schritte und Foto kommen direkt ins Rezept.</string>
     <string name="add_url_label">Link zum Rezept</string>
     <string name="add_paste">Einfügen</string>
     <string name="add_import">Importieren</string>
-    <string name="add_importing">Mealie liest die Seite. Das kann ein paar Sekunden dauern.</string>
     <string name="add_ai_title">Mit KI auslesen</string>
     <string name="add_ai_hint">Hilft bei Seiten ohne Rezeptdaten und bei Beiträgen von Instagram, TikTok &amp; Co.</string>
-    <string name="add_ai_text_label">Rezepttext (optional)</string>
-    <string name="add_ai_text_hint">Zum Beispiel die Bildunterschrift eines Beitrags</string>
+    <string name="add_text_label">Rezepttext (optional)</string>
+    <string name="add_text_hint">Zum Beispiel die Bildunterschrift eines Beitrags</string>
     <string name="add_ai_translate">Ins Deutsche übersetzen</string>
-    <string name="add_progress_waiting">Rezept wird importiert</string>
-    <string name="add_progress_rebuilding">Mealie schreibt das Rezept</string>
-    <string name="add_progress_tidying">Beitrag wird gegliedert</string>
+    <string name="add_progress_waiting">Mealie liest das Rezept</string>
     <string name="add_progress_still_working">Mealie arbeitet noch</string>
-    <string name="add_progress_ai_hint">Mit KI kann das ein, zwei Minuten dauern.</string>
+    <string name="add_progress_reading_post">Beitrag lesen</string>
+    <string name="add_progress_saving">Rezept anlegen</string>
+    <string name="add_progress_photo">Foto übernehmen</string>
+    <string name="add_progress_hint">Du kannst Aroma derweil verlassen, der Import läuft weiter.</string>
+    <string name="import_channel">Rezeptimporte</string>
+    <string name="import_channel_description">Wie weit ein Import ist und wann sein Rezept fertig ist</string>
+    <string name="import_running">Rezept wird importiert</string>
+    <string name="import_added">Rezept hinzugefügt</string>
+    <string name="add_progress_ai_hint">Mit KI dauert das meist eine halbe Minute, bei Videos länger. Du kannst Aroma derweil verlassen.</string>
     <string name="add_untitled">Importiertes Rezept</string>
     <string name="add_manual">Selbst schreiben</string>
     <string name="add_manual_hint">Beginne mit einem Namen, Zutaten und Schritte folgen danach.</string>

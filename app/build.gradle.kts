@@ -62,6 +62,13 @@ android {
         generateLocaleConfig = true
     }
 
+    // The language setting switches among all of Aroma's languages, so a bundle must keep them all.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true

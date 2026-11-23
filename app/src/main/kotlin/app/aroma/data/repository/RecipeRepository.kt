@@ -308,9 +308,11 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         return importing(onProgress, stream = { importRecipeWithAiStream(parts) }, plain = { importRecipeWithAi(parts) }).also { changed() }
     }
 
-    /** Whether the server may read recipes with AI: Mealie 3 with an AI provider set up for the group. */
-    suspend fun canImportWithAi(): Boolean =
-        try {
+    /** Whether the server may read recipes with AI: Mealie 3.23, which brought the AI import, with a provider set up for the group. */
+    suspend fun canImportWithAi(): Boolean {
+        val version = sessions.current?.serverVersion ?: return false
+        if (!MealieVersion.isAtLeast(version, 3, 23)) return false
+        return try {
             sessions
                 .api()
                 .group()
@@ -321,16 +323,7 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         } catch (_: Exception) {
             false
         }
-
-    /** The recipe's photo as stored by Mealie, or null if it has none. */
-    suspend fun imageBytes(recipeId: String): ByteArray? =
-        try {
-            sessions.api().recipeImage(recipeId).use { it.bytes() }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            null
-        }
+    }
 
     /** Uses the streaming endpoint where the server has one and maps rejected sources to [AromaError.ImportFailed]. */
     private suspend fun importing(
@@ -371,20 +364,12 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     /** The newest recipes' ids, so that one Mealie adds later can be told apart from them. */
     suspend fun newestRecipeIds(): Set<String> = mealieCall { newest().mapTo(mutableSetOf()) { it.id } }
 
-    /**
-     * The slug of a recipe the signed-in user added since [known] was taken, or null. With [source],
-     * only a recipe imported from a link qualifies, best one from that very link; without, only one
-     * with no link, as Mealie stores it when it read a text.
-     */
+    /** The slug of a recipe the signed-in user added since [known] was taken, best one from [source], or null. */
     suspend fun addedSince(known: Set<String>, source: String?): String? =
         mealieCall {
             val user = userId()
             val added = newest().filter { it.id !in known && (it.userId == null || it.userId == user) }
-            if (source == null) {
-                added.firstOrNull { it.orgURL.isNullOrBlank() }?.slug
-            } else {
-                (added.firstOrNull { it.orgURL == source } ?: added.firstOrNull { !it.orgURL.isNullOrBlank() })?.slug
-            }
+            (added.firstOrNull { source != null && it.orgURL == source } ?: added.firstOrNull())?.slug
         }
 
     private suspend fun newest(): List<RecipeSummaryDto> =

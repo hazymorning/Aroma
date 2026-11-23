@@ -155,4 +155,12 @@ object MealieVersion {
         val major = version.removePrefix("v").substringBefore('.').toIntOrNull() ?: return true
         return major >= 2
     }
+
+    /** Whether [version] is [major].[minor] or newer; development builds count as newest. */
+    fun isAtLeast(version: String, major: Int, minor: Int): Boolean {
+        val parts = version.removePrefix("v").split('.').map { it.toIntOrNull() }
+        val versionMajor = parts.getOrNull(0) ?: return true
+        val versionMinor = parts.getOrNull(1) ?: 0
+        return versionMajor > major || (versionMajor == major && versionMinor >= minor)
+    }
 }

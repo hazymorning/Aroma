@@ -2,6 +2,7 @@ package app.aroma
 
 import android.content.Context
 import android.os.Build
+import android.webkit.WebSettings
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
@@ -9,6 +10,7 @@ import app.aroma.data.JsonCache
 import app.aroma.data.local.AromaDatabase
 import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.remote.MealieClientFactory
+import app.aroma.data.remote.SocialPosts
 import app.aroma.data.repository.AuthRepository
 import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.RecipeRepository
@@ -18,16 +20,18 @@ import app.aroma.data.session.KeystoreCipher
 import app.aroma.data.session.SessionManager
 import app.aroma.data.session.SessionStore
 import app.aroma.data.settings.SettingsRepository
+import app.aroma.data.settings.inAppLanguage
 import app.aroma.data.sync.OfflineRecipesWorker
 import app.aroma.data.sync.ShoppingSyncWorker
 import app.aroma.data.update.Updates
+import app.aroma.feature.editor.RecipeImporter
+import app.aroma.feature.editor.RecipeImports
 import app.aroma.timer.CookingTimers
 import coil3.SingletonImageLoader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -65,8 +69,24 @@ class AppContainer(context: Context) {
     val timers = CookingTimers(appContext, scope)
     val updates = Updates(clients.httpClient, BuildConfig.VERSION_NAME, appContext.cacheDir.resolve("update"), scope, appContext::isAroma)
 
-    /** One import at a time, so imports waiting for Mealie never take each other's recipe. */
-    val importLock = Mutex()
+    /** The phone's own browser, as social media platforms show link previews to browsers. */
+    private val browserUserAgent by lazy {
+        try {
+            WebSettings.getDefaultUserAgent(appContext)
+        } catch (_: RuntimeException) {
+            // No web view installed, or one being updated.
+            System.getProperty("http.agent").orEmpty()
+        }
+    }
+
+    val imports =
+        RecipeImports(
+            appContext,
+            recipes,
+            RecipeImporter(recipes, SocialPosts(clients.httpClient) { browserUserAgent }, untitled = {
+                appContext.inAppLanguage().getString(R.string.add_untitled)
+            }),
+        )
 
     /**
      * Signs out and removes the account's traces from this device, as the sign-out dialog

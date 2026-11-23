@@ -4,37 +4,39 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.format.SharedLink
+import app.aroma.data.AromaError
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.settings.SettingsRepository
-import app.aroma.data.toAromaError
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.Locale
+import java.util.UUID
 
-/** Where to go after a recipe was added: imported recipes open directly, new ones in the editor. */
-sealed interface AddRecipeResult {
-    data class Imported(val slug: String) : AddRecipeResult
-
-    data class Created(val slug: String) : AddRecipeResult
-}
-
+/**
+ * The add screen. An import runs as background work ([RecipeImports]); the screen follows it by
+ * id, kept with its saved state, so it finds the import again after Android ended the app.
+ * [sharedUrl] is a link shared to Aroma, [shownJob] an import opened from its notification.
+ */
 class AddRecipeViewModel(
     private val recipes: RecipeRepository,
-    private val importer: RecipeImporter,
+    private val imports: RecipeImports,
     private val settings: SettingsRepository,
     sharedUrl: String?,
-    private val appScope: CoroutineScope,
-    saved: SavedStateHandle,
+    shownJob: String?,
+    private val saved: SavedStateHandle,
 ) : ViewModel() {
     /**
      * Whether a link shared from another app is imported at once. Any app can share to Aroma, so
@@ -43,82 +45,103 @@ class AddRecipeViewModel(
      */
     private val importsSharedLink = sharedUrl?.toHttpUrlOrNull() != null && saved.get<Boolean>(SHARED_LINK_IMPORTED) != true
 
-    private val mutableState =
-        MutableStateFlow(
-            if (importsSharedLink) {
-                AddRecipeUiState(url = sharedUrl.orEmpty(), working = AddMode.Import, step = ImportStep.Waiting)
-            } else {
-                AddRecipeUiState(url = sharedUrl.orEmpty())
-            },
-        )
-    val state: StateFlow<AddRecipeUiState> = mutableState.asStateFlow()
+    private val form = MutableStateFlow(AddRecipeUiState(url = sharedUrl.orEmpty(), starting = importsSharedLink))
 
-    private val outbox = Channel<AddRecipeResult>(Channel.BUFFERED)
-    val results: Flow<AddRecipeResult> = outbox.receiveAsFlow()
+    private val jobId = saved.getStateFlow(JOB, shownJob)
+
+    /** Collected by the screen only while it is shown, which is how an import knows whether to notify. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val state: StateFlow<AddRecipeUiState> =
+        combine(form, jobId.flatMapLatest { id -> id?.let { imports.job(UUID.fromString(it)) } ?: flowOf(null) }) { form, job ->
+            form.copy(import = job)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), form.value)
+
+    private val outbox = Channel<String>(Channel.BUFFERED)
+
+    /** Slugs of recipes created by hand, to open in the editor. */
+    val created: Flow<String> = outbox.receiveAsFlow()
 
     init {
         if (importsSharedLink) saved[SHARED_LINK_IMPORTED] = true
+        currentJob()?.request?.let { request -> form.update { it.copy(url = request.url, text = request.text) } }
         viewModelScope.launch {
             val preferences = settings.settings.first()
             val aiAvailable = recipes.canImportWithAi()
-            mutableState.update {
+            form.update {
                 it.copy(aiAvailable = aiAvailable, useAi = preferences.importWithAi, translate = preferences.translateImports)
             }
             // A link shared from another app starts right away, with the user's usual import settings.
-            if (importsSharedLink) start(AddMode.Import) { importNow() }
+            if (importsSharedLink) start()
         }
     }
 
-    fun onUrlChange(text: String) = mutableState.update { it.copy(url = text, failure = null) }
+    fun onUrlChange(text: String) = edit { it.copy(url = text) }
 
-    fun onTextChange(text: String) = mutableState.update { it.copy(text = text, failure = null) }
+    fun onTextChange(text: String) = edit { it.copy(text = text) }
 
-    fun onNameChange(text: String) = mutableState.update { it.copy(name = text, failure = null) }
+    fun onNameChange(text: String) = form.update { it.copy(name = text, failure = null) }
 
     fun onUseAiChange(enabled: Boolean) {
-        mutableState.update { it.copy(useAi = enabled, failure = null) }
+        edit { it.copy(useAi = enabled) }
         viewModelScope.launch { settings.setImportWithAi(enabled) }
     }
 
     fun onTranslateChange(enabled: Boolean) {
-        mutableState.update { it.copy(translate = enabled) }
+        form.update { it.copy(translate = enabled) }
         viewModelScope.launch { settings.setTranslateImports(enabled) }
     }
 
     fun import() {
-        if (state.value.canImport) start(AddMode.Import) { importNow() }
+        if (form.value.copy(import = currentJob()).canImport) start()
+    }
+
+    /** The screen showed how the import ended, so its notification can go. */
+    fun onOutcomeShown() {
+        jobId.value?.let { imports.shown(UUID.fromString(it)) }
     }
 
     fun create() {
-        if (state.value.working == null && state.value.name.isNotBlank()) {
-            start(AddMode.Create) { AddRecipeResult.Created(recipes.create(state.value.name)) }
+        val current = form.value
+        if (current.name.isBlank() || current.creating || current.starting) return
+        viewModelScope.launch {
+            form.update { it.copy(creating = true, failure = null) }
+            try {
+                outbox.send(recipes.create(current.name))
+            } catch (error: AromaError) {
+                form.update { it.copy(failure = AddFailure(AddMode.Create, error)) }
+            }
+            form.update { it.copy(creating = false) }
         }
     }
 
-    private suspend fun importNow(): AddRecipeResult {
-        val current = state.value
+    private fun start() {
+        val current = form.value
         val request =
             ImportRequest(
                 url = SharedLink.clean(current.url),
-                text = if (current.usesAi) current.text else "",
+                text = current.text.trim(),
                 useAi = current.usesAi,
                 translateTo = Locale.getDefault().toLanguageTag().takeIf { current.usesAi && current.translate },
             )
-        // The import runs on in the app's scope: going back only stops the waiting here, while the
-        // rebuild and the cleanup of half-finished recipes on the server still complete.
-        val import = appScope.async { importer.import(request) { step -> mutableState.update { it.copy(step = step) } } }
-        return AddRecipeResult.Imported(import.await())
-    }
-
-    private fun start(mode: AddMode, block: suspend () -> AddRecipeResult) {
+        form.update { it.copy(starting = true, failure = null) }
         viewModelScope.launch {
-            mutableState.update { it.copy(working = mode, failure = null) }
-            runCatching { block() }
-                .onSuccess { outbox.send(it) }
-                .onFailure { error -> mutableState.update { it.copy(failure = AddFailure(mode, error.toAromaError())) } }
-            mutableState.update { it.copy(working = null, step = null) }
+            try {
+                saved[JOB] = imports.start(request).toString()
+            } catch (error: AromaError) {
+                form.update { it.copy(failure = AddFailure(AddMode.Import, error)) }
+            }
+            form.update { it.copy(starting = false) }
         }
     }
+
+    /** A change to what is imported; an import that ended no longer belongs to it. */
+    private fun edit(change: (AddRecipeUiState) -> AddRecipeUiState) {
+        if (currentJob()?.outcome != null) saved[JOB] = null
+        form.update { change(it).copy(failure = null) }
+    }
+
+    private fun currentJob(): ImportJob? = jobId.value?.let { imports.job(UUID.fromString(it)).value }
 }
 
+private const val JOB = "job"
 private const val SHARED_LINK_IMPORTED = "sharedLinkImported"

@@ -31,8 +31,9 @@ data class CollectionRoute(
     val description: String = "",
 )
 
+/** The add screen; with [sharedUrl] a link shared to Aroma, with [job] an import to show, from its notification. */
 @Serializable
-data class AddRecipeRoute(val sharedUrl: String? = null)
+data class AddRecipeRoute(val sharedUrl: String? = null, val job: String? = null)
 
 @Serializable
 data class EditorRoute(val slug: String)

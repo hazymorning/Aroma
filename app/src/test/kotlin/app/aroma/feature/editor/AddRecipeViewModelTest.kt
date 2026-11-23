@@ -2,13 +2,15 @@ package app.aroma.feature.editor
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
+import androidx.test.core.app.ApplicationProvider
 import app.aroma.data.TestEnvironment
+import app.aroma.data.remote.SocialPosts
 import app.aroma.data.settings.SettingsRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
+import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -31,22 +33,25 @@ class AddRecipeViewModelTest {
     @Test
     fun `a shared web link is imported at once, but not again when Android brings the screen back`() {
         val saved = SavedStateHandle()
-        assertEquals(AddMode.Import, open(LINK, saved).state.value.working)
+        assertTrue(open(LINK, saved).state.value.isImporting)
 
         val restored = open(LINK, saved)
-        assertNull(restored.state.value.working)
+        assertFalse(restored.state.value.isImporting)
         assertEquals(LINK, restored.state.value.url)
     }
 
     @Test
     fun `shared text that is no web link waits for the import button`() {
         val shared = open("intent://scan#Intent;end", SavedStateHandle())
-        assertNull(shared.state.value.working)
+        assertFalse(shared.state.value.isImporting)
         assertEquals("intent://scan#Intent;end", shared.state.value.url)
     }
 
-    private fun open(sharedUrl: String, saved: SavedStateHandle) =
-        AddRecipeViewModel(env.recipes, RecipeImporter(env.recipes, "Rezept"), settings, sharedUrl, CoroutineScope(Job()), saved)
+    private fun open(sharedUrl: String, saved: SavedStateHandle): AddRecipeViewModel {
+        val importer = RecipeImporter(env.recipes, SocialPosts(OkHttpClient()) { "Test browser" }, untitled = { "Rezept" })
+        val imports = RecipeImports(ApplicationProvider.getApplicationContext(), env.recipes, importer)
+        return AddRecipeViewModel(env.recipes, imports, settings, sharedUrl, shownJob = null, saved)
+    }
 
     private companion object {
         const val LINK = "https://example.com/lauchpuffer"

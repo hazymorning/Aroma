@@ -1,5 +1,9 @@
 package app.aroma.data.settings
 
+import android.content.Context
+import android.content.res.Configuration
+import android.os.Build
+import android.os.LocaleList
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.datastore.core.DataStore
@@ -93,4 +97,15 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val locales = language.tag?.let { LocaleListCompat.forLanguageTags(it) } ?: LocaleListCompat.getEmptyLocaleList()
         AppCompatDelegate.setApplicationLocales(locales)
     }
+}
+
+/**
+ * This context in the language chosen in Aroma's settings. Before Android 13 only screens follow
+ * that choice by themselves; notifications, built from the app's context, need this.
+ */
+fun Context.inAppLanguage(): Context {
+    val locales = AppCompatDelegate.getApplicationLocales()
+    if (locales.isEmpty || Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return this
+    val configuration = Configuration(resources.configuration).apply { setLocales(LocaleList.forLanguageTags(locales.toLanguageTags())) }
+    return createConfigurationContext(configuration)
 }

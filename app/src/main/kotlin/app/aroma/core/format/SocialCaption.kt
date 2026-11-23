@@ -36,7 +36,10 @@ data class CaptionRecipe(
     val steps: List<String>,
     val notes: List<String>,
     val servings: Double?,
-)
+) {
+    /** Whether the text holds a whole recipe: ingredients and the steps to make it. */
+    val isRecipe: Boolean get() = ingredients.isNotEmpty() && steps.isNotEmpty()
+}
 
 private class CaptionParser(caption: String) {
     private enum class Part { Intro, Ingredients, Steps, Notes }

@@ -14,7 +14,6 @@ import app.aroma.feature.cook.CookActions
 import app.aroma.feature.cook.CookScreen
 import app.aroma.feature.cook.CookTimerUi
 import app.aroma.feature.cook.CookUiState
-import app.aroma.feature.editor.AddMode
 import app.aroma.feature.editor.AddRecipeActions
 import app.aroma.feature.editor.AddRecipeScreen
 import app.aroma.feature.editor.AddRecipeUiState
@@ -22,6 +21,8 @@ import app.aroma.feature.editor.EditorActions
 import app.aroma.feature.editor.EditorForm
 import app.aroma.feature.editor.EditorScreen
 import app.aroma.feature.editor.EditorUiState
+import app.aroma.feature.editor.ImportJob
+import app.aroma.feature.editor.ImportRequest
 import app.aroma.feature.editor.ImportStep
 import app.aroma.feature.home.Greeting
 import app.aroma.feature.home.HomeActions
@@ -380,8 +381,27 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                     AddRecipeUiState(
                         url = "https://www.instagram.com/p/AromaTest01/",
                         aiAvailable = true,
-                        working = AddMode.Import,
-                        step = ImportStep.Server(if (variant.locale == "de") "Lese Quelle mit KI..." else "Reading source with AI..."),
+                        import =
+                            ImportJob(
+                                request = ImportRequest("https://www.instagram.com/p/AromaTest01/", useAi = true),
+                                // Half a second into the 24th, so the clock reads 0:23 however long drawing takes.
+                                startedAt = System.currentTimeMillis() - 23_500,
+                                steps =
+                                    listOf(
+                                        ImportStep.ReadingPost,
+                                        ImportStep.Waiting,
+                                        ImportStep.Server(if (variant.locale == "de") "Rezept erstellen..." else "Creating recipe..."),
+                                        ImportStep.Server(
+                                            if (variant.locale ==
+                                                "de"
+                                            ) {
+                                                "Rezept wird übersetzt..."
+                                            } else {
+                                                "Translating recipe..."
+                                            },
+                                        ),
+                                    ),
+                            ),
                     ),
                 actions = AddRecipeActions(),
             )

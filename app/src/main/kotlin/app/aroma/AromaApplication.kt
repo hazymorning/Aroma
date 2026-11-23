@@ -1,6 +1,7 @@
 package app.aroma
 
 import android.app.Application
+import app.aroma.feature.editor.ImportNotifications
 import app.aroma.timer.TimerNotifications
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -21,6 +22,7 @@ class AromaApplication :
         container = AppContainer(this)
         container.scope.launch { container.sessions.restore() }
         TimerNotifications.createChannel(this)
+        ImportNotifications.createChannel(this)
     }
 
     /** Images share the API's HTTP client and get a disk cache large enough for offline use. */
