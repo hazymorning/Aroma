@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.1 – 2026-11-23
+
+**New**
+- Import a recipe from photos, read by Mealie's AI.
+- See which ingredients each step uses, in cooking mode and on the recipe page.
+
+**Better**
+- Instagram posts import in seconds. Aroma reads them itself and asks the AI only for posts in running text or to translate.
+
+**Fixed**
+- Emoji stay out of recipes, and amounts behind them scale again.
+
 ## 0.4.0 – 2026-11-23
 
 **New**
