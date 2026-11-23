@@ -601,7 +601,7 @@ private fun Dot(style: TextStyle) {
 
 /**
  * Plan and shop, the two things people do with a recipe besides cooking it, right under its name:
- * small pills, so the title, the stars and the description lead.
+ * two even buttons across the column, or plan alone across it where there is nothing to buy.
  */
 @Composable
 private fun RecipeQuickActions(
@@ -611,13 +611,13 @@ private fun RecipeQuickActions(
     onShop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Space.s)) {
         SecondaryButton(
             icon = R.drawable.ic_calendar_add,
             text = stringResource(R.string.recipe_action_plan),
             onClick = onPlan,
             confirmed = confirmed == QuickAction.Plan,
-            compact = true,
+            modifier = Modifier.weight(1f),
         )
         if (canShop) {
             SecondaryButton(
@@ -625,7 +625,7 @@ private fun RecipeQuickActions(
                 text = stringResource(R.string.recipe_action_shop),
                 onClick = onShop,
                 confirmed = confirmed == QuickAction.Shop,
-                compact = true,
+                modifier = Modifier.weight(1f),
             )
         }
     }
