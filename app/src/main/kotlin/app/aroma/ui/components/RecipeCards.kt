@@ -42,6 +42,7 @@ import app.aroma.core.model.ImageSize
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.theme.CardTitle
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
@@ -121,7 +122,7 @@ fun RecipeListItem(recipe: RecipeSummary, onClick: () -> Unit, modifier: Modifie
             image = recipe.image,
             size = ImageSize.Thumbnail,
             shape = MaterialTheme.shapes.small,
-            fallbackIconSize = 20.dp,
+            fallbackIconSize = Glyph.m,
             modifier = Modifier.size(56.dp),
         )
         Column(Modifier.weight(1f)) {

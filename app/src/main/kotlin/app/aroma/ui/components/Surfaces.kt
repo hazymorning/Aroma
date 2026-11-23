@@ -37,8 +37,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.aroma.R
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.ScreenMargin
@@ -100,7 +104,10 @@ fun AromaDropdownMenu(
     )
 }
 
-/** A menu row with a 20 dp line icon; [destructive] items read in the error colour. */
+/**
+ * A menu row with a 20 dp line icon; [destructive] items read in the error colour. In a menu of
+ * choices, the [selected] one carries a sage check at its end.
+ */
 @Composable
 fun AromaMenuItem(
     text: String,
@@ -108,10 +115,11 @@ fun AromaMenuItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     destructive: Boolean = false,
+    selected: Boolean = false,
 ) {
     val color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     DropdownMenuItem(
-        text = { Text(text, style = MaterialTheme.typography.bodyLarge, color = color) },
+        text = { Text(text, style = MaterialTheme.typography.bodyLarge, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingIcon =
             icon?.let {
                 {
@@ -119,24 +127,40 @@ fun AromaMenuItem(
                         painterResource(it),
                         contentDescription = null,
                         tint = if (destructive) color else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(Glyph.m),
                     )
                 }
             },
+        trailingIcon =
+            if (selected) {
+                {
+                    Icon(
+                        painterResource(R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(Glyph.m),
+                    )
+                }
+            } else {
+                null
+            },
         onClick = onClick,
-        modifier = modifier,
+        modifier = if (selected) modifier.semantics { this.selected = true } else modifier,
     )
 }
 
-/** A dialog on paper with quiet text actions: confirm in sage, or in red when it destroys something. */
+/**
+ * A dialog on paper with quiet text actions: confirm in sage, or in red when it destroys something,
+ * and a way back out where there is a [dismissLabel].
+ */
 @Composable
 fun AromaAlertDialog(
     onDismissRequest: () -> Unit,
     title: String,
     confirmLabel: String,
     onConfirm: () -> Unit,
-    dismissLabel: String,
     modifier: Modifier = Modifier,
+    dismissLabel: String? = null,
     text: String? = null,
     destructive: Boolean = false,
     confirmEnabled: Boolean = true,
@@ -161,7 +185,7 @@ fun AromaAlertDialog(
                 confirmEnabled,
             )
         },
-        dismissButton = { QuietLink(dismissLabel, onDismissRequest, modifier = Modifier.padding(end = 16.dp)) },
+        dismissButton = dismissLabel?.let { { QuietLink(it, onDismissRequest, modifier = Modifier.padding(end = 16.dp)) } },
     )
 }
 
@@ -234,7 +258,7 @@ fun SheetAction(
                 painterResource(icon),
                 contentDescription = null,
                 tint = if (destructive) color else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(Glyph.m),
             )
         }
         Spacer(Modifier.width(Space.m))

@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
@@ -114,7 +115,7 @@ private fun BarItem(
                 painterResource(if (on) tab.selectedIcon else tab.icon),
                 contentDescription = null,
                 tint = iconColor,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(Glyph.l),
             )
         }
         Spacer(Modifier.height(4.dp))

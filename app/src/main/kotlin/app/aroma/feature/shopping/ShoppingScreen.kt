@@ -32,7 +32,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
@@ -55,7 +54,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -420,36 +418,18 @@ private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, o
         }
         AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             lists.forEach { info ->
-                ListChoice(info.name, chosen = info.id == current.id) {
-                    open = false
-                    onSelect(info.id)
-                }
+                AromaMenuItem(
+                    text = info.name,
+                    icon = null,
+                    onClick = {
+                        open = false
+                        onSelect(info.id)
+                    },
+                    selected = info.id == current.id,
+                )
             }
         }
     }
-}
-
-/** A list in the switcher's menu; the current one carries a sage check at the end. */
-@Composable
-private fun ListChoice(name: String, chosen: Boolean, onClick: () -> Unit) {
-    DropdownMenuItem(
-        text = { Text(name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        trailingIcon =
-            if (chosen) {
-                {
-                    Icon(
-                        painterResource(R.drawable.ic_check),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            } else {
-                null
-            },
-        onClick = onClick,
-        modifier = Modifier.semantics { selected = chosen },
-    )
 }
 
 /** The add field's confirm: a small sage circle 8 dp from the field's end, there only while something is typed. */

@@ -25,7 +25,6 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +55,7 @@ import app.aroma.core.model.ServerInfo
 import app.aroma.data.AromaError
 import app.aroma.data.remote.ServerAddress
 import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.LabeledSecureTextField
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.LinkTone
@@ -315,13 +315,11 @@ private fun ServerLine(server: ServerInfo, onChange: () -> Unit) {
 
 @Composable
 private fun VisibilityToggle(visible: Boolean, onToggle: () -> Unit) {
-    IconButton(onClick = onToggle) {
-        Icon(
-            painterResource(if (visible) R.drawable.ic_visibility_off else R.drawable.ic_visibility),
-            contentDescription = stringResource(if (visible) R.string.login_hide_secret else R.string.login_show_secret),
-            modifier = Modifier.size(20.dp),
-        )
-    }
+    IconAction(
+        if (visible) R.drawable.ic_visibility_off else R.drawable.ic_visibility,
+        stringResource(if (visible) R.string.login_hide_secret else R.string.login_show_secret),
+        onToggle,
+    )
 }
 
 /** What went wrong, set as text under the field: a small red mark and title, then the explanation in soft ink. */

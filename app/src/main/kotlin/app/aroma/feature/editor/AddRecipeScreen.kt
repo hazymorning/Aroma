@@ -31,7 +31,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,6 +62,7 @@ import app.aroma.data.AromaError
 import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.InlineProgress
 import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LabeledTextField
@@ -124,8 +124,6 @@ internal val FormMaxWidth = 600.dp
 /** The tick or the spinner in front of an import step, as large as [InlineProgress]. */
 private val StepMark = 20.dp
 
-private val PasteGlyph = 20.dp
-
 @Composable
 fun AddRecipeScreen(state: AddRecipeUiState, actions: AddRecipeActions, modifier: Modifier = Modifier) {
     // While the screen is watched, a sleeping phone would only hide the progress; Aroma keeps it lit.
@@ -186,13 +184,7 @@ private fun FromWebsite(state: AddRecipeUiState, actions: AddRecipeActions) {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go, autoCorrectEnabled = false),
                 keyboardActions = KeyboardActions(onGo = { actions.onImport() }),
                 trailingIcon = {
-                    IconButton(onClick = actions.onPaste, enabled = editable) {
-                        Icon(
-                            painterResource(R.drawable.ic_content_paste),
-                            contentDescription = stringResource(R.string.add_paste),
-                            modifier = Modifier.size(PasteGlyph),
-                        )
-                    }
+                    IconAction(R.drawable.ic_content_paste, stringResource(R.string.add_paste), actions.onPaste, enabled = editable)
                 },
                 modifier = Modifier.padding(horizontal = ScreenMargin),
             )

@@ -40,7 +40,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -76,6 +75,7 @@ import app.aroma.ui.components.Avatar
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
+import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.LocalBottomBarInset
@@ -96,6 +96,7 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.theme.CardTitle
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
@@ -150,7 +151,6 @@ data class HomeActions(
 )
 
 private const val RATE_STAR_SIZE = 28
-private val DismissGlyph = 20.dp
 private val CarouselCardWidth = 160.dp
 
 @Composable
@@ -349,21 +349,15 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                 )
             }
             Spacer(Modifier.width(Space.m))
-            IconButton(
-                onClick = actions.onDismissReminder,
+            IconAction(
+                R.drawable.ic_close,
+                stringResource(R.string.home_rate_dismiss),
+                actions.onDismissReminder,
                 // The cross is drawn 4 dp inside its box; the nudge puts its arms on the right margin.
-                modifier =
-                    Modifier
-                        .touchOutdent((48.dp - DismissGlyph) / 2)
-                        .offset(x = Space.xxs),
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_close),
-                    contentDescription = stringResource(R.string.home_rate_dismiss),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(DismissGlyph),
-                )
-            }
+                Modifier
+                    .touchOutdent((48.dp - Glyph.m) / 2)
+                    .offset(x = Space.xxs),
+            )
         }
     }
 }

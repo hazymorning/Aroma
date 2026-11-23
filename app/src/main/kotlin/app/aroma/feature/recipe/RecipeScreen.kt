@@ -45,7 +45,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -325,7 +324,7 @@ private fun FavoriteButton(isFavorite: Boolean, onClick: () -> Unit, onPhoto: Bo
     if (onPhoto) {
         OnPhotoButton(icon, label, onClick, tint = tint)
     } else {
-        IconButton(onClick = onClick) { Icon(painterResource(icon), contentDescription = label, tint = tint) }
+        HeaderAction(icon, label, onClick, tint = tint)
     }
 }
 

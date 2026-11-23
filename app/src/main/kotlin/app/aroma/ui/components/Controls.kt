@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.KickerStyle
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
@@ -260,7 +261,7 @@ fun AromaFilterChip(
                     painterResource(trailingIcon),
                     contentDescription = null,
                     tint = if (selected) content else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(Glyph.s),
                 )
             }
         }

@@ -18,7 +18,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.extras
@@ -79,7 +79,7 @@ fun PillTextField(
                 painterResource(leadingIcon),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(Glyph.m),
             )
             Spacer(Modifier.width(12.dp))
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
@@ -114,14 +114,7 @@ fun PillTextField(
                 }
 
                 value.isNotEmpty() -> {
-                    IconButton(onClick = { onValueChange("") }) {
-                        Icon(
-                            painterResource(R.drawable.ic_close),
-                            contentDescription = stringResource(R.string.action_clear),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
+                    IconAction(R.drawable.ic_close, stringResource(R.string.action_clear), onClick = { onValueChange("") })
                 }
 
                 else -> {

@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -61,6 +60,7 @@ import app.aroma.ui.components.Avatar
 import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.InlineProgress
 import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.SecondaryButton
@@ -360,11 +360,7 @@ private fun UpdateRow(version: String, update: UpdateState, onCheck: () -> Unit,
             }
 
             UpdateState.Checking, is UpdateState.Downloading -> {
-                CircularProgressIndicator(
-                    strokeWidth = 1.5.dp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
+                InlineProgress()
             }
 
             else -> {}

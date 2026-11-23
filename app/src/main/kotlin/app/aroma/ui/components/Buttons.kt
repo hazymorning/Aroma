@@ -22,8 +22,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.extras
@@ -49,7 +51,7 @@ import app.aroma.ui.theme.isDarkScheme
 import app.aroma.ui.theme.photoButtonShadow
 import app.aroma.ui.theme.tabular
 
-/** The one filled action of a screen. While [loading], a small spinner takes the label's place. */
+/** The one filled action of a screen. While [loading], [InlineProgress] takes the label's place. */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -79,16 +81,16 @@ fun PrimaryButton(
             // The label keeps its place while loading, so the button never changes width.
             Row(Modifier.alpha(if (loading) 0f else 1f), verticalAlignment = Alignment.CenterVertically) {
                 leadingIcon?.let {
-                    Icon(painterResource(it), contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(painterResource(it), contentDescription = null, modifier = Modifier.size(Glyph.m))
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 trailingIcon?.let {
                     Spacer(Modifier.width(8.dp))
-                    Icon(painterResource(it), contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(painterResource(it), contentDescription = null, modifier = Modifier.size(Glyph.m))
                 }
             }
-            if (loading) CircularProgressIndicator(strokeWidth = 1.5.dp, color = extras.onCta, modifier = Modifier.size(18.dp))
+            if (loading) InlineProgress(color = extras.onCta)
         }
     }
 }
@@ -126,7 +128,7 @@ fun SecondaryButton(
                     painter = painterResource(if (done) R.drawable.ic_check else icon),
                     contentDescription = null,
                     tint = if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(if (compact) 16.dp else 20.dp),
+                    modifier = Modifier.size(if (compact) Glyph.s else Glyph.m),
                 )
             }
             Spacer(Modifier.width(8.dp))
@@ -186,10 +188,38 @@ fun QuietLink(
                 tint = color,
                 modifier =
                     Modifier
-                        .size(16.dp)
+                        .size(Glyph.s)
                         .offset(x = 5.dp),
             )
         }
+    }
+}
+
+/**
+ * A line glyph in a 48 dp target, with a round ripple for its only container: the quiet action of
+ * a row or a field. [HeaderAction] is the larger one in ink, for bars.
+ */
+@Composable
+fun IconAction(
+    @DrawableRes icon: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    glyphSize: Dp = Glyph.m,
+    enabled: Boolean = true,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors =
+            IconButtonDefaults.iconButtonColors(
+                contentColor = tint,
+                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+            ),
+    ) {
+        Icon(painterResource(icon), contentDescription = contentDescription, modifier = Modifier.size(glyphSize))
     }
 }
 
@@ -222,7 +252,7 @@ fun HairlineIconButton(
                 painterResource(icon),
                 contentDescription = contentDescription,
                 tint = if (enabled) tint else MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(Glyph.m),
             )
         }
     }
@@ -262,7 +292,7 @@ fun OnPhotoButton(
                 ).then(if (dark) Modifier.border(Lines.hairline, extras.floatingEdge, CircleShape) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(icon), contentDescription = contentDescription, tint = tint, modifier = Modifier.size(20.dp))
+            Icon(painterResource(icon), contentDescription = contentDescription, tint = tint, modifier = Modifier.size(Glyph.m))
         }
     }
 }

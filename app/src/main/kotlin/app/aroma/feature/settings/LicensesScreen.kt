@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,12 +29,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.LinkTone
-import app.aroma.ui.components.QuietLink
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.extras
 
 private data class License(val component: String, val license: String, val asset: String? = null)
 
@@ -91,7 +88,7 @@ private fun LicenseRow(item: License, onOpen: (() -> Unit)?) {
     }
 }
 
-/** The full licence on paper, with a single quiet way out. */
+/** The full licence on paper, with a single way out. */
 @Composable
 private fun LicenseDialog(title: String, asset: String, onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -102,13 +99,12 @@ private fun LicenseDialog(title: String, asset: String, onDismiss: () -> Unit) {
                 .bufferedReader()
                 .use { reflow(it.readText()) }
         }
-    AlertDialog(
+    AromaAlertDialog(
         onDismissRequest = onDismiss,
-        shape = MaterialTheme.shapes.extraLarge,
-        containerColor = extras.raised,
-        tonalElevation = 0.dp,
-        title = { Text(title, style = MaterialTheme.typography.headlineSmall) },
-        text = {
+        title = title,
+        confirmLabel = stringResource(R.string.action_close),
+        onConfirm = onDismiss,
+        content = {
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodySmall,
@@ -116,7 +112,6 @@ private fun LicenseDialog(title: String, asset: String, onDismiss: () -> Unit) {
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             )
         },
-        confirmButton = { QuietLink(stringResource(R.string.action_close), onDismiss, tone = LinkTone.Ink) },
     )
 }
 

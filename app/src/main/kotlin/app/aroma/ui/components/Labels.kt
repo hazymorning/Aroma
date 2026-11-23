@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.MealType
+import app.aroma.ui.theme.Glyph
 
 @Composable
 @ReadOnlyComposable
@@ -43,7 +44,7 @@ fun OfflineNotice(modifier: Modifier = Modifier) {
             painterResource(R.drawable.ic_cloud_off),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(Glyph.s),
         )
         Text(
             text = stringResource(R.string.offline_notice),

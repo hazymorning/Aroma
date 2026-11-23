@@ -25,6 +25,14 @@ val CardInset: Dp = 12.dp
 /** Text after a 24 dp check or icon. */
 val IconKeyline: Dp = 64.dp
 
+/** Line glyphs: beside small text and links, in rows and fields, in bars, and standing alone. */
+object Glyph {
+    val s: Dp = 16.dp
+    val m: Dp = 20.dp
+    val l: Dp = 24.dp
+    val xl: Dp = 32.dp
+}
+
 /** Durations in milliseconds, and the curve that movement and size changes settle with. */
 object Motion {
     const val PRESS = 120

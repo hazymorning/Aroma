@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.data.AromaError
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 
@@ -58,7 +59,7 @@ fun MessageState(
             painterResource(icon),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(Glyph.xl),
         )
         Spacer(Modifier.height(16.dp))
         Text(title, style = MaterialTheme.typography.headlineSmall)

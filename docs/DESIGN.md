@@ -29,6 +29,7 @@ components only. `DesignRulesTest` checks the rules marked *(checked)* on every 
 | `ScreenMargin` | 24 | The keyline on both sides |
 | `CardInset` | 12 | How far a soft card stands outside the keyline |
 | `IconKeyline` | 64 | Text after a 24 dp glyph in a row |
+| `Glyph` | s 16, m 20, l 24, xl 32 | Line glyphs beside small text and links, in rows and fields, in bars, standing alone |
 | `PageEndSpace` | 32 | Free space after the last item of a scrolling page |
 | Shapes | extraSmall 4, small 8, medium 12, large 16, extraLarge 24; circle | Placeholder lines, thumbnails, photos and fields, cards, sheets; buttons, chips, avatars |
 | `Lines` | hairline 0.5, control 1, checkRing 1.25 | Between rows, around controls, a check's ring |
@@ -95,7 +96,7 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
 |---|---|
 | `PageHeader`, `DetailTopBar`, `LargeTitle`, `SectionHeader`, `Kicker` | Headings |
 | `SoftCard`, `CardPart`, `Hairline` | Groups and the lines inside them |
-| `PrimaryButton`, `SecondaryButton`, `QuietLink`, `HeaderAction`, `HairlineIconButton`, `OnPhotoButton` | Actions |
+| `PrimaryButton`, `SecondaryButton`, `QuietLink`, `HeaderAction`, `IconAction`, `HairlineIconButton`, `OnPhotoButton` | Actions |
 | `SwitchRow`, `SegmentedControl`, `AromaFilterChip`, `Stepper`, `RatingStars`, `CheckCircle` | Choices |
 | `LabeledTextField`, `LabeledSecureTextField`, `PillTextField` | Input |
 | `AromaBottomSheet`, `SheetAction`, `AromaAlertDialog`, `AromaDropdownMenu`, `AromaMenuItem` | Layers |

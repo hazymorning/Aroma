@@ -33,9 +33,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -76,6 +74,8 @@ import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.IconAction
+import app.aroma.ui.components.InlineProgress
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.LinkTone
@@ -149,13 +149,7 @@ private fun SaveLink(saving: Boolean, enabled: Boolean, onSave: () -> Unit) {
             enabled = enabled && !saving,
             modifier = Modifier.alpha(if (saving) 0f else 1f),
         )
-        if (saving) {
-            CircularProgressIndicator(
-                strokeWidth = 1.5.dp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-        }
+        if (saving) InlineProgress()
     }
 }
 
@@ -522,14 +516,7 @@ private fun EditableRow(
         )
         if (onRemove != null) {
             // Level with the first line of text.
-            IconButton(onClick = onRemove, modifier = Modifier.padding(top = Space.xxs)) {
-                Icon(
-                    painterResource(R.drawable.ic_close),
-                    contentDescription = removeLabel,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
+            IconAction(R.drawable.ic_close, removeLabel, onRemove, Modifier.padding(top = Space.xxs))
         }
     }
 }

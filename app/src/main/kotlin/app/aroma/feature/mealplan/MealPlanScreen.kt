@@ -1,7 +1,6 @@
 package app.aroma.feature.mealplan
 
 import android.text.format.DateFormat
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -30,7 +29,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -73,6 +71,7 @@ import app.aroma.ui.components.CardPart
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
+import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.LocalBottomBarInset
@@ -248,8 +247,8 @@ private fun Header(state: MealPlanUiState, actions: MealPlanActions) {
                     modifier = Modifier.padding(start = Space.m, end = Space.xs),
                 )
             }
-            RowAction(R.drawable.ic_chevron_left, stringResource(R.string.plan_previous_week), actions.onPreviousWeek)
-            RowAction(R.drawable.ic_chevron_right, stringResource(R.string.plan_next_week), actions.onNextWeek)
+            IconAction(R.drawable.ic_chevron_left, stringResource(R.string.plan_previous_week), actions.onPreviousWeek)
+            IconAction(R.drawable.ic_chevron_right, stringResource(R.string.plan_next_week), actions.onNextWeek)
         }
         if (state.isOffline) OfflineNotice(Modifier.padding(horizontal = ScreenMargin))
     }
@@ -349,7 +348,7 @@ private fun DayHeader(date: LocalDate, isToday: Boolean, isEmpty: Boolean, onAdd
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 DayTitle(date, weekday, isToday, Modifier.weight(1f))
-                RowAction(R.drawable.ic_add, addLabel, onAdd)
+                IconAction(R.drawable.ic_add, addLabel, onAdd)
             }
             AnimatedVisibility(
                 visible = isEmpty,
@@ -386,23 +385,6 @@ private fun DayTitle(date: LocalDate, weekday: String, isToday: Boolean, modifie
             Spacer(Modifier.width(Space.s))
             Kicker(stringResource(R.string.home_today), Modifier.alignByBaseline(), color = MaterialTheme.colorScheme.primary)
         }
-    }
-}
-
-/** A plain 48 dp action with a 20 dp glyph in the soft ink, for the week and day rows. */
-@Composable
-private fun RowAction(
-    @DrawableRes icon: Int,
-    contentDescription: String,
-    onClick: () -> Unit,
-) {
-    IconButton(onClick = onClick) {
-        Icon(
-            painterResource(icon),
-            contentDescription = contentDescription,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(RowGlyph),
-        )
     }
 }
 
