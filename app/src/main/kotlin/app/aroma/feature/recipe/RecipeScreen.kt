@@ -70,7 +70,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.format.IngredientFormatter
+import app.aroma.core.format.MeasureSystem
 import app.aroma.core.format.Quantities
+import app.aroma.core.format.StepMeasures
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.NutritionKind
 import app.aroma.core.model.NutritionValue
@@ -126,6 +128,7 @@ import java.util.Locale
 data class RecipeUiState(
     val recipe: Recipe? = null,
     val scale: Double = 1.0,
+    val measures: MeasureSystem = MeasureSystem.AsWritten,
     val checkedIngredients: Set<Int> = emptySet(),
     val isFavorite: Boolean = false,
     val userRating: Double? = null,
@@ -143,6 +146,7 @@ data class RecipeActions(
     val onToggleFavorite: () -> Unit = {},
     val onRate: (Int) -> Unit = {},
     val onScale: (Double) -> Unit = {},
+    val onMeasures: (MeasureSystem) -> Unit = {},
     val onToggleIngredient: (Int) -> Unit = {},
     val onAddToShoppingList: () -> Unit = {},
     val onAddToMealPlan: () -> Unit = {},
@@ -444,7 +448,7 @@ private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actio
     if (recipe.steps.isNotEmpty()) {
         item(key = "stepsHeader") { SectionHeader(stringResource(R.string.recipe_steps)) }
         itemsIndexed(recipe.steps, key = { index, step -> step.id ?: "step$index" }) { index, step ->
-            StepItem(index, step, Modifier.padding(top = if (index == 0) Space.xs else Space.l))
+            StepItem(index, step, state.measures, Modifier.padding(top = if (index == 0) Space.xs else Space.l))
         }
     }
     if (recipe.notes.isNotEmpty()) {
@@ -624,9 +628,9 @@ private fun Facts(recipe: Recipe) {
 private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeActions) {
     val locale = currentLocale()
     val rows =
-        remember(recipe.ingredients, state.scale, locale) {
+        remember(recipe.ingredients, state.scale, state.measures, locale) {
             recipe.ingredients.map {
-                IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale))
+                IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale, state.measures))
             }
         }
     Column {
@@ -652,6 +656,7 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
                 canDecrease = Servings.canDecrease(recipe.servings, state.scale),
             )
         }
+        MeasuresChip(state.measures, actions.onMeasures, Modifier.padding(start = ScreenMargin, top = Space.xs))
         IngredientList(
             rows = rows,
             checked = state.checkedIngredients,
@@ -671,6 +676,41 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
     }
 }
 
+/** Which measures the amounts show, as a chip that opens the three choices; sage while they are converted. */
+@Composable
+private fun MeasuresChip(system: MeasureSystem, onSelect: (MeasureSystem) -> Unit, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
+    Box(modifier) {
+        AromaFilterChip(
+            selected = system != MeasureSystem.AsWritten,
+            label = stringResource(system.labelRes()),
+            onClick = { open = true },
+            trailingIcon = R.drawable.ic_expand_more,
+        )
+        AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            MeasureSystem.entries.forEach { option ->
+                AromaMenuItem(
+                    text = stringResource(option.labelRes()),
+                    icon = null,
+                    onClick = {
+                        open = false
+                        onSelect(option)
+                    },
+                    selected = option == system,
+                )
+            }
+        }
+    }
+}
+
+/** The name of a choice of measures, as the chip and the setting show it. */
+fun MeasureSystem.labelRes(): Int =
+    when (this) {
+        MeasureSystem.AsWritten -> R.string.measures_as_written
+        MeasureSystem.Metric -> R.string.measures_metric
+        MeasureSystem.US -> R.string.measures_us
+    }
+
 @Composable
 @ReadOnlyComposable
 fun servingsLabel(baseServings: Double, scale: Double, locale: Locale): String {
@@ -686,7 +726,9 @@ fun servingsLabel(baseServings: Double, scale: Double, locale: Locale): String {
 
 /** A step with its number in sage in the gutter, level with the first line. */
 @Composable
-private fun StepItem(index: Int, step: Step, modifier: Modifier = Modifier) {
+private fun StepItem(index: Int, step: Step, measures: MeasureSystem, modifier: Modifier = Modifier) {
+    val locale = currentLocale()
+    val text = remember(step.text, measures, locale) { StepMeasures.convert(step.text, measures, locale) }
     Row(modifier.padding(horizontal = ScreenMargin)) {
         Text(
             text = (index + 1).toString(),
@@ -705,7 +747,7 @@ private fun StepItem(index: Int, step: Step, modifier: Modifier = Modifier) {
             if (!step.title.isNullOrBlank()) {
                 Text(step.title, style = AromaType.BodyStrong, modifier = Modifier.padding(bottom = Space.xxs))
             }
-            Text(text = rememberRichText(step.text), style = AromaType.Body)
+            Text(text = rememberRichText(text), style = AromaType.Body)
         }
     }
 }

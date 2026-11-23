@@ -77,6 +77,8 @@ import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.format.DurationDetector
 import app.aroma.core.format.IngredientFormatter
+import app.aroma.core.format.MeasureSystem
+import app.aroma.core.format.StepMeasures
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.Step
@@ -138,6 +140,7 @@ data class CookUiState(
     val markFailed: Boolean = false,
     val exactAlarmHint: Boolean = false,
     val ingredientsInSteps: Boolean = false,
+    val measures: MeasureSystem = MeasureSystem.AsWritten,
     val checkedIngredients: Set<Int> = emptySet(),
     val isLoading: Boolean = true,
     val error: AromaError? = null,
@@ -179,11 +182,11 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
     var showIngredients by rememberSaveable { mutableStateOf(false) }
     val locale = currentLocale()
     val rows =
-        remember(state.recipe, state.scale, locale) {
+        remember(state.recipe, state.scale, state.measures, locale) {
             state.recipe
                 ?.ingredients
                 .orEmpty()
-                .map { IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale)) }
+                .map { IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale, state.measures)) }
         }
     // Ingredients are ticked off by their place in the recipe, wherever they show.
     val byReference =
@@ -232,6 +235,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                                 remember(rows, step, byReference, state.ingredientsInSteps) {
                                     stepIngredients(rows, step, byReference, all = state.ingredientsInSteps)
                                 },
+                            measures = state.measures,
                             checked = state.checkedIngredients,
                             onToggle = actions.onToggleIngredient,
                             onStartTimer = actions.onStartTimer,
@@ -328,12 +332,15 @@ private fun StepPage(
     count: Int,
     step: Step,
     ingredients: StepIngredients,
+    measures: MeasureSystem,
     checked: Set<Int>,
     onToggle: (Int) -> Unit,
     onStartTimer: (Int, String) -> Unit,
 ) {
     val resources = LocalResources.current
     val stepLabel = stringResource(R.string.cook_step_of, index + 1, count)
+    val locale = currentLocale()
+    val text = remember(step.text, measures, locale) { StepMeasures.convert(step.text, measures, locale) }
     val durations =
         remember(step) {
             (DurationDetector.detect(step.text).map { it.seconds } + listOfNotNull(step.durationSeconds?.takeIf { it > 0 })).distinct()
@@ -350,7 +357,7 @@ private fun StepPage(
             Text(step.title, style = AromaType.SectionTitle)
             Spacer(Modifier.height(Space.xs))
         }
-        StepText(rememberRichText(step.text, onDuration = { onStartTimer(it.seconds, stepLabel) }))
+        StepText(rememberRichText(text, onDuration = { onStartTimer(it.seconds, stepLabel) }))
         if (durations.isNotEmpty()) {
             FlowRow(
                 modifier = Modifier.padding(top = Space.l),

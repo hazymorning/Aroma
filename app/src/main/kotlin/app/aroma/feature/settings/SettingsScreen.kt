@@ -38,11 +38,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import app.aroma.R
+import app.aroma.core.format.MeasureSystem
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.User
 import app.aroma.data.settings.AppLanguage
 import app.aroma.data.settings.ThemeMode
 import app.aroma.data.update.UpdateState
+import app.aroma.feature.recipe.labelRes
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaDropdownMenu
 import app.aroma.ui.components.AromaMenuItem
@@ -75,6 +77,7 @@ data class SettingsUiState(
     val language: AppLanguage = AppLanguage.System,
     val keepScreenOn: Boolean = true,
     val ingredientsInSteps: Boolean = false,
+    val measures: MeasureSystem = MeasureSystem.AsWritten,
     val offlineRecipes: Boolean = false,
     val offlineCount: Int = 0,
     val version: String = "",
@@ -89,6 +92,7 @@ data class SettingsActions(
     val onLanguage: (AppLanguage) -> Unit = {},
     val onKeepScreenOn: (Boolean) -> Unit = {},
     val onIngredientsInSteps: (Boolean) -> Unit = {},
+    val onMeasures: (MeasureSystem) -> Unit = {},
     val onOfflineRecipes: (Boolean) -> Unit = {},
     val onCheckForUpdates: () -> Unit = {},
     val onInstallUpdate: (UpdateState.Available) -> Unit = {},
@@ -130,6 +134,15 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             )
         }
         Group(stringResource(R.string.settings_cooking)) {
+            Choice(
+                title = stringResource(R.string.measures_title),
+                subtitle = stringResource(R.string.measures_hint),
+                options = MeasureSystem.entries,
+                selected = state.measures,
+                optionLabel = { stringResource(it.labelRes()) },
+                onSelect = actions.onMeasures,
+            )
+            RowDivider()
             SwitchRow(
                 title = stringResource(R.string.settings_keep_screen_on),
                 subtitle = stringResource(R.string.settings_keep_screen_on_hint),
@@ -243,18 +256,23 @@ private fun <T> Choice(
     selected: T,
     optionLabel: @Composable (T) -> String,
     onSelect: (T) -> Unit,
+    subtitle: String? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
         Row(
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = RowHeight.oneLine)
+                .heightIn(min = if (subtitle == null) RowHeight.oneLine else RowHeight.twoLines)
                 .clickable(role = Role.DropdownList, onClick = { open = true })
-                .padding(horizontal = CardPadding),
+                .padding(horizontal = CardPadding, vertical = Space.s),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = AromaType.Body, modifier = Modifier.weight(1f))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = AromaType.Body)
+                if (subtitle != null) Text(subtitle, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.width(Space.m))
             Text(optionLabel(selected), style = AromaType.Body, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.width(Space.xxs))
             Icon(

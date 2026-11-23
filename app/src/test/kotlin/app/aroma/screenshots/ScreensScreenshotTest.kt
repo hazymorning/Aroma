@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
+import app.aroma.core.format.MeasureSystem
 import app.aroma.core.model.Meal
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.ShoppingListInfo
@@ -153,6 +154,22 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         ) {
             RecipeScreen(
                 state = RecipeUiState(recipe = sample.recipe, isLoading = false, isFavorite = true, checkedIngredients = setOf(1)),
+                actions = RecipeActions(),
+            )
+        }
+    }
+
+    /** Amounts in US measures: the chip shows the choice, and grams and millilitres read as cups and ounces. */
+    @Test
+    fun recipeInUsMeasures() {
+        applyLocale()
+        snapshot(
+            "recipe_us_${variant.suffix}",
+            variant.dark,
+            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("facts") },
+        ) {
+            RecipeScreen(
+                state = RecipeUiState(recipe = sample.recipe, isLoading = false, measures = MeasureSystem.US),
                 actions = RecipeActions(),
             )
         }

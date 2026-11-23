@@ -390,4 +390,9 @@
     <string name="update_not_downloaded">Aroma %1$s konnte nicht geladen werden</string>
     <string name="update_not_aroma">Der Download ist kein Aroma und wurde nicht installiert</string>
     <string name="update_no_installer">Kein Installationsprogramm auf diesem Gerät gefunden</string>
+    <string name="measures_title">Maßeinheiten</string>
+    <string name="measures_as_written">Wie im Rezept</string>
+    <string name="measures_metric">Metrisch (g, ml)</string>
+    <string name="measures_us">US (Cups, oz)</string>
+    <string name="measures_hint">Mengen, Backtemperaturen und Formgrößen; nur die Anzeige ändert sich.</string>
 </resources>

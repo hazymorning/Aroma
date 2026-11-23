@@ -393,4 +393,9 @@
     <string name="update_not_downloaded">Aroma %1$s could not be downloaded</string>
     <string name="update_not_aroma">The download is not Aroma, so it was not installed</string>
     <string name="update_no_installer">No installer found on this device</string>
+    <string name="measures_title">Measures</string>
+    <string name="measures_as_written">As written</string>
+    <string name="measures_metric">Metric (g, ml)</string>
+    <string name="measures_us">US (cups, oz)</string>
+    <string name="measures_hint">Amounts, oven temperatures and pan sizes; only how they are shown changes.</string>
 </resources>

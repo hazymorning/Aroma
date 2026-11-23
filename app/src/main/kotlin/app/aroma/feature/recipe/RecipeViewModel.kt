@@ -2,6 +2,7 @@ package app.aroma.feature.recipe
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.aroma.core.format.MeasureSystem
 import app.aroma.core.model.MealType
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
@@ -72,6 +73,7 @@ class RecipeViewModel(
             }
         }
         viewModelScope.launch { attempt { recipes.loadRatings() } }
+        viewModelScope.launch { settings.settings.collect { prefs -> mutableState.update { it.copy(measures = prefs.measureSystem) } } }
     }
 
     fun load() {
@@ -107,6 +109,11 @@ class RecipeViewModel(
     }
 
     fun setScale(scale: Double) = mutableState.update { it.copy(scale = scale) }
+
+    /** Shows amounts in [system] here and everywhere else, as the setting of the same name does. */
+    fun setMeasures(system: MeasureSystem) {
+        viewModelScope.launch { settings.setMeasureSystem(system) }
+    }
 
     fun toggleIngredient(index: Int) =
         mutableState.update {

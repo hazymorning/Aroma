@@ -44,14 +44,15 @@ class CookViewModel(
             base,
             timers.timers,
             timers.now,
-            settings.settings.map { it.ingredientsInSteps },
+            settings.settings,
             saved.getStateFlow(CHECKED, IntArray(0)),
-        ) { state, all, now, ingredientsInSteps, checked ->
+        ) { state, all, now, prefs, checked ->
             val ownTimers = all.filter { it.recipeName == state.recipe?.name }
             state.copy(
                 timers = ownTimers.map { it.toUi(now) },
                 exactAlarmHint = ownTimers.any { it.isRunning } && !timers.canUseExactAlarms,
-                ingredientsInSteps = ingredientsInSteps,
+                ingredientsInSteps = prefs.ingredientsInSteps,
+                measures = prefs.measureSystem,
                 checkedIngredients = checked.toSet(),
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), base.value)

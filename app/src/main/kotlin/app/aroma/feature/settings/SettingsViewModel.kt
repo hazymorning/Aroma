@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.BuildConfig
+import app.aroma.core.format.MeasureSystem
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.User
 import app.aroma.data.repository.RecipeRepository
@@ -49,6 +50,7 @@ class SettingsViewModel(
                 language = lang,
                 keepScreenOn = app.keepScreenOn,
                 ingredientsInSteps = app.ingredientsInSteps,
+                measures = app.measureSystem,
                 offlineRecipes = app.offlineRecipes,
                 offlineCount = offline,
                 version = BuildConfig.VERSION_NAME,
@@ -64,6 +66,8 @@ class SettingsViewModel(
     fun setKeepScreenOn(enabled: Boolean) = viewModelScope.launch { settings.setKeepScreenOn(enabled) }
 
     fun setIngredientsInSteps(enabled: Boolean) = viewModelScope.launch { settings.setIngredientsInSteps(enabled) }
+
+    fun setMeasures(system: MeasureSystem) = viewModelScope.launch { settings.setMeasureSystem(system) }
 
     fun setOfflineRecipes(enabled: Boolean) =
         viewModelScope.launch {
