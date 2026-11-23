@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The session is encrypted with a key that cannot leave this device, so nothing is backed up or transferred. -->
+<!-- The session is encrypted with a key that cannot leave this device, so nothing is transferred.
+     allowBackup="false" turns backups off, but from Android 12 no longer a transfer to a new device. -->
 <data-extraction-rules>
-    <cloud-backup>
-        <exclude domain="root" />
-        <exclude domain="file" />
-        <exclude domain="database" />
-        <exclude domain="sharedpref" />
-        <exclude domain="external" />
-    </cloud-backup>
     <device-transfer>
         <exclude domain="root" />
         <exclude domain="file" />

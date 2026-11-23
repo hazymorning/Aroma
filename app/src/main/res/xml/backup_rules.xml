@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Used before Android 12: nothing is backed up (see data_extraction_rules.xml). -->
+<!-- Never read while allowBackup is false; lint asks for it as long as Android 11 and older are supported. -->
 <full-backup-content>
     <exclude domain="root" />
     <exclude domain="file" />
