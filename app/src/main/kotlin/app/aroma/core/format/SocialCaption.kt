@@ -154,9 +154,11 @@ private class CaptionParser(caption: String) {
     /** First line of the intro, cut after its first sentence when it runs long. */
     private fun title(): Pair<String, String?> {
         val clean = plain(intro.firstOrNull() ?: return "" to null)
-        if (clean.length <= MAX_TITLE) return clean to null
+        if (clean.length <= SHORT_TITLE) return clean to null
         val end = SentenceEnd.find(clean)?.takeIf { it.range.first in MIN_TITLE..MAX_SENTENCE }
         if (end != null) return clean.substring(0, end.range.first).trim() to clean.substring(end.range.last + 1).trim().ifEmpty { null }
+        // A long name without a sentence in it stays whole; only a paragraph is cut.
+        if (clean.length <= MAX_TITLE) return clean to null
         val words = clean.take(MAX_TITLE).substringBeforeLast(' ')
         return words to clean.removePrefix(words).trim().ifEmpty { null }
     }
@@ -193,7 +195,8 @@ private class CaptionParser(caption: String) {
 
     companion object {
         private const val MIN_TITLE = 8
-        private const val MAX_TITLE = 50
+        private const val SHORT_TITLE = 50
+        private const val MAX_TITLE = 100
         private const val MAX_SENTENCE = 90
         private const val MAX_HEADER = 48
 

@@ -161,6 +161,17 @@ class SocialCaptionTest {
     }
 
     @Test
+    fun `a long first line stays the whole name`() {
+        val recipe =
+            SocialCaption.parse(
+                "Marry Me Chicken Meatballs with Garlic Mashed Potatoes & Sautéed Lemon Asparagus🍝\n\n" +
+                    "Meatballs are one of my go-to’s for an easy weeknight meal.",
+            )
+        assertEquals("Marry Me Chicken Meatballs with Garlic Mashed Potatoes & Sautéed Lemon Asparagus", recipe.name)
+        assertEquals("Meatballs are one of my go-to’s for an easy weeknight meal.", recipe.description)
+    }
+
+    @Test
     fun `prose without lists keeps its text in the description`() {
         val recipe =
             SocialCaption.parse(
