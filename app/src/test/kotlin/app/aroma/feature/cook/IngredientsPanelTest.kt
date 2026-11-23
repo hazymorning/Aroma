@@ -4,12 +4,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.screenshots.SampleData
 import app.aroma.ui.theme.AromaTheme
@@ -69,6 +73,17 @@ class IngredientsPanelTest {
         compose.onNodeWithText("2 ingredients for this step").assertExists()
         shown = IngredientsInSteps.All
         compose.onNodeWithText("All 12 ingredients").assertExists()
+    }
+
+    @Test
+    fun `a sideways swipe on the panel turns the step, as one on the step does`() {
+        show(CookUiState(recipe = curry, isLoading = false))
+        compose.onNode(panel).performTouchInput { swipeLeft() }
+        compose.onNodeWithText("9 ingredients for this step").assertExists()
+        compose.onNodeWithText("Step 2 of 4").assertIsDisplayed()
+        compose.onNode(panel).performTouchInput { swipeRight() }
+        compose.onNodeWithText("2 ingredients for this step").assertExists()
+        compose.onNodeWithText("Step 1 of 4").assertIsDisplayed()
     }
 
     @Test

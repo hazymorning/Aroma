@@ -12,8 +12,10 @@ import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +25,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -42,6 +46,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -130,6 +135,7 @@ internal fun StepsWithPanel(panel: @Composable () -> Unit, modifier: Modifier = 
  * bottom sheet: collapsed, a two-line row that sums them up; expanded by a tap or a drag, the list
  * to tick them off. Its height comes from [state] alone, never from the step, so paging leaves its
  * frame where it is and only crossfades what it holds. Away from the steps it fades out in place.
+ * A sideways swipe on it turns the [pager]'s step as a swipe on the step does.
  */
 @Composable
 internal fun IngredientsPanel(
@@ -137,11 +143,22 @@ internal fun IngredientsPanel(
     checked: Set<Int>,
     onToggle: (Int) -> Unit,
     state: AnchoredDraggableState<PanelValue>,
+    pager: PagerState,
     visible: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val header = headerHeight()
-    Box(modifier.panelFrame(state, header)) {
+    Box(
+        modifier
+            .panelFrame(state, header)
+            // The pager's own direction and fling, so a swipe here lands on a step just as one above does.
+            .scrollable(
+                state = pager,
+                orientation = Orientation.Horizontal,
+                reverseDirection = ScrollableDefaults.reverseDirection(LocalLayoutDirection.current, Orientation.Horizontal, false),
+                flingBehavior = PagerDefaults.flingBehavior(pager),
+            ),
+    ) {
         AnimatedVisibility(visible, enter = fadeIn(tween(Motion.STATE)), exit = fadeOut(tween(Motion.STATE))) {
             PanelCard(ingredients, checked, onToggle, state, header)
         }

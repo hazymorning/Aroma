@@ -237,6 +237,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                                 checked = state.checkedIngredients,
                                 onToggle = actions.onToggleIngredient,
                                 state = panel,
+                                pager = pager,
                                 visible = pager.currentPage < steps.size,
                             )
                         }
