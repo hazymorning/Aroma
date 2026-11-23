@@ -42,10 +42,9 @@ object Markdown {
     private fun parseInline(line: String, out: StringBuilder, spans: MutableList<StyledText.Span>) {
         var i = 0
         while (i < line.length) {
-            val rest = line.substring(i)
             when {
-                rest.startsWith("**") || rest.startsWith("__") -> {
-                    val marker = rest.substring(0, 2)
+                line.startsWith("**", i) || line.startsWith("__", i) -> {
+                    val marker = line.substring(i, i + 2)
                     val close = line.indexOf(marker, i + 2)
                     if (close > i + 2) {
                         val start = out.length
@@ -56,7 +55,7 @@ object Markdown {
                     }
                 }
 
-                (rest.startsWith("*") || rest.startsWith("_")) && isEmphasisStart(line, i) -> {
+                (line[i] == '*' || line[i] == '_') && isEmphasisStart(line, i) -> {
                     val marker = line[i]
                     val close = findEmphasisEnd(line, i + 1, marker)
                     if (close > i + 1) {
@@ -68,7 +67,7 @@ object Markdown {
                     }
                 }
 
-                rest.startsWith("[") -> {
+                line[i] == '[' -> {
                     val closeText = line.indexOf("](", i)
                     val closeUrl = if (closeText > 0) line.indexOf(')', closeText) else -1
                     if (closeText > i && closeUrl > closeText) {
@@ -85,8 +84,8 @@ object Markdown {
                     }
                 }
 
-                rest.startsWith("http://") || rest.startsWith("https://") -> {
-                    val url = bareUrl.find(rest)?.value
+                line.startsWith("http://", i) || line.startsWith("https://", i) -> {
+                    val url = bareUrl.matchAt(line, i)?.value
                     if (url != null) {
                         val start = out.length
                         out.append(url)

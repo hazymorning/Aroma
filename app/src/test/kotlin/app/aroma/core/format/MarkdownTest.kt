@@ -47,6 +47,13 @@ class MarkdownTest {
     }
 
     @Test
+    fun `a scheme without an address stays text and the link after it keeps its place`() {
+        val parsed = Markdown.parse("http:// und https://example.com")
+        assertEquals("http:// und https://example.com", parsed.text)
+        assertEquals(listOf(Span.Link(12, 31, "https://example.com")), parsed.spans)
+    }
+
+    @Test
     fun `headings turn bold and bullets become dots`() {
         val parsed = Markdown.parse("## Sauce\n- 2 EL Butter\n* Mehl")
         assertEquals("Sauce\n• 2 EL Butter\n• Mehl", parsed.text)
