@@ -57,9 +57,7 @@ class HomeViewModel(
         viewModelScope.launch {
             sessions.state.collect { session ->
                 val user = (session as? SessionState.SignedIn)?.session ?: return@collect
-                mutableState.update {
-                    it.copy(firstName = user.fullName.ifBlank { user.username }.substringBefore(' '), photo = user.photoUrl)
-                }
+                mutableState.update { it.copy(firstName = user.fullName.ifBlank { user.username }.substringBefore(' ')) }
             }
         }
     }
@@ -167,12 +165,12 @@ class HomeViewModel(
                 }
             }
 
-    /** A new name or photo set in Mealie; the page neither waits for it nor misses it. */
+    /** A new name set in Mealie; the page neither waits for it nor misses it. */
     private suspend fun refreshUser() {
         try {
             auth.refreshUser()
         } catch (_: AromaError) {
-            // Offline or signed out meanwhile: the stored name and photo stay.
+            // Offline or signed out meanwhile: the stored name stays.
         }
     }
 

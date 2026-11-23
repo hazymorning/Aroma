@@ -7,7 +7,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -92,7 +91,6 @@ import app.aroma.ui.theme.SectionSpace
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.ThumbnailSize
 import app.aroma.ui.theme.TouchTarget
-import app.aroma.ui.theme.extras
 
 enum class Greeting { Morning, Afternoon, Evening }
 
@@ -108,7 +106,6 @@ data class RateReminder(
 data class HomeUiState(
     val greeting: Greeting = Greeting.Afternoon,
     val firstName: String? = null,
-    val photo: String? = null,
     val today: List<MealPlanEntry> = emptyList(),
     val meal: Meal = Meal.Dinner,
     /** Recipes for [meal], or any recipes where the household has no category or tag for it. */
@@ -220,7 +217,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
     }
 }
 
-/** The greeting with the user's photo beside it, and the search that opens on the Recipes tab. */
+/** The greeting with the user's initial beside it, and the search that opens on the Recipes tab. */
 @Composable
 private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
     val greeting =
@@ -234,7 +231,7 @@ private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
     val name = state.firstName?.takeIf { it.isNotBlank() }
     Column {
         PageHeader(title = if (name == null) greeting else "$greeting,", accent = name) { tall ->
-            ProfileButton(name, state.photo, large = tall, onClick = actions.onOpenSettings)
+            ProfileButton(name, large = tall, onClick = actions.onOpenSettings)
         }
         SearchPill(
             placeholder = stringResource(R.string.search_recipes_hint),
@@ -246,12 +243,12 @@ private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
 }
 
 /**
- * The user's photo or initial, which grows beside a greeting of two lines. With the header's end
- * padding, the circle ends on the right margin; its target reaches 48 dp around a smaller circle,
- * and a press shows on the circle alone.
+ * The user's initial, or a person while there is no name, which grows beside a greeting of two
+ * lines. With the header's end padding, the circle ends on the right margin; its target reaches
+ * 48 dp around a smaller circle, and a press shows on the circle alone.
  */
 @Composable
-private fun ProfileButton(name: String?, photo: String?, large: Boolean, onClick: () -> Unit) {
+private fun ProfileButton(name: String?, large: Boolean, onClick: () -> Unit) {
     val label = stringResource(R.string.home_open_profile)
     val size by animateDpAsState(if (large) LargeProfileSize else ProfileSize, tween(Motion.STATE, easing = Settle), label = "profileSize")
     val target = maxOf(size, TouchTarget)
@@ -267,18 +264,13 @@ private fun ProfileButton(name: String?, photo: String?, large: Boolean, onClick
                 .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        val circle =
+        Avatar(
+            name,
+            size,
             Modifier
-                .size(size)
                 .clip(CircleShape)
-                .indication(interaction, ripple())
-        if (name != null) {
-            Avatar(name, photo, size, circle)
-        } else {
-            Box(circle.background(extras.card), contentAlignment = Alignment.Center) {
-                Icon(painterResource(R.drawable.ic_settings), contentDescription = null, modifier = Modifier.size(Glyph.m))
-            }
-        }
+                .indication(interaction, ripple()),
+        )
     }
 }
 

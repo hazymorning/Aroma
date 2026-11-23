@@ -118,7 +118,6 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                         HomeUiState(
                             greeting = Greeting.Evening,
                             firstName = "Mara",
-                            photo = "${SampleData.SERVER}/api/media/users/1/profile.webp?cacheKey=1",
                             today = sample.mealPlan.take(1),
                             recent = sample.recipes,
                             favorites = sample.recipes.reversed(),

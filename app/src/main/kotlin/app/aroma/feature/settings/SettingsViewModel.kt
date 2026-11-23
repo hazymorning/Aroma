@@ -36,7 +36,7 @@ class SettingsViewModel(
 
     private val account =
         sessions.current?.let { session ->
-            User(session.userId, session.username, session.fullName, session.email, session.photoUrl) to
+            User(session.userId, session.username, session.fullName, session.email) to
                 ServerInfo(session.serverUrl, session.serverVersion, session.allowPasswordLogin)
         }
 

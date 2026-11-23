@@ -4,40 +4,53 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import app.aroma.R
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.extras
-import coil3.compose.AsyncImage
 
 /**
- * A person as Mealie knows them: their photo, or the first letter of their name on the soft fill
- * while there is no photo. The letter grows with the circle, not with the text size.
+ * A person as Mealie knows them: the first letter of their [name] in ink on a soft circle, or a
+ * person glyph while there is no name. The letter grows with the circle, not with the text size. On
+ * a card, which has the soft fill itself, [onCard] sets the circle on paper.
  */
 @Composable
-fun Avatar(name: String, photo: String?, size: Dp, modifier: Modifier = Modifier) {
-    val letterSize = with(LocalDensity.current) { (size * 0.45f).toSp() }
+fun Avatar(name: String?, size: Dp, modifier: Modifier = Modifier, onCard: Boolean = false) {
+    val initial = name?.trim()?.takeIf { it.isNotEmpty() }?.let { it.substring(0, it.offsetByCodePoints(0, 1)) }
     Box(
         modifier
             .size(size)
             .clip(CircleShape)
-            .background(extras.selected),
+            .background(if (onCard) extras.raised else extras.card),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = name.take(1).uppercase(currentLocale()),
-            style = AromaType.SectionTitle.copy(fontSize = letterSize, lineHeight = letterSize * 1.3f),
-            color = extras.onSelected,
-        )
-        if (photo != null) {
-            AsyncImage(model = photo, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+        if (initial != null) {
+            val letterSize = with(LocalDensity.current) { (size * LETTER).toSp() }
+            Text(
+                text = initial.uppercase(currentLocale()),
+                style = AromaType.SectionTitle.copy(fontSize = letterSize, lineHeight = letterSize * 1.3f),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        } else {
+            Icon(
+                painterResource(R.drawable.ic_person),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(size * GLYPH),
+            )
         }
     }
 }
+
+/** How large the letter and the glyph stand in their circle. */
+private const val LETTER = 0.45f
+private const val GLYPH = 0.5f

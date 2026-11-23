@@ -1,6 +1,5 @@
 package app.aroma.feature.settings
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,12 +29,10 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.format.MeasureSystem
 import app.aroma.core.model.ServerInfo
@@ -61,12 +57,10 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.ThumbnailSize
-import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.tabular
 
 data class SettingsUiState(
@@ -203,7 +197,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
     }
 }
 
-/** Who is signed in where: their photo or initial beside their name, address and server. */
+/** Who is signed in where: their initial beside their name, address and server. */
 @Composable
 private fun Account(user: User, server: ServerInfo?) {
     val name = user.fullName.ifBlank { user.username }
@@ -214,7 +208,7 @@ private fun Account(user: User, server: ServerInfo?) {
             .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(name, user.photo, ThumbnailSize)
+        Avatar(name, ThumbnailSize, onCard = true)
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
             Text(name, style = AromaType.Name, maxLines = 1, overflow = TextOverflow.Ellipsis)
