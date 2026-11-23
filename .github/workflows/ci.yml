@@ -1,13 +1,20 @@
 name: CI
 
+# Every push to main and every pull request. scripts/check.sh runs the same checks before a push,
+# so a run here passes the first time: a failed run mails the owner.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - CHANGELOG.md
+      - .github/workflows/release.yml
   pull_request:
 
+# A newer push to a pull request replaces its run. On main every run finishes, so no run ends as
+# cancelled and mails for it.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:

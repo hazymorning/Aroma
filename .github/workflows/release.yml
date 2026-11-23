@@ -1,8 +1,9 @@
 name: Release
 
+# Started by hand once CI passed on main (Actions > Release > Run workflow): publishes the
+# versionName in app/build.gradle.kts as "Aroma 0.3.0", signed with the release key, with its
+# CHANGELOG entry as notes. A version that is already out is left as it is.
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -13,9 +14,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  version:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      released: ${{ steps.read.outputs.released }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read version
+        id: read
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "v$version" > /dev/null 2>&1; then
+            echo "::notice::Aroma $version is already released"
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! awk -v heading="## $version " 'index($0, heading) == 1 { found = 1 } END { exit !found }' CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no entry for $version"
+            exit 1
+          fi
+          echo "released=false" >> "$GITHUB_OUTPUT"
+
   release:
+    needs: version
+    if: needs.version.outputs.released == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
 
     steps:
       - uses: actions/checkout@v7
@@ -27,29 +60,13 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
-      - name: Read version
-        run: |
-          version=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
-          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match versionName $version"
-            exit 1
-          fi
-          echo "VERSION=$version" >> "$GITHUB_ENV"
-
       - name: Restore signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.AROMA_KEYSTORE_BASE64 }}
           HAS_PASSWORD: ${{ secrets.AROMA_KEYSTORE_PASSWORD != '' }}
-          SAVED_AS_VARIABLES: ${{ vars.AROMA_KEYSTORE_BASE64 != '' || vars.AROMA_KEYSTORE_PASSWORD != '' }}
         run: |
-          missing=""
-          [ -n "$KEYSTORE_BASE64" ] || missing="$missing AROMA_KEYSTORE_BASE64"
-          [ "$HAS_PASSWORD" = true ] || missing="$missing AROMA_KEYSTORE_PASSWORD"
-          if [ -n "$missing" ]; then
-            echo "::error::Missing repository secrets:$missing (Settings > Secrets and variables > Actions > Secrets > Repository secrets)"
-            if [ "$SAVED_AS_VARIABLES" = true ]; then
-              echo "::error::They exist as variables; a signing key has to be stored as a secret instead"
-            fi
+          if [ -z "$KEYSTORE_BASE64" ] || [ "$HAS_PASSWORD" != true ]; then
+            echo "::error::Add the repository secrets AROMA_KEYSTORE_BASE64 and AROMA_KEYSTORE_PASSWORD (Settings > Secrets and variables > Actions)"
             exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/aroma-release.p12"
@@ -60,7 +77,8 @@ jobs:
         env:
           AROMA_KEYSTORE_PASSWORD: ${{ secrets.AROMA_KEYSTORE_PASSWORD }}
 
-      # Never publish an APK that is not signed with the release certificate.
+      # Never publish an APK that is not signed with the release certificate: the app's update
+      # check installs only what carries it.
       - name: Check signature
         run: |
           apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)
@@ -78,4 +96,4 @@ jobs:
           awk -v heading="## $VERSION " 'index($0, heading) == 1 { found = 1; next } /^## / { found = 0 } found' CHANGELOG.md > notes.md
           checksum=$(sha256sum "$apk" | cut -d " " -f 1)
           printf '\nSHA-256 %s: %s\n' "\`$apk\`" "\`$checksum\`" >> notes.md
-          gh release create "v$VERSION" "$apk" --title "Aroma $VERSION" --notes-file notes.md --target "$GITHUB_SHA"
+          gh release create "v$VERSION" "$apk" --title "Aroma $VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest
