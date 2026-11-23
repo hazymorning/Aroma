@@ -25,8 +25,6 @@ data class UserDto(
     val fullName: String? = null,
     val email: String = "",
     val groupSlug: String? = null,
-    /** Changes whenever the user uploads a new photo. */
-    val cacheKey: String? = null,
 )
 
 @Serializable

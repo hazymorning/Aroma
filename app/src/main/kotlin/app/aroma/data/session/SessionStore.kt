@@ -23,11 +23,7 @@ data class Session(
     val groupSlug: String? = null,
     val serverVersion: String = "",
     val allowPasswordLogin: Boolean = true,
-    val photoKey: String? = null,
-) {
-    /** The user's photo in Mealie; users without one get an error and keep their initial. */
-    val photoUrl: String? get() = photoKey?.let { "$serverUrl/api/media/users/$userId/profile.webp?cacheKey=$it" }
-}
+)
 
 /**
  * Keeps the session encrypted at rest; the token is never written in plain text. The Keystore

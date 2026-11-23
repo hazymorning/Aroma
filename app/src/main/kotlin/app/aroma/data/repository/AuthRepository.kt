@@ -88,7 +88,7 @@ class AuthRepository(
         start(server, token.trim(), null, user)
     }
 
-    /** Reads the signed-in user again, so a new name or photo set in Mealie shows here too. */
+    /** Reads the signed-in user again, so a new name set in Mealie shows here too. */
     suspend fun refreshUser() {
         val user = mealieCall { sessions.api().currentUser() }
         sessions.update {
@@ -99,7 +99,6 @@ class AuthRepository(
                     username = user.username,
                     fullName = user.fullName.orEmpty(),
                     email = user.email,
-                    photoKey = user.cacheKey,
                 )
             }
         }
@@ -118,7 +117,6 @@ class AuthRepository(
                 groupSlug = user.groupSlug,
                 serverVersion = server.version,
                 allowPasswordLogin = server.allowPasswordLogin,
-                photoKey = user.cacheKey,
             ),
         )
     }
