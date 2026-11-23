@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -191,10 +192,11 @@ class MealPlanViewModel(
         searchQuery.value = text
     }
 
+    /** A newer query cancels the search for an older one, so a slow answer never holds up the current. */
     @OptIn(FlowPreview::class)
     private fun observeSearch() =
         viewModelScope.launch {
-            searchQuery.debounce(250).collect { text ->
+            searchQuery.debounce(250).collectLatest { text ->
                 mutableSearch.update { it.copy(isLoading = true) }
                 val results =
                     attempt { recipes.page(RecipeQuery(search = text), page = 1, perPage = 20).items }
