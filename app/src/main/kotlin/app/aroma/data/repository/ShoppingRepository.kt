@@ -69,7 +69,7 @@ class ShoppingRepository(
     fun observe(listId: String): Flow<ShoppingList?> =
         cacheDao
             .observe(key(listId))
-            .map { entry -> entry?.let { parse(MealieJson.parseToJsonElement(it.json).jsonObject) } }
+            .map { entry -> entry?.let { parse(MealieJson.decodeFromString(ShoppingListDto.serializer(), it.json)) } }
             .flowOn(Dispatchers.Default)
 
     fun pendingCount(listId: String): Flow<Int> = pending.countFor(listId)
@@ -77,10 +77,7 @@ class ShoppingRepository(
     /** Pushes queued changes, then loads the server's version unless changes are still waiting. */
     suspend fun refresh(listId: String) {
         sync()
-        val fresh = mealieCall { sessions.api().shoppingList(listId) }
-        editLock.withLock {
-            if (pending.all().none { it.listId == listId }) store(listId, fresh)
-        }
+        storeIfSettled(listId, mealieCall { sessions.api().shoppingList(listId) })
     }
 
     suspend fun add(listId: String, text: String) =
@@ -148,8 +145,7 @@ class ShoppingRepository(
     suspend fun renameList(listId: String, name: String) {
         val current = mealieCall { sessions.api().shoppingList(listId) }
         val body = current.with("name", JsonPrimitive(name.trim()))
-        val renamed = mealieCall { sessions.api().updateShoppingList(listId, body) }
-        editLock.withLock { store(listId, renamed) }
+        storeIfSettled(listId, mealieCall { sessions.api().updateShoppingList(listId, body) })
         refreshLists()
     }
 
@@ -165,7 +161,7 @@ class ShoppingRepository(
             mealieCall {
                 sessions.api().addRecipeToList(listId, recipeId, AddRecipeToListDto(scale, ingredients))
             }
-        editLock.withLock { if (pending.all().none { it.listId == listId }) store(listId, updated) }
+        storeIfSettled(listId, updated)
     }
 
     private suspend fun refreshLists() {
@@ -234,6 +230,12 @@ class ShoppingRepository(
         cacheDao.put(CacheEntity(key(listId), json, System.currentTimeMillis()))
     }
 
+    /** Keeps the server's copy of a list, unless changes made here still wait: that copy would hide them. */
+    private suspend fun storeIfSettled(listId: String, list: JsonObject) =
+        editLock.withLock {
+            if (!pending.hasAny(listId)) store(listId, list)
+        }
+
     private sealed class Change(val kind: String, val itemId: String, val payload: JsonObject) {
         class Create(item: JsonObject) : Change(KIND_CREATE, item.string("id").orEmpty(), item)
 
@@ -250,8 +252,7 @@ class ShoppingRepository(
 
         private fun key(listId: String) = "shopping:list:$listId"
 
-        internal fun parse(json: JsonObject): ShoppingList {
-            val dto = MealieJson.decodeFromJsonElement(ShoppingListDto.serializer(), json)
+        internal fun parse(dto: ShoppingListDto): ShoppingList {
             val recipeNames = dto.recipeReferences.associate { it.recipeId to it.recipe?.name.orEmpty() }
             return ShoppingList(
                 id = dto.id,

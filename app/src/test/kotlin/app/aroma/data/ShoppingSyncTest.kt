@@ -45,7 +45,7 @@ class ShoppingSyncTest {
                                 MockResponse.Builder().onRequestStart(SocketEffect.CloseSocket()).build()
                             }
 
-                            request.method == "GET" && path.endsWith("/lists/$LIST") -> {
+                            request.method in setOf("GET", "PUT") && path.endsWith("/lists/$LIST") -> {
                                 json(list())
                             }
 
@@ -109,6 +109,22 @@ class ShoppingSyncTest {
             assertTrue("offline items get their id on the device", body.contains("\"id\":"))
 
             env.shopping.refresh(LIST)
+            assertEquals(
+                listOf("2 Zitronen", "Milch"),
+                env.shopping
+                    .observe(LIST)
+                    .first()!!
+                    .items
+                    .map { it.note },
+            )
+        }
+
+    @Test
+    fun `renaming a list keeps the items that still wait to be sent`() =
+        runBlocking {
+            env.shopping.add(LIST, "Milch")
+            env.shopping.renameList(LIST, "Markt")
+
             assertEquals(
                 listOf("2 Zitronen", "Milch"),
                 env.shopping

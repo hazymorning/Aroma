@@ -109,6 +109,9 @@ interface PendingChangeDao {
     @Query("SELECT COUNT(*) FROM pending_change WHERE listId = :listId")
     fun countFor(listId: String): Flow<Int>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM pending_change WHERE listId = :listId)")
+    suspend fun hasAny(listId: String): Boolean
+
     @Query("DELETE FROM pending_change WHERE id = :id")
     suspend fun delete(id: Long)
 }
