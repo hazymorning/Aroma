@@ -72,6 +72,10 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     /** The session [ratings] were loaded for; every change made here keeps them current after that. */
     @Volatile
     private var ratingsSession: Session? = null
+
+    @Volatile
+    private var aiImport: Pair<Session, Boolean>? = null
+
     private val changeCount = MutableStateFlow(0)
 
     /**
@@ -116,8 +120,14 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                     queryFilter = favoriteFilter,
                     paginationSeed = query.seed.takeIf { query.sort == RecipeSort.Random },
                 )
-            dao.upsertSummaries(result.items.map { it.toEntity() })
-            RecipePage(result.items.map { it.toModel(server) }, result.total, page, page < result.totalPages, isOffline = false)
+            // Screens ask from the main thread; encoding the offline copy and mapping are not for it.
+            val (entities, items) =
+                withContext(Dispatchers.Default) {
+                    result.items.map { it.toEntity() } to
+                        result.items.map { it.toModel(server) }
+                }
+            dao.upsertSummaries(entities)
+            RecipePage(items, result.total, page, page < result.totalPages, isOffline = false)
         } catch (error: Throwable) {
             val failure = error.toAromaError()
             // The stored summaries know neither cookbooks nor tools, so those cannot be answered offline.
@@ -324,21 +334,29 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         return importing(onProgress, stream = { importRecipeWithAiStream(parts) }, plain = { importRecipeWithAi(parts) }).also { changed() }
     }
 
-    /** Whether the server may read recipes with AI: Mealie 3.23, which brought the AI import, with a provider set up for the group. */
+    /**
+     * Whether the server may read recipes with AI: Mealie 3.23, which brought the AI import, with a
+     * provider set up for the group. Asked once a session, as only an admin changes it.
+     */
     suspend fun canImportWithAi(): Boolean {
-        val version = sessions.current?.serverVersion ?: return false
-        if (!MealieVersion.isAtLeast(version, 3, 23)) return false
-        return try {
-            sessions
-                .api()
-                .group()
-                .aiProviderSettings
-                ?.aiEnabled == true
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            false
-        }
+        val session = sessions.current ?: return false
+        aiImport?.let { (askedFor, answer) -> if (askedFor == session) return answer }
+        if (!MealieVersion.isAtLeast(session.serverVersion, 3, 23)) return false
+        val enabled =
+            try {
+                sessions
+                    .api()
+                    .group()
+                    .aiProviderSettings
+                    ?.aiEnabled == true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Asked again next time: the server may just have been out of reach.
+                return false
+            }
+        aiImport = session to enabled
+        return enabled
     }
 
     /** Uses the streaming endpoint where the server has one and maps rejected sources to [AromaError.ImportFailed]. */
@@ -420,7 +438,12 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         cache
             .stream("organizers", OrganizersDto.serializer()) {
                 val api = sessions.api()
-                OrganizersDto(api.categories().items, api.tags().items, api.tools().items)
+                coroutineScope {
+                    val categories = async { api.categories().items }
+                    val tags = async { api.tags().items }
+                    val tools = async { api.tools().items }
+                    OrganizersDto(categories.await(), tags.await(), tools.await())
+                }
             }.map { loadable ->
                 val dto = loadable.data
                 Loadable(

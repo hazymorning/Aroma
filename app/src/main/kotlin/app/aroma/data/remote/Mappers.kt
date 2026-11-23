@@ -41,12 +41,14 @@ private fun image(serverUrl: String, recipeId: String, key: String?): RecipeImag
 /** Mealie 2.0 has no servings field; the count is the leading number of the yield text there. */
 internal fun servingsFrom(servings: Double?, yieldText: String?): Double =
     servings ?: yieldText?.trim()?.let {
-        Regex("""^\d+(?:[.,]\d+)?""")
+        LeadingNumber
             .find(it)
             ?.value
             ?.replace(',', '.')
             ?.toDoubleOrNull()
     } ?: 0.0
+
+private val LeadingNumber = Regex("""^\d+(?:[.,]\d+)?""")
 
 private fun date(value: String?): LocalDate? = value?.take(10)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
