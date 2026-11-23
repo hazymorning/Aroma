@@ -150,7 +150,7 @@ class HomeViewModel(
                 },
                 collect(recipes.cookedLongAgo(since = today.minusWeeks(4), day = today), ::finished) { copy(cookedLongAgo = it) },
                 collect(recipes.recent(), ::finished) { copy(recent = it) },
-                collect(recipes.favorites(), ::finished) { copy(favorites = it) },
+                collect(recipes.favorites(fresh = refreshing), ::finished) { copy(favorites = it) },
             )
     }
 

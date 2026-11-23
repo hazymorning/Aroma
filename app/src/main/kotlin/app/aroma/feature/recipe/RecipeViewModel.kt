@@ -71,7 +71,7 @@ class RecipeViewModel(
                 }
             }
         }
-        viewModelScope.launch { runCatching { recipes.refreshRatings() } }
+        viewModelScope.launch { attempt { recipes.loadRatings() } }
     }
 
     fun load() {
@@ -170,9 +170,8 @@ class RecipeViewModel(
         viewModelScope.launch {
             try {
                 block(recipe)
-            } catch (error: Throwable) {
-                mutableEvents.emit(RecipeEvent.Failed(error.toAromaError()))
-                runCatching { recipes.refreshRatings() }
+            } catch (error: AromaError) {
+                mutableEvents.emit(RecipeEvent.Failed(error))
             }
         }
     }

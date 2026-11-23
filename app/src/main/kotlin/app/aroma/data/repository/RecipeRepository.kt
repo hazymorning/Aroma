@@ -28,6 +28,7 @@ import app.aroma.data.remote.dto.RatingUpdateDto
 import app.aroma.data.remote.dto.RecipeDto
 import app.aroma.data.remote.dto.RecipeSummaryDto
 import app.aroma.data.remote.toModel
+import app.aroma.data.session.Session
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +69,9 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     /** The signed-in user's ratings and favorites by recipe id. */
     val ratings: StateFlow<Map<String, UserRating>> = mutableRatings.asStateFlow()
 
+    /** The session [ratings] were loaded for; every change made here keeps them current after that. */
+    @Volatile
+    private var ratingsSession: Session? = null
     private val changeCount = MutableStateFlow(0)
 
     /**
@@ -84,7 +88,7 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         return try {
             val favoriteFilter =
                 if (query.favoritesOnly) {
-                    val ids = refreshRatings().filterValues { it.isFavorite }.keys
+                    val ids = loadRatings().filterValues { it.isFavorite }.keys
                     if (ids.isEmpty()) return RecipePage(emptyList(), 0, page, hasMore = false, isOffline = false)
                     idsFilter(ids)
                 } else {
@@ -140,9 +144,10 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
             "home:recent",
         ) { sessions.api().recipes(page = 1, perPage = limit, orderBy = "created_at", orderDirection = "desc").items }
 
-    fun favorites(limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
+    /** Recipes marked as favorites; [fresh] fetches the favorites again, as they may have changed elsewhere. */
+    fun favorites(fresh: Boolean, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
         summaries("home:favorites") {
-            val ids = refreshRatings().filterValues { it.isFavorite }.keys
+            val ids = loadRatings(fresh).filterValues { it.isFavorite }.keys
             if (ids.isEmpty()) {
                 emptyList()
             } else {
@@ -246,38 +251,49 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     /** Raw recipe JSON, used by the editor so fields Aroma does not know survive a save. */
     suspend fun recipeJson(slug: String): JsonObject = mealieCall { sessions.api().recipeJson(slug) }
 
-    suspend fun refreshRatings(): Map<String, UserRating> {
-        val fresh = cache.stream("ratings", ListSerializer(RatingDto.serializer())) { sessions.api().ratings().ratings }
+    /**
+     * The user's ratings and favorites, fetched once a session: Mealie sends them all in one answer,
+     * and changes made here keep them current. [fresh] fetches them again, for a pull to refresh.
+     */
+    suspend fun loadRatings(fresh: Boolean = false): Map<String, UserRating> {
+        val session = sessions.current
+        if (!fresh && session != null && session == ratingsSession) return ratings.value
         var latest: List<RatingDto> = emptyList()
-        fresh.collect { latest = it.data }
+        cache.stream("ratings", ListSerializer(RatingDto.serializer())) { sessions.api().ratings().ratings }.collect { latest = it.data }
+        ratingsSession = session
         return latest
             .associate { it.recipeId to UserRating(it.rating?.takeIf { r -> r > 0 }, it.isFavorite) }
             .also { mutableRatings.value = it }
     }
 
-    suspend fun setFavorite(recipeId: String, slug: String, favorite: Boolean) {
-        updateRatingLocally(recipeId) { it.copy(isFavorite = favorite) }
-        mealieCall { sessions.api().setRating(userId(), slug, RatingUpdateDto(isFavorite = favorite)) }
-        cache.write("ratings", ListSerializer(RatingDto.serializer()), ratingDtos())
-    }
+    suspend fun setFavorite(recipeId: String, slug: String, favorite: Boolean) =
+        changeRating(recipeId, slug, RatingUpdateDto(isFavorite = favorite)) { it.copy(isFavorite = favorite) }
 
-    /** Shows the rating at once; if Mealie does not take it, the previous one comes back. */
-    suspend fun rate(recipeId: String, slug: String, rating: Int) {
-        val previous = mutableRatings.value[recipeId]
-        updateRatingLocally(recipeId) { it.copy(rating = rating.toDouble()) }
+    suspend fun rate(recipeId: String, slug: String, rating: Int) =
+        changeRating(recipeId, slug, RatingUpdateDto(rating = rating.toDouble())) { it.copy(rating = rating.toDouble()) }
+
+    /**
+     * Shows [change] at once and sends [body]. If Mealie does not take it, the fields [body] sets
+     * go back to what they were, and a change of the other field made meanwhile stays.
+     */
+    private suspend fun changeRating(recipeId: String, slug: String, body: RatingUpdateDto, change: (UserRating) -> UserRating) {
+        val before = mutableRatings.value[recipeId] ?: UserRating(null, false)
+        mutableRatings.update { it + (recipeId to change(it[recipeId] ?: UserRating(null, false))) }
         try {
-            mealieCall { sessions.api().setRating(userId(), slug, RatingUpdateDto(rating = rating.toDouble())) }
+            mealieCall { sessions.api().setRating(userId(), slug, body) }
         } catch (failure: AromaError) {
-            mutableRatings.value =
-                if (previous == null) mutableRatings.value - recipeId else mutableRatings.value + (recipeId to previous)
+            mutableRatings.update { ratings ->
+                val now = ratings[recipeId] ?: UserRating(null, false)
+                val restored =
+                    now.copy(
+                        rating = if (body.rating != null) before.rating else now.rating,
+                        isFavorite = if (body.isFavorite != null) before.isFavorite else now.isFavorite,
+                    )
+                ratings + (recipeId to restored)
+            }
             throw failure
         }
         cache.write("ratings", ListSerializer(RatingDto.serializer()), ratingDtos())
-    }
-
-    private fun updateRatingLocally(recipeId: String, change: (UserRating) -> UserRating) {
-        val current = mutableRatings.value[recipeId] ?: UserRating(null, false)
-        mutableRatings.value = mutableRatings.value + (recipeId to change(current))
     }
 
     private fun ratingDtos() = mutableRatings.value.map { (id, rating) -> RatingDto(id, rating.rating, rating.isFavorite) }

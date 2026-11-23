@@ -128,9 +128,9 @@ class LiveMealieTest {
                     .recipe(recipeSlug)
                     .first { !it.isRefreshing }
                     .data
-            val before = env.recipes.refreshRatings()[recipe.id]?.isFavorite ?: false
+            val before = env.recipes.loadRatings(fresh = true)[recipe.id]?.isFavorite ?: false
             env.recipes.setFavorite(recipe.id, recipe.slug, !before)
-            assertEquals(!before, env.recipes.refreshRatings()[recipe.id]?.isFavorite ?: false)
+            assertEquals(!before, env.recipes.loadRatings(fresh = true)[recipe.id]?.isFavorite ?: false)
             val favorites = env.recipes.page(RecipeQuery(favoritesOnly = true), page = 1)
             assertEquals(!before, favorites.items.any { it.id == recipe.id })
             env.recipes.setFavorite(recipe.id, recipe.slug, before)
