@@ -1,5 +1,6 @@
 package app.aroma.feature.shopping
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -136,11 +137,13 @@ internal fun LazyListScope.shoppingSections(
 
         groups.sections.isEmpty() -> {
             item(key = "allDone") {
+                // The basket follows, so the message keeps its place under the head.
                 MessageState(
                     icon = R.drawable.ic_done_all,
                     title = stringResource(R.string.shopping_done_title),
                     body = stringResource(R.string.shopping_done_message),
                     modifier = Modifier.animateItem(),
+                    standsAlone = false,
                 )
             }
         }
@@ -228,7 +231,14 @@ private fun ItemRow(
     onDelete: () -> Unit,
 ) {
     val locale = currentLocale()
-    val text = remember(item, locale) { itemText(itemLine(item, locale)) }
+    val line = remember(item, locale) { itemLine(item, locale) }
+    // The amount in sage, as in a recipe's ingredients; in the basket it is muted with the rest of the line.
+    val amount by animateColorAsState(
+        if (checked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
+        tween(Motion.STATE),
+        label = "itemAmount",
+    )
+    val text = remember(line, amount) { itemText(line, amount) }
     val fade = animateFloatAsState(if (checked) 0.45f else 1f, tween(Motion.STATE), label = "itemFade")
     val strike = remember { Animatable(if (checked) 1f else 0f) }
     LaunchedEffect(checked) { strike.animateTo(if (checked) 1f else 0f, tween(Motion.STATE, easing = Settle)) }
@@ -331,10 +341,10 @@ internal fun itemLine(item: ShoppingItem, locale: Locale): IngredientLine =
         IngredientFormatter.freeText(item.note, if (item.quantity > 1) item.quantity else 0.0, 1.0, locale)
     }
 
-private fun itemText(line: IngredientLine): AnnotatedString =
+private fun itemText(line: IngredientLine, amountColor: Color): AnnotatedString =
     buildAnnotatedString {
         if (line.hasMeasure) {
-            withStyle(SpanStyle(fontWeight = FontWeight.Medium)) { append(measureText(line)) }
+            withStyle(SpanStyle(fontWeight = FontWeight.Medium, color = amountColor)) { append(measureText(line)) }
             append(' ')
         }
         append(line.text)

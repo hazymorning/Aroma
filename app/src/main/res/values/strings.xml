@@ -296,7 +296,6 @@
 
     <!-- Timeline -->
     <string name="timeline_made_this">%1$s made this</string>
-    <string name="timeline_yesterday">Yesterday</string>
     <string name="timeline_empty_title">Nothing yet</string>
     <string name="timeline_empty_message">What your household cooks and adds shows up here.</string>
 

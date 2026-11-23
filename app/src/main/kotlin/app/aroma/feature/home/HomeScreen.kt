@@ -37,6 +37,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -78,7 +79,8 @@ import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.mealTypeLabel
-import app.aroma.ui.components.ratingTouchInset
+import app.aroma.ui.components.ratingInkBelow
+import app.aroma.ui.components.ratingInkStart
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
@@ -245,26 +247,35 @@ private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
 
 /**
  * The user's photo or initial, which grows beside a greeting of two lines. With the header's end
- * padding, the circle ends on the right margin.
+ * padding, the circle ends on the right margin; its target reaches 48 dp around a smaller circle,
+ * and a press shows on the circle alone.
  */
 @Composable
 private fun ProfileButton(name: String?, photo: String?, large: Boolean, onClick: () -> Unit) {
     val label = stringResource(R.string.home_open_profile)
     val size by animateDpAsState(if (large) LargeProfileSize else ProfileSize, tween(Motion.STATE, easing = Settle), label = "profileSize")
+    val target = maxOf(size, TouchTarget)
+    // The paddings give back what the target reaches beyond the circle, so the circle keeps its place.
+    val reach = (target - size) / 2
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier =
             Modifier
-                .padding(start = Space.s, end = ScreenMargin - EdgeActionPadding)
-                .size(size)
-                .clip(CircleShape)
-                .clickable(role = Role.Button, onClick = onClick)
+                .padding(start = Space.s - reach, end = ScreenMargin - EdgeActionPadding - reach)
+                .size(target)
+                .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
                 .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
+        val circle =
+            Modifier
+                .size(size)
+                .clip(CircleShape)
+                .indication(interaction, ripple())
         if (name != null) {
-            Avatar(name, photo, size)
+            Avatar(name, photo, size, circle)
         } else {
-            Box(Modifier.size(size).background(extras.card, CircleShape), contentAlignment = Alignment.Center) {
+            Box(circle.background(extras.card), contentAlignment = Alignment.Center) {
                 Icon(painterResource(R.drawable.ic_settings), contentDescription = null, modifier = Modifier.size(Glyph.m))
             }
         }
@@ -293,7 +304,8 @@ private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions) {
 private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
     SoftCard(Modifier.padding(top = Space.l)) {
         Box {
-            Row(Modifier.padding(start = CardPadding, top = Space.s, bottom = Space.xs)) {
+            // As much space under the stars' ink as above the photo; their own targets take most of it.
+            Row(Modifier.padding(start = CardPadding, top = Space.s, bottom = Space.s + Space.xxs - ratingInkBelow(RATE_STAR_SIZE))) {
                 RecipeImage(
                     image = toRate.image,
                     size = ImageSize.Thumbnail,
@@ -326,8 +338,8 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                         rating = toRate.stars?.toDouble(),
                         starSize = RATE_STAR_SIZE,
                         onRate = actions.onRateCooked,
-                        // The stars' touch areas reach past the text column; the first glyph stands on it.
-                        modifier = Modifier.offset(x = -ratingTouchInset(RATE_STAR_SIZE)),
+                        // The stars' touch areas reach past the text column; the first star's ink stands on it.
+                        modifier = Modifier.offset(x = -ratingInkStart(RATE_STAR_SIZE)),
                     )
                 }
             }

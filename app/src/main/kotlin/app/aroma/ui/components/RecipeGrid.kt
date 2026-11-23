@@ -81,14 +81,14 @@ fun RecipeGrid(
     }
 }
 
-/** Grid-shaped placeholders that match [RecipeGrid], or cards of another [aspectRatio]. */
-fun LazyGridScope.recipeGridPlaceholders(count: Int = 6, aspectRatio: Float = 1f) {
+/** Grid-shaped placeholders that match [RecipeGrid] and the cookbook shelf. */
+fun LazyGridScope.recipeGridPlaceholders(count: Int = 6) {
     items(count) {
         Placeholder(
             Modifier
                 .padding(bottom = GridRowGap)
                 .fillMaxWidth()
-                .aspectRatio(aspectRatio),
+                .aspectRatio(1f),
             shape = MaterialTheme.shapes.medium,
         )
     }

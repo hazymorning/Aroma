@@ -269,6 +269,16 @@ private const val STAR_STAGGER_MILLIS = 50L
 /** Interactive stars stand centred in 48 dp targets; offset the row by this to set the first glyph on a keyline. */
 fun ratingTouchInset(starSize: Int): Dp = (TouchTarget - starSize.dp) / 2
 
+/** From the start of interactive stars to the first star's ink; offset the row by this to set the ink on a keyline. */
+fun ratingInkStart(starSize: Int): Dp = ratingTouchInset(starSize) + starSize.dp * STAR_INK_START
+
+/** How far interactive stars' targets reach below their ink: space under the stars that needs no padding of its own. */
+fun ratingInkBelow(starSize: Int): Dp = ratingTouchInset(starSize) + starSize.dp * STAR_INK_BELOW
+
+/** The star's ink starts 3.4 of its glyph's 24 units in from the left and ends 4.2 units short of the bottom. */
+private const val STAR_INK_START = 3.4f / 24
+private const val STAR_INK_BELOW = 4.2f / 24
+
 /** A soft stadium chip; a chosen chip takes the sage wash. */
 @Composable
 fun AromaFilterChip(

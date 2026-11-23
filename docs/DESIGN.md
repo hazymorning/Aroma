@@ -16,8 +16,10 @@ pieces in `ui/components`. Screens under `feature/` are built from those two onl
 2. **One container.** The soft card (`SoftCard`): the paper's fill one step darker, 16 dp corners,
    no border, no shadow. Rows that belong together sit on one card, separated by hairlines inset
    to their text. Nothing is outlined, and a card never holds another card.
-3. **One accent.** Sage marks only the filled main action of a screen, what is chosen (a chip,
-   a tab, a check, a switch, today) and links. It is never decoration.
+3. **One accent.** Sage marks the one filled action of a screen, what is chosen (a chip, a tab,
+   a check, a switch, today), links (every link is sage), group labels and step numbers, amounts in
+   ingredient and shopping lists, and the brand: the wordmark and the name in the greeting. It is
+   never decoration.
 4. **Two typefaces, seven sizes.** Newsreader names things; Figtree carries everything that is
    read or tapped. Nothing is set in capitals or tracked out.
 5. **One controls style.** Every control is a soft pill on the card fill; the one main action is
@@ -58,8 +60,9 @@ sizes *(checked)*.
 | `TouchTarget` | 48 | The least size of anything that takes a tap |
 
 Rhythm: a section starts `SectionSpace` below the last one, its content `Space.xs` below its title;
-groups inside a section sit `Space.l` apart; a caption sits `Space.xs` under its photo. Screens size
-with tokens or named constants only *(checked)*.
+groups inside a section sit `Space.l` apart; a caption sits `Space.xs` under its photo; a message
+alone on a page stands a third of the way down the room below the page's head. Screens size with
+tokens or named constants only *(checked)*.
 
 ## Colour
 
@@ -70,7 +73,7 @@ with tokens or named constants only *(checked)*.
 | `extras.selected` / `onSelected` | #DCE7D4 | #2E3D2B | The chosen chip, segment, today |
 | `extras.cta` / `onCta` | #486447 | #3A5638 | The one filled action |
 | `extras.raised` | #FFFFFF | #242722 | The tab bar, sheets, menus |
-| `primary` | #486447 | #AECDA5 | Links, checks, group labels, step numbers |
+| `primary` | #486447 | #AECDA5 | Links, checks, group labels, step numbers, amounts, the brand |
 | `onSurface` / `onSurfaceVariant` | ink / soft ink | | Text and glyphs |
 | `error` | | | Removing and failing, nothing else |
 
@@ -91,6 +94,7 @@ outlined *(checked)*; a field shows a sage ring only while it has the cursor.
 | Page head | `PageHeader` (tab pages), `DetailPage` / `DetailTopBar` / `LargeTitle` (pushed pages) |
 | Section | `SectionHeader` (with an optional link to more) |
 | Group of rows | `CardGroup` = `GroupLabel` over a `SoftCard`; `CardPart` across lazy items; `Hairline` |
+| A day (plan, timeline) | `DayHeader`, at the head of the day's card |
 | Views of a page | `PageTabs` |
 | Filters | `AromaFilterChip` |
 | A choice of two or three in a form | `SegmentedControl` |

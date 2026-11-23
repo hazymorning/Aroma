@@ -293,7 +293,6 @@
 
     <!-- Timeline -->
     <string name="timeline_made_this">%1$s hat das gekocht</string>
-    <string name="timeline_yesterday">Gestern</string>
     <string name="timeline_empty_title">Noch nichts passiert</string>
     <string name="timeline_empty_message">Was ihr kocht und neu hinzufügt, erscheint hier.</string>
 

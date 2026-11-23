@@ -86,6 +86,7 @@ import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.CardActionPadding
 import app.aroma.ui.components.DetailTopBarHeight
+import app.aroma.ui.components.EdgeActionPadding
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.GroupLabel
 import app.aroma.ui.components.Hairline
@@ -271,6 +272,7 @@ private fun stepIngredients(rows: List<IngredientRow>, step: Step, byReference: 
     return StepIngredients(linked.map { rows[it].copy(section = null) }, linked, all = false)
 }
 
+/** Close on the margin and the recipe's name beside it, set as on the recipe page's bar, with all the room the button leaves. */
 @Composable
 private fun TopBar(title: String, hasIngredients: Boolean, onClose: () -> Unit, onIngredients: () -> Unit) {
     Row(
@@ -278,20 +280,19 @@ private fun TopBar(title: String, hasIngredients: Boolean, onClose: () -> Unit, 
             Modifier
                 .fillMaxWidth()
                 .height(DetailTopBarHeight)
-                .padding(start = Space.xs, end = ScreenMargin),
+                .padding(start = EdgeActionPadding, end = ScreenMargin),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HeaderAction(R.drawable.ic_close, stringResource(R.string.cook_close), onClose)
         Text(
             text = title,
-            style = AromaType.Label,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = AromaType.Name,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier
                     .weight(1f)
-                    .padding(start = Space.xs, end = Space.m),
+                    .padding(start = Space.xs, end = Space.s),
         )
         if (hasIngredients) {
             SecondaryButton(stringResource(R.string.recipe_ingredients), onIngredients, compact = true)

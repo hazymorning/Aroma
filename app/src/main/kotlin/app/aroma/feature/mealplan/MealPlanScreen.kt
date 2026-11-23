@@ -1,6 +1,5 @@
 package app.aroma.feature.mealplan
 
-import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -27,7 +26,6 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,7 +46,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,10 +58,11 @@ import app.aroma.feature.recipe.PlanSheet
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaPullToRefreshBox
-import app.aroma.ui.components.CardActionPadding
 import app.aroma.ui.components.CardPart
+import app.aroma.ui.components.DayHeader
 import app.aroma.ui.components.EdgeActionPadding
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.LocalBottomBarInset
@@ -83,6 +81,7 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.rememberFullSheetState
+import app.aroma.ui.components.weekday
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
@@ -97,7 +96,6 @@ import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.tabular
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.time.temporal.IsoFields
 import java.util.Locale
 
@@ -153,7 +151,7 @@ fun MealPlanScreen(state: MealPlanUiState, actions: MealPlanActions, modifier: M
 
                 else -> {
                     state.days.forEach { day ->
-                        daySection(day, isToday = day.date == state.today, actions = actions, onMore = { sheetEntryId = it.id })
+                        daySection(day, today = state.today, actions = actions, onMore = { sheetEntryId = it.id })
                     }
                 }
             }
@@ -269,8 +267,8 @@ private fun formatRange(start: LocalDate, end: LocalDate, locale: Locale): Strin
     }
 }
 
-/** A day is one card: its header, then one item per meal. */
-private fun LazyListScope.daySection(day: MealPlanDay, isToday: Boolean, actions: MealPlanActions, onMore: (MealPlanEntry) -> Unit) {
+/** A day is one card: its header, then one item per meal, with hairlines between the meals. */
+private fun LazyListScope.daySection(day: MealPlanDay, today: LocalDate, actions: MealPlanActions, onMore: (MealPlanEntry) -> Unit) {
     val parts = day.entries.size + 1
     item(key = "day-${day.date}") {
         SoftCard(
@@ -280,11 +278,12 @@ private fun LazyListScope.daySection(day: MealPlanDay, isToday: Boolean, actions
                     .settling(this)
                     .padding(top = Space.s),
         ) {
-            DayHeader(day.date, isToday, isEmpty = day.entries.isEmpty(), onAdd = { actions.onAdd(day.date) })
+            PlanDayHeader(day.date, today, isEmpty = day.entries.isEmpty(), onAdd = { actions.onAdd(day.date) })
         }
     }
     itemsIndexed(day.entries, key = { _, entry -> "entry-${entry.id}" }) { index, entry ->
         SoftCard(part = CardPart.of(index + 1, parts), modifier = Modifier.settling(this)) {
+            if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
             SwipeToRemove(onRemove = { actions.onDeleteEntry(entry) }) {
                 EntryRow(
                     entry = entry,
@@ -309,79 +308,33 @@ private fun Modifier.settling(scope: LazyItemScope): Modifier =
         )
     }
 
-private fun weekday(date: LocalDate, locale: Locale): String = date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
-
 /**
- * The weekday and its date on one baseline with a quiet add at the end. An empty day says so
- * underneath, and the whole day becomes one target that plans a meal.
+ * The day's head with a quiet add at its end. An empty day says so underneath, and the whole day
+ * becomes one target that plans a meal.
  */
 @Composable
-private fun DayHeader(date: LocalDate, isToday: Boolean, isEmpty: Boolean, onAdd: () -> Unit) {
+private fun PlanDayHeader(date: LocalDate, today: LocalDate, isEmpty: Boolean, onAdd: () -> Unit) {
     val locale = currentLocale()
-    val weekday = remember(date, locale) { weekday(date, locale) }
-    val addLabel = stringResource(R.string.plan_add_for, weekday)
-    Column {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .then(if (isEmpty) Modifier.clickable(onClickLabel = addLabel, role = Role.Button, onClick = onAdd) else Modifier),
+    val addLabel = stringResource(R.string.plan_add_for, remember(date, locale) { weekday(date, locale) })
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .then(if (isEmpty) Modifier.clickable(onClickLabel = addLabel, role = Role.Button, onClick = onAdd) else Modifier),
+    ) {
+        DayHeader(date, today) { IconAction(R.drawable.ic_add, addLabel, onAdd) }
+        AnimatedVisibility(
+            visible = isEmpty,
+            enter = fadeIn(tween(Motion.STATE)) + expandVertically(tween(Motion.EXPAND, easing = Settle)),
+            exit = fadeOut(tween(Motion.STATE)) + shrinkVertically(tween(Motion.EXPAND, easing = Settle)),
         ) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(RowHeight.oneLine)
-                        .padding(start = CardPadding, end = CardActionPadding),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                DayTitle(date, weekday, isToday, Modifier.weight(1f))
-                IconAction(R.drawable.ic_add, addLabel, onAdd)
-            }
-            AnimatedVisibility(
-                visible = isEmpty,
-                enter = fadeIn(tween(Motion.STATE)) + expandVertically(tween(Motion.EXPAND, easing = Settle)),
-                exit = fadeOut(tween(Motion.STATE)) + shrinkVertically(tween(Motion.EXPAND, easing = Settle)),
-            ) {
-                Text(
-                    text = stringResource(R.string.plan_day_empty),
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = CardPadding, end = CardPadding, bottom = Space.s),
-                )
-            }
+            Text(
+                text = stringResource(R.string.plan_day_empty),
+                style = AromaType.Small,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = CardPadding, end = CardPadding, bottom = Space.s),
+            )
         }
     }
-}
-
-/** "Montag 23. Nov.", with a sage "Heute" after today's date. */
-@Composable
-private fun DayTitle(date: LocalDate, weekday: String, isToday: Boolean, modifier: Modifier = Modifier) {
-    val locale = currentLocale()
-    val shortDate =
-        remember(date, locale) { date.format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMd"), locale)) }
-    Row(modifier.semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically) {
-        Text(weekday, style = AromaType.SectionTitle)
-        Spacer(Modifier.width(Space.xs))
-        Text(text = shortDate, style = AromaType.Small.tabular(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (isToday) {
-            Spacer(Modifier.width(Space.s))
-            TodayBadge()
-        }
-    }
-}
-
-/** "Today" on the sage wash, the one mark a day of the plan can carry. */
-@Composable
-private fun TodayBadge() {
-    Text(
-        text = stringResource(R.string.home_today),
-        style = AromaType.Caption,
-        color = extras.onSelected,
-        modifier =
-            Modifier
-                .background(extras.selected, CircleShape)
-                .padding(horizontal = Space.xs, vertical = Space.xxs / 2),
-    )
 }
 
 /**

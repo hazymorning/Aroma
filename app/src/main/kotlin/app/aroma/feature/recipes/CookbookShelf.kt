@@ -103,7 +103,7 @@ fun CookbookShelf(
             }
             when {
                 state.isLoading && state.cookbooks.isEmpty() -> {
-                    recipeGridPlaceholders(count = 4, aspectRatio = COVER_ASPECT_RATIO)
+                    recipeGridPlaceholders(count = 4)
                 }
 
                 state.error != null && state.cookbooks.isEmpty() -> {
@@ -125,7 +125,6 @@ fun CookbookShelf(
                     image = cover.photo,
                     title = cover.cookbook.name,
                     onClick = { onOpen(cover.cookbook) },
-                    imageAspectRatio = COVER_ASPECT_RATIO,
                     fallbackIcon = R.drawable.ic_recipes,
                     modifier = Modifier.padding(bottom = GridRowGap),
                 ) {
@@ -140,6 +139,3 @@ fun CookbookShelf(
         StatusBarScrim(Modifier.align(Alignment.TopCenter))
     }
 }
-
-/** Upright, like a book. */
-private const val COVER_ASPECT_RATIO = 3f / 4f

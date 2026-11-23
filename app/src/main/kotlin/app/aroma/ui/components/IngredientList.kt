@@ -1,5 +1,6 @@
 package app.aroma.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
@@ -137,6 +138,12 @@ private fun IngredientRowItem(
         }
     val decoration = if (checked) TextDecoration.LineThrough else TextDecoration.None
     val fade by animateFloatAsState(if (checked) 0.4f else 1f, tween(Motion.STATE), label = "ingredientChecked")
+    // The amount in sage; once ticked off it is muted with the rest of the row.
+    val measureColor by animateColorAsState(
+        if (checked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
+        tween(Motion.STATE),
+        label = "ingredientMeasure",
+    )
     Row(
         modifier =
             rowModifier
@@ -152,6 +159,7 @@ private fun IngredientRowItem(
             Text(
                 text = measure,
                 style = AromaType.BodyStrong.copy(textDecoration = decoration).tabular(),
+                color = measureColor,
                 modifier = Modifier.width(measureWidth),
             )
             Spacer(Modifier.width(Space.m))

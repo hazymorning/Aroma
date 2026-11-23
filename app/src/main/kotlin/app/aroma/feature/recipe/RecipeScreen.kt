@@ -112,6 +112,7 @@ import app.aroma.ui.components.recipeTimeText
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
+import app.aroma.ui.theme.ChipHeight
 import app.aroma.ui.theme.ControlHeight
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
@@ -567,7 +568,10 @@ private fun Dot(style: TextStyle) {
     Text("·", style = style, color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(horizontal = Space.xs))
 }
 
-/** Plan and shop, the two things people do with a recipe besides cooking it, right under its name. */
+/**
+ * Plan and shop, the two things people do with a recipe besides cooking it, right under its name:
+ * small pills, so the title, the stars and the description lead.
+ */
 @Composable
 private fun RecipeQuickActions(
     canShop: Boolean,
@@ -576,13 +580,13 @@ private fun RecipeQuickActions(
     onShop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Space.s)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
         SecondaryButton(
             icon = R.drawable.ic_calendar_add,
             text = stringResource(R.string.recipe_action_plan),
             onClick = onPlan,
             confirmed = confirmed == QuickAction.Plan,
-            modifier = Modifier.weight(1f),
+            compact = true,
         )
         if (canShop) {
             SecondaryButton(
@@ -590,7 +594,7 @@ private fun RecipeQuickActions(
                 text = stringResource(R.string.recipe_action_shop),
                 onClick = onShop,
                 confirmed = confirmed == QuickAction.Shop,
-                modifier = Modifier.weight(1f),
+                compact = true,
             )
         }
     }
@@ -820,9 +824,10 @@ private fun nutritionLabel(kind: NutritionKind): String =
         },
     )
 
-/** How the outline's lines measure: the title and the byline. */
+/** How the outline's lines measure: the title, the byline and an action. */
 private val TitleHeight = 32.dp
 private val BylineWidth = 140.dp
+private val ActionWidth = 96.dp
 
 /** The page's outline while the recipe loads: photo, title, byline, actions and the description. */
 @Composable
@@ -847,15 +852,8 @@ private fun RecipeLoading() {
                     .padding(top = Space.m)
                     .width(BylineWidth),
             )
-            Row(Modifier.padding(top = Space.l), horizontalArrangement = Arrangement.spacedBy(Space.s)) {
-                repeat(2) {
-                    Placeholder(
-                        Modifier
-                            .weight(1f)
-                            .height(ControlHeight),
-                        shape = CircleShape,
-                    )
-                }
+            Row(Modifier.padding(top = Space.l), horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
+                repeat(2) { Placeholder(Modifier.size(ActionWidth, ChipHeight), shape = CircleShape) }
             }
             // The description: two full lines and a short one, on the body's line pitch.
             Column(Modifier.padding(top = Space.l), verticalArrangement = Arrangement.spacedBy(Space.m)) {

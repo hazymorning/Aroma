@@ -1,6 +1,5 @@
 package app.aroma.feature.recipes
 
-import android.text.format.DateFormat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,8 +35,8 @@ import app.aroma.core.model.TimelineEvent
 import app.aroma.data.AromaError
 import app.aroma.data.repository.TimelineRepository
 import app.aroma.ui.components.CardPart
+import app.aroma.ui.components.DayHeader
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.GroupLabel
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.InlineProgress
 import app.aroma.ui.components.LocalBottomBarInset
@@ -146,6 +145,7 @@ fun Timeline(
         if (nearEnd && state.canLoadMore && !state.isLoadingMore) loadMore()
     }
     val days = remember(state.events) { state.events.groupBy { it.time.atZone(ZoneId.systemDefault()).toLocalDate() } }
+    val today = LocalDate.now()
     Box(modifier.fillMaxSize()) {
         LazyColumn(
             state = list,
@@ -174,12 +174,15 @@ fun Timeline(
                     }
                 }
             }
-            days.forEach { (day, events) ->
+            // A day is one card, headed as a day of the plan is.
+            days.entries.forEachIndexed { position, (day, events) ->
+                // The first day stands as far under the tabs as the first cookbook does.
+                val top = if (position == 0) Space.l else Space.s
                 item(key = "day-$day") {
-                    GroupLabel(dayLabel(day), Modifier.padding(top = Space.l))
+                    SoftCard(part = CardPart.of(0, events.size + 1), modifier = Modifier.padding(top = top)) { DayHeader(day, today) }
                 }
                 itemsIndexed(events, key = { _, event -> event.id }) { index, event ->
-                    SoftCard(part = CardPart.of(index, events.size)) {
+                    SoftCard(part = CardPart.of(index + 1, events.size + 1)) {
                         if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
                         TimelineRow(event, onClick = { onOpenRecipe(event.recipe) })
                     }
@@ -235,27 +238,6 @@ private fun TimelineRow(event: TimelineEvent, onClick: () -> Unit) {
             event.message?.let {
                 Text(it, style = AromaType.Body, modifier = Modifier.padding(top = Space.xs))
             }
-        }
-    }
-}
-
-/** "Today", "Yesterday", "Monday, November 16", and the year once it is not this one. */
-@Composable
-private fun dayLabel(day: LocalDate): String {
-    val locale = currentLocale()
-    val today = LocalDate.now()
-    return when (day) {
-        today -> {
-            stringResource(R.string.home_today)
-        }
-
-        today.minusDays(1) -> {
-            stringResource(R.string.timeline_yesterday)
-        }
-
-        else -> {
-            val skeleton = if (day.year == today.year) "EEEEMMMMd" else "EEEEMMMMdy"
-            remember(day, locale) { day.format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)) }
         }
     }
 }
