@@ -1,5 +1,6 @@
 package app.aroma.feature.recipe
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.format.MeasureSystem
@@ -13,21 +14,33 @@ import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.session.SessionManager
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
+import app.aroma.feature.editor.RecipeReworks
+import app.aroma.feature.editor.ReworkJob
+import app.aroma.feature.editor.ReworkOutcome
+import app.aroma.feature.editor.ReworkRequest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.time.LocalDate
+import java.util.Locale
 
 /** One-off feedback shown as a snackbar. */
 sealed interface RecipeEvent {
@@ -38,18 +51,47 @@ sealed interface RecipeEvent {
     data object Deleted : RecipeEvent
 
     data class Failed(val error: AromaError) : RecipeEvent
+
+    /** Mealie's AI reworked the recipe, which [reworked] can undo. */
+    data class Reworked(val reworked: ReworkOutcome.Reworked) : RecipeEvent
+
+    data class ReworkFailed(val error: AromaError) : RecipeEvent
 }
 
 class RecipeViewModel(
-    private val slug: String,
+    slug: String,
     private val recipes: RecipeRepository,
+    private val reworks: RecipeReworks,
     private val shopping: ShoppingRepository,
     private val mealPlans: MealPlanRepository,
     private val sessions: SessionManager,
     private val settings: SettingsRepository,
+    private val saved: SavedStateHandle,
 ) : ViewModel() {
+    /**
+     * The recipe's slug, which a rework that translates its name changes; kept with the page, which
+     * Android brings back with the slug it was opened with.
+     */
+    private var slug: String = saved[SLUG] ?: slug
+        set(value) {
+            field = value
+            saved[SLUG] = value
+        }
+
     private val mutableState = MutableStateFlow(RecipeUiState())
     val state: StateFlow<RecipeUiState> = mutableState.asStateFlow()
+
+    /**
+     * The recipe's rework while there is one. Collected by the recipe's page only while it is shown,
+     * which is how the rework knows whether to tell in a notification how it ended.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val rework: StateFlow<ReworkJob?> =
+        mutableState
+            .map { it.recipe?.id }
+            .distinctUntilChanged()
+            .flatMapLatest { id -> id?.let(reworks::job) ?: flowOf(null) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
     private val mutableEvents = MutableSharedFlow<RecipeEvent>(extraBufferCapacity = 4)
     val events: SharedFlow<RecipeEvent> = mutableEvents.asSharedFlow()
@@ -75,8 +117,18 @@ class RecipeViewModel(
         viewModelScope.launch { attempt { recipes.loadRatings() } }
         viewModelScope.launch {
             settings.settings.collect { prefs ->
-                mutableState.update { it.copy(measures = prefs.measureSystem, ingredientsInSteps = prefs.ingredientsInSteps) }
+                mutableState.update {
+                    it.copy(
+                        measures = prefs.measureSystem,
+                        ingredientsInSteps = prefs.ingredientsInSteps,
+                        translate = prefs.translateImports,
+                    )
+                }
             }
+        }
+        viewModelScope.launch {
+            val aiAvailable = recipes.canImportWithAi()
+            mutableState.update { it.copy(aiAvailable = aiAvailable) }
         }
     }
 
@@ -176,6 +228,39 @@ class RecipeViewModel(
             mutableEvents.emit(RecipeEvent.Deleted)
         }
 
+    /** Has Mealie's AI rework the recipe, into the app's language where [translate] is set, which is remembered for next time. */
+    fun rework(translate: Boolean) {
+        val recipe = state.value.recipe ?: return
+        reworks.start(
+            ReworkRequest(recipe.id, recipe.slug, recipe.name, translateTo = Locale.getDefault().toLanguageTag().takeIf { translate }),
+        )
+        viewModelScope.launch { settings.setTranslateImports(translate) }
+    }
+
+    /** The page shows how the rework ended: a reworked recipe is loaded again, under its new slug if it has one. */
+    fun onReworkShown(outcome: ReworkOutcome) {
+        val recipe = state.value.recipe ?: return
+        reworks.shown(recipe.id)
+        when (outcome) {
+            is ReworkOutcome.Reworked -> {
+                slug = outcome.slug
+                load()
+                mutableEvents.tryEmit(RecipeEvent.Reworked(outcome))
+            }
+
+            is ReworkOutcome.Failed -> {
+                mutableEvents.tryEmit(RecipeEvent.ReworkFailed(outcome.error))
+            }
+        }
+    }
+
+    /** Puts back what the rework replaced, in one change. */
+    fun undoRework(reworked: ReworkOutcome.Reworked) =
+        act {
+            slug = recipes.update(reworked.slug, reworked.undo)
+            load()
+        }
+
     private fun act(block: suspend (app.aroma.core.model.Recipe) -> Unit) {
         val recipe = state.value.recipe ?: return
         viewModelScope.launch {
@@ -189,5 +274,6 @@ class RecipeViewModel(
 
     private companion object {
         const val CONFIRM_MILLIS = 1500L
+        const val SLUG = "recipeSlug"
     }
 }

@@ -103,6 +103,15 @@
     <string name="recipe_open_source">Open original</string>
     <string name="recipe_delete_title">Delete recipe?</string>
     <string name="recipe_delete_message">“%1$s” will be removed from Mealie for everyone in your household.</string>
+    <string name="recipe_rework">Rework with AI</string>
+    <string name="recipe_rework_hint">Mealie’s AI reads the recipe again, puts ingredients, steps and sections in order and links each step to its ingredients. Photo, rating and link stay.</string>
+    <string name="recipe_rework_start">Rework</string>
+    <string name="recipe_rework_running">Reworking the recipe</string>
+    <string name="recipe_rework_progress_hint">This usually takes half a minute. You can leave Aroma meanwhile.</string>
+    <string name="recipe_reworked">Recipe reworked</string>
+    <string name="recipe_rework_failed">Couldn’t rework the recipe</string>
+    <string name="recipe_rework_failed_because">Couldn’t rework the recipe: %1$s</string>
+    <string name="recipe_rework_no_recipe">Mealie’s AI sent no recipe back</string>
     <string name="recipe_ingredients">Ingredients</string>
     <string name="recipe_steps">Method</string>
     <string name="recipe_notes">Notes</string>

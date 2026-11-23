@@ -272,7 +272,14 @@ private fun FromWebsite(state: AddRecipeUiState, actions: AddRecipeActions) {
                     .fillMaxWidth(),
         )
         state.import?.takeIf { importing }?.let { job ->
-            ImportProgress(job, state.usesAi || job.request.photos.isNotEmpty(), Modifier.padding(top = Space.m))
+            val usesAi = state.usesAi || job.request.photos.isNotEmpty()
+            ImportProgress(
+                title = stringResource(R.string.import_running),
+                startedAt = job.startedAt,
+                steps = job.steps,
+                hint = stringResource(if (usesAi) R.string.add_progress_ai_hint else R.string.add_progress_hint),
+                modifier = Modifier.padding(top = Space.m),
+            )
         }
         state.importError?.let {
             InlineError(it, Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m))
@@ -455,13 +462,19 @@ private val Unfold = expandVertically(tween(Motion.EXPAND, easing = Settle)) + f
 private val Fold = shrinkVertically(tween(Motion.EXPAND, easing = Settle)) + fadeOut(tween(Motion.STATE, easing = LinearEasing))
 
 /**
- * How far the import has come, as a checklist on a card with the time it has taken, so a slow
- * import never looks like a frozen screen and never ends without a word.
+ * How far an import or a rework has come, as a checklist on a card with the time it has taken under
+ * its [title], so a slow one never looks like a frozen screen and never ends without a word.
  */
 @Composable
-private fun ImportProgress(job: ImportJob, usesAi: Boolean, modifier: Modifier = Modifier) {
+internal fun ImportProgress(
+    title: String,
+    startedAt: Long,
+    steps: List<ImportStep>,
+    hint: String,
+    modifier: Modifier = Modifier,
+) {
     val resources = LocalResources.current
-    val steps = job.steps.ifEmpty { listOf(ImportStep.Waiting) }
+    val shown = steps.ifEmpty { listOf(ImportStep.Waiting) }
     Column(modifier) {
         SoftCard {
             Column(
@@ -471,16 +484,16 @@ private fun ImportProgress(job: ImportJob, usesAi: Boolean, modifier: Modifier =
                 verticalArrangement = Arrangement.spacedBy(Space.xs),
             ) {
                 Row(Modifier.padding(horizontal = CardPadding), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.import_running), style = AromaType.Label, modifier = Modifier.weight(1f))
-                    Elapsed(job.startedAt)
+                    Text(title, style = AromaType.Label, modifier = Modifier.weight(1f))
+                    Elapsed(startedAt)
                 }
-                steps.forEachIndexed { index, step ->
-                    StepRow(step.label(resources), done = index < steps.lastIndex)
+                shown.forEachIndexed { index, step ->
+                    StepRow(step.label(resources), done = index < shown.lastIndex)
                 }
             }
         }
         Text(
-            text = stringResource(if (usesAi) R.string.add_progress_ai_hint else R.string.add_progress_hint),
+            text = hint,
             style = AromaType.Small,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.s),

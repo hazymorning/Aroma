@@ -3,6 +3,8 @@ package app.aroma.data
 import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.io.IOException
+import java.net.ConnectException
+import java.net.NoRouteToHostException
 import java.net.UnknownHostException
 import java.security.cert.CertificateException
 import javax.net.ssl.SSLException
@@ -56,6 +58,21 @@ sealed class AromaError(message: String? = null, cause: Throwable? = null) : Exc
 
 /** True when the server could not be reached at all, as opposed to answering with an error. */
 val AromaError.isConnectivity: Boolean get() = this is AromaError.Offline || this is AromaError.HostNotFound
+
+/**
+ * Whether the request that failed may have reached Mealie, which then finishes it all the same: its
+ * connection dropped once open, or a reverse proxy in front of Mealie gave up waiting. A connection
+ * that could not even be opened never started anything.
+ */
+fun AromaError.mayStillFinish(): Boolean =
+    when (this) {
+        is AromaError.Offline -> cause !is ConnectException && cause !is NoRouteToHostException
+        is AromaError.Server -> code in ProxyGaveUp
+        else -> false
+    }
+
+/** Bad gateway, unavailable and timeouts of reverse proxies, including Cloudflare's 52x. */
+private val ProxyGaveUp = setOf(502, 503, 504, 520, 522, 524)
 
 fun Throwable.toAromaError(): AromaError =
     when (this) {

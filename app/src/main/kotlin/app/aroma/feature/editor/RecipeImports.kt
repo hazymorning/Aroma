@@ -84,7 +84,6 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
         state(id).value = ImportJob(queued, startedAt)
-        // Imports queue behind each other, so two never wait for a new recipe at the same time.
         WorkManager.getInstance(context).enqueueUniqueWork(QUEUE, ExistingWorkPolicy.APPEND_OR_REPLACE, work)
         return id
     }
@@ -110,7 +109,7 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
     /** The screen has shown how import [id] ended; its notification is no longer needed. */
     fun shown(id: UUID) = ImportNotifications.dismiss(context, id)
 
-    /** Drops the imports still queued, and their photos, as when the user signs out. */
+    /** Drops the imports and reworks still queued, and the imports' photos, as when the user signs out. */
     fun cancelAll() {
         WorkManager.getInstance(context).cancelUniqueWork(QUEUE)
         File(context.noBackupFilesDir, PHOTO_FOLDER).deleteRecursively()
@@ -193,9 +192,13 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
             slug
         }
 
-    private companion object {
+    internal companion object {
+        /**
+         * Imports and reworks queue behind each other, so two never wait for a new recipe at the same
+         * time: each would take the other's for its own.
+         */
         const val QUEUE = "recipe-import"
-        const val PHOTO_FOLDER = "import-photos"
+        private const val PHOTO_FOLDER = "import-photos"
     }
 }
 

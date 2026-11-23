@@ -33,6 +33,8 @@ import app.aroma.feature.editor.ImportJob
 import app.aroma.feature.editor.ImportPhoto
 import app.aroma.feature.editor.ImportRequest
 import app.aroma.feature.editor.ImportStep
+import app.aroma.feature.editor.ReworkJob
+import app.aroma.feature.editor.ReworkRequest
 import app.aroma.feature.home.Greeting
 import app.aroma.feature.home.HomeActions
 import app.aroma.feature.home.HomeScreen
@@ -50,6 +52,7 @@ import app.aroma.feature.recipe.RecipeActions
 import app.aroma.feature.recipe.RecipeActionsSheet
 import app.aroma.feature.recipe.RecipeScreen
 import app.aroma.feature.recipe.RecipeUiState
+import app.aroma.feature.recipe.ReworkSheet
 import app.aroma.feature.recipes.CollectionActions
 import app.aroma.feature.recipes.CollectionKind
 import app.aroma.feature.recipes.CollectionScreen
@@ -85,6 +88,7 @@ import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.File
+import java.util.UUID
 
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @Config(sdk = [36], qualifiers = "w411dp-h891dp-xxhdpi")
@@ -186,6 +190,42 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
             interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHeader") },
         ) {
             RecipeScreen(state = RecipeUiState(recipe = sample.recipe, isLoading = false), actions = RecipeActions())
+        }
+    }
+
+    /** What a rework with Mealie's AI does, over the recipe it is opened from. */
+    @Test
+    fun recipeRework() {
+        applyLocale()
+        snapshot("recipe_rework_${variant.suffix}", variant.dark) {
+            RecipeScreen(state = RecipeUiState(recipe = sample.recipe, isLoading = false, aiAvailable = true), actions = RecipeActions())
+            ReworkSheet(translate = false, onRework = {}, onDismiss = {})
+        }
+    }
+
+    /** A rework under way: Mealie's steps under the actions, while the recipe stays as it was. */
+    @Test
+    fun recipeReworking() {
+        applyLocale()
+        val german = variant.locale == "de"
+        val rework =
+            ReworkJob(
+                id = UUID(0, 1),
+                request = ReworkRequest(sample.recipe.id, sample.recipe.slug, sample.recipe.name, translateTo = "en-US"),
+                // Half a second into the 13th, so the clock reads 0:12 however long drawing takes.
+                startedAt = System.currentTimeMillis() - 12_500,
+                steps =
+                    listOf(
+                        ImportStep.Waiting,
+                        ImportStep.Server(if (german) "Rezept erstellen..." else "Creating recipe..."),
+                        ImportStep.Server(if (german) "Rezept wird übersetzt..." else "Translating recipe..."),
+                    ),
+            )
+        snapshot("recipe_reworking_${variant.suffix}", variant.dark) {
+            RecipeScreen(
+                state = RecipeUiState(recipe = sample.recipe, isLoading = false, aiAvailable = true, rework = rework),
+                actions = RecipeActions(),
+            )
         }
     }
 

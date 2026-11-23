@@ -23,8 +23,9 @@ import app.aroma.ui.navigation.LaunchRequest
 import java.util.UUID
 
 /**
- * The notifications of recipe imports: one while an import runs, which also keeps it running
- * when Aroma is left, and one that tells how an import ended if its screen was not open to show it.
+ * The notifications of recipe imports, and of reworks, which run the same way: one while it runs,
+ * which also keeps it running when Aroma is left, and one that tells how it ended if its screen was
+ * not open to show it.
  */
 object ImportNotifications {
     private const val CHANNEL = "imports"
@@ -40,19 +41,20 @@ object ImportNotifications {
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    fun foreground(context: Context, id: UUID, startedAt: Long): ForegroundInfo {
-        val notification = running(context.inAppLanguage(), id, startedAt, step = null)
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(id.hashCode(), notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            ForegroundInfo(id.hashCode(), notification)
-        }
-    }
+    fun foreground(context: Context, id: UUID, startedAt: Long): ForegroundInfo =
+        foreground(id, importing(context.inAppLanguage(), id, startedAt, step = null))
+
+    /** The notification a rework runs under, which opens its recipe. */
+    fun foreground(context: Context, job: ReworkJob): ForegroundInfo = foreground(job.id, reworking(context.inAppLanguage(), job))
 
     /** Shows the step [job] is at, for when its screen is not open. */
     fun running(context: Context, id: UUID, job: ImportJob) {
-        val localized = context.inAppLanguage()
-        notify(context, null, id.hashCode(), running(localized, id, job.startedAt, job.steps.lastOrNull()))
+        notify(context, null, id.hashCode(), importing(context.inAppLanguage(), id, job.startedAt, job.steps.lastOrNull()))
+    }
+
+    /** Shows the step [job] is at, for when its recipe's page is not open. */
+    fun running(context: Context, job: ReworkJob) {
+        notify(context, null, job.id.hashCode(), reworking(context.inAppLanguage(), job))
     }
 
     /**
@@ -63,45 +65,93 @@ object ImportNotifications {
         NotificationManagerCompat.from(context).cancel(id.hashCode())
         if (seen) return
         val localized = context.inAppLanguage()
-        val builder =
-            NotificationCompat
-                .Builder(localized, CHANNEL)
-                .setSmallIcon(R.drawable.ic_recipes)
-                .setAutoCancel(true)
-        when (val outcome = job.outcome) {
-            is ImportOutcome.Added -> {
-                builder
-                    .setContentTitle(localized.getString(R.string.import_added))
-                    .setContentText(outcome.name)
-                    .setContentIntent(open(context, id, LaunchRequest.Recipe(outcome.slug).intent(context)))
-            }
+        val notification =
+            when (val outcome = job.outcome) {
+                is ImportOutcome.Added -> {
+                    val recipe = LaunchRequest.Recipe(outcome.slug).intent(context)
+                    ended(localized, id, localized.getString(R.string.import_added), outcome.name, recipe)
+                }
 
-            is ImportOutcome.Failed -> {
-                val reason = outcome.error.let { (it as? AromaError.ImportFailed)?.detail ?: localized.getString(it.messageRes()) }
-                builder
-                    .setContentTitle(localized.getString(outcome.error.titleRes()))
-                    .setContentText(reason)
-                    .setStyle(NotificationCompat.BigTextStyle().bigText(reason))
-                    .setContentIntent(open(context, id, LaunchRequest.ShowImport(id).intent(context)))
-            }
+                is ImportOutcome.Failed -> {
+                    val reason = outcome.error.let { (it as? AromaError.ImportFailed)?.detail ?: localized.getString(it.messageRes()) }
+                    ended(
+                        localized,
+                        id,
+                        localized.getString(outcome.error.titleRes()),
+                        reason,
+                        LaunchRequest.ShowImport(id).intent(context),
+                    )
+                }
 
-            null -> {
-                return
+                null -> {
+                    return
+                }
             }
-        }
-        notify(context, id.toString(), ENDED, builder.build())
+        notify(context, id.toString(), ENDED, notification)
     }
 
-    /** The screen showed how the import ended. */
+    /** As for an import: tells how the rework ended unless its recipe's page [seen] it, and opens the recipe. */
+    fun ended(context: Context, job: ReworkJob, seen: Boolean) {
+        NotificationManagerCompat.from(context).cancel(job.id.hashCode())
+        if (seen) return
+        val localized = context.inAppLanguage()
+        val notification =
+            when (val outcome = job.outcome) {
+                is ReworkOutcome.Reworked -> {
+                    val recipe = LaunchRequest.Recipe(outcome.slug).intent(context)
+                    ended(localized, job.id, localized.getString(R.string.recipe_reworked), job.request.name, recipe)
+                }
+
+                is ReworkOutcome.Failed -> {
+                    val reason = outcome.error.reworkReason(localized.resources)
+                    val recipe = LaunchRequest.Recipe(job.request.slug).intent(context)
+                    ended(localized, job.id, localized.getString(R.string.recipe_rework_failed), reason, recipe)
+                }
+
+                null -> {
+                    return
+                }
+            }
+        notify(context, job.id.toString(), ENDED, notification)
+    }
+
+    /** The screen showed how the import or rework ended. */
     fun dismiss(context: Context, id: UUID) {
         NotificationManagerCompat.from(context).cancel(id.toString(), ENDED)
     }
 
-    private fun running(context: Context, id: UUID, startedAt: Long, step: ImportStep?): Notification =
+    private fun foreground(id: UUID, notification: Notification): ForegroundInfo =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(id.hashCode(), notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(id.hashCode(), notification)
+        }
+
+    private fun importing(context: Context, id: UUID, startedAt: Long, step: ImportStep?): Notification =
+        running(context, id, context.getString(R.string.import_running), startedAt, step, LaunchRequest.ShowImport(id).intent(context))
+
+    private fun reworking(context: Context, job: ReworkJob): Notification =
+        running(
+            context,
+            job.id,
+            context.getString(R.string.recipe_rework_running),
+            job.startedAt,
+            job.steps.lastOrNull(),
+            LaunchRequest.Recipe(job.request.slug).intent(context),
+        )
+
+    private fun running(
+        context: Context,
+        id: UUID,
+        title: String,
+        startedAt: Long,
+        step: ImportStep?,
+        intent: Intent,
+    ): Notification =
         NotificationCompat
             .Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_recipes)
-            .setContentTitle(context.getString(R.string.import_running))
+            .setContentTitle(title)
             .setContentText(step?.label(context.resources))
             .setProgress(0, 0, true)
             .setWhen(startedAt)
@@ -110,7 +160,25 @@ object ImportNotifications {
             .setOngoing(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            .setContentIntent(open(context, id, LaunchRequest.ShowImport(id).intent(context)))
+            .setContentIntent(open(context, id, intent))
+            .build()
+
+    /** How an import or rework ended; a tap opens [intent]. */
+    private fun ended(
+        context: Context,
+        id: UUID,
+        title: String,
+        text: String,
+        intent: Intent,
+    ): Notification =
+        NotificationCompat
+            .Builder(context, CHANNEL)
+            .setSmallIcon(R.drawable.ic_recipes)
+            .setAutoCancel(true)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentIntent(open(context, id, intent))
             .build()
 
     private fun open(context: Context, id: UUID, intent: Intent): PendingIntent =

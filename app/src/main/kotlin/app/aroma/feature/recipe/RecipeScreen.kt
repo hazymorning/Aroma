@@ -84,6 +84,8 @@ import app.aroma.core.model.RecipeNote
 import app.aroma.core.model.Step
 import app.aroma.data.AromaError
 import app.aroma.data.settings.IngredientsInSteps
+import app.aroma.feature.editor.ImportProgress
+import app.aroma.feature.editor.ReworkJob
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaDropdownMenu
 import app.aroma.ui.components.AromaFilterChip
@@ -129,6 +131,10 @@ import app.aroma.ui.theme.tabular
 import java.net.URI
 import java.util.Locale
 
+/**
+ * The recipe page's state. Mealie's AI may rework the recipe where the server has it ([aiAvailable]),
+ * translated by default where the user last chose so ([translate]); [rework] is one under way.
+ */
 data class RecipeUiState(
     val recipe: Recipe? = null,
     val scale: Double = 1.0,
@@ -141,6 +147,9 @@ data class RecipeUiState(
     val isOffline: Boolean = false,
     val error: AromaError? = null,
     val confirmed: QuickAction? = null,
+    val aiAvailable: Boolean = false,
+    val translate: Boolean = false,
+    val rework: ReworkJob? = null,
 )
 
 /** The two actions under the title; [RecipeUiState.confirmed] marks one that just went through. */
@@ -160,6 +169,7 @@ data class RecipeActions(
     val onShare: () -> Unit = {},
     val onOpenUrl: (String) -> Unit = {},
     val onDelete: () -> Unit = {},
+    val onRework: (translate: Boolean) -> Unit = {},
     val onOpenOrganizer: (OrganizerKind, Organizer) -> Unit = { _, _ -> },
     val onRetry: () -> Unit = {},
 )
@@ -181,6 +191,7 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
     val listState = rememberLazyListState()
     val recipe = state.recipe
     var rateOpen by rememberSaveable { mutableStateOf(false) }
+    var reworkOpen by rememberSaveable { mutableStateOf(false) }
     val density = LocalDensity.current
     val barBottom = WindowInsets.statusBars.getTop(density) + with(density) { DetailTopBarHeight.roundToPx() }
     // The bar turns to paper once the photo has slid beneath it, and shows the title once that has too.
@@ -245,11 +256,16 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
             titleGone = titleGone,
             isFavorite = state.isFavorite,
             actions = actions,
+            // One rework at a time: the next only once the page showed how the last ended.
+            onRework = { reworkOpen = true }.takeIf { state.aiAvailable && state.rework == null },
         )
         CookButton(visible = canCook && cookShown, onClick = actions.onStartCooking)
     }
     if (rateOpen && recipe != null) {
         RatingSheet(rating = state.userRating, onRate = actions.onRate, onDismiss = { rateOpen = false })
+    }
+    if (reworkOpen && recipe != null) {
+        ReworkSheet(translate = state.translate, onRework = actions.onRework, onDismiss = { reworkOpen = false })
     }
 }
 
@@ -288,6 +304,7 @@ private fun Hero(recipe: Recipe) {
 /**
  * Over the photo, back, favourite and more rest on paper circles. Once the photo has gone, they
  * become the plain bar every pushed screen has, which takes up the title when that has scrolled away.
+ * The menu offers a rework with Mealie's AI where there is [onRework].
  */
 @Composable
 private fun RecipeTopBar(
@@ -296,6 +313,7 @@ private fun RecipeTopBar(
     titleGone: Boolean,
     isFavorite: Boolean,
     actions: RecipeActions,
+    onRework: (() -> Unit)?,
 ) {
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -303,7 +321,7 @@ private fun RecipeTopBar(
             DetailTopBar(onBack = actions.onBack, title = recipe?.name, collapsed = titleGone) {
                 if (recipe != null) {
                     FavoriteButton(isFavorite, actions.onToggleFavorite, onPhoto = false)
-                    MoreMenu(recipe, actions, onDelete = { confirmDelete = true }, onPhoto = false)
+                    MoreMenu(recipe, actions, onRework, onDelete = { confirmDelete = true }, onPhoto = false)
                 }
             }
         }
@@ -319,7 +337,7 @@ private fun RecipeTopBar(
                 Spacer(Modifier.weight(1f))
                 if (recipe != null) {
                     FavoriteButton(isFavorite, actions.onToggleFavorite, onPhoto = true)
-                    MoreMenu(recipe, actions, onDelete = { confirmDelete = true }, onPhoto = true)
+                    MoreMenu(recipe, actions, onRework, onDelete = { confirmDelete = true }, onPhoto = true)
                 }
             }
         }
@@ -353,7 +371,13 @@ private fun FavoriteButton(isFavorite: Boolean, onClick: () -> Unit, onPhoto: Bo
 }
 
 @Composable
-private fun MoreMenu(recipe: Recipe, actions: RecipeActions, onDelete: () -> Unit, onPhoto: Boolean) {
+private fun MoreMenu(
+    recipe: Recipe,
+    actions: RecipeActions,
+    onRework: (() -> Unit)?,
+    onDelete: () -> Unit,
+    onPhoto: Boolean,
+) {
     var open by remember { mutableStateOf(false) }
     val choose: (() -> Unit) -> Unit = { action ->
         open = false
@@ -377,6 +401,7 @@ private fun MoreMenu(recipe: Recipe, actions: RecipeActions, onDelete: () -> Uni
             }
             Hairline(Modifier.padding(vertical = Space.xxs))
             AromaMenuItem(stringResource(R.string.action_edit), R.drawable.ic_edit, { choose(actions.onEdit) })
+            onRework?.let { AromaMenuItem(stringResource(R.string.recipe_rework), R.drawable.ic_sparkle, { choose(it) }) }
             AromaMenuItem(stringResource(R.string.action_share), R.drawable.ic_share, { choose(actions.onShare) })
             recipe.sourceUrl?.let { url ->
                 AromaMenuItem(stringResource(R.string.recipe_open_source), R.drawable.ic_open_in_new, { choose { actions.onOpenUrl(url) } })
@@ -454,6 +479,17 @@ private fun LazyListScope.recipeBody(
             onShop = actions.onAddToShoppingList,
             modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l),
         )
+    }
+    state.rework?.takeIf { it.outcome == null }?.let { job ->
+        item(key = "rework") {
+            ImportProgress(
+                title = stringResource(R.string.recipe_rework_running),
+                startedAt = job.startedAt,
+                steps = job.steps,
+                hint = stringResource(R.string.recipe_rework_progress_hint),
+                modifier = Modifier.padding(top = Space.l),
+            )
+        }
     }
     if (recipe.description.isNotBlank()) {
         item(key = "description") {

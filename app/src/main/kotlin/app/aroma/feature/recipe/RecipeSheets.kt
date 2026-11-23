@@ -53,7 +53,9 @@ import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.SheetFooter
 import app.aroma.ui.components.Stepper
+import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberFullSheetState
@@ -312,6 +314,50 @@ internal fun RatingSheet(rating: Double?, onRate: (Int) -> Unit, onDismiss: () -
             },
             modifier = Modifier.padding(start = ScreenMargin - ratingTouchInset(STAR_SIZE), bottom = Space.l),
         )
+    }
+}
+
+/**
+ * What a rework with Mealie's AI does and what it leaves alone, the choice to translate the recipe as
+ * well, starting from the choice made last, and the button that starts it once the sheet has gone.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ReworkSheet(translate: Boolean, onRework: (translate: Boolean) -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    val sheetState = rememberFullSheetState()
+    val scope = rememberCoroutineScope()
+    var translated by rememberSaveable { mutableStateOf(translate) }
+    AromaBottomSheet(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.recipe_rework),
+        modifier = modifier,
+        sheetState = sheetState,
+    ) {
+        Text(
+            text = stringResource(R.string.recipe_rework_hint),
+            style = AromaType.Body,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = ScreenMargin),
+        )
+        SwitchRow(
+            title = stringResource(R.string.add_ai_translate),
+            subtitle = null,
+            checked = translated,
+            onChange = { translated = it },
+            modifier = Modifier.padding(top = Space.s),
+        )
+        SheetFooter {
+            PrimaryButton(
+                text = stringResource(R.string.recipe_rework_start),
+                onClick = {
+                    scope.hideThen(sheetState) {
+                        onDismiss()
+                        onRework(translated)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 

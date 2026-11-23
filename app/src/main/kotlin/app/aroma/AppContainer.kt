@@ -30,6 +30,8 @@ import app.aroma.data.sync.ShoppingSyncWorker
 import app.aroma.data.update.Updates
 import app.aroma.feature.editor.RecipeImporter
 import app.aroma.feature.editor.RecipeImports
+import app.aroma.feature.editor.RecipeReworker
+import app.aroma.feature.editor.RecipeReworks
 import app.aroma.timer.CookingTimers
 import coil3.SingletonImageLoader
 import kotlinx.coroutines.CoroutineScope
@@ -102,6 +104,8 @@ class AppContainer(context: Context) {
             }),
         )
 
+    val reworks = RecipeReworks(appContext, RecipeReworker(recipes, resources = { appContext.inAppLanguage().resources }))
+
     /**
      * Signs out and removes the account's traces from this device, as the sign-out dialog
      * promises: cached recipes and photos, offline copies, timers and the rating reminder.
@@ -111,6 +115,7 @@ class AppContainer(context: Context) {
         scope.launch {
             OfflineRecipesWorker.schedule(appContext, enabled = false)
             imports.cancelAll()
+            reworks.forgetAll()
             timers.dismissAll()
             settings.forgetAccount()
             ratingReminder.clear()

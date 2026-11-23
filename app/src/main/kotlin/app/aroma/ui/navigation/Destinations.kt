@@ -51,6 +51,7 @@ import app.aroma.feature.editor.EditorScreen
 import app.aroma.feature.editor.EditorViewModel
 import app.aroma.feature.editor.ImportOutcome
 import app.aroma.feature.editor.readPickedPhoto
+import app.aroma.feature.editor.reworkReason
 import app.aroma.feature.home.HomeActions
 import app.aroma.feature.home.HomeScreen
 import app.aroma.feature.home.HomeViewModel
@@ -252,7 +253,10 @@ fun CollectionDestination(route: CollectionRoute, nav: NavController, snackbar: 
 @Composable
 fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHostState) {
     val target = menu.recipe ?: return
-    val vm = aromaViewModel(key = "menu-${target.slug}") { RecipeViewModel(target.slug, recipes, shopping, mealPlans, sessions, settings) }
+    val vm =
+        aromaViewModel(key = "menu-${target.slug}") {
+            RecipeViewModel(target.slug, recipes, reworks, shopping, mealPlans, sessions, settings, it)
+        }
     val state by vm.state.collectAsStateWithLifecycle()
     val lists by vm.shoppingLists.collectAsStateWithLifecycle()
     val preferredList by vm.preferredListId.collectAsStateWithLifecycle()
@@ -338,6 +342,23 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
                 is RecipeEvent.Failed -> {
                     launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
                 }
+
+                is RecipeEvent.Reworked -> {
+                    launch {
+                        val result =
+                            snackbar.showSnackbar(
+                                message = resources.getString(R.string.recipe_reworked),
+                                actionLabel = resources.getString(R.string.action_undo),
+                                duration = SnackbarDuration.Long,
+                            )
+                        if (result == SnackbarResult.ActionPerformed) vm.undoRework(event.reworked)
+                    }
+                }
+
+                is RecipeEvent.ReworkFailed -> {
+                    val reason = event.error.reworkReason(resources)
+                    launch { snackbar.showSnackbar(resources.getString(R.string.recipe_rework_failed_because, reason)) }
+                }
             }
         }
     }
@@ -345,17 +366,24 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
 
 @Composable
 fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostState) {
-    val vm = aromaViewModel { RecipeViewModel(slug, recipes, shopping, mealPlans, sessions, settings) }
+    val vm = aromaViewModel { RecipeViewModel(slug, recipes, reworks, shopping, mealPlans, sessions, settings, it) }
     val state by vm.state.collectAsStateWithLifecycle()
+    val rework by vm.rework.collectAsStateWithLifecycle()
     val lists by vm.shoppingLists.collectAsStateWithLifecycle()
     val preferredList by vm.preferredListId.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var sheet by rememberSaveable { mutableStateOf<RecipeMenuSheet?>(null) }
     RecipeFeedback(vm, snackbar, onDelete = { nav.popBackStack() })
     LaunchedEffect(sheet) { if (sheet == RecipeMenuSheet.Shop) vm.loadShoppingLists() }
+    val reworked = rework?.outcome
+    LaunchedEffect(reworked) { if (reworked != null) vm.onReworkShown(reworked) }
+    // A rework may outlast the page; a notification then says how it ended.
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    // A translated name gives the recipe a new slug.
+    val current = state.recipe?.slug ?: slug
 
     RecipeScreen(
-        state = state,
+        state = state.copy(rework = rework),
         actions =
             RecipeActions(
                 onBack = { nav.popBackStack() },
@@ -366,11 +394,18 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 onToggleIngredient = vm::toggleIngredient,
                 onAddToShoppingList = { sheet = RecipeMenuSheet.Shop },
                 onAddToMealPlan = { sheet = RecipeMenuSheet.Plan },
-                onStartCooking = { nav.navigate(CookRoute(slug, state.scale)) },
-                onEdit = { nav.navigate(EditorRoute(slug)) },
+                onStartCooking = { nav.navigate(CookRoute(current, state.scale)) },
+                onEdit = { nav.navigate(EditorRoute(current)) },
                 onShare = { vm.shareText()?.let { shareText(context, it) } },
                 onOpenUrl = { openUrl(context, it) },
                 onDelete = vm::delete,
+                onRework = { translate ->
+                    val needsPermission =
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                    if (needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    vm.rework(translate)
+                },
                 onOpenOrganizer = { kind, organizer ->
                     val collection =
                         when (kind) {

@@ -101,6 +101,15 @@
     <string name="recipe_open_source">Original öffnen</string>
     <string name="recipe_delete_title">Rezept löschen?</string>
     <string name="recipe_delete_message">„%1$s“ wird für alle in deinem Haushalt aus Mealie entfernt.</string>
+    <string name="recipe_rework">Mit KI überarbeiten</string>
+    <string name="recipe_rework_hint">Mealies KI liest das Rezept noch einmal, ordnet Zutaten, Schritte und Abschnitte und verknüpft jeden Schritt mit seinen Zutaten. Foto, Bewertung und Link bleiben.</string>
+    <string name="recipe_rework_start">Überarbeiten</string>
+    <string name="recipe_rework_running">Rezept wird überarbeitet</string>
+    <string name="recipe_rework_progress_hint">Das dauert meist eine halbe Minute. Du kannst Aroma derweil verlassen.</string>
+    <string name="recipe_reworked">Rezept überarbeitet</string>
+    <string name="recipe_rework_failed">Überarbeiten hat nicht geklappt</string>
+    <string name="recipe_rework_failed_because">Überarbeiten hat nicht geklappt: %1$s</string>
+    <string name="recipe_rework_no_recipe">Mealies KI hat kein Rezept zurückgegeben</string>
     <string name="recipe_ingredients">Zutaten</string>
     <string name="recipe_steps">Zubereitung</string>
     <string name="recipe_notes">Notizen</string>
