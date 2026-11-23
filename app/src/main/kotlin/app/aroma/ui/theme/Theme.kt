@@ -32,12 +32,16 @@ val AromaShapes =
 
 /**
  * Colours Material's scheme has no role for. [raised] is the paper of things that float above the
- * page, [hairlineStrong] the border of controls, [cta] the one filled action per screen (a deep
- * tone-on-tone green in dark mode instead of a bright mint slab).
+ * page, [card] the soft paper under rows that belong together and [cardHighlight] its sage-washed
+ * variant for today and for questions to the user, [hairlineStrong] the border of controls, [cta]
+ * the one filled action per screen (a deep tone-on-tone green in dark mode instead of a bright
+ * mint slab).
  */
 @Immutable
 data class AromaExtras(
     val raised: Color,
+    val card: Color,
+    val cardHighlight: Color,
     val hairlineStrong: Color,
     val cta: Color,
     val onCta: Color,
@@ -48,6 +52,8 @@ data class AromaExtras(
 private val LightExtras =
     AromaExtras(
         raised = Color(0xFFFFFFFF),
+        card = Color(0xFFEFF0E9),
+        cardHighlight = Color(0xFFE6EDE1),
         hairlineStrong = Color(0xFFCBCFC3),
         cta = Color(0xFF486447),
         onCta = Color(0xFFFFFFFF),
@@ -58,6 +64,8 @@ private val LightExtras =
 private val DarkExtras =
     AromaExtras(
         raised = Color(0xFF22251F),
+        card = Color(0xFF1B1D1A),
+        cardHighlight = Color(0xFF1C251B),
         hairlineStrong = Color(0xFF3A3F37),
         cta = Color(0xFF3A5638),
         onCta = Color(0xFFE2F0DA),
@@ -69,6 +77,8 @@ private val DarkExtras =
 private fun dynamicExtras(scheme: ColorScheme, dark: Boolean): AromaExtras =
     (if (dark) DarkExtras else LightExtras).copy(
         raised = if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainerLowest,
+        card = scheme.surfaceContainer,
+        cardHighlight = scheme.primaryContainer.copy(alpha = 0.45f).compositeOver(scheme.surface),
         hairlineStrong = scheme.onSurface.copy(alpha = 0.18f).compositeOver(scheme.surface),
         cta = if (dark) scheme.primaryContainer else scheme.primary,
         onCta = if (dark) scheme.onPrimaryContainer else scheme.onPrimary,

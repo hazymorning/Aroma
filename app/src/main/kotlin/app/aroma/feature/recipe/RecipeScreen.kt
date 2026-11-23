@@ -107,6 +107,7 @@ import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SectionHeader
+import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.Stepper
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.recipeTimeText
@@ -597,7 +598,7 @@ private fun RecipeQuickActions(
     }
 }
 
-/** Prep, cook and total time between two hairlines, in columns that start on the margin. */
+/** Prep, cook and total time on a soft card, in columns that start on the margin. */
 @Composable
 private fun Facts(recipe: Recipe) {
     val facts =
@@ -607,9 +608,8 @@ private fun Facts(recipe: Recipe) {
             recipeTimeText(recipe.totalTime)?.let { stringResource(R.string.recipe_total_time) to it },
         )
     if (facts.isEmpty()) return
-    Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl)) {
-        Hairline()
-        Row(Modifier.padding(vertical = Space.m), verticalAlignment = Alignment.CenterVertically) {
+    SoftCard(Modifier.padding(top = Space.xl)) {
+        Row(Modifier.padding(horizontal = ScreenMargin, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
             facts.forEachIndexed { index, (label, value) ->
                 if (index > 0) {
                     VerticalDivider(Modifier.height(Space.xl), thickness = Lines.hairline, color = MaterialTheme.colorScheme.outlineVariant)
@@ -630,7 +630,6 @@ private fun Facts(recipe: Recipe) {
                 }
             }
         }
-        Hairline()
     }
 }
 
@@ -672,7 +671,8 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
             rows = rows,
             checked = state.checkedIngredients,
             onToggle = actions.onToggleIngredient,
-            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.s),
+            onCards = true,
+            modifier = Modifier.padding(top = Space.m),
         )
         if (recipe.tools.isNotEmpty()) {
             Kicker(stringResource(R.string.recipe_tools), Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l))
@@ -760,14 +760,14 @@ private fun Note(note: RecipeNote, modifier: Modifier = Modifier) {
 private fun Nutrition(values: List<NutritionValue>) {
     Column(Modifier.padding(top = Space.xxl)) {
         SectionHeader(stringResource(R.string.recipe_nutrition))
-        // The rows centre their text, so a small gap keeps the first one 16 dp under the title.
-        Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xxs)) {
+        SoftCard(Modifier.padding(top = Space.s)) {
             values.forEachIndexed { index, value ->
-                if (index > 0) Hairline()
+                if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 44.dp),
+                        .heightIn(min = 44.dp)
+                        .padding(horizontal = ScreenMargin),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(

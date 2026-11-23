@@ -65,6 +65,7 @@ import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SegmentedControl
+import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.theme.Lines
@@ -108,10 +109,7 @@ data class SettingsActions(
 fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: Modifier = Modifier) {
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
     SettingsPage(title = stringResource(R.string.settings_title), onBack = actions.onBack, modifier = modifier) {
-        state.user?.let { user ->
-            Account(user, state.server)
-            Hairline(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l))
-        }
+        state.user?.let { user -> SoftCard(Modifier.padding(top = Space.l)) { Account(user, state.server) } }
         Group(stringResource(R.string.settings_appearance)) {
             Choice(
                 label = stringResource(R.string.settings_theme),
@@ -179,7 +177,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             RowDivider()
             NavigationRow(stringResource(R.string.settings_licenses), actions.onOpenLicenses)
         }
-        SignOutRow(onClick = { confirmSignOut = true })
+        SoftCard(Modifier.padding(top = Space.xl)) { SignOutRow(onClick = { confirmSignOut = true }) }
     }
     if (confirmSignOut) {
         AromaAlertDialog(
@@ -233,7 +231,7 @@ private fun Account(user: User, server: ServerInfo?) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = ScreenMargin, end = ScreenMargin, top = Space.l)
+            .padding(horizontal = ScreenMargin, vertical = Space.s)
             .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -269,21 +267,18 @@ private fun Account(user: User, server: ServerInfo?) {
     }
 }
 
-/**
- * A group of settings under a kicker. Every row brings 12 dp of air above its text, so the kicker
- * keeps only a little more and sits the same distance above a switch as above a choice.
- */
+/** A group of settings: a kicker above a soft card that holds its rows. */
 @Composable
 private fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.padding(top = Space.xxl)) {
+    Column(Modifier.padding(top = Space.xl)) {
         Kicker(
             text = title,
             modifier =
                 Modifier
-                    .padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.xxs)
+                    .padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.s)
                     .semantics { heading() },
         )
-        content()
+        SoftCard(content = content)
     }
 }
 
@@ -397,13 +392,12 @@ private fun NavigationRow(title: String, onClick: () -> Unit) {
     }
 }
 
-/** Signing out is a plain row in red, set apart by space rather than a button. */
+/** Signing out is a plain row in red, on a card of its own rather than a button. */
 @Composable
 private fun SignOutRow(onClick: () -> Unit) {
     val color = MaterialTheme.colorScheme.error
     Row(
         Modifier
-            .padding(top = Space.xxl)
             .fillMaxWidth()
             .heightIn(min = 56.dp)
             .clickable(role = Role.Button, onClick = onClick)

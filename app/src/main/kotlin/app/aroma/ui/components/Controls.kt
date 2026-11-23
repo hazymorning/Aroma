@@ -323,7 +323,8 @@ fun SegmentedControl(options: List<String>, selectedIndex: Int, onSelect: (Int) 
         modifier
             .fillMaxWidth()
             .height(40.dp)
-            .background(MaterialTheme.colorScheme.surfaceContainer, CircleShape)
+            // A shade darker than a soft card, so the track still shows on one.
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
             .padding(3.dp),
     ) {
         val segment = maxWidth / options.size.coerceAtLeast(1)

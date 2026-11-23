@@ -100,6 +100,7 @@ import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatClock
 import app.aroma.ui.components.formatDuration
+import app.aroma.ui.components.fullBleed
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.navigation.Transitions.Settle
@@ -365,6 +366,8 @@ private fun StepPage(
                 rows = ingredients.rows,
                 checked = ingredients.indexes.indices.filterTo(mutableSetOf()) { ingredients.indexes[it] in checked },
                 onToggle = { onToggle(ingredients.indexes[it]) },
+                onCards = true,
+                modifier = Modifier.fullBleed(ScreenMargin),
             )
         }
     }

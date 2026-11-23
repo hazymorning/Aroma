@@ -18,6 +18,9 @@ object Space {
 /** The one left (and right) edge every title, paragraph, field and photo starts on. */
 val ScreenMargin: Dp = 24.dp
 
+/** How far a [app.aroma.ui.components.SoftCard] stands outside the text column: half the margin. */
+val CardInset: Dp = 12.dp
+
 /** Text after a 24 dp check or icon. */
 val IconKeyline: Dp = 64.dp
 

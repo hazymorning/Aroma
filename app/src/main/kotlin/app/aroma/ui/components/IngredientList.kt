@@ -32,6 +32,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import app.aroma.core.format.IngredientLine
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.tabular
 
 /** An ingredient as shown in a list, optionally starting a new section. */
@@ -39,7 +41,9 @@ data class IngredientRow(val section: String?, val line: IngredientLine, val lin
 
 /**
  * Ingredients as a two-column table. The measure column is as wide as its widest entry
- * (capped), so amounts line up the way they do in a printed cookbook.
+ * (capped), so amounts line up the way they do in a printed cookbook. With [onCards], each
+ * section is a [SoftCard] under its name; the list then takes the page's full width and keeps the
+ * margins itself.
  */
 @Composable
 fun IngredientList(
@@ -47,6 +51,7 @@ fun IngredientList(
     modifier: Modifier = Modifier,
     checked: Set<Int> = emptySet(),
     onToggle: ((Int) -> Unit)? = null,
+    onCards: Boolean = false,
 ) {
     val measureStyle =
         MaterialTheme.typography.bodyLarge
@@ -60,25 +65,69 @@ fun IngredientList(
             remember(measures, measureStyle) {
                 measures.maxOfOrNull { textMeasurer.measure(it, measureStyle).size.width } ?: 0
             }
-        val columnWidth = with(density) { widest.toDp() }.coerceAtMost(maxWidth * 0.42f)
-        Column {
-            rows.forEachIndexed { index, row ->
-                if (!row.section.isNullOrBlank()) {
-                    Kicker(row.section, Modifier.padding(top = if (index == 0) 0.dp else 24.dp, bottom = 8.dp))
-                } else if (index > 0) {
-                    Hairline()
+        val textWidth = if (onCards) maxWidth - ScreenMargin * 2 else maxWidth
+        val columnWidth = with(density) { widest.toDp() }.coerceAtMost(textWidth * 0.42f)
+        val item: @Composable (Int) -> Unit = { index ->
+            IngredientRowItem(
+                measure = measures[index],
+                row = rows[index],
+                measureWidth = columnWidth,
+                checked = index in checked,
+                onToggle = onToggle?.let { { it(index) } },
+                modifier = if (onCards) Modifier.padding(horizontal = ScreenMargin) else Modifier,
+            )
+        }
+        if (onCards) {
+            val sections = remember(rows) { rows.indices.groupConsecutiveBy { !rows[it].section.isNullOrBlank() } }
+            Column {
+                sections.forEachIndexed { number, indexes ->
+                    rows[indexes.first()].section?.takeIf { it.isNotBlank() }?.let {
+                        Kicker(
+                            it,
+                            Modifier.padding(
+                                start = ScreenMargin,
+                                end = ScreenMargin,
+                                top =
+                                    if (number ==
+                                        0
+                                    ) {
+                                        0.dp
+                                    } else {
+                                        Space.l
+                                    },
+                                bottom = Space.s,
+                            ),
+                        )
+                    }
+                    SoftCard(Modifier.padding(top = if (number > 0 && rows[indexes.first()].section.isNullOrBlank()) Space.s else 0.dp)) {
+                        indexes.forEachIndexed { position, index ->
+                            if (position > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
+                            item(index)
+                        }
+                    }
                 }
-                IngredientRowItem(
-                    measure = measures[index],
-                    row = row,
-                    measureWidth = columnWidth,
-                    checked = index in checked,
-                    onToggle = onToggle?.let { { it(index) } },
-                )
+            }
+        } else {
+            Column {
+                rows.forEachIndexed { index, row ->
+                    if (!row.section.isNullOrBlank()) {
+                        Kicker(row.section, Modifier.padding(top = if (index == 0) 0.dp else 24.dp, bottom = 8.dp))
+                    } else if (index > 0) {
+                        Hairline()
+                    }
+                    item(index)
+                }
             }
         }
     }
 }
+
+/** Splits indexes into runs that each start where [startsRun] is true (and at the first index). */
+private fun IntRange.groupConsecutiveBy(startsRun: (Int) -> Boolean): List<List<Int>> =
+    fold(mutableListOf<MutableList<Int>>()) { runs, index ->
+        if (runs.isEmpty() || startsRun(index)) runs.add(mutableListOf(index)) else runs.last().add(index)
+        runs
+    }
 
 @Composable
 private fun IngredientRowItem(
@@ -87,6 +136,7 @@ private fun IngredientRowItem(
     measureWidth: androidx.compose.ui.unit.Dp,
     checked: Boolean,
     onToggle: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
     val rowModifier =
         if (onToggle != null) {
@@ -99,6 +149,7 @@ private fun IngredientRowItem(
     Row(
         modifier =
             rowModifier
+                .then(modifier)
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
                 .alpha(fade)
