@@ -60,10 +60,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -108,7 +106,6 @@ import app.aroma.ui.components.TonalIconButton
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatClock
 import app.aroma.ui.components.formatDuration
-import app.aroma.ui.components.fullBleed
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.theme.AromaType
@@ -121,7 +118,6 @@ import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
-import app.aroma.ui.theme.tabular
 import kotlinx.coroutines.launch
 
 data class CookTimerUi(
@@ -183,6 +179,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
         if (steps.isNotEmpty() && pager.settledPage == steps.size) actions.onFinished()
     }
     var showIngredients by rememberSaveable { mutableStateOf(false) }
+    val panel = rememberPanelState()
     val locale = currentLocale()
     val rows =
         remember(state.recipe, state.scale, state.measures, locale) {
@@ -220,24 +217,45 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
 
             else -> {
                 StepProgress(pager.currentPage, steps.size)
-                HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
-                    if (page < steps.size) {
-                        val step = steps[page]
-                        StepPage(
-                            index = page,
-                            count = steps.size,
-                            step = step,
-                            ingredients =
-                                remember(rows, byStep, page, state.ingredientsInSteps) {
-                                    stepIngredients(rows, byStep.getOrNull(page).orEmpty(), state.ingredientsInSteps)
-                                },
-                            measures = state.measures,
-                            checked = state.checkedIngredients,
-                            onToggle = actions.onToggleIngredient,
-                            onStartTimer = actions.onStartTimer,
-                        )
-                    } else {
-                        DonePage(state, actions)
+                // Without a step that names an ingredient, the panel would only ever say there is none.
+                val hasPanel =
+                    rows.isNotEmpty() &&
+                        when (state.ingredientsInSteps) {
+                            IngredientsInSteps.None -> false
+                            IngredientsInSteps.Used -> byStep.any { it.isNotEmpty() }
+                            IngredientsInSteps.All -> true
+                        }
+                StepsWithPanel(
+                    panel = {
+                        if (hasPanel) {
+                            val step = pager.currentPage.coerceAtMost(steps.lastIndex)
+                            IngredientsPanel(
+                                ingredients =
+                                    remember(rows, byStep, step, state.ingredientsInSteps) {
+                                        stepIngredients(rows, byStep.getOrNull(step).orEmpty(), state.ingredientsInSteps)
+                                    },
+                                checked = state.checkedIngredients,
+                                onToggle = actions.onToggleIngredient,
+                                state = panel,
+                                visible = pager.currentPage < steps.size,
+                            )
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
+                        if (page < steps.size) {
+                            StepPage(
+                                index = page,
+                                count = steps.size,
+                                step = steps[page],
+                                measures = state.measures,
+                                onStartTimer = actions.onStartTimer,
+                                modifier = if (hasPanel) Modifier.abovePanel(panel) else Modifier,
+                            )
+                        } else {
+                            DonePage(state, actions)
+                        }
                     }
                 }
                 Timers(state.timers, actions)
@@ -257,33 +275,6 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
         )
     }
 }
-
-/** The ingredients a step shows, with their places in the recipe, by which they are ticked off. */
-private class StepIngredients(val rows: List<IngredientRow>, val indexes: List<Int>, val all: Boolean)
-
-/** All ingredients with their sections, those the step uses ([used]), or none, as the cook chose to see them. */
-private fun stepIngredients(rows: List<IngredientRow>, used: List<Int>, shown: IngredientsInSteps): StepIngredients =
-    when (shown) {
-        IngredientsInSteps.All -> {
-            StepIngredients(rows, rows.indices.toList(), all = true)
-        }
-
-        IngredientsInSteps.Used -> {
-            used.filter { it in rows.indices }.let {
-                StepIngredients(
-                    it.map { index ->
-                        rows[index].copy(section = null)
-                    },
-                    it,
-                    all = false,
-                )
-            }
-        }
-
-        IngredientsInSteps.None -> {
-            StepIngredients(emptyList(), emptyList(), all = false)
-        }
-    }
 
 /** Close on the margin and the recipe's name beside it, set as on the recipe page's bar, with all the room the button leaves. */
 @Composable
@@ -344,11 +335,9 @@ private fun StepPage(
     index: Int,
     count: Int,
     step: Step,
-    ingredients: StepIngredients,
     measures: MeasureSystem,
-    checked: Set<Int>,
-    onToggle: (Int) -> Unit,
     onStartTimer: (Int, String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val resources = LocalResources.current
     val stepLabel = stringResource(R.string.cook_step_of, index + 1, count)
@@ -359,7 +348,7 @@ private fun StepPage(
             (DurationDetector.detect(step.text).map { it.seconds } + listOfNotNull(step.durationSeconds?.takeIf { it > 0 })).distinct()
         }
     Column(
-        Modifier
+        modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl, bottom = Space.xl),
@@ -386,31 +375,6 @@ private fun StepPage(
                     )
                 }
             }
-        }
-        if (ingredients.rows.isNotEmpty()) {
-            val used = ingredients.indexes.count { it in checked }
-            Row(Modifier.padding(top = Space.xl, bottom = Space.s), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(if (ingredients.all) R.string.recipe_ingredients else R.string.cook_step_ingredients),
-                    style = AromaType.SectionTitle,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .semantics { heading() },
-                )
-                Text(
-                    text = pluralStringResource(R.plurals.cook_ingredients_used, used, used, ingredients.rows.size),
-                    style = AromaType.Small.tabular(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IngredientList(
-                rows = ingredients.rows,
-                checked = ingredients.indexes.indices.filterTo(mutableSetOf()) { ingredients.indexes[it] in checked },
-                onToggle = { onToggle(ingredients.indexes[it]) },
-                onCards = true,
-                modifier = Modifier.fullBleed(ScreenMargin),
-            )
         }
     }
 }

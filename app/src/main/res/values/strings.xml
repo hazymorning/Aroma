@@ -208,11 +208,21 @@
     <!-- Cooking mode -->
     <string name="cook_close">Leave cooking mode</string>
     <string name="cook_step_of">Step %1$d of %2$d</string>
-    <string name="cook_step_ingredients">For this step</string>
+    <plurals name="cook_step_ingredient_count">
+        <item quantity="one">%1$d ingredient for this step</item>
+        <item quantity="other">%1$d ingredients for this step</item>
+    </plurals>
+    <plurals name="cook_all_ingredient_count">
+        <item quantity="one">%1$d ingredient</item>
+        <item quantity="other">All %1$d ingredients</item>
+    </plurals>
+    <string name="cook_step_no_ingredients">No ingredients in this step</string>
     <plurals name="cook_ingredients_used">
         <item quantity="one">%1$d of %2$d used</item>
         <item quantity="other">%1$d of %2$d used</item>
     </plurals>
+    <string name="cook_ingredients_expand">Expand</string>
+    <string name="cook_ingredients_collapse">Collapse</string>
     <string name="cook_start_timer">Timer %1$s</string>
     <string name="cook_previous">Back</string>
     <string name="cook_next">Next</string>

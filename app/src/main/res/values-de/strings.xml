@@ -205,11 +205,21 @@
     <!-- Cooking mode -->
     <string name="cook_close">Kochmodus verlassen</string>
     <string name="cook_step_of">Schritt %1$d von %2$d</string>
-    <string name="cook_step_ingredients">Für diesen Schritt</string>
+    <plurals name="cook_step_ingredient_count">
+        <item quantity="one">%1$d Zutat für diesen Schritt</item>
+        <item quantity="other">%1$d Zutaten für diesen Schritt</item>
+    </plurals>
+    <plurals name="cook_all_ingredient_count">
+        <item quantity="one">%1$d Zutat</item>
+        <item quantity="other">Alle %1$d Zutaten</item>
+    </plurals>
+    <string name="cook_step_no_ingredients">Keine Zutaten in diesem Schritt</string>
     <plurals name="cook_ingredients_used">
         <item quantity="one">%1$d von %2$d verwendet</item>
         <item quantity="other">%1$d von %2$d verwendet</item>
     </plurals>
+    <string name="cook_ingredients_expand">Aufklappen</string>
+    <string name="cook_ingredients_collapse">Zuklappen</string>
     <string name="cook_start_timer">Timer %1$s</string>
     <string name="cook_previous">Zurück</string>
     <string name="cook_next">Weiter</string>

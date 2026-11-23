@@ -174,6 +174,87 @@ class SampleData(private val german: Boolean) {
                 ),
         )
 
+    private fun linked(ingredient: Ingredient, reference: String) = ingredient.copy(referenceId = reference)
+
+    private fun linkedStep(id: String, de: String, en: String, vararg uses: String) = Step(id, null, t(de, en), uses.toList(), null)
+
+    /** A soup whose steps use two, nine, none and two of its ingredients, linked as Mealie links them. */
+    val curry =
+        Recipe(
+            id = "curry",
+            slug = "curry",
+            name = t("Rote Curry-Suppe mit Kokos", "Red coconut curry soup"),
+            description = "",
+            image = image("curry"),
+            totalTime = RecipeTime(2100, null),
+            prepTime = RecipeTime(600, null),
+            cookTime = RecipeTime(1500, null),
+            servings = 4.0,
+            rating = 5.0,
+            categories = emptyList(),
+            tags = emptyList(),
+            tools = emptyList(),
+            sourceUrl = null,
+            ingredients =
+                listOf(
+                    linked(parsed(1.0, tablespoon, t("Öl", "oil"), section = t("Für die Suppe", "For the soup")), "oil"),
+                    linked(parsed(1.0, null, t("Zwiebel", "onion"), t("Zwiebeln", "onions"), note = t("gewürfelt", "diced")), "onion"),
+                    linked(parsed(2.0, null, t("Knoblauchzehe", "garlic clove"), t("Knoblauchzehen", "garlic cloves")), "garlic"),
+                    linked(parsed(20.0, gram, t("Ingwer", "ginger"), note = t("gerieben", "grated")), "ginger"),
+                    linked(parsed(2.0, tablespoon, t("rote Currypaste", "red curry paste")), "paste"),
+                    linked(parsed(400.0, milliliter, t("Kokosmilch", "coconut milk")), "coconut"),
+                    linked(parsed(500.0, milliliter, t("Gemüsebrühe", "vegetable stock")), "stock"),
+                    linked(parsed(150.0, gram, t("rote Linsen", "red lentils")), "lentils"),
+                    linked(parsed(400.0, gram, t("stückige Tomaten", "chopped tomatoes")), "tomatoes"),
+                    linked(parsed(100.0, gram, t("Babyspinat", "baby spinach")), "spinach"),
+                    linked(
+                        parsed(1.0, null, t("Limette", "lime"), t("Limetten", "limes"), section = t("Zum Servieren", "To serve")),
+                        "lime",
+                    ),
+                    linked(text(t("Koriander", "Coriander")), "coriander"),
+                ),
+            steps =
+                listOf(
+                    linkedStep(
+                        "c1",
+                        "Das Öl in einem großen Topf erhitzen und die Zwiebel darin glasig dünsten.",
+                        "Heat the oil in a large pot and soften the onion in it.",
+                        "oil",
+                        "onion",
+                    ),
+                    linkedStep(
+                        "c2",
+                        "Knoblauch, Ingwer und Currypaste eine Minute mitbraten. Kokosmilch, Brühe und Tomaten angießen, " +
+                            "dann Linsen und Spinat dazugeben.",
+                        "Fry the garlic, ginger and curry paste with it for a minute. Pour in the coconut milk, stock and tomatoes, " +
+                            "then add the lentils and spinach.",
+                        "onion",
+                        "garlic",
+                        "ginger",
+                        "paste",
+                        "coconut",
+                        "stock",
+                        "lentils",
+                        "tomatoes",
+                        "spinach",
+                    ),
+                    linkedStep(
+                        "c3",
+                        "Zugedeckt 20 Minuten sanft köcheln lassen und ab und zu umrühren.",
+                        "Cover and simmer gently for 20 minutes, stirring now and then.",
+                    ),
+                    linkedStep(
+                        "c4",
+                        "Mit Limettensaft abschmecken und mit Koriander servieren.",
+                        "Season with lime juice and serve with coriander.",
+                        "lime",
+                        "coriander",
+                    ),
+                ),
+            notes = emptyList(),
+            nutrition = emptyList(),
+        )
+
     val today: LocalDate = LocalDate.of(2026, 11, 23)
 
     private fun at(daysAgo: Long, hour: Int, minute: Int) =
