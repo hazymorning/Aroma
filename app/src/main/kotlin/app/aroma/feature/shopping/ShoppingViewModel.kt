@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.ShoppingItem
 import app.aroma.core.model.ShoppingList
+import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
@@ -175,15 +176,22 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
     fun createList(name: String) =
         viewModelScope.launch {
             runCatching { shopping.createList(name) }
-                .onSuccess { id -> select(id) }
-                .onFailure { error -> mutableState.update { it.copy(notice = error.toAromaError()) } }
+                .onSuccess { id ->
+                    // The switcher shows the new list right away, before the lists are fetched again.
+                    mutableState.update { it.copy(lists = it.lists + ShoppingListInfo(id, name.trim())) }
+                    select(id)
+                }.onFailure { error -> mutableState.update { it.copy(notice = error.toAromaError()) } }
         }
 
     fun renameList(name: String) {
         val listId = state.value.list?.id ?: return
         viewModelScope.launch {
             runCatching { shopping.renameList(listId, name) }
-                .onFailure { error -> mutableState.update { it.copy(notice = error.toAromaError()) } }
+                .onSuccess {
+                    mutableState.update { state ->
+                        state.copy(lists = state.lists.map { if (it.id == listId) it.copy(name = name.trim()) else it })
+                    }
+                }.onFailure { error -> mutableState.update { it.copy(notice = error.toAromaError()) } }
         }
     }
 

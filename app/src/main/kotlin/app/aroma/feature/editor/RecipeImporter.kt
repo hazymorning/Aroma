@@ -6,6 +6,8 @@ import app.aroma.data.AromaError.ImportFailed.Reason.NoAnswer
 import app.aroma.data.isConnectivity
 import app.aroma.data.repository.RecipeRepository
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -54,22 +56,31 @@ sealed interface ImportStep {
  * Mealie's AI when it may use it, otherwise by reading the caption's structure itself.
  *
  * [untitled] names a recipe whose caption starts straight with its ingredients. [patience] is how
- * long Aroma waits for a recipe after the connection dropped, checking every [checkEvery].
+ * long Aroma waits for a recipe after the connection dropped, checking every [checkEvery]; [lock]
+ * is shared by all importers of the app.
  */
 class RecipeImporter(
     private val recipes: RecipeRepository,
     private val untitled: String,
     private val patience: Duration = 5.minutes,
     private val checkEvery: Duration = 5.seconds,
+    private val lock: Mutex = Mutex(),
 ) {
-    suspend fun import(request: ImportRequest, onStep: (ImportStep) -> Unit): String {
+    /**
+     * Imports one recipe. Imports share [lock], so two of them never wait for a new recipe at the
+     * same time and take each other's.
+     */
+    suspend fun import(request: ImportRequest, onStep: (ImportStep) -> Unit): String = lock.withLock { importNow(request, onStep) }
+
+    private suspend fun importNow(request: ImportRequest, onStep: (ImportStep) -> Unit): String {
         onStep(ImportStep.Waiting)
         val report: (String) -> Unit = { onStep(ImportStep.Server(it)) }
         // Mealie's AI cannot read a post from its link, so posts always start with the regular import.
         val withAi = request.useAi && !request.url.isPost() && (request.text.isNotBlank() || request.translateTo != null)
         val withText = request.useAi && request.text.isNotBlank()
-        val readWithAi = suspend { onServer(onStep) { recipes.importWithAi(request.url, request.text, request.translateTo, report) } }
-        val readLink = suspend { onServer(onStep) { recipes.importFromUrl(request.url, report) } }
+        val link = request.url.ifBlank { null }
+        val readWithAi = suspend { onServer(onStep, link) { recipes.importWithAi(request.url, request.text, request.translateTo, report) } }
+        val readLink = suspend { onServer(onStep, link) { recipes.importFromUrl(request.url, report) } }
         val slug =
             if (withAi) {
                 try {
@@ -97,7 +108,7 @@ class RecipeImporter(
      * saves the recipe anyway. Aroma then waits for that recipe to appear instead of reporting an
      * error and leaving the recipe behind unnoticed.
      */
-    private suspend fun onServer(onStep: (ImportStep) -> Unit, import: suspend () -> String): String {
+    private suspend fun onServer(onStep: (ImportStep) -> Unit, source: String?, import: suspend () -> String): String {
         val known =
             try {
                 recipes.newestRecipeIds()
@@ -110,17 +121,17 @@ class RecipeImporter(
         } catch (failure: AromaError) {
             if (known == null || !failure.mayStillFinish()) throw failure
             onStep(ImportStep.StillWorking)
-            awaitNewRecipe(known)
+            awaitNewRecipe(known, source)
         }
     }
 
     /** Mealie saves a recipe only once it is complete, photo included, so the first sign of it is final. */
-    private suspend fun awaitNewRecipe(known: Set<String>): String {
+    private suspend fun awaitNewRecipe(known: Set<String>, source: String?): String {
         repeat((patience / checkEvery).toInt().coerceAtLeast(1)) {
             delay(checkEvery)
             val added =
                 try {
-                    recipes.addedSince(known)
+                    recipes.addedSince(known, source)
                 } catch (error: AromaError) {
                     // A phone between networks answers again shortly; anything else will not change.
                     if (!error.isConnectivity && !error.mayStillFinish()) throw error
@@ -159,7 +170,7 @@ class RecipeImporter(
             val rebuilt =
                 try {
                     // The text alone: with the link, Mealie would load the post a second time.
-                    onServer(onStep) {
+                    onServer(onStep, source = null) {
                         recipes.importWithAi(url = null, text = request.text.ifBlank { caption }, translateTo = request.translateTo) {
                             onStep(ImportStep.Server(it))
                         }

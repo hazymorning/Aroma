@@ -117,6 +117,17 @@ class RecipeImporterTest {
         }
 
     @Test
+    fun `a recipe someone else adds meanwhile is not taken for the dropped import`() =
+        runBlocking<Unit> {
+            details["gnocchi"] = recipe("gnocchi", "Tomaten-Gnocchi", ingredients = listOf("500 g Gnocchi"), steps = listOf("Braten."))
+            cut = Cut("url", arrives = "gnocchi")
+            // Another household member saves a recipe while Aroma waits; it must not be mistaken for the import.
+            listed.add(0, summary("id-fremd", "fremdes-rezept", link = LINK, user = "someone-else"))
+
+            assertEquals("gnocchi", importer().import(ImportRequest(LINK)) { })
+        }
+
+    @Test
     fun `when no recipe turns up the import says Mealie did not answer`() =
         runBlocking<Unit> {
             cut = Cut("url", arrives = null)
@@ -245,10 +256,9 @@ class RecipeImporterTest {
         if (pending != null) {
             checksAfterCut++
             if (checksAfterCut <= failingChecks) return MockResponse.Builder().code(502).build()
-            if (pending.arrives != null &&
-                checksAfterCut == failingChecks + 2
-            ) {
-                listed.add(0, summary("id-${pending.arrives}", pending.arrives))
+            if (pending.arrives != null && checksAfterCut == failingChecks + 2) {
+                // A recipe read from the link keeps it; one rebuilt from the caption has none yet.
+                listed.add(0, summary("id-${pending.arrives}", pending.arrives, link = LINK.takeIf { pending.endpoint == "url" }))
             }
         }
         return json("""{"page":1,"per_page":10,"total":${listed.size},"total_pages":1,"items":[${listed.joinToString(",")}]}""")
@@ -277,7 +287,8 @@ class RecipeImporterTest {
             .body(body)
             .build()
 
-    private fun summary(id: String, slug: String) = """{"id":"$id","slug":"$slug","name":"$slug","userId":"$USER"}"""
+    private fun summary(id: String, slug: String, link: String? = null, user: String = USER) =
+        """{"id":"$id","slug":"$slug","name":"$slug","userId":"$user","orgURL":${link?.let { "\"$it\"" }}}"""
 
     private fun recipe(
         slug: String,

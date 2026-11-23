@@ -48,6 +48,9 @@ class HomeViewModel(
         watchReminder()
     }
 
+    // The recipe being rated from the card, which the card itself puts away once that is saved.
+    private var ratingInFlight: String? = null
+
     /** Asks for a rating of the last recipe cooked, until it has one from anywhere. */
     private fun watchReminder() {
         viewModelScope.launch {
@@ -55,7 +58,8 @@ class HomeViewModel(
                 .collect { (cooked, ratings) ->
                     val session = sessions.current
                     val due = cooked?.takeIf { session != null && it.userId == session.userId }
-                    if (due != null && ratings[due.recipeId]?.rating != null) {
+                    // Rated elsewhere meanwhile; a rating from this card clears it itself once saved.
+                    if (due != null && due.recipeId != ratingInFlight && ratings[due.recipeId]?.rating != null) {
                         reminder.clear(due.recipeId)
                         return@collect
                     }
@@ -80,16 +84,19 @@ class HomeViewModel(
     fun rateCooked(stars: Int) {
         val toRate = state.value.toRate ?: return
         mutableState.update { it.copy(toRate = toRate.copy(stars = stars)) }
+        ratingInFlight = toRate.recipeId
         viewModelScope.launch {
             try {
                 recipes.rate(toRate.recipeId, toRate.slug, stars)
             } catch (_: AromaError) {
+                ratingInFlight = null
                 mutableState.update { it.copy(toRate = toRate) }
                 return@launch
             }
             // Long enough to see the stars fill before the card goes.
             delay(THANKS_MILLIS)
             reminder.clear(toRate.recipeId)
+            ratingInFlight = null
         }
     }
 

@@ -73,8 +73,8 @@ class CookViewModel(
         val recipe = base.value.recipe ?: return
         base.update { it.copy(rating = stars.toDouble(), ratedHere = true) }
         viewModelScope.launch {
-            runCatching { recipes.rate(recipe.id, recipe.slug, stars) }
-            reminder.clear(recipe.id)
+            // Only a saved rating ends the reminder; otherwise Home still asks later.
+            runCatching { recipes.rate(recipe.id, recipe.slug, stars) }.onSuccess { reminder.clear(recipe.id) }
         }
     }
 

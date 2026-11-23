@@ -49,6 +49,7 @@ data class RecipeSummaryDto(
     val id: String,
     val slug: String,
     val userId: String? = null,
+    val orgURL: String? = null,
     val name: String = "",
     val description: String? = null,
     val image: String? = null,

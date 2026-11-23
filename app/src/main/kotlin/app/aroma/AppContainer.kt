@@ -25,6 +25,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 
 /** Creates and holds the app's long-lived objects. */
 class AppContainer(context: Context) {
@@ -57,6 +58,9 @@ class AppContainer(context: Context) {
             }
         }
     val timers = CookingTimers(appContext, scope)
+
+    /** One import at a time, so imports waiting for Mealie never take each other's recipe. */
+    val importLock = Mutex()
 
     /**
      * Signs out and removes the account's traces from this device, as the sign-out dialog

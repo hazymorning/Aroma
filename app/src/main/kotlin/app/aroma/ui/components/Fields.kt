@@ -24,6 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.hintText
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import app.aroma.ui.theme.extras
@@ -61,7 +64,19 @@ fun FieldLabel(text: String, modifier: Modifier = Modifier) {
         text = text,
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(bottom = 8.dp),
+        // The field itself carries the label for TalkBack, so it is not read twice.
+        modifier = modifier.padding(bottom = 8.dp).clearAndSetSemantics {},
+    )
+}
+
+/** Help or error text under a field, on the same edge as the label above it. */
+@Composable
+private fun FieldNote(text: String, isError: Boolean) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 8.dp),
     )
 }
 
@@ -97,7 +112,8 @@ fun LabeledTextField(
             modifier =
                 fieldModifier
                     .fillMaxWidth()
-                    .heightIn(min = if (singleLine) 52.dp else 112.dp),
+                    .heightIn(min = if (singleLine) 52.dp else 112.dp)
+                    .semantics { if (label != null) hintText = label },
             enabled = enabled,
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
             keyboardOptions = keyboardOptions,
@@ -118,7 +134,6 @@ fun LabeledTextField(
                     isError = isError,
                     placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.bodyLarge) } },
                     trailingIcon = trailingIcon,
-                    supportingText = supportingText?.let { { Text(it, style = MaterialTheme.typography.bodySmall) } },
                     colors = colors,
                     container = {
                         OutlinedTextFieldDefaults.Container(
@@ -134,6 +149,7 @@ fun LabeledTextField(
                 )
             },
         )
+        if (supportingText != null) FieldNote(supportingText, isError)
     }
 }
 
@@ -145,6 +161,7 @@ fun LabeledSecureTextField(
     modifier: Modifier = Modifier,
     fieldModifier: Modifier = Modifier,
     supportingText: String? = null,
+    isError: Boolean = false,
     textObfuscationMode: TextObfuscationMode = TextObfuscationMode.RevealLastTyped,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     onKeyboardAction: KeyboardActionHandler? = null,
@@ -159,7 +176,8 @@ fun LabeledSecureTextField(
             modifier =
                 fieldModifier
                     .fillMaxWidth()
-                    .heightIn(min = 52.dp),
+                    .heightIn(min = 52.dp)
+                    .semantics { if (label != null) hintText = label },
             onKeyboardAction = onKeyboardAction,
             interactionSource = interaction,
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -175,12 +193,12 @@ fun LabeledSecureTextField(
                     interactionSource = interaction,
                     labelPosition = TextFieldLabelPosition.Attached(),
                     trailingIcon = trailingIcon,
-                    supportingText = supportingText?.let { { Text(it, style = MaterialTheme.typography.bodySmall) } },
+                    isError = isError,
                     colors = colors,
                     container = {
                         OutlinedTextFieldDefaults.Container(
                             enabled = true,
-                            isError = false,
+                            isError = isError,
                             interactionSource = interaction,
                             colors = colors,
                             shape = FieldShape,
@@ -190,5 +208,6 @@ fun LabeledSecureTextField(
                     },
                 ),
         )
+        if (supportingText != null) FieldNote(supportingText, isError)
     }
 }

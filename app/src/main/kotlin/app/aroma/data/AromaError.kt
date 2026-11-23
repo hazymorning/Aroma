@@ -5,7 +5,10 @@ import kotlinx.serialization.SerializationException
 import retrofit2.HttpException
 import java.io.IOException
 import java.net.UnknownHostException
+import java.security.cert.CertificateException
 import javax.net.ssl.SSLException
+import javax.net.ssl.SSLHandshakeException
+import javax.net.ssl.SSLPeerUnverifiedException
 
 /** Everything that can go wrong when talking to a Mealie server, in terms the UI can explain. */
 sealed class AromaError(message: String? = null, cause: Throwable? = null) : Exception(message, cause) {
@@ -66,8 +69,14 @@ fun Throwable.toAromaError(): AromaError =
             AromaError.HostNotFound(this)
         }
 
-        is SSLException -> {
+        // Only a failed handshake is about trust; Android also reports a connection reset in the
+        // middle of an HTTPS response as an SSLException, which is just a dropped connection.
+        is SSLHandshakeException, is SSLPeerUnverifiedException -> {
             AromaError.Certificate(this)
+        }
+
+        is SSLException -> {
+            if (cause is CertificateException) AromaError.Certificate(this) else AromaError.Offline(this)
         }
 
         is IOException -> {

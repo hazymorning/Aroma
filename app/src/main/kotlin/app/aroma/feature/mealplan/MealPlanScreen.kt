@@ -36,7 +36,6 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -80,6 +79,7 @@ import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.mealTypeLabel
+import app.aroma.ui.components.rememberRowSwipeState
 import app.aroma.ui.navigation.Transitions.Settle
 import app.aroma.ui.theme.CardTitle
 import app.aroma.ui.theme.IconKeyline
@@ -368,7 +368,7 @@ private fun RowAction(
 /** Swiping a row towards the start removes it; the snackbar offers the way back. */
 @Composable
 private fun SwipeToRemove(onRemove: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val state = rememberSwipeToDismissBoxState()
+    val state = rememberRowSwipeState()
     val haptics = LocalHapticFeedback.current
     val armed = state.targetValue == SwipeToDismissBoxValue.EndToStart
     LaunchedEffect(armed) {

@@ -191,9 +191,17 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         cache.write("ratings", ListSerializer(RatingDto.serializer()), ratingDtos())
     }
 
+    /** Shows the rating at once; if Mealie does not take it, the previous one comes back. */
     suspend fun rate(recipeId: String, slug: String, rating: Int) {
+        val previous = mutableRatings.value[recipeId]
         updateRatingLocally(recipeId) { it.copy(rating = rating.toDouble()) }
-        mealieCall { sessions.api().setRating(userId(), slug, RatingUpdateDto(rating = rating.toDouble())) }
+        try {
+            mealieCall { sessions.api().setRating(userId(), slug, RatingUpdateDto(rating = rating.toDouble())) }
+        } catch (failure: AromaError) {
+            mutableRatings.value =
+                if (previous == null) mutableRatings.value - recipeId else mutableRatings.value + (recipeId to previous)
+            throw failure
+        }
         cache.write("ratings", ListSerializer(RatingDto.serializer()), ratingDtos())
     }
 
@@ -297,11 +305,20 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     /** The newest recipes' ids, so that one Mealie adds later can be told apart from them. */
     suspend fun newestRecipeIds(): Set<String> = mealieCall { newest().mapTo(mutableSetOf()) { it.id } }
 
-    /** The slug of the newest recipe the signed-in user added that is not among [known], or null. */
-    suspend fun addedSince(known: Set<String>): String? =
+    /**
+     * The slug of a recipe the signed-in user added since [known] was taken, or null. With [source],
+     * only a recipe imported from a link qualifies, best one from that very link; without, only one
+     * with no link, as Mealie stores it when it read a text.
+     */
+    suspend fun addedSince(known: Set<String>, source: String?): String? =
         mealieCall {
             val user = userId()
-            newest().firstOrNull { it.id !in known && (it.userId == null || it.userId == user) }?.slug
+            val added = newest().filter { it.id !in known && (it.userId == null || it.userId == user) }
+            if (source == null) {
+                added.firstOrNull { it.orgURL.isNullOrBlank() }?.slug
+            } else {
+                (added.firstOrNull { it.orgURL == source } ?: added.firstOrNull { !it.orgURL.isNullOrBlank() })?.slug
+            }
         }
 
     private suspend fun newest(): List<RecipeSummaryDto> =

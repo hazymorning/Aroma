@@ -23,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,6 +75,7 @@ import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.measureText
+import app.aroma.ui.components.rememberRowSwipeState
 import app.aroma.ui.navigation.Transitions.Settle
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
@@ -217,7 +217,7 @@ private fun BasketHeader(count: Int, onClear: () -> Unit, modifier: Modifier = M
 /** Swiping a row to the start uncovers a faint red field with the bin; letting go past the threshold deletes it. */
 @Composable
 private fun SwipeToDelete(onDelete: () -> Unit, content: @Composable () -> Unit) {
-    val state = rememberSwipeToDismissBoxState()
+    val state = rememberRowSwipeState()
     val haptics = LocalHapticFeedback.current
     val delete by rememberUpdatedState(onDelete)
     LaunchedEffect(state.currentValue) {

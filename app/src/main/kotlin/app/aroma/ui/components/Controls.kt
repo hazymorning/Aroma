@@ -192,7 +192,10 @@ fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 
                 Box(
                     modifier =
                         Modifier
-                            .size(48.dp)
+                            // Five 48 dp targets where they fit; on narrow screens they share the width.
+                            .weight(1f, fill = false)
+                            .widthIn(max = 48.dp)
+                            .height(48.dp)
                             .selectable(selected = lit, role = Role.RadioButton, onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                                 onRate(star)
@@ -267,8 +270,8 @@ fun AromaSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifie
     Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
-        // A non-null thumb content keeps the unchecked thumb at its full size.
-        thumbContent = {},
+        // Thumb content with a real size keeps the unchecked thumb as large as the checked one.
+        thumbContent = { Spacer(Modifier.size(SwitchDefaults.IconSize)) },
         colors =
             SwitchDefaults.colors(
                 checkedTrackColor = extras.cta,
