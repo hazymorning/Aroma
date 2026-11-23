@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -60,12 +61,12 @@ import app.aroma.feature.recipe.PlanSheet
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaPullToRefreshBox
+import app.aroma.ui.components.CardActionPadding
 import app.aroma.ui.components.CardPart
+import app.aroma.ui.components.EdgeActionPadding
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.IconAction
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
@@ -83,12 +84,13 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.rememberFullSheetState
-import app.aroma.ui.theme.CardTitle
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.PageEndSpace
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.ThumbnailSize
@@ -124,12 +126,6 @@ data class MealPlanActions(
     val onMoveEntry: (MealPlanEntry, LocalDate, MealType) -> Unit = { _, _, _ -> },
     val onRefresh: () -> Unit = {},
 )
-
-/**
- * Shorter than the add button's 48 dp target, which Material lets reach past the row for touch,
- * so a weekday sits as close to its meals as to its hairline.
- */
-private val DayRowHeight = 40.dp
 
 @Composable
 fun MealPlanScreen(state: MealPlanUiState, actions: MealPlanActions, modifier: Modifier = Modifier) {
@@ -198,12 +194,10 @@ private fun Header(state: MealPlanUiState, actions: MealPlanActions) {
     val weekEnd = state.weekStart.plusDays(6)
     val range = remember(state.weekStart, locale) { formatRange(state.weekStart, weekEnd, locale) }
     val showsToday = state.today in state.weekStart..weekEnd
-    // The week row's 48 dp targets already hold the range off the title; the space below it is
-    // larger, so the range reads as the title's second line rather than as the first day's.
     Column(Modifier.padding(bottom = Space.xs)) {
         val recipes = state.days.sumOf { day -> day.entries.count { it.recipe != null } }
         var confirmShopping by rememberSaveable { mutableStateOf(false) }
-        PageHeader(title = stringResource(R.string.nav_meal_plan), kicker = weekNumbers(state.weekStart, weekEnd)) {
+        PageHeader(title = stringResource(R.string.nav_meal_plan)) {
             if (recipes > 0) HeaderAction(R.drawable.ic_basket_add, stringResource(R.string.plan_shop_week), { confirmShopping = true })
         }
         if (confirmShopping) {
@@ -223,16 +217,18 @@ private fun Header(state: MealPlanUiState, actions: MealPlanActions) {
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = ScreenMargin, end = Space.xs),
+                    .padding(start = ScreenMargin, end = EdgeActionPadding, top = Space.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = range,
-                style = MaterialTheme.typography.titleMedium.tabular(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            Column(Modifier.weight(1f)) {
+                Text(text = range, style = AromaType.BodyStrong.tabular(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = weekNumbers(state.weekStart, weekEnd),
+                    style = AromaType.Small.tabular(),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
             if (!showsToday) {
                 QuietLink(
                     text = stringResource(R.string.plan_this_week),
@@ -275,13 +271,12 @@ private fun formatRange(start: LocalDate, end: LocalDate, locale: Locale): Strin
     }
 }
 
-/** A day is one card, today's washed in sage: its header, then one item per meal. */
+/** A day is one card: its header, then one item per meal. */
 private fun LazyListScope.daySection(day: MealPlanDay, isToday: Boolean, actions: MealPlanActions, onMore: (MealPlanEntry) -> Unit) {
     val parts = day.entries.size + 1
     item(key = "day-${day.date}") {
         SoftCard(
             part = CardPart.of(0, parts),
-            highlight = isToday,
             modifier =
                 Modifier
                     .settling(this)
@@ -291,11 +286,11 @@ private fun LazyListScope.daySection(day: MealPlanDay, isToday: Boolean, actions
         }
     }
     itemsIndexed(day.entries, key = { _, entry -> "entry-${entry.id}" }) { index, entry ->
-        SoftCard(part = CardPart.of(index + 1, parts), highlight = isToday, modifier = Modifier.settling(this)) {
+        SoftCard(part = CardPart.of(index + 1, parts), modifier = Modifier.settling(this)) {
             SwipeToRemove(onRemove = { actions.onDeleteEntry(entry) }) {
                 EntryRow(
                     entry = entry,
-                    paper = if (isToday) extras.cardHighlight else extras.card,
+                    paper = extras.card,
                     onClick = { if (entry.recipe != null) actions.onOpenEntry(entry) else onMore(entry) },
                     onMore = { onMore(entry) },
                     onShop = entry.recipe?.let { { actions.onShopEntry(entry) } },
@@ -337,8 +332,8 @@ private fun DayHeader(date: LocalDate, isToday: Boolean, isEmpty: Boolean, onAdd
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(DayRowHeight)
-                        .padding(start = ScreenMargin, end = Space.xs),
+                        .height(RowHeight.oneLine)
+                        .padding(start = CardPadding, end = CardActionPadding),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 DayTitle(date, weekday, isToday, Modifier.weight(1f))
@@ -351,9 +346,9 @@ private fun DayHeader(date: LocalDate, isToday: Boolean, isEmpty: Boolean, onAdd
             ) {
                 Text(
                     text = stringResource(R.string.plan_day_empty),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = AromaType.Small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.s),
+                    modifier = Modifier.padding(start = CardPadding, end = CardPadding, bottom = Space.s),
                 )
             }
         }
@@ -366,20 +361,29 @@ private fun DayTitle(date: LocalDate, weekday: String, isToday: Boolean, modifie
     val locale = currentLocale()
     val shortDate =
         remember(date, locale) { date.format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMd"), locale)) }
-    Row(modifier.semantics(mergeDescendants = true) { heading() }) {
-        Text(weekday, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.alignByBaseline())
+    Row(modifier.semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically) {
+        Text(weekday, style = AromaType.SectionTitle)
         Spacer(Modifier.width(Space.xs))
-        Text(
-            text = shortDate,
-            style = MaterialTheme.typography.bodySmall.tabular(),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.alignByBaseline(),
-        )
+        Text(text = shortDate, style = AromaType.Small.tabular(), color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (isToday) {
             Spacer(Modifier.width(Space.s))
-            Kicker(stringResource(R.string.home_today), Modifier.alignByBaseline(), color = MaterialTheme.colorScheme.primary)
+            TodayBadge()
         }
     }
+}
+
+/** "Today" on the sage wash, the one mark a day of the plan can carry. */
+@Composable
+private fun TodayBadge() {
+    Text(
+        text = stringResource(R.string.home_today),
+        style = AromaType.Caption,
+        color = extras.onSelected,
+        modifier =
+            Modifier
+                .background(extras.selected, CircleShape)
+                .padding(horizontal = Space.xs, vertical = Space.xxs / 2),
+    )
 }
 
 /**
@@ -422,24 +426,23 @@ private fun EntryRow(
                                 true
                             },
                         )
-                }.padding(horizontal = ScreenMargin, vertical = Space.s),
+                }.padding(horizontal = CardPadding, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         EntryThumbnail(entry)
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
-            Kicker(mealTypeLabel(entry.type))
-            Spacer(Modifier.height(Space.xxs))
+            Text(mealTypeLabel(entry.type), style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 text = entry.recipe?.name ?: entry.title,
-                style = CardTitle,
+                style = AromaType.Name,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (entry.note.isNotBlank()) {
                 Text(
                     text = entry.note,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = AromaType.Small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -463,7 +466,7 @@ private fun EntryThumbnail(entry: MealPlanEntry) {
         Box(
             Modifier
                 .size(ThumbnailSize)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.small),
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.shapes.small),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -499,44 +502,48 @@ private fun EntrySheet(
         onDismissRequest = onDismiss,
         title = entry.recipe?.name ?: entry.title,
         sheetState = sheetState,
-        kicker = "${weekday(entry.date, locale)} · ${mealTypeLabel(entry.type)}",
+        meta = {
+            Text(
+                text = "${weekday(entry.date, locale)} · ${mealTypeLabel(entry.type)}",
+                style = AromaType.Small,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
     ) {
         Column(Modifier.padding(bottom = Space.m)) {
             if (entry.recipe != null) {
                 SheetAction(R.drawable.ic_basket_add, stringResource(R.string.recipe_add_to_list), onClick = { choose(onShop) })
-                Hairline(Modifier.padding(start = IconKeyline, end = ScreenMargin))
             }
             SheetAction(R.drawable.ic_plan, stringResource(R.string.plan_move), onClick = { choose(onMove) })
-            Hairline(Modifier.padding(start = IconKeyline, end = ScreenMargin))
             SheetAction(R.drawable.ic_delete, stringResource(R.string.plan_remove), onClick = { choose(onRemove) }, destructive = true)
         }
     }
 }
 
-/** How long the outline's lines are: a day's name, then a meal's kicker and title. */
+/** How long the outline's lines are: a day's name, then a meal's type and title. */
 private val DayWidth = 120.dp
 private val EntryLineWidths = listOf(64.dp, 180.dp)
 
-/** The week's outline while it loads: day lines with one meal each. */
+/** The week's outline while it loads: day cards with one meal each. */
 @Composable
 private fun Loading() {
-    Column(Modifier.padding(top = Space.s)) {
+    Column {
         repeat(3) {
-            Hairline(Modifier.padding(horizontal = ScreenMargin))
-            Box(
-                Modifier
-                    .padding(start = ScreenMargin, top = Space.xs)
-                    .height(DayRowHeight),
-                contentAlignment = Alignment.CenterStart,
-            ) { PlaceholderLine(Modifier.width(DayWidth)) }
-            Row(Modifier.padding(horizontal = ScreenMargin, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
-                Placeholder(Modifier.size(ThumbnailSize), shape = MaterialTheme.shapes.small)
-                Spacer(Modifier.width(Space.m))
-                Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-                    EntryLineWidths.forEach { PlaceholderLine(Modifier.width(it)) }
+            SoftCard(Modifier.padding(top = Space.s)) {
+                Box(
+                    Modifier
+                        .padding(start = CardPadding)
+                        .height(RowHeight.oneLine),
+                    contentAlignment = Alignment.CenterStart,
+                ) { PlaceholderLine(Modifier.width(DayWidth)) }
+                Row(Modifier.padding(horizontal = CardPadding, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
+                    Placeholder(Modifier.size(ThumbnailSize), shape = MaterialTheme.shapes.small)
+                    Spacer(Modifier.width(Space.m))
+                    Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+                        EntryLineWidths.forEach { PlaceholderLine(Modifier.width(it)) }
+                    }
                 }
             }
-            Spacer(Modifier.height(Space.s))
         }
     }
 }

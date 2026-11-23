@@ -1,12 +1,17 @@
 package app.aroma.ui
 
+import androidx.compose.ui.text.TextStyle
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.AromaTypography
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 /**
- * The rules of docs/DESIGN.md that can be read from the code: screens take their sizes, colours,
- * shapes, type and motion from the theme, and their controls from Aroma's components.
+ * The rules of docs/DESIGN.md that can be read from the code: one type scale of seven sizes, set
+ * without capitals or tracking; nothing outlined on a page; sizes, colours, shapes, type and motion
+ * from the theme; controls from Aroma's components.
  */
 class DesignRulesTest {
     private val root = File("src/main/kotlin/app/aroma")
@@ -48,15 +53,61 @@ class DesignRulesTest {
         )
 
     @Test
-    fun screensUseAromasComponents() =
+    fun screensSetTextInAromasRoles() =
         assertNone(
-            "Use the Aroma component instead of Material's:",
-            violations(Regex("""import androidx\.compose\.material3\.($MATERIAL_PRIMITIVES)$"""), "feature", "ui/navigation"),
+            "Use a role of AromaType instead of Material's type slots:",
+            violations(Regex("""MaterialTheme\.typography"""), "feature", "ui/navigation"),
         )
 
     @Test
-    fun motionComesFromMotion() =
-        assertNone("Use a duration of Motion:", violations(Regex("""tween\(\s*\d"""), "feature", "ui/components", "ui/navigation"))
+    fun textIsNeverSetInCapitalsOrTracked() =
+        assertNone(
+            "Set text in sentence case, without letter spacing:",
+            violations(Regex("""\.uppercase\(|letterSpacing\s*="""), "feature") +
+                violations(Regex("""letterSpacing\s*="""), "ui/components", "ui/navigation"),
+        )
+
+    @Test
+    fun nothingOnAPageIsOutlined() =
+        assertNone(
+            "Group on a SoftCard or give a control the soft fill instead of an outline:",
+            violations(Regex("""\.border\(|BorderStroke\("""), "feature"),
+        )
+
+    @Test
+    fun theScaleHasSevenSizes() {
+        // Every role in AromaType, found by reflection so a new role is checked too.
+        val roles =
+            AromaType::class.java.declaredFields
+                .filter { it.type == TextStyle::class.java }
+                .map { field ->
+                    field.isAccessible = true
+                    field.get(AromaType) as TextStyle
+                }
+        val slots =
+            with(AromaTypography) {
+                listOf(
+                    displayLarge,
+                    displayMedium,
+                    displaySmall,
+                    headlineLarge,
+                    headlineMedium,
+                    headlineSmall,
+                    titleLarge,
+                    titleMedium,
+                    titleSmall,
+                    bodyLarge,
+                    bodyMedium,
+                    bodySmall,
+                    labelLarge,
+                    labelMedium,
+                    labelSmall,
+                )
+            }
+        assertTrue("AromaType has no roles", roles.isNotEmpty())
+        val sizes = (roles + slots).map { it.fontSize.value }.toSortedSet()
+        assertEquals(sortedSetOf(12f, 14f, 16f, 18f, 22f, 24f, 28f), sizes)
+    }
 
     private companion object {
         /** `val Name = 56.dp`: a size with a name, which is what the rules ask for. */

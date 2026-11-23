@@ -15,7 +15,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.MealType
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.Space
 
 @Composable
 @ReadOnlyComposable
@@ -38,7 +40,7 @@ fun OfflineNotice(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Space.xs),
     ) {
         Icon(
             painterResource(R.drawable.ic_cloud_off),
@@ -48,7 +50,7 @@ fun OfflineNotice(modifier: Modifier = Modifier) {
         )
         Text(
             text = stringResource(R.string.offline_notice),
-            style = MaterialTheme.typography.bodySmall,
+            style = AromaType.Small,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

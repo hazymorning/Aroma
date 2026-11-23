@@ -132,7 +132,6 @@ class HomeViewModel(
                 isOffline = false,
                 error = null,
                 greeting = greetingFor(LocalTime.now(clock)),
-                date = today,
             )
         }
         var pending = 5

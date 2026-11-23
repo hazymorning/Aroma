@@ -58,22 +58,26 @@ import app.aroma.core.format.IngredientLine
 import app.aroma.core.model.ShoppingItem
 import app.aroma.core.model.ShoppingLabel
 import app.aroma.core.model.ShoppingList
+import app.aroma.ui.components.CardPart
 import app.aroma.ui.components.CheckCircle
+import app.aroma.ui.components.GroupLabel
 import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.QuietLink
+import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwipeToRemove
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.measureText
-import app.aroma.ui.theme.IconKeyline
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
+import app.aroma.ui.theme.ContentEdge
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
-import app.aroma.ui.theme.ShoppingModeItem
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.extras
 import java.util.Locale
 
 /** Open items grouped by label, in the order chosen in Mealie; unlabeled items come last. */
@@ -107,10 +111,10 @@ private val LargeCheckSize = 30.dp
 
 private fun checkSize(large: Boolean): Dp = if (large) LargeCheckSize else CheckSize
 
-/** Where an item's text starts: 16 dp after the check in the list, a little further in shopping mode. */
-private fun textKeyline(large: Boolean): Dp = if (large) IconKeyline + Space.xs else IconKeyline
+/** Where an item's text starts in its card: 16 dp after the check, a little further in shopping mode. */
+private fun textKeyline(large: Boolean): Dp = CardPadding + checkSize(large) + if (large) Space.l else Space.m
 
-/** The open items under their category kickers, then what is already in the basket. */
+/** The open items on a card per category, then what is already in the basket. */
 internal fun LazyListScope.shoppingSections(
     groups: ShoppingGroups,
     state: ShoppingUiState,
@@ -143,14 +147,13 @@ internal fun LazyListScope.shoppingSections(
         }
     }
     groups.sections.forEach { section ->
-        item(key = "label-${section.label?.id ?: "none"}", contentType = "kicker") {
-            Kicker(
+        item(key = "label-${section.label?.id ?: "none"}", contentType = "label") {
+            GroupLabel(
                 text = section.label?.name ?: stringResource(R.string.shopping_other),
                 modifier =
                     Modifier
                         .animateItem()
-                        .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl, bottom = Space.xs)
-                        .semantics { heading() },
+                        .padding(top = Space.l),
             )
         }
         itemRows(section.items, state, actions, large, onEdit)
@@ -163,7 +166,7 @@ internal fun LazyListScope.shoppingSections(
     }
 }
 
-/** A group of rows with hairlines between them, inset to the text column. */
+/** A group of rows on one card, with hairlines between them inset to the text. */
 private fun LazyListScope.itemRows(
     items: List<ShoppingItem>,
     state: ShoppingUiState,
@@ -172,8 +175,8 @@ private fun LazyListScope.itemRows(
     onEdit: (ShoppingItem) -> Unit,
 ) {
     itemsIndexed(items, key = { _, item -> item.id }, contentType = { _, _ -> "item" }) { index, item ->
-        Column(Modifier.animateItem()) {
-            if (index > 0) Hairline(Modifier.padding(start = textKeyline(large), end = ScreenMargin))
+        SoftCard(Modifier.animateItem(), part = CardPart.of(index, items.size)) {
+            if (index > 0) Hairline(Modifier.padding(start = textKeyline(large), end = CardPadding))
             SwipeToRemove(onRemove = { actions.onDelete(item) }) {
                 ItemRow(
                     item = item,
@@ -188,30 +191,31 @@ private fun LazyListScope.itemRows(
     }
 }
 
-/** "IM KORB · 3" with the link that clears the basket on the right margin, 48 dp below the open items. */
+/** "In the basket · 3" over its card, with the link that clears the basket on the right margin. */
 @Composable
 private fun BasketHeader(count: Int, onClear: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
-                // The link's 48 dp target adds 16 dp above the kicker.
-                .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl),
+                .padding(start = ContentEdge, end = ScreenMargin, top = Space.s),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Kicker(
+        Text(
             text = stringResource(R.string.shopping_in_cart, count),
+            style = AromaType.Label,
+            color = MaterialTheme.colorScheme.primary,
             modifier =
                 Modifier
                     .weight(1f)
-                    .alignByBaseline()
                     .semantics { heading() },
         )
-        QuietLink(stringResource(R.string.shopping_clear_checked), onClear, Modifier.alignByBaseline(), tone = LinkTone.Ink)
+        QuietLink(stringResource(R.string.shopping_clear_checked), onClear, tone = LinkTone.Ink)
     }
 }
 
 /**
- * One item: the check on the margin, the text on the keyline after it. Checking draws the check,
+ * One item: the check on the card's content edge, the text on the keyline after it. Checking draws the check,
  * fades the text and strikes it through; the row moves into the basket a moment later.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -236,7 +240,7 @@ private fun ItemRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
+                .background(extras.card)
                 .combinedClickable(
                     role = Role.Checkbox,
                     onLongClickLabel = stringResource(R.string.shopping_edit_item),
@@ -256,11 +260,11 @@ private fun ItemRow(
                             },
                         )
                 }.heightIn(min = if (large || item.recipeNames.isNotEmpty()) RowHeight.twoLines else RowHeight.oneLine)
-                .padding(horizontal = ScreenMargin, vertical = Space.s),
+                .padding(horizontal = CardPadding, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CheckCircle(checked, size = checkSize(large))
-        Spacer(Modifier.width(textKeyline(large) - ScreenMargin - checkSize(large)))
+        Spacer(Modifier.width(textKeyline(large) - CardPadding - checkSize(large)))
         Column(
             Modifier
                 .weight(1f)
@@ -268,13 +272,13 @@ private fun ItemRow(
         ) {
             StruckText(
                 text = text,
-                style = if (large) ShoppingModeItem else MaterialTheme.typography.bodyLarge,
+                style = if (large) AromaType.Large else AromaType.Body,
                 progress = { strike.value },
             )
             if (item.recipeNames.isNotEmpty()) {
                 Text(
                     text = stringResource(R.string.shopping_for_recipe, item.recipeNames.joinToString(", ")),
-                    style = if (large) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+                    style = AromaType.Small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

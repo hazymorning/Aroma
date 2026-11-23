@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicSecureTextField
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -29,23 +28,24 @@ import androidx.compose.ui.semantics.hintText
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.ControlHeight
+import app.aroma.ui.theme.Lines
+import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.extras
 
-/** Fields have 12 dp corners: rounder than the page, squarer than a button. */
-val FieldShape = RoundedCornerShape(12.dp)
-
-/** Transparent fields with a hairline that turns sage on focus, at the same width. */
+/** Fields on the soft fill every control shares; a sage ring shows which one has the cursor. */
 @Composable
 fun aromaFieldColors(): TextFieldColors {
     val scheme = MaterialTheme.colorScheme
     return OutlinedTextFieldDefaults.colors(
-        focusedContainerColor = Color.Transparent,
-        unfocusedContainerColor = Color.Transparent,
-        disabledContainerColor = Color.Transparent,
-        errorContainerColor = Color.Transparent,
+        focusedContainerColor = extras.card,
+        unfocusedContainerColor = extras.card,
+        disabledContainerColor = extras.card,
+        errorContainerColor = extras.card,
         focusedBorderColor = scheme.primary,
-        unfocusedBorderColor = extras.hairlineStrong,
-        disabledBorderColor = scheme.outlineVariant,
+        unfocusedBorderColor = Color.Transparent,
+        disabledBorderColor = Color.Transparent,
         errorBorderColor = scheme.error,
         cursorColor = scheme.primary,
         focusedPlaceholderColor = scheme.onSurfaceVariant,
@@ -62,10 +62,10 @@ fun aromaFieldColors(): TextFieldColors {
 fun FieldLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelMedium,
+        style = AromaType.Label,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         // The field itself carries the label for TalkBack, so it is not read twice.
-        modifier = modifier.padding(bottom = 8.dp).clearAndSetSemantics {},
+        modifier = modifier.padding(bottom = Space.xs).clearAndSetSemantics {},
     )
 }
 
@@ -74,15 +74,18 @@ fun FieldLabel(text: String, modifier: Modifier = Modifier) {
 private fun FieldNote(text: String, isError: Boolean) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodySmall,
+        style = AromaType.Small,
         color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 8.dp),
+        modifier = Modifier.padding(top = Space.xs),
     )
 }
 
+/** Where a field for several lines starts. */
+private val MultiLineFieldHeight = 112.dp
+
 /**
- * A text field with its label above it. Single-line fields are 52 dp tall, multi-line ones start
- * at 112 dp. [fieldModifier] reaches the field itself, for focus and autofill semantics.
+ * A text field with its label above it. Single-line fields are as tall as a button; fields for
+ * several lines start at [MultiLineFieldHeight]. [fieldModifier] reaches the field itself, for focus and autofill semantics.
  */
 @Composable
 fun LabeledTextField(
@@ -112,10 +115,10 @@ fun LabeledTextField(
             modifier =
                 fieldModifier
                     .fillMaxWidth()
-                    .heightIn(min = if (singleLine) 52.dp else 112.dp)
+                    .heightIn(min = if (singleLine) ControlHeight else MultiLineFieldHeight)
                     .semantics { if (label != null) hintText = label },
             enabled = enabled,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+            textStyle = AromaType.Body.copy(color = MaterialTheme.colorScheme.onSurface),
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,
             singleLine = singleLine,
@@ -132,7 +135,7 @@ fun LabeledTextField(
                     visualTransformation = visualTransformation,
                     interactionSource = interaction,
                     isError = isError,
-                    placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.bodyLarge) } },
+                    placeholder = placeholder?.let { { Text(it, style = AromaType.Body) } },
                     trailingIcon = trailingIcon,
                     colors = colors,
                     container = {
@@ -141,9 +144,9 @@ fun LabeledTextField(
                             isError = isError,
                             interactionSource = interaction,
                             colors = colors,
-                            shape = FieldShape,
-                            focusedBorderThickness = 1.dp,
-                            unfocusedBorderThickness = 1.dp,
+                            shape = MaterialTheme.shapes.medium,
+                            focusedBorderThickness = Lines.focus,
+                            unfocusedBorderThickness = Lines.focus,
                         )
                     },
                 )
@@ -176,12 +179,12 @@ fun LabeledSecureTextField(
             modifier =
                 fieldModifier
                     .fillMaxWidth()
-                    .heightIn(min = 52.dp)
+                    .heightIn(min = ControlHeight)
                     .semantics { if (label != null) hintText = label },
             onKeyboardAction = onKeyboardAction,
             interactionSource = interaction,
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+            textStyle = AromaType.Body.copy(color = MaterialTheme.colorScheme.onSurface),
             textObfuscationMode = textObfuscationMode,
             keyboardOptions = keyboardOptions,
             decorator =
@@ -201,9 +204,9 @@ fun LabeledSecureTextField(
                             isError = isError,
                             interactionSource = interaction,
                             colors = colors,
-                            shape = FieldShape,
-                            focusedBorderThickness = 1.dp,
-                            unfocusedBorderThickness = 1.dp,
+                            shape = MaterialTheme.shapes.medium,
+                            focusedBorderThickness = Lines.focus,
+                            unfocusedBorderThickness = Lines.focus,
                         )
                     },
                 ),

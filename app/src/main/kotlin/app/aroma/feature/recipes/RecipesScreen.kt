@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
@@ -42,7 +41,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,22 +56,21 @@ import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PageHeader
+import app.aroma.ui.components.PageTabs
 import app.aroma.ui.components.PillTextField
 import app.aroma.ui.components.RecipeGrid
 import app.aroma.ui.components.ScrollToTopOnReselect
-import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.pageItem
 import app.aroma.ui.components.recipeGridPlaceholders
 import app.aroma.ui.components.rememberFullSheetState
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.PageEndSpace
@@ -238,17 +235,15 @@ private fun LazyGridScope.body(state: RecipesUiState, actions: RecipesActions) {
 @Composable
 private fun Header(state: RecipesUiState, actions: RecipesActions, searchFocus: FocusRequester?, openSheet: (RecipesSheet) -> Unit) {
     Column {
-        val count = state.total?.takeIf { state.recipes.isNotEmpty() }
         RecipesHeader(
             section = RecipesSection.All,
             onSection = actions.onSection,
             onAddRecipe = actions.onAddRecipe,
-            kicker = count?.let { pluralStringResource(R.plurals.recipe_count, it, it) },
         ) {
             val sortLabel = stringResource(R.string.sort_title) + ": " + stringResource(state.filter.sort.labelRes())
             HeaderAction(R.drawable.ic_sort, sortLabel, { openSheet(RecipesSheet.Sort) })
         }
-        Spacer(Modifier.height(Space.m))
+        Spacer(Modifier.height(Space.s))
         PillTextField(
             value = state.filter.query,
             onValueChange = actions.onQueryChange,
@@ -307,19 +302,18 @@ internal fun RecipesHeader(
     section: RecipesSection,
     onSection: (RecipesSection) -> Unit,
     onAddRecipe: () -> Unit,
-    kicker: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Column {
-        PageHeader(title = stringResource(R.string.nav_recipes), kicker = kicker) {
+        PageHeader(title = stringResource(R.string.nav_recipes)) {
             actions()
             HeaderAction(R.drawable.ic_add, stringResource(R.string.recipes_add), onAddRecipe)
         }
-        SegmentedControl(
+        PageTabs(
             options = RecipesSection.entries.map { stringResource(it.label) },
             selectedIndex = section.ordinal,
             onSelect = { onSection(RecipesSection.entries[it]) },
-            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l),
+            modifier = Modifier.padding(top = Space.s),
         )
     }
 }
@@ -359,9 +353,8 @@ private fun OrganizerSheet(
 ) {
     AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(kind.labelRes())) {
         LazyColumn(contentPadding = PaddingValues(bottom = Space.m)) {
-            itemsIndexed(options, key = { _, option -> option.id }) { index, option ->
+            items(options, key = { it.id }) { option ->
                 val checked = selected.any { it.id == option.id }
-                if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
                 ChoiceRow(
                     label = option.name,
                     chosen = checked,
@@ -385,8 +378,7 @@ private fun SortSheet(current: RecipeSort, onSelect: (RecipeSort) -> Unit, onDis
                 .selectableGroup()
                 .padding(bottom = Space.m),
         ) {
-            RecipeSort.entries.forEachIndexed { index, sort ->
-                if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
+            RecipeSort.entries.forEach { sort ->
                 ChoiceRow(
                     label = stringResource(sort.labelRes()),
                     chosen = sort == choice,
@@ -416,7 +408,7 @@ private fun ChoiceRow(label: String, chosen: Boolean, modifier: Modifier = Modif
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyLarge,
+            style = AromaType.Body,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),

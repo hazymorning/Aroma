@@ -45,8 +45,8 @@ import app.aroma.core.model.ShoppingListInfo
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.CheckCircle
+import app.aroma.ui.components.GroupLabel
 import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.QuietLink
@@ -58,7 +58,7 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberFullSheetState
-import app.aroma.ui.theme.IconKeyline
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
@@ -133,7 +133,6 @@ fun AddToListSheet(
                 .padding(top = Space.xs),
         ) {
             itemsIndexed(shown, key = { _, (index, _) -> index }) { position, (index, ingredient) ->
-                if (position > 0) Hairline(Modifier.padding(start = IconKeyline, end = ScreenMargin))
                 IngredientChoice(
                     line = IngredientFormatter.format(ingredient, scale, locale),
                     checked = index in selected,
@@ -144,7 +143,7 @@ fun AddToListSheet(
         if (lists != null && lists.isEmpty()) {
             Text(
                 text = stringResource(R.string.shopping_no_lists_message),
-                style = MaterialTheme.typography.bodyMedium,
+                style = AromaType.Small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
             )
@@ -219,7 +218,7 @@ private fun IngredientChoice(line: IngredientLine, checked: Boolean, onToggle: (
         horizontalArrangement = Arrangement.spacedBy(Space.m),
     ) {
         CheckCircle(checked)
-        Text(text, style = MaterialTheme.typography.bodyLarge, color = color)
+        Text(text, style = AromaType.Body, color = color)
     }
 }
 
@@ -272,13 +271,12 @@ fun PlanSheet(
     }
 }
 
-/** A kicker over a row of chips that scrolls from edge to edge but starts on the margin. */
+/** A label over a row of chips that scrolls from edge to edge but starts on the margin. */
 @Composable
 private fun ChipGroup(label: String, modifier: Modifier = Modifier, chips: LazyListScope.() -> Unit) {
     Column(modifier) {
-        Kicker(label, Modifier.padding(horizontal = ScreenMargin))
+        GroupLabel(label, start = ScreenMargin)
         LazyRow(
-            modifier = Modifier.padding(top = Space.xs),
             contentPadding = PaddingValues(horizontal = ScreenMargin),
             horizontalArrangement = Arrangement.spacedBy(Space.xs),
             content = chips,

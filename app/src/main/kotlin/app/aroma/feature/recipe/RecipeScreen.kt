@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -22,7 +21,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -68,7 +66,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.aroma.R
@@ -85,7 +82,9 @@ import app.aroma.core.model.Step
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaDropdownMenu
+import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.AromaMenuItem
+import app.aroma.ui.components.CardGroup
 import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
@@ -93,13 +92,11 @@ import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.OnPhotoButton
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PlaceholderLine
 import app.aroma.ui.components.PrimaryButton
-import app.aroma.ui.components.PrimaryButtonHeight
 import app.aroma.ui.components.QuietPress
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
@@ -111,16 +108,14 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.ratingDescription
 import app.aroma.ui.components.recipeTimeText
 import app.aroma.ui.components.rememberRichText
-import app.aroma.ui.theme.IconKeyline
-import app.aroma.ui.theme.KickerStyle
-import app.aroma.ui.theme.Lines
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
+import app.aroma.ui.theme.ControlHeight
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
-import app.aroma.ui.theme.Reading
 import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.SectionSpace
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.Standfirst
-import app.aroma.ui.theme.StepNumber
 import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.floatingShadow
@@ -171,9 +166,6 @@ private val PhotoShadeHeight = 96.dp
 
 /** The glyph after the source, as small as the stars before it. */
 private val SourceGlyph = 14.dp
-
-/** Nutrition is a small table, set closer than rows that take a tap. */
-private val NutritionRowHeight = 44.dp
 
 @Composable
 fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifier = Modifier) {
@@ -242,7 +234,7 @@ private fun LazyListState.bottomOf(key: Any): Int? = layoutInfo.visibleItemsInfo
 @Composable
 private fun endSpace(canCook: Boolean) =
     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-        if (canCook) PrimaryButtonHeight + Space.m + Space.xl else Space.xl
+        if (canCook) ControlHeight + Space.m + Space.xl else Space.xl
 
 @Composable
 private fun Hero(recipe: Recipe) {
@@ -394,7 +386,7 @@ private fun BoxScope.CookButton(visible: Boolean, onClick: () -> Unit) {
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(0f to page.copy(alpha = 0f), 0.45f to page.copy(alpha = 0.85f), 1f to page))
                     .navigationBarsPadding()
-                    .height(PrimaryButtonHeight + Space.m + Space.l),
+                    .height(ControlHeight + Space.m + Space.l),
             )
             PrimaryButton(
                 text = stringResource(R.string.recipe_start_cooking),
@@ -414,7 +406,7 @@ private fun BoxScope.CookButton(visible: Boolean, onClick: () -> Unit) {
 }
 
 private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actions: RecipeActions, onOpenRating: () -> Unit) {
-    item(key = TITLE_KEY) { TitleBlock(recipe, state.isOffline, actions.onOpenOrganizer) }
+    item(key = TITLE_KEY) { TitleBlock(recipe, state.isOffline) }
     item(key = "byline") {
         Byline(
             rating = state.userRating ?: recipe.rating,
@@ -436,20 +428,23 @@ private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actio
         item(key = "description") {
             Text(
                 text = rememberRichText(recipe.description),
-                style = Standfirst,
+                style = AromaType.Body,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l),
             )
         }
     }
     item(key = "facts") { Facts(recipe) }
+    if (recipe.categories.isNotEmpty() || recipe.tags.isNotEmpty()) {
+        item(key = "organizers") { Organizers(recipe, actions.onOpenOrganizer) }
+    }
     if (recipe.ingredients.isNotEmpty()) {
         item(key = "ingredients") { Ingredients(recipe, state, actions) }
     }
     if (recipe.steps.isNotEmpty()) {
-        item(key = "stepsHeader") { SectionHeader(stringResource(R.string.recipe_steps), Modifier.padding(top = Space.xxl)) }
+        item(key = "stepsHeader") { SectionHeader(stringResource(R.string.recipe_steps)) }
         itemsIndexed(recipe.steps, key = { index, step -> step.id ?: "step$index" }) { index, step ->
-            StepItem(index, step, Modifier.padding(top = if (index == 0) Space.m else Space.l))
+            StepItem(index, step, Modifier.padding(top = if (index == 0) Space.xs else Space.l))
         }
     }
     if (recipe.notes.isNotEmpty()) {
@@ -461,35 +456,27 @@ private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actio
 }
 
 @Composable
-private fun TitleBlock(recipe: Recipe, isOffline: Boolean, onOpenOrganizer: (OrganizerKind, Organizer) -> Unit) {
+private fun TitleBlock(recipe: Recipe, isOffline: Boolean) {
+    Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l)) {
+        if (isOffline) OfflineNotice(Modifier.padding(bottom = Space.m))
+        Text(recipe.name, style = AromaType.PageTitle, modifier = Modifier.semantics { heading() })
+    }
+}
+
+/** Categories and tags as soft chips; each opens the recipes it names. */
+@Composable
+private fun Organizers(recipe: Recipe, onOpen: (OrganizerKind, Organizer) -> Unit) {
     val organizers =
         remember(recipe.categories, recipe.tags) {
             recipe.categories.map { OrganizerKind.Category to it } + recipe.tags.map { OrganizerKind.Tag to it }
         }
-    Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l)) {
-        if (isOffline) OfflineNotice(Modifier.padding(bottom = Space.m))
-        if (organizers.isNotEmpty()) OrganizerLine(organizers, onOpenOrganizer, Modifier.padding(bottom = Space.xs))
-        Text(recipe.name, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
-    }
-}
-
-/**
- * Categories and tags as one line of small capitals, where the chips used to be; each opens the
- * recipes it names. Compose widens these short targets to the 48 dp minimum, so the line keeps
- * its tight place above the title.
- */
-@Composable
-private fun OrganizerLine(
-    organizers: List<Pair<OrganizerKind, Organizer>>,
-    onOpen: (OrganizerKind, Organizer) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    FlowRow(modifier) {
-        organizers.forEachIndexed { index, (kind, organizer) ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                QuietTarget(onClick = { onOpen(kind, organizer) }) { Kicker(organizer.name) }
-                if (index < organizers.lastIndex) Dot(KickerStyle)
-            }
+    FlowRow(
+        modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
+        horizontalArrangement = Arrangement.spacedBy(Space.xs),
+        verticalArrangement = Arrangement.spacedBy(Space.xs),
+    ) {
+        organizers.forEach { (kind, organizer) ->
+            AromaFilterChip(selected = false, label = organizer.name, onClick = { onOpen(kind, organizer) })
         }
     }
 }
@@ -499,10 +486,10 @@ private fun OrganizerLine(
 private fun Byline(rating: Double?, sourceUrl: String?, onOpenRating: () -> Unit, onOpenUrl: (String) -> Unit) {
     val locale = currentLocale()
     val host = remember(sourceUrl) { sourceUrl?.let { runCatching { URI(it).host?.removePrefix("www.") }.getOrNull() } }
-    val meta = MaterialTheme.typography.bodySmall
+    val meta = AromaType.Small
     val description = ratingDescription(rating)
     Row(
-        Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.s),
+        Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         QuietTarget(
@@ -605,7 +592,7 @@ private fun RecipeQuickActions(
     }
 }
 
-/** Prep, cook and total time on a soft card, in columns that start on the margin. */
+/** Prep, cook and total time on a soft card, each a value over its name. */
 @Composable
 private fun Facts(recipe: Recipe) {
     val facts =
@@ -615,24 +602,17 @@ private fun Facts(recipe: Recipe) {
             recipeTimeText(recipe.totalTime)?.let { stringResource(R.string.recipe_total_time) to it },
         )
     if (facts.isEmpty()) return
-    SoftCard(Modifier.padding(top = Space.xl)) {
-        Row(Modifier.padding(horizontal = ScreenMargin, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
-            facts.forEachIndexed { index, (label, value) ->
-                if (index > 0) {
-                    VerticalDivider(Modifier.height(Space.xl), thickness = Lines.hairline, color = MaterialTheme.colorScheme.outlineVariant)
-                }
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .then(if (index > 0) Modifier.padding(start = Space.m) else Modifier),
-                ) {
-                    Kicker(label)
+    SoftCard(Modifier.padding(top = Space.l)) {
+        Row(Modifier.padding(horizontal = CardPadding, vertical = Space.s)) {
+            facts.forEach { (label, value) ->
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = value, style = AromaType.BodyStrong.tabular(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
-                        text = value,
-                        style = MaterialTheme.typography.titleMedium.tabular(),
+                        text = label,
+                        style = AromaType.Small,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = Space.xxs),
                     )
                 }
             }
@@ -649,29 +629,27 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
                 IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale))
             }
         }
-    Column(Modifier.padding(top = Space.xxl)) {
+    Column {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = ScreenMargin),
+                    .padding(start = ScreenMargin, end = ScreenMargin, top = SectionSpace),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = stringResource(R.string.recipe_ingredients),
-                style = MaterialTheme.typography.headlineSmall,
+                style = AromaType.SectionTitle,
                 modifier =
                     Modifier
                         .weight(1f)
                         .semantics { heading() },
             )
-            // The plus circle, not its touch area, ends on the margin.
             Stepper(
                 label = servingsLabel(recipe.servings, state.scale, locale),
                 onDecrease = { actions.onScale(Servings.step(recipe.servings, state.scale, -1)) },
                 onIncrease = { actions.onScale(Servings.step(recipe.servings, state.scale, +1)) },
                 canDecrease = Servings.canDecrease(recipe.servings, state.scale),
-                modifier = Modifier.offset(x = Space.xxs),
             )
         }
         IngredientList(
@@ -682,12 +660,13 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
             modifier = Modifier.padding(top = Space.m),
         )
         if (recipe.tools.isNotEmpty()) {
-            Kicker(stringResource(R.string.recipe_tools), Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l))
-            Text(
-                text = recipe.tools.joinToString(", ") { it.name },
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
-            )
+            CardGroup(stringResource(R.string.recipe_tools), Modifier.padding(top = Space.l)) {
+                Text(
+                    text = recipe.tools.joinToString(", ") { it.name },
+                    style = AromaType.Body,
+                    modifier = Modifier.padding(horizontal = CardPadding, vertical = Space.s),
+                )
+            }
         }
     }
 }
@@ -705,18 +684,17 @@ fun servingsLabel(baseServings: Double, scale: Double, locale: Locale): String {
     return pluralStringResource(R.plurals.servings, count, text)
 }
 
-/** A step as in a printed cookbook: a quiet serif numeral in the gutter, level with the first line. */
+/** A step with its number in sage in the gutter, level with the first line. */
 @Composable
 private fun StepItem(index: Int, step: Step, modifier: Modifier = Modifier) {
     Row(modifier.padding(horizontal = ScreenMargin)) {
         Text(
             text = (index + 1).toString(),
-            style = StepNumber,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = AromaType.SectionTitle.tabular(),
+            color = MaterialTheme.colorScheme.primary,
             modifier =
                 Modifier
-                    // Step text starts on the 64 dp keyline, as in the editor.
-                    .width(IconKeyline - ScreenMargin)
+                    .width(StepNumberWidth)
                     .alignByBaseline(),
         )
         Column(
@@ -725,69 +703,57 @@ private fun StepItem(index: Int, step: Step, modifier: Modifier = Modifier) {
                 .alignByBaseline(),
         ) {
             if (!step.title.isNullOrBlank()) {
-                Text(step.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = Space.xxs))
+                Text(step.title, style = AromaType.BodyStrong, modifier = Modifier.padding(bottom = Space.xxs))
             }
-            Text(text = rememberRichText(step.text), style = Reading)
+            Text(text = rememberRichText(step.text), style = AromaType.Body)
         }
     }
 }
+
+/** The gutter a step's number stands in, wide enough for two digits. */
+private val StepNumberWidth = 40.dp
 
 @Composable
 private fun Notes(notes: List<RecipeNote>) {
-    Column(Modifier.padding(top = Space.xxl)) {
+    Column {
         SectionHeader(stringResource(R.string.recipe_notes))
         notes.forEachIndexed { index, note ->
-            Note(note, Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = if (index == 0) Space.m else Space.l))
-        }
-    }
-}
-
-/** A note set off by a fine rule in the margin, as a cookbook prints an aside. */
-@Composable
-private fun Note(note: RecipeNote, modifier: Modifier = Modifier) {
-    Row(modifier.height(IntrinsicSize.Min)) {
-        Box(
-            Modifier
-                .width(Lines.rule)
-                .fillMaxHeight()
-                .background(extras.hairlineStrong),
-        )
-        Column(Modifier.padding(start = Space.m)) {
-            if (note.title.isNotBlank()) {
-                Text(note.title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = Space.xxs))
+            SoftCard(Modifier.padding(top = if (index == 0) Space.xs else Space.s)) {
+                Column(Modifier.padding(horizontal = CardPadding, vertical = Space.s)) {
+                    if (note.title.isNotBlank()) {
+                        Text(note.title, style = AromaType.BodyStrong, modifier = Modifier.padding(bottom = Space.xxs))
+                    }
+                    Text(text = rememberRichText(note.text), style = AromaType.Body)
+                }
             }
-            Text(text = rememberRichText(note.text), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
 
 @Composable
 private fun Nutrition(values: List<NutritionValue>) {
-    Column(Modifier.padding(top = Space.xxl)) {
+    Column {
         SectionHeader(stringResource(R.string.recipe_nutrition))
-        SoftCard(Modifier.padding(top = Space.s)) {
+        SoftCard(Modifier.padding(top = Space.xs)) {
             values.forEachIndexed { index, value ->
-                if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
+                if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(min = NutritionRowHeight)
-                        .padding(horizontal = ScreenMargin),
+                        .heightIn(min = TouchTarget)
+                        .padding(horizontal = CardPadding),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = nutritionLabel(value.kind),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = AromaType.Body,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
                     )
                     val amount = value.value.trim()
                     Text(
                         text = if (amount.toDoubleOrNull() != null) "$amount ${value.kind.defaultUnit}" else amount,
-                        style =
-                            MaterialTheme.typography.bodyMedium
-                                .copy(fontWeight = FontWeight.Medium)
-                                .tabular(),
+                        style = AromaType.BodyStrong.tabular(),
                     )
                 }
             }
@@ -812,8 +778,7 @@ private fun nutritionLabel(kind: NutritionKind): String =
         },
     )
 
-/** How the outline's lines measure: the categories over the title, the title, and the byline. */
-private val CategoriesWidth = 120.dp
+/** How the outline's lines measure: the title and the byline. */
 private val TitleHeight = 32.dp
 private val BylineWidth = 140.dp
 
@@ -828,14 +793,9 @@ private fun RecipeLoading() {
             shape = RectangleShape,
         )
         Column(Modifier.padding(horizontal = ScreenMargin)) {
-            PlaceholderLine(
-                Modifier
-                    .padding(top = Space.l)
-                    .width(CategoriesWidth),
-            )
             Placeholder(
                 Modifier
-                    .padding(top = Space.s)
+                    .padding(top = Space.l)
                     .fillMaxWidth(0.8f)
                     .height(TitleHeight),
                 shape = MaterialTheme.shapes.extraSmall,
@@ -850,12 +810,12 @@ private fun RecipeLoading() {
                     Placeholder(
                         Modifier
                             .weight(1f)
-                            .height(TouchTarget),
+                            .height(ControlHeight),
                         shape = CircleShape,
                     )
                 }
             }
-            // The description: two full lines and a short one, on the standfirst's line pitch.
+            // The description: two full lines and a short one, on the body's line pitch.
             Column(Modifier.padding(top = Space.l), verticalArrangement = Arrangement.spacedBy(Space.m)) {
                 listOf(1f, 1f, 0.6f).forEach { width -> PlaceholderLine(Modifier.fillMaxWidth(width)) }
             }

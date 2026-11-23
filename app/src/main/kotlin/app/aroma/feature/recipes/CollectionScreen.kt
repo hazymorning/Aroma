@@ -28,17 +28,16 @@ import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.RecipeGrid
 import app.aroma.ui.components.pageItem
 import app.aroma.ui.components.recipeGridPlaceholders
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.Standfirst
 
 /** What a collection page holds; [app.aroma.ui.navigation.CollectionRoute] names one of these. */
 @Keep
@@ -130,7 +129,7 @@ fun CollectionScreen(
     }
 }
 
-/** The kind of collection as a kicker, its name as the large title, the description as a serif lead, then the count. */
+/** The kind of collection over its name as the large title, the description, then the count. */
 @Composable
 private fun Header(
     kind: CollectionKind,
@@ -141,13 +140,20 @@ private fun Header(
 ) {
     Column {
         Column(Modifier.onSizeChanged { onTitleLaidOut(it.height) }) {
-            kind.labelRes()?.let { Kicker(stringResource(it), Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs)) }
+            kind.labelRes()?.let {
+                Text(
+                    text = stringResource(it),
+                    style = AromaType.Small,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
+                )
+            }
             LargeTitle(name)
         }
         if (description.isNotBlank()) {
             Text(
                 text = description,
-                style = Standfirst,
+                style = AromaType.Body,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
             )
@@ -156,9 +162,11 @@ private fun Header(
         // Keeps its line while the first page loads, so the photos do not shift when the count arrives.
         val count = state.total?.takeIf { state.recipes.isNotEmpty() }
         if (count != null || state.isLoading) {
-            Kicker(
+            Text(
                 text = count?.let { pluralStringResource(R.plurals.recipe_count, it, it) }.orEmpty(),
-                modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l, bottom = Space.m),
+                style = AromaType.Small,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m, bottom = Space.m),
             )
         }
     }

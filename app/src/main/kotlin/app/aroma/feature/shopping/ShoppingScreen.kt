@@ -77,10 +77,13 @@ import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PlaceholderLine
 import app.aroma.ui.components.QuietPress
 import app.aroma.ui.components.ScrollToTopOnReselect
+import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
+import app.aroma.ui.theme.ContentEdge
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.RowHeight
@@ -291,7 +294,7 @@ private fun Header(
             shoppingMode -> {
                 Text(
                     text = stringResource(R.string.shopping_mode_hint),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = AromaType.Small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
                 )
@@ -306,8 +309,7 @@ private fun Header(
                     leadingIcon = R.drawable.ic_add,
                     imeAction = ImeAction.Done,
                     onSubmit = actions.onAddItem,
-                    // With the switcher's target below the name, this sets the field about 24 dp under it.
-                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
+                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.s),
                     trailing = { AddButton(visible = state.newItem.isNotBlank(), onClick = actions.onAddItem) },
                 )
             }
@@ -328,7 +330,7 @@ private fun SyncStatus(offline: Boolean, pendingChanges: Int) {
         if (pendingChanges > 0) {
             Text(
                 text = pluralStringResource(R.plurals.shopping_pending, pendingChanges, pendingChanges),
-                style = MaterialTheme.typography.bodySmall,
+                style = AromaType.Small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 // Under the notice's text, past its glyph and the gap after it.
                 modifier = if (offline) Modifier.padding(start = Glyph.s + Space.xs) else Modifier,
@@ -393,14 +395,13 @@ private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, o
                 onClickLabel = stringResource(R.string.shopping_switch_list),
                 role = Role.Button,
                 onClick = { open = true },
-            )
-            // The name sits 8 dp under the title, and the rest of its 48 dp target lies below it.
-            .padding(top = Space.xs),
+            ).padding(top = Space.xxs),
+        contentAlignment = Alignment.CenterStart,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = current.name,
-                style = MaterialTheme.typography.titleMedium,
+                style = AromaType.BodyStrong,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
@@ -493,29 +494,30 @@ private fun NameDialog(title: String, initial: String, onConfirm: (String) -> Un
 }
 
 /** How long the outline's lines are: the category's name, then its items. */
-private val KickerWidth = 96.dp
+private val LabelWidth = 96.dp
 private val PlaceholderWidths = listOf(176.dp, 128.dp, 216.dp, 152.dp, 192.dp, 120.dp)
 
-/** The outline of a category while the list loads: a kicker, then rows of checks and lines. */
+/** The outline of a category while the list loads: its label, then a card of checks and lines. */
 @Composable
 private fun Loading() {
-    Column(Modifier.padding(top = Space.xl)) {
+    Column(Modifier.padding(top = Space.l)) {
         PlaceholderLine(
             Modifier
-                .padding(horizontal = ScreenMargin)
-                .width(KickerWidth),
+                .padding(start = ContentEdge, bottom = Space.xs)
+                .width(LabelWidth),
         )
-        Spacer(Modifier.height(Space.xs))
-        PlaceholderWidths.forEach { width ->
-            Row(
-                Modifier
-                    .height(RowHeight.oneLine)
-                    .padding(horizontal = ScreenMargin),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Placeholder(Modifier.size(CheckSize), shape = CircleShape)
-                Spacer(Modifier.width(IconKeyline - ScreenMargin - CheckSize))
-                PlaceholderLine(Modifier.width(width))
+        SoftCard {
+            PlaceholderWidths.forEach { width ->
+                Row(
+                    Modifier
+                        .height(RowHeight.oneLine)
+                        .padding(horizontal = CardPadding),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Placeholder(Modifier.size(CheckSize), shape = CircleShape)
+                    Spacer(Modifier.width(Space.m))
+                    PlaceholderLine(Modifier.width(width))
+                }
             }
         }
     }

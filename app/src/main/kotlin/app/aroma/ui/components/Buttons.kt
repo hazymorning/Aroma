@@ -3,7 +3,6 @@ package app.aroma.ui.components
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,7 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -39,6 +37,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.ChipHeight
+import app.aroma.ui.theme.ControlHeight
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
@@ -72,19 +73,19 @@ fun PrimaryButton(
                 disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
             ),
         elevation = null,
-        contentPadding = PaddingValues(horizontal = 28.dp),
-        modifier = modifier.height(PrimaryButtonHeight),
+        contentPadding = PaddingValues(horizontal = Space.l),
+        modifier = modifier.height(ControlHeight),
     ) {
         Box(contentAlignment = Alignment.Center) {
             // The label keeps its place while loading, so the button never changes width.
             Row(Modifier.alpha(if (loading) 0f else 1f), verticalAlignment = Alignment.CenterVertically) {
                 leadingIcon?.let {
                     Icon(painterResource(it), contentDescription = null, modifier = Modifier.size(Glyph.m))
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Space.xs))
                 }
-                Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(text, style = AromaType.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 trailingIcon?.let {
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Space.xs))
                     Icon(painterResource(it), contentDescription = null, modifier = Modifier.size(Glyph.m))
                 }
             }
@@ -93,12 +94,10 @@ fun PrimaryButton(
     }
 }
 
-/** The height of [PrimaryButton], which a round button beside it takes as its size. */
-val PrimaryButtonHeight: Dp = 52.dp
-
 /**
- * A quiet action: a hairline stadium with an ink icon and label. [confirmed] turns the icon into
- * a check for a moment once the action went through.
+ * A quiet action on the soft fill every control shares. [confirmed] turns the icon into a check for
+ * a moment once the action went through. [compact] is the chip-sized one, for an action inside text.
+ * On a card, which has that fill itself, [onCard] sets it on paper instead.
  */
 @Composable
 fun SecondaryButton(
@@ -109,19 +108,23 @@ fun SecondaryButton(
     enabled: Boolean = true,
     confirmed: Boolean = false,
     compact: Boolean = false,
+    onCard: Boolean = false,
 ) {
-    OutlinedButton(
+    val fill = if (onCard) extras.raised else extras.card
+    Button(
         onClick = onClick,
         enabled = enabled,
         shape = CircleShape,
-        border = BorderStroke(1.dp, if (enabled) extras.hairlineStrong else MaterialTheme.colorScheme.outlineVariant),
         colors =
-            ButtonDefaults.outlinedButtonColors(
+            ButtonDefaults.buttonColors(
+                containerColor = fill,
                 contentColor = MaterialTheme.colorScheme.onSurface,
+                disabledContainerColor = fill,
                 disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
             ),
-        contentPadding = PaddingValues(horizontal = if (compact) 14.dp else 16.dp),
-        modifier = modifier.height(if (compact) 40.dp else 48.dp),
+        elevation = null,
+        contentPadding = PaddingValues(horizontal = if (compact) Space.m else Space.l),
+        modifier = modifier.height(if (compact) ChipHeight else ControlHeight),
     ) {
         if (icon != null) {
             Crossfade(confirmed, animationSpec = tween(Motion.STATE), label = "secondaryIcon") { done ->
@@ -132,14 +135,14 @@ fun SecondaryButton(
                     modifier = Modifier.size(if (compact) Glyph.s else Glyph.m),
                 )
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Space.xs))
         }
-        Text(text, style = MaterialTheme.typography.labelLarge.tabular(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, style = AromaType.Label.tabular(), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
-/** How a [QuietLink] reads: [Soft] for navigation, [Ink] for actions in place, [Destructive] for removal. */
-enum class LinkTone { Soft, Ink, Destructive }
+/** How a [QuietLink] reads: [Accent] for a way to more, [Soft] for a way back or aside, [Ink] for an action in place. */
+enum class LinkTone { Accent, Soft, Ink }
 
 /**
  * A text link with no container: the text, or the [leadingIcon] before it, sits exactly on the
@@ -157,9 +160,9 @@ fun QuietLink(
 ) {
     val color =
         when (tone) {
+            LinkTone.Accent -> MaterialTheme.colorScheme.primary
             LinkTone.Soft -> MaterialTheme.colorScheme.onSurfaceVariant
             LinkTone.Ink -> MaterialTheme.colorScheme.onSurface
-            LinkTone.Destructive -> MaterialTheme.colorScheme.error
         }
     Row(
         modifier =
@@ -173,9 +176,9 @@ fun QuietLink(
             Icon(painterResource(it), contentDescription = null, tint = color, modifier = Modifier.size(Glyph.s))
             Spacer(Modifier.width(Space.xs))
         }
-        Text(text, style = MaterialTheme.typography.labelLarge, color = color, maxLines = 1)
+        Text(text, style = AromaType.Label, color = color, maxLines = 1)
         if (chevron) {
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(Space.xxs))
             // The chevron is drawn left of its box's centre; shifted so its tip ends on the margin.
             Icon(
                 painterResource(R.drawable.ic_chevron_right),
@@ -218,38 +221,30 @@ fun IconAction(
     }
 }
 
-/** A round hairline button for steppers, timers and the cook mode's back step. */
+/** A round button on the soft fill, beside a [PrimaryButton] of the same height: cook mode's step back. */
 @Composable
-fun HairlineIconButton(
+fun TonalIconButton(
     @DrawableRes icon: Int,
     contentDescription: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 40.dp,
     enabled: Boolean = true,
-    tint: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     Box(
         modifier =
             modifier
-                .size(maxOf(size, TouchTarget))
+                .size(ControlHeight)
                 .clip(CircleShape)
+                .background(extras.card)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            Modifier
-                .size(size)
-                .border(1.dp, if (enabled) extras.hairlineStrong else MaterialTheme.colorScheme.outlineVariant, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painterResource(icon),
-                contentDescription = contentDescription,
-                tint = if (enabled) tint else MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(Glyph.m),
-            )
-        }
+        Icon(
+            painterResource(icon),
+            contentDescription = contentDescription,
+            tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(Glyph.m),
+        )
     }
 }
 

@@ -1,6 +1,5 @@
 package app.aroma.ui.theme
 
-import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -13,114 +12,93 @@ import androidx.compose.ui.unit.sp
 import app.aroma.R
 
 /** Newsreader cut for large sizes (optical size 36). */
-val SerifDisplay =
-    FontFamily(
-        Font(R.font.newsreader_display_regular, FontWeight.Normal),
-        Font(R.font.newsreader_display_medium, FontWeight.Medium),
-    )
+private val SerifDisplay = FontFamily(Font(R.font.newsreader_display_regular, FontWeight.Normal))
 
-/** Newsreader cut for running titles (optical size 18). */
-val SerifText =
+/** Newsreader cut for text sizes (optical size 18). */
+private val SerifText =
     FontFamily(
         Font(R.font.newsreader_text_regular, FontWeight.Normal),
         Font(R.font.newsreader_text_medium, FontWeight.Medium),
     )
 
-val Sans =
+private val Sans =
     FontFamily(
         Font(R.font.figtree_regular, FontWeight.Normal),
         Font(R.font.figtree_medium, FontWeight.Medium),
-        Font(R.font.figtree_semibold, FontWeight.SemiBold),
     )
 
-// Titles balance their lines and never hyphenate, so compound words stay whole and a two-line
-// title never ends on a single word. Running text uses the paragraph strategy.
-private val balancedLines =
-    LineHeightStyle(
-        alignment = LineHeightStyle.Alignment.Center,
-        trim = LineHeightStyle.Trim.None,
-    )
+// Lines sit centred in their line height, so text and the boxes around it share one rhythm.
+private val centred = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
 
-private fun serifDisplay(size: Int, lineHeight: Int, tracking: Double, weight: FontWeight = FontWeight.Normal) =
-    TextStyle(
-        fontFamily = SerifDisplay,
-        fontWeight = weight,
-        fontSize = size.sp,
-        lineHeight = lineHeight.sp,
-        letterSpacing = tracking.em,
-        lineHeightStyle = balancedLines,
-        lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None,
-    )
+/** Titles balance their lines and never hyphenate, so a two-line title never ends on a lone word. */
+private fun title(
+    family: FontFamily,
+    size: Int,
+    lineHeight: Int,
+    weight: FontWeight = FontWeight.Normal,
+    tracking: Double = 0.0,
+) = TextStyle(
+    fontFamily = family,
+    fontWeight = weight,
+    fontSize = size.sp,
+    lineHeight = lineHeight.sp,
+    letterSpacing = tracking.em,
+    lineHeightStyle = centred,
+    lineBreak = LineBreak.Heading,
+    hyphens = Hyphens.None,
+)
 
-private fun serifText(size: Int, lineHeight: Int, weight: FontWeight = FontWeight.Medium) =
-    TextStyle(
-        fontFamily = SerifText,
-        fontWeight = weight,
-        fontSize = size.sp,
-        lineHeight = lineHeight.sp,
-        lineHeightStyle = balancedLines,
-        lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None,
-    )
-
-private fun sans(size: Int, lineHeight: Int, weight: FontWeight, letterSpacing: Double = 0.0) =
+/** Running text breaks like a paragraph and hyphenates long words, which German has many of. */
+private fun text(size: Int, lineHeight: Int, weight: FontWeight = FontWeight.Normal) =
     TextStyle(
         fontFamily = Sans,
         fontWeight = weight,
         fontSize = size.sp,
         lineHeight = lineHeight.sp,
-        letterSpacing = letterSpacing.sp,
-        lineHeightStyle = balancedLines,
+        lineHeightStyle = centred,
         lineBreak = LineBreak.Paragraph,
         hyphens = Hyphens.Auto,
     )
 
-/** Recipe titles on cards, a step below [Typography.titleLarge]. */
-val CardTitle = serifText(18, 23)
-
 /**
- * Small tracked capitals where a magazine would put a label: section names, meal types, step
- * counters. Set in upper case by the Kicker composable; the only place Figtree SemiBold appears.
+ * Aroma's type scale: seven sizes (12, 14, 16, 18, 22, 24 and 28 sp) in two families. Newsreader
+ * names things: pages, sections and recipes. Figtree carries everything that is read or tapped,
+ * the step being cooked included. Text is never set in capitals and never tracked out.
  */
-val KickerStyle = sans(11, 16, FontWeight.SemiBold, letterSpacing = 1.2)
+object AromaType {
+    /** The title of a page, and a recipe's name on its own page. */
+    val PageTitle = title(SerifDisplay, 28, 34, tracking = -0.01)
 
-/** The serif lead under a title: recipe and cookbook descriptions, the login tagline. */
-val Standfirst = serifText(18, 27, FontWeight.Normal).copy(lineBreak = LineBreak.Paragraph, hyphens = Hyphens.Auto)
+    /** The title of a section, a day of the plan, a sheet or a dialog. */
+    val SectionTitle = title(SerifText, 22, 28, FontWeight.Medium)
 
-/** Recipe steps: a touch larger than body text, for reading at arm's length. */
-val Reading = sans(17, 27, FontWeight.Normal)
+    /** A recipe's name on a card or in a row. */
+    val Name = title(SerifText, 18, 24, FontWeight.Medium)
 
-/** The step text in cook mode. */
-val CookStep = serifText(26, 36, FontWeight.Normal).copy(lineBreak = LineBreak.Paragraph, hyphens = Hyphens.Auto)
+    /** The step on screen in cook mode, read at arm's length; words stay whole at this size. */
+    val Reading = text(24, 34).copy(hyphens = Hyphens.None)
 
-/** A step's number in the gutter of a recipe, a quiet serif numeral level with the step's first line. */
-val StepNumber = serifDisplay(24, 32, -0.01).tabular()
+    /** The time left on a cooking timer, read across the kitchen. */
+    val Timer = text(28, 34, FontWeight.Medium).tabular()
 
-/** The time left on a cooking timer, readable from across the kitchen. */
-val TimerDigits = serifDisplay(28, 32, -0.01).tabular()
+    /** Items in shopping mode, read with the phone held low over the trolley. */
+    val Large = text(22, 28).copy(hyphens = Hyphens.None)
 
-/** Items in shopping mode, large enough to read with the phone held low over the trolley. */
-val ShoppingModeItem = sans(22, 28, FontWeight.Normal)
+    /** Running text: ingredients, steps, descriptions, rows. */
+    val Body = text(16, 24)
+
+    /** Body text that leads a row or holds a value: an amount, a time, a setting's name. */
+    val BodyStrong = text(16, 24, FontWeight.Medium)
+
+    /** Second lines, notes and meta such as "25 min · 4.5". */
+    val Small = text(14, 20)
+
+    /** Buttons, chips, tabs and the labels that name a group of rows. */
+    val Label = text(14, 20, FontWeight.Medium)
+
+    /** The tab bar's labels and small marks such as "Today". */
+    val Caption = text(12, 16, FontWeight.Medium)
+}
 
 /** Lining figures of equal width, so times, amounts and counters do not jitter. */
 fun TextStyle.tabular(): TextStyle = copy(fontFeatureSettings = "tnum, lnum")
-
-val AromaTypography =
-    Typography(
-        displayLarge = serifDisplay(56, 60, -0.03),
-        displayMedium = serifDisplay(40, 46, -0.02),
-        displaySmall = serifDisplay(36, 42, -0.02),
-        headlineLarge = serifDisplay(32, 38, -0.015),
-        headlineMedium = serifDisplay(26, 32, -0.01),
-        headlineSmall = serifText(22, 28),
-        titleLarge = serifText(20, 26),
-        titleMedium = sans(16, 22, FontWeight.Medium),
-        titleSmall = sans(14, 20, FontWeight.Medium),
-        bodyLarge = sans(16, 24, FontWeight.Normal),
-        bodyMedium = sans(14, 21, FontWeight.Normal),
-        bodySmall = sans(13, 18, FontWeight.Normal, letterSpacing = 0.1),
-        labelLarge = sans(15, 20, FontWeight.Medium, letterSpacing = 0.1),
-        labelMedium = sans(13, 18, FontWeight.Medium, letterSpacing = 0.1),
-        labelSmall = sans(12, 16, FontWeight.Medium, letterSpacing = 0.1),
-    )

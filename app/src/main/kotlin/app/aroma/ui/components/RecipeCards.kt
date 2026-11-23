@@ -38,7 +38,7 @@ import app.aroma.R
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
-import app.aroma.ui.theme.CardTitle
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
@@ -95,13 +95,13 @@ fun PhotoCard(
                     .aspectRatio(imageAspectRatio)
                     .indication(interaction, PhotoPress),
         )
-        Spacer(Modifier.height(Space.s))
-        Text(text = title, style = CardTitle, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(Space.xs))
+        Text(text = title, style = AromaType.Name, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
         Box(Modifier.padding(top = Space.xxs)) { meta() }
     }
 }
 
-/** A row with a small photo, for search results and pickers; the text starts on the 96 dp keyline. */
+/** A row with a small photo, for search results and pickers. */
 @Composable
 fun RecipeListItem(recipe: RecipeSummary, onClick: () -> Unit, modifier: Modifier = Modifier, trailing: @Composable (() -> Unit)? = null) {
     Row(
@@ -109,9 +109,9 @@ fun RecipeListItem(recipe: RecipeSummary, onClick: () -> Unit, modifier: Modifie
             modifier
                 .fillMaxWidth()
                 .clickable(role = Role.Button, onClick = onClick)
-                .padding(horizontal = ScreenMargin, vertical = 12.dp),
+                .padding(horizontal = ScreenMargin, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(Space.m),
     ) {
         RecipeImage(
             image = recipe.image,
@@ -121,8 +121,8 @@ fun RecipeListItem(recipe: RecipeSummary, onClick: () -> Unit, modifier: Modifie
             modifier = Modifier.size(ThumbnailSize),
         )
         Column(Modifier.weight(1f)) {
-            Text(text = recipe.name, style = CardTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            RecipeMeta(recipe, Modifier.padding(top = 2.dp))
+            Text(text = recipe.name, style = AromaType.Name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            RecipeMeta(recipe, Modifier.padding(top = Space.xxs))
         }
         trailing?.invoke()
     }
@@ -133,7 +133,7 @@ fun RecipeListItem(recipe: RecipeSummary, onClick: () -> Unit, modifier: Modifie
 fun RecipeMeta(recipe: RecipeSummary, modifier: Modifier = Modifier) {
     val time = recipeTimeText(recipe.totalTime) ?: recipeTimeText(recipe.cookTime) ?: recipeTimeText(recipe.prepTime)
     val rating = recipe.rating?.takeIf { it > 0 }
-    val style = MaterialTheme.typography.bodySmall.tabular()
+    val style = AromaType.Small.tabular()
     if (time == null && rating == null) {
         Spacer(modifier.height(with(androidx.compose.ui.platform.LocalDensity.current) { style.lineHeight.toDp() }))
         return
@@ -152,7 +152,7 @@ fun RecipeMeta(recipe: RecipeSummary, modifier: Modifier = Modifier) {
     val star =
         mapOf(
             STAR to
-                InlineTextContent(Placeholder(12.sp, 12.sp, PlaceholderVerticalAlign.TextCenter)) {
+                InlineTextContent(Placeholder(StarSize, StarSize, PlaceholderVerticalAlign.TextCenter)) {
                     Icon(
                         painterResource(R.drawable.ic_star_filled),
                         contentDescription = null,
@@ -164,3 +164,6 @@ fun RecipeMeta(recipe: RecipeSummary, modifier: Modifier = Modifier) {
 }
 
 private const val STAR = "star"
+
+/** The star in a meta line, a little smaller than its figures. */
+private val StarSize = 12.sp

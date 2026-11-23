@@ -93,7 +93,6 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                             greeting = Greeting.Evening,
                             firstName = "Mara",
                             photo = "${SampleData.SERVER}/api/media/users/1/profile.webp?cacheKey=1",
-                            date = sample.today,
                             today = sample.mealPlan.take(1),
                             recent = sample.recipes,
                             favorites = sample.recipes.reversed(),
@@ -234,7 +233,21 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                     CookUiState(
                         recipe = sample.recipe,
                         isLoading = false,
-                        timers = listOf(CookTimerUi(1, "Schritt 2", remainingSeconds = 432, isRunning = true)),
+                        timers =
+                            listOf(
+                                CookTimerUi(
+                                    1,
+                                    if (variant.locale ==
+                                        "de"
+                                    ) {
+                                        "Schritt 2"
+                                    } else {
+                                        "Step 2"
+                                    },
+                                    remainingSeconds = 432,
+                                    isRunning = true,
+                                ),
+                            ),
                     ),
                 actions = CookActions(),
                 initialPage = 1,

@@ -1,7 +1,6 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -44,9 +43,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.IconKeyline
-import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
@@ -55,12 +53,14 @@ import app.aroma.ui.theme.isDarkScheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-private val SheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+private val SheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+
+private val HandleWidth = 32.dp
 
 /**
  * A bottom sheet on paper, with a fine handle and no tonal tint, that opens at its full height under
- * its [title]: a heading, with a [kicker] above it or a [meta] line below where the sheet needs one.
- * The content is already clear of the navigation bar and the keyboard.
+ * its [title], with a [meta] line below it where the sheet needs one. The content is already clear
+ * of the navigation bar and the keyboard.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +69,6 @@ fun AromaBottomSheet(
     title: String,
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberFullSheetState(),
-    kicker: String? = null,
     meta: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -84,20 +83,16 @@ fun AromaBottomSheet(
         dragHandle = {
             Box(
                 Modifier
-                    .padding(vertical = 12.dp)
-                    .size(width = 32.dp, height = 4.dp)
-                    .background(extras.hairlineStrong, CircleShape),
+                    .padding(vertical = Space.s)
+                    .size(width = HandleWidth, height = Space.xxs)
+                    .background(MaterialTheme.colorScheme.outlineVariant, CircleShape),
             )
         },
     ) {
         Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs, bottom = Space.m)) {
-            if (kicker != null) {
-                Kicker(kicker)
-                Spacer(Modifier.height(Space.xs))
-            }
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineSmall,
+                style = AromaType.SectionTitle,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() },
@@ -113,16 +108,16 @@ fun AromaBottomSheet(
 @Composable
 fun rememberFullSheetState(): SheetState = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
 
-/** A sheet's one action, at its foot under a hairline. */
+/** A sheet's one action, at its foot. */
 @Composable
 fun SheetFooter(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Column(modifier) {
-        Hairline(Modifier.padding(horizontal = ScreenMargin))
-        Box(Modifier.padding(horizontal = ScreenMargin, vertical = Space.m)) { content() }
-    }
+    Box(modifier.padding(horizontal = ScreenMargin, vertical = Space.m)) { content() }
 }
 
-/** A menu on paper with a hairline edge and a soft shadow. */
+/** The lift of a menu above the page. */
+private val MenuShadow = 8.dp
+
+/** A menu on paper with a soft shadow. */
 @Composable
 fun AromaDropdownMenu(
     expanded: Boolean,
@@ -137,8 +132,7 @@ fun AromaDropdownMenu(
         shape = MaterialTheme.shapes.medium,
         containerColor = extras.raised,
         tonalElevation = 0.dp,
-        shadowElevation = 8.dp,
-        border = BorderStroke(Lines.hairline, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = MenuShadow,
         content = content,
     )
 }
@@ -158,7 +152,7 @@ fun AromaMenuItem(
 ) {
     val color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     DropdownMenuItem(
-        text = { Text(text, style = MaterialTheme.typography.bodyLarge, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        text = { Text(text, style = AromaType.Body, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingIcon =
             icon?.let {
                 {
@@ -211,10 +205,10 @@ fun AromaAlertDialog(
         shape = MaterialTheme.shapes.extraLarge,
         containerColor = extras.raised,
         tonalElevation = 0.dp,
-        title = { Text(title, style = MaterialTheme.typography.headlineSmall) },
+        title = { Text(title, style = AromaType.SectionTitle) },
         text =
             content ?: text?.let {
-                { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                { Text(it, style = AromaType.Body, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             },
         confirmButton = {
             ConfirmLink(
@@ -224,14 +218,14 @@ fun AromaAlertDialog(
                 confirmEnabled,
             )
         },
-        dismissButton = dismissLabel?.let { { QuietLink(it, onDismissRequest, modifier = Modifier.padding(end = 16.dp)) } },
+        dismissButton = dismissLabel?.let { { QuietLink(it, onDismissRequest, modifier = Modifier.padding(end = Space.m)) } },
     )
 }
 
 @Composable
 private fun ConfirmLink(text: String, onClick: () -> Unit, color: Color, enabled: Boolean) {
     TextButton(onClick = onClick, enabled = enabled) {
-        Text(text, style = MaterialTheme.typography.labelLarge, color = if (enabled) color else color.copy(alpha = 0.38f))
+        Text(text, style = AromaType.Label, color = if (enabled) color else color.copy(alpha = 0.38f))
     }
 }
 
@@ -273,7 +267,7 @@ fun CoroutineScope.hideThen(sheet: SheetState, then: () -> Unit) {
     launch { sheet.hide() }.invokeOnCompletion { then() }
 }
 
-/** A 56 dp action row of a sheet; the label starts on the 64 dp keyline after its 20 dp glyph. */
+/** A 56 dp action row of a sheet: a 24 dp glyph on the margin and its label 16 dp after it. */
 @Composable
 fun SheetAction(
     @DrawableRes icon: Int,
@@ -292,15 +286,13 @@ fun SheetAction(
                 .padding(horizontal = ScreenMargin),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(IconKeyline - ScreenMargin - Space.m), contentAlignment = Alignment.Center) {
-            Icon(
-                painterResource(icon),
-                contentDescription = null,
-                tint = if (destructive) color else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(Glyph.m),
-            )
-        }
+        Icon(
+            painterResource(icon),
+            contentDescription = null,
+            tint = if (destructive) color else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(Glyph.l),
+        )
         Spacer(Modifier.width(Space.m))
-        Text(label, style = MaterialTheme.typography.bodyLarge, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, style = AromaType.Body, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

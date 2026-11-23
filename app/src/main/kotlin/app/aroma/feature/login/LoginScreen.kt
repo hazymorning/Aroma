@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -63,11 +65,11 @@ import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.rememberSyncedTextFieldState
 import app.aroma.ui.components.titleRes
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.Standfirst
 
 enum class LoginStep { Server, Credentials }
 
@@ -101,6 +103,10 @@ private const val TOP_SPACE_FRACTION = 0.18f
 private val FormWidth = 460.dp
 private val TaglineWidth = 320.dp
 
+/** Aroma's mark over the name; its book starts this far inside its box, which sets the book on the margin. */
+private val LogoSize = 88.dp
+private val LogoInset = 11.dp
+
 @Composable
 fun LoginScreen(state: LoginUiState, actions: LoginActions, modifier: Modifier = Modifier) {
     BoxWithConstraints(
@@ -122,16 +128,25 @@ fun LoginScreen(state: LoginUiState, actions: LoginActions, modifier: Modifier =
                     .widthIn(max = FormWidth)
                     .fillMaxWidth(),
             ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_mark),
+                    contentDescription = null,
+                    modifier =
+                        Modifier
+                            .offset(x = -LogoInset)
+                            .size(LogoSize),
+                )
+                Spacer(Modifier.height(Space.m))
                 Text(
                     text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.displayLarge,
+                    style = AromaType.PageTitle,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.semantics { heading() },
                 )
                 Spacer(Modifier.height(Space.s))
                 Text(
                     text = stringResource(R.string.login_tagline),
-                    style = Standfirst,
+                    style = AromaType.Body,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.widthIn(max = TaglineWidth),
                 )
@@ -251,7 +266,7 @@ private fun CredentialsStep(state: LoginUiState, actions: LoginActions) {
         } else {
             Text(
                 text = stringResource(R.string.login_password_disabled),
-                style = MaterialTheme.typography.bodySmall,
+                style = AromaType.Small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Space.m),
             )
@@ -292,10 +307,10 @@ private fun ServerLine(server: ServerInfo, onChange: () -> Unit) {
                     .weight(1f)
                     .semantics(mergeDescendants = true) {},
             ) {
-                Text(stringResource(R.string.login_server_found, server.version), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.login_server_found, server.version), style = AromaType.BodyStrong)
                 Text(
                     text = server.url.removePrefix("https://").removePrefix("http://"),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = AromaType.Small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -307,7 +322,7 @@ private fun ServerLine(server: ServerInfo, onChange: () -> Unit) {
         if (server.url.startsWith("http://")) {
             Text(
                 text = stringResource(R.string.login_unencrypted),
-                style = MaterialTheme.typography.bodySmall,
+                style = AromaType.Small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = MarkSize + Space.m, top = Space.xxs),
             )
@@ -342,18 +357,18 @@ private fun ErrorNote(error: AromaError?, hint: String? = null) {
                 modifier = Modifier.size(ErrorMarkSize),
             )
             Spacer(Modifier.width(Space.xs))
-            Text(stringResource(error.titleRes()), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error)
+            Text(stringResource(error.titleRes()), style = AromaType.Label, color = MaterialTheme.colorScheme.error)
         }
         Column(Modifier.padding(start = ErrorMarkSize + Space.xs, top = Space.xxs)) {
             Text(
                 text = stringResource(error.messageRes()),
-                style = MaterialTheme.typography.bodyMedium,
+                style = AromaType.Small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (hint != null) {
                 Text(
                     text = hint,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = AromaType.Small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = Space.xs),
                 )

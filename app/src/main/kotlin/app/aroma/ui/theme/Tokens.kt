@@ -13,17 +13,22 @@ object Space {
     val l: Dp = 24.dp
     val xl: Dp = 32.dp
     val xxl: Dp = 48.dp
-    val xxxl: Dp = 64.dp
 }
 
-/** The one left (and right) edge every title, paragraph, field and photo starts on. */
-val ScreenMargin: Dp = 24.dp
+/**
+ * The page's one edge, left and right: Android's margin for phones. Titles, photos, fields,
+ * buttons, chips and the edges of cards all stand on it.
+ */
+val ScreenMargin: Dp = 16.dp
 
-/** How far a [app.aroma.ui.components.SoftCard] stands outside the text column: half the margin. */
-val CardInset: Dp = 12.dp
+/** How far the content of a card stands inside the card's edge. */
+val CardPadding: Dp = 16.dp
 
-/** Text after a 24 dp check or icon. */
-val IconKeyline: Dp = 64.dp
+/** The edge of text inside a card, on the page: where a group's label stands above its card. */
+val ContentEdge: Dp = ScreenMargin + CardPadding
+
+/** The space above a section's title, which sets sections apart. */
+val SectionSpace: Dp = 32.dp
 
 /** Content wider than this is centred, so lines stay readable on tablets. */
 val ContentMaxWidth: Dp = 600.dp
@@ -34,16 +39,22 @@ val PageEndSpace: Dp = 24.dp
 /** The least size of anything that takes a tap. */
 val TouchTarget: Dp = 48.dp
 
-/** The least height of a row: of one line, and of two lines or of large text. */
+/** The height of buttons and fields that span a column, and of a round button beside them. */
+val ControlHeight: Dp = 52.dp
+
+/** The height of chips and compact buttons; their touch area reaches 48 dp beyond it. */
+val ChipHeight: Dp = 36.dp
+
+/** The least height of a row: of one line, and of two lines or a thumbnail. */
 object RowHeight {
     val oneLine: Dp = 56.dp
     val twoLines: Dp = 72.dp
 }
 
-/** A photo or a face beside the text of a row. */
+/** A photo or a face at the start of a row. */
 val ThumbnailSize: Dp = 56.dp
 
-/** Line glyphs: beside small text and links, in rows and fields, in bars, and standing alone. */
+/** Line glyphs: beside small text, in rows, fields and buttons, in bars, and standing alone. */
 object Glyph {
     val s: Dp = 16.dp
     val m: Dp = 20.dp
@@ -64,10 +75,9 @@ object Motion {
     val Settle = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 }
 
-/** Thin lines: between rows, around controls, the ring of a check circle, and a rule that marks. */
+/** Thin lines: between rows inside a card, the ring of an open check, the focus of a field. */
 object Lines {
     val hairline: Dp = 0.5.dp
-    val control: Dp = 1.dp
     val checkRing: Dp = 1.25.dp
-    val rule: Dp = 2.dp
+    val focus: Dp = 1.5.dp
 }

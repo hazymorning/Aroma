@@ -63,6 +63,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -81,38 +82,41 @@ import app.aroma.core.model.Recipe
 import app.aroma.core.model.Step
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaBottomSheet
+import app.aroma.ui.components.CardActionPadding
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.GroupLabel
 import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.HairlineIconButton
 import app.aroma.ui.components.HeaderAction
+import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.PrimaryButton
-import app.aroma.ui.components.PrimaryButtonHeight
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SecondaryButton
+import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwitchRow
+import app.aroma.ui.components.TonalIconButton
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatClock
 import app.aroma.ui.components.formatDuration
 import app.aroma.ui.components.fullBleed
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberRichText
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.ContentMaxWidth
-import app.aroma.ui.theme.CookStep
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.TimerDigits
 import app.aroma.ui.theme.TouchTarget
+import app.aroma.ui.theme.tabular
 import kotlinx.coroutines.launch
 
 data class CookTimerUi(
@@ -153,15 +157,16 @@ data class CookActions(
     val onRetry: () -> Unit = {},
 )
 
-/** A 40 dp hairline circle sits this far inside its 48 dp touch target. */
-private val CircleInset = 4.dp
+/** The step bar's segments, and the line under a duration in a step. */
+private val ProgressHeight = 3.dp
+private val LinkUnderline = 1.dp
 
 private const val DONE_STAR_SIZE = 32
 
 /** The recipe's photo on the page that ends cooking. */
 private val DonePhotoSize = 112.dp
 
-/** A timer's row, with room for its digits and its round buttons. */
+/** A timer's row, with room for its digits and its buttons. */
 private val TimerRowHeight = 64.dp
 
 @Composable
@@ -276,7 +281,7 @@ private fun TopBar(title: String, hasIngredients: Boolean, onClose: () -> Unit, 
         HeaderAction(R.drawable.ic_close, stringResource(R.string.cook_close), onClose)
         Text(
             text = title,
-            style = MaterialTheme.typography.labelLarge,
+            style = AromaType.Label,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -286,7 +291,7 @@ private fun TopBar(title: String, hasIngredients: Boolean, onClose: () -> Unit, 
                     .padding(start = Space.xs, end = Space.m),
         )
         if (hasIngredients) {
-            QuietLink(stringResource(R.string.recipe_ingredients), onIngredients, tone = LinkTone.Ink)
+            SecondaryButton(stringResource(R.string.recipe_ingredients), onIngredients, compact = true)
         }
     }
 }
@@ -307,9 +312,9 @@ private fun StepProgress(current: Int, steps: Int) {
             Box(
                 Modifier
                     .weight(1f)
-                    .height(Lines.rule)
+                    .height(ProgressHeight)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.outlineVariant)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                     .drawBehind { drawRect(done, size = size.copy(width = size.width * fill)) },
             )
         }
@@ -339,10 +344,10 @@ private fun StepPage(
             .verticalScroll(rememberScrollState())
             .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl, bottom = Space.xl),
     ) {
-        Kicker(stepLabel)
-        Spacer(Modifier.height(Space.m))
+        Text(stepLabel, style = AromaType.Label, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(Space.s))
         if (!step.title.isNullOrBlank()) {
-            Text(step.title, style = MaterialTheme.typography.headlineSmall)
+            Text(step.title, style = AromaType.SectionTitle)
             Spacer(Modifier.height(Space.xs))
         }
         StepText(rememberRichText(step.text, onDuration = { onStartTimer(it.seconds, stepLabel) }))
@@ -364,15 +369,21 @@ private fun StepPage(
         }
         if (ingredients.rows.isNotEmpty()) {
             val used = ingredients.indexes.count { it in checked }
-            Kicker(
-                text =
-                    if (ingredients.all) {
-                        pluralStringResource(R.plurals.cook_ingredients_used, used, used, ingredients.rows.size)
-                    } else {
-                        stringResource(R.string.cook_step_ingredients)
-                    },
-                modifier = Modifier.padding(top = Space.xl, bottom = Space.xs),
-            )
+            Row(Modifier.padding(top = Space.xl, bottom = Space.s), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(if (ingredients.all) R.string.recipe_ingredients else R.string.cook_step_ingredients),
+                    style = AromaType.SectionTitle,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .semantics { heading() },
+                )
+                Text(
+                    text = pluralStringResource(R.plurals.cook_ingredients_used, used, used, ingredients.rows.size),
+                    style = AromaType.Small.tabular(),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             IngredientList(
                 rows = ingredients.rows,
                 checked = ingredients.indexes.indices.filterTo(mutableSetOf()) { ingredients.indexes[it] in checked },
@@ -385,8 +396,8 @@ private fun StepPage(
 }
 
 /**
- * The step in large serif type. Durations stay sage links in the step's own weight; their
- * underline is drawn by hand, because a text decoration would be as heavy as the type itself.
+ * The step in large type. Durations stay sage links in the step's own weight; their underline is
+ * drawn by hand, because a text decoration would be as heavy as the type itself.
  */
 @Composable
 private fun StepText(text: AnnotatedString) {
@@ -406,7 +417,7 @@ private fun StepText(text: AnnotatedString) {
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         text = styled,
-        style = CookStep,
+        style = AromaType.Reading,
         onTextLayout = { layout = it },
         modifier = Modifier.drawBehind { layout?.let { drawUnderlines(it, links, linkColor.copy(alpha = 0.5f)) } },
     )
@@ -414,7 +425,7 @@ private fun StepText(text: AnnotatedString) {
 
 private fun DrawScope.drawUnderlines(layout: TextLayoutResult, links: List<AnnotatedString.Range<LinkAnnotation>>, color: Color) {
     val below = Space.xxs.toPx()
-    val stroke = Lines.control.toPx()
+    val stroke = LinkUnderline.toPx()
     links.forEach { link ->
         for (line in layout.getLineForOffset(link.start)..layout.getLineForOffset(link.end - 1)) {
             val start = maxOf(link.start, layout.getLineStart(line))
@@ -447,13 +458,13 @@ private fun DonePage(state: CookUiState, actions: CookActions) {
         Spacer(Modifier.height(Space.xl))
         Text(
             text = stringResource(R.string.cook_finished_title),
-            style = MaterialTheme.typography.displayMedium,
+            style = AromaType.PageTitle,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(Space.s))
         Text(
             text = stringResource(R.string.cook_rate_question),
-            style = MaterialTheme.typography.bodyLarge,
+            style = AromaType.Body,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
@@ -489,7 +500,7 @@ private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
                     modifier = Modifier.size(Glyph.m),
                 )
                 Spacer(Modifier.width(Space.xs))
-                Text(stringResource(R.string.cook_marked), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.cook_marked), style = AromaType.BodyStrong)
             }
         } else {
             SecondaryButton(stringResource(R.string.cook_mark_cooked), onMark, icon = R.drawable.ic_check)
@@ -498,7 +509,7 @@ private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
     if (failed && !marked) {
         Text(
             text = stringResource(R.string.cook_mark_failed),
-            style = MaterialTheme.typography.bodySmall,
+            style = AromaType.Small,
             color = MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center,
             modifier =
@@ -509,16 +520,21 @@ private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
     }
 }
 
+/** Running timers on a soft card above the step buttons, one row each. */
 @Composable
 private fun Timers(timers: List<CookTimerUi>, actions: CookActions) {
-    Column(
+    Box(
         Modifier
             .fillMaxWidth()
             .animateContentSize(tween(Motion.EXPAND, easing = Settle)),
     ) {
-        if (timers.isNotEmpty()) Hairline(Modifier.padding(horizontal = ScreenMargin))
-        timers.forEach { timer ->
-            TimerRow(timer, onToggle = { actions.onToggleTimer(timer.id) }, onDismiss = { actions.onDismissTimer(timer.id) })
+        if (timers.isNotEmpty()) {
+            SoftCard(Modifier.padding(top = Space.s)) {
+                timers.forEachIndexed { index, timer ->
+                    if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
+                    TimerRow(timer, onToggle = { actions.onToggleTimer(timer.id) }, onDismiss = { actions.onDismissTimer(timer.id) })
+                }
+            }
         }
     }
 }
@@ -541,7 +557,7 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
             Modifier
                 .fillMaxWidth()
                 .height(TimerRowHeight)
-                .padding(start = ScreenMargin, end = ScreenMargin - CircleInset),
+                .padding(start = CardPadding, end = CardActionPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -560,7 +576,7 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
         ) {
             Text(
                 text = timer.label,
-                style = MaterialTheme.typography.bodyMedium,
+                style = AromaType.Small,
                 color = if (finished) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -568,20 +584,21 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
             )
             Text(
                 text = if (finished) stringResource(R.string.cook_timer_done) else formatClock(timer.remainingSeconds),
-                style = TimerDigits,
+                style = AromaType.Timer,
                 color = timeColor,
                 maxLines = 1,
             )
         }
-        Spacer(Modifier.width(Space.m - CircleInset))
+        Spacer(Modifier.width(Space.xs))
         if (!finished) {
-            HairlineIconButton(
+            IconAction(
                 icon = if (timer.isRunning) R.drawable.ic_pause else R.drawable.ic_play_arrow,
                 contentDescription = stringResource(if (timer.isRunning) R.string.cook_timer_pause else R.string.cook_timer_resume),
                 onClick = onToggle,
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
-        HairlineIconButton(R.drawable.ic_close, stringResource(R.string.cook_timer_stop), onDismiss)
+        IconAction(R.drawable.ic_close, stringResource(R.string.cook_timer_stop), onDismiss, tint = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -606,7 +623,7 @@ private fun ExactAlarmHint(onAllow: () -> Unit) {
     ) {
         Text(
             text = stringResource(R.string.cook_exact_alarm_hint),
-            style = MaterialTheme.typography.bodySmall,
+            style = AromaType.Small,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier =
                 Modifier
@@ -628,11 +645,10 @@ private fun BottomActions(pager: PagerState, steps: Int, onClose: () -> Unit) {
                 .padding(horizontal = ScreenMargin, vertical = Space.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        HairlineIconButton(
+        TonalIconButton(
             icon = R.drawable.ic_arrow_back,
             contentDescription = stringResource(R.string.cook_previous),
             onClick = { scope.launch { pager.animateScrollToPage(page - 1) } },
-            size = PrimaryButtonHeight,
             enabled = page > 0,
         )
         Spacer(Modifier.width(Space.s))
@@ -670,13 +686,14 @@ private fun IngredientsSheet(
                 .padding(bottom = Space.l),
         ) {
             IngredientList(rows, Modifier.padding(horizontal = ScreenMargin), checked, onToggle)
-            Hairline(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m))
-            SwitchRow(
-                title = stringResource(R.string.settings_ingredients_in_steps),
-                subtitle = stringResource(R.string.settings_ingredients_in_steps_hint),
-                checked = inSteps,
-                onChange = onInSteps,
-            )
+            SoftCard(Modifier.padding(top = Space.l)) {
+                SwitchRow(
+                    title = stringResource(R.string.settings_ingredients_in_steps),
+                    subtitle = stringResource(R.string.settings_ingredients_in_steps_hint),
+                    checked = inSteps,
+                    onChange = onInSteps,
+                )
+            }
         }
     }
 }

@@ -59,6 +59,7 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.rememberFullSheetState
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
@@ -91,7 +92,7 @@ fun AddMealSheet(
         scope.hideThen(sheetState) { onAdd(type, recipe, planTitle, planNote) }
     }
     val locale = currentLocale()
-    // The day stands above the title, so a day of next week is never mistaken for this one's.
+    // The date stands under the title, so a day of next week is never mistaken for this one's.
     val day =
         remember(date, locale) { date.format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMMd"), locale)) }
     AromaBottomSheet(
@@ -99,7 +100,7 @@ fun AddMealSheet(
         title = stringResource(R.string.plan_for_day, date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)),
         modifier = modifier,
         sheetState = sheetState,
-        kicker = day,
+        meta = { Text(day, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant) },
     ) {
         MealTypeChips(selected = type, onSelect = { type = it })
         SegmentedControl(
@@ -155,7 +156,7 @@ private fun RecipePicker(search: PlanSearchState, onSearch: (String) -> Unit, on
         )
         Text(
             text = stringResource(R.string.plan_tap_recipe),
-            style = MaterialTheme.typography.bodySmall,
+            style = AromaType.Small,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs, bottom = Space.xxs),
         )
@@ -167,7 +168,7 @@ private fun RecipePicker(search: PlanSearchState, onSearch: (String) -> Unit, on
             search.results.isEmpty() -> {
                 Text(
                     text = stringResource(R.string.plan_search_empty),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = AromaType.Small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m, bottom = Space.l),
                 )

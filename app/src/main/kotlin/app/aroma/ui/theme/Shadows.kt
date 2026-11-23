@@ -40,13 +40,3 @@ fun Modifier.floatingShadow(shape: Shape): Modifier {
 /** Round buttons resting on a photo, so they read on light and dark pictures alike. */
 fun Modifier.photoButtonShadow(shape: Shape): Modifier =
     dropShadow(shape, Shadow(radius = 12.dp, color = Color.Black.copy(alpha = 0.14f), offset = DpOffset(0.dp, 2.dp)))
-
-/** The sliding thumb of a segmented control; only in light mode, where it sits on a pale track. */
-@Composable
-@ReadOnlyComposable
-fun Modifier.contactShadow(shape: Shape): Modifier =
-    if (isDarkScheme) {
-        this
-    } else {
-        dropShadow(shape, Shadow(radius = 4.dp, color = extras.shadowInk.copy(alpha = 0.10f), offset = DpOffset(0.dp, 1.dp)))
-    }

@@ -1,6 +1,5 @@
 package app.aroma.feature.home
 
-import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateDpAsState
@@ -8,7 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -25,43 +24,33 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.offset
 import app.aroma.R
-import app.aroma.core.model.Cookbook
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.Meal
 import app.aroma.core.model.MealPlanEntry
@@ -70,43 +59,38 @@ import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.Avatar
+import app.aroma.ui.components.EdgeActionPadding
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.IconAction
-import app.aroma.ui.components.Kicker
-import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PageHeader
 import app.aroma.ui.components.PhotoPress
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PlaceholderLine
-import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeCard
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.RecipeMeta
 import app.aroma.ui.components.ScrollToTopOnReselect
+import app.aroma.ui.components.SearchPill
 import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
-import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
-import app.aroma.ui.theme.CardTitle
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.SectionSpace
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.ThumbnailSize
 import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.extras
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 enum class Greeting { Morning, Afternoon, Evening }
 
@@ -123,7 +107,6 @@ data class HomeUiState(
     val greeting: Greeting = Greeting.Afternoon,
     val firstName: String? = null,
     val photo: String? = null,
-    val date: LocalDate? = null,
     val today: List<MealPlanEntry> = emptyList(),
     val meal: Meal = Meal.Dinner,
     /** Recipes for [meal], or any recipes where the household has no category or tag for it. */
@@ -154,7 +137,7 @@ data class HomeActions(
 
 private const val RATE_STAR_SIZE = 28
 
-/** The ring of the profile button, which grows beside a greeting of two lines. */
+/** The profile button, which grows beside a greeting of two lines. */
 private val ProfileSize = 40.dp
 private val LargeProfileSize = 56.dp
 private val CarouselCardWidth = 160.dp
@@ -203,11 +186,6 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                             )
                         }
                     }
-                    if (state.cookedLongAgo.isNotEmpty()) {
-                        item(key = "cookedLongAgo") {
-                            RecipeCarousel(stringResource(R.string.home_cooked_long_ago), state.cookedLongAgo, actions)
-                        }
-                    }
                     if (state.recent.isNotEmpty()) {
                         item(key = "recent") {
                             RecipeCarousel(
@@ -228,6 +206,11 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                             )
                         }
                     }
+                    if (state.cookedLongAgo.isNotEmpty()) {
+                        item(key = "cookedLongAgo") {
+                            RecipeCarousel(stringResource(R.string.home_cooked_long_ago), state.cookedLongAgo, actions)
+                        }
+                    }
                 }
             }
         }
@@ -235,6 +218,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
     }
 }
 
+/** The greeting with the user's photo beside it, and the search that opens on the Recipes tab. */
 @Composable
 private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
     val greeting =
@@ -247,30 +231,21 @@ private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
         )
     val name = state.firstName?.takeIf { it.isNotBlank() }
     Column {
-        PageHeader(
-            title = if (name == null) greeting else "$greeting,",
-            kicker = state.date?.let { dateline(it) },
-            accent = name,
-        ) { tall ->
-            HeaderAction(R.drawable.ic_search, stringResource(R.string.search_recipes_hint), actions.onSearch)
+        PageHeader(title = if (name == null) greeting else "$greeting,", accent = name) { tall ->
             ProfileButton(name, state.photo, large = tall, onClick = actions.onOpenSettings)
         }
-        if (state.isOffline) OfflineNotice(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs))
-    }
-}
-
-/** The weekday and date as a cookbook would print them: "Montag, 23. November", "Monday, November 23". */
-@Composable
-private fun dateline(date: LocalDate): String {
-    val locale = currentLocale()
-    return remember(date, locale) {
-        date.format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "EEEEMMMMd"), locale))
+        SearchPill(
+            placeholder = stringResource(R.string.search_recipes_hint),
+            onClick = actions.onSearch,
+            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l),
+        )
+        if (state.isOffline) OfflineNotice(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.s))
     }
 }
 
 /**
- * The user's photo or initial in a fine ring, which grows beside a greeting of two lines; with the
- * header's end padding, the ring ends on the right margin.
+ * The user's photo or initial, which grows beside a greeting of two lines. With the header's end
+ * padding, the circle ends on the right margin.
  */
 @Composable
 private fun ProfileButton(name: String?, photo: String?, large: Boolean, onClick: () -> Unit) {
@@ -279,20 +254,17 @@ private fun ProfileButton(name: String?, photo: String?, large: Boolean, onClick
     Box(
         modifier =
             Modifier
-                .padding(end = Space.s)
-                .size(size + Space.xs)
-                .clickable(
-                    interactionSource = null,
-                    indication = ripple(bounded = false, radius = size / 2),
-                    role = Role.Button,
-                    onClick = onClick,
-                ).semantics { contentDescription = label },
+                .padding(start = Space.s, end = ScreenMargin - EdgeActionPadding)
+                .size(size)
+                .clip(CircleShape)
+                .clickable(role = Role.Button, onClick = onClick)
+                .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
         if (name != null) {
             Avatar(name, photo, size)
         } else {
-            Box(Modifier.size(size).border(Lines.control, extras.hairlineStrong, CircleShape), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(size).background(extras.card, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(painterResource(R.drawable.ic_settings), contentDescription = null, modifier = Modifier.size(Glyph.m))
             }
         }
@@ -316,11 +288,11 @@ private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions) {
     }
 }
 
-/** Asks, without a notification, how the last recipe cooked turned out, on a card washed in sage. */
+/** Asks, without a notification, how the last recipe cooked turned out. */
 @Composable
 private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
-    SoftCard(Modifier.padding(top = Space.l), highlight = true) {
-        Row(Modifier.padding(horizontal = ScreenMargin, vertical = Space.s)) {
+    SoftCard(Modifier.padding(top = Space.l)) {
+        Row(Modifier.padding(start = CardPadding, top = Space.s, bottom = Space.xs)) {
             RecipeImage(
                 image = toRate.image,
                 size = ImageSize.Thumbnail,
@@ -328,55 +300,46 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                 fallbackIconSize = Glyph.m,
                 modifier =
                     Modifier
+                        .padding(top = Space.xxs)
                         .size(ThumbnailSize)
                         .clip(MaterialTheme.shapes.small)
                         .clickable(onClickLabel = stringResource(R.string.home_rate_open)) { actions.onOpenRecipe(toRate.slug) },
             )
             Spacer(Modifier.width(Space.m))
             Column(Modifier.weight(1f)) {
-                Kicker(stringResource(R.string.cook_rate_question))
-                Spacer(Modifier.height(Space.xxs))
+                Text(
+                    text = stringResource(R.string.cook_rate_question),
+                    style = AromaType.Small,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Text(
                     text = toRate.name,
-                    style = CardTitle,
+                    style = AromaType.Name,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(Space.s))
                 RatingStars(
                     rating = toRate.stars?.toDouble(),
                     starSize = RATE_STAR_SIZE,
                     onRate = actions.onRateCooked,
-                    // The first star's tip is drawn 4 dp inside its box; the nudge sets it on the text column.
-                    modifier =
-                        Modifier
-                            .touchOutdent(ratingTouchInset(RATE_STAR_SIZE))
-                            .offset(x = -Space.xxs),
+                    // The stars' touch areas reach past the text column; the first glyph stands on it.
+                    modifier = Modifier.offset(x = -ratingTouchInset(RATE_STAR_SIZE)),
                 )
             }
-            Spacer(Modifier.width(Space.m))
-            IconAction(
-                R.drawable.ic_close,
-                stringResource(R.string.home_rate_dismiss),
-                actions.onDismissReminder,
-                // The cross is drawn 4 dp inside its box; the nudge puts its arms on the right margin.
-                Modifier
-                    .touchOutdent((TouchTarget - Glyph.m) / 2)
-                    .offset(x = Space.xxs),
-            )
+            IconAction(R.drawable.ic_close, stringResource(R.string.home_rate_dismiss), actions.onDismissReminder)
         }
     }
 }
 
 @Composable
 private fun TodaySection(entries: List<MealPlanEntry>, actions: HomeActions) {
-    Column(Modifier.padding(top = Space.xxl)) {
+    Column {
         SectionHeader(
             title = stringResource(R.string.home_today),
             actionLabel = stringResource(R.string.home_open_plan),
             onAction = actions.onOpenMealPlan,
         )
-        Spacer(Modifier.height(Space.m))
+        Spacer(Modifier.height(Space.xs))
         val open = { entry: MealPlanEntry -> entry.recipe?.let { actions.onOpenRecipe(it.slug) } ?: actions.onOpenMealPlan() }
         when (entries.size) {
             0 -> EmptyToday(onPlan = actions.onOpenMealPlan)
@@ -430,71 +393,65 @@ private fun TodayCard(entry: MealPlanEntry, onClick: () -> Unit, modifier: Modif
                     .aspectRatio(3f / 2f)
                     .indication(interaction, PhotoPress),
         )
-        Spacer(Modifier.height(Space.m))
-        Box {
-            if (holdTwoLines) {
-                TodayCaption(
-                    entry,
-                    titleLines = 2,
-                    modifier =
-                        Modifier
-                            .alpha(0f)
-                            .clearAndSetSemantics {},
-                )
-            }
-            TodayCaption(entry)
-        }
-    }
-}
-
-/** Meal type, title, and the recipe's time and rating (or the note of a meal without a recipe). */
-@Composable
-private fun TodayCaption(entry: MealPlanEntry, modifier: Modifier = Modifier, titleLines: Int = 1) {
-    Column(modifier) {
-        Kicker(mealTypeLabel(entry.type))
-        Spacer(Modifier.height(Space.xxs))
+        Spacer(Modifier.height(Space.xs))
+        Text(
+            text = mealTypeLabel(entry.type),
+            style = AromaType.Small,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(
             text = entry.recipe?.name ?: entry.title,
-            style = MaterialTheme.typography.headlineMedium,
+            style = AromaType.SectionTitle,
             maxLines = 2,
-            minLines = titleLines,
+            minLines = if (holdTwoLines) 2 else 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Spacer(Modifier.height(Space.xxs))
         val recipe = entry.recipe
         if (recipe != null) {
-            RecipeMeta(recipe)
-        } else {
+            RecipeMeta(recipe, Modifier.padding(top = Space.xxs))
+        } else if (entry.note.isNotBlank()) {
             Text(
                 text = entry.note,
-                style = MaterialTheme.typography.bodySmall,
+                style = AromaType.Small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = Space.xxs),
             )
         }
     }
 }
 
+/** Nothing planned yet: a card that says so and leads to the plan. */
 @Composable
 private fun EmptyToday(onPlan: () -> Unit) {
     SoftCard {
-        Column(Modifier.padding(horizontal = ScreenMargin, vertical = Space.xs)) {
-            Text(
-                text = stringResource(R.string.home_today_empty),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(role = Role.Button, onClick = onPlan)
+                .padding(horizontal = CardPadding, vertical = Space.m),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.home_today_empty), style = AromaType.Body)
+                Text(stringResource(R.string.home_today_plan), style = AromaType.Small, color = MaterialTheme.colorScheme.primary)
+            }
+            Icon(
+                painterResource(R.drawable.ic_chevron_right),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(Glyph.m),
             )
-            QuietLink(stringResource(R.string.action_plan), onPlan, tone = LinkTone.Ink, chevron = true)
         }
     }
 }
 
 @Composable
 private fun RecipeCarousel(title: String, recipes: List<RecipeSummary>, actions: HomeActions, onShowAll: (() -> Unit)? = null) {
-    Column(Modifier.padding(top = Space.xxl)) {
+    Column {
         SectionHeader(title = title, actionLabel = onShowAll?.let { stringResource(R.string.action_show_all) }, onAction = onShowAll)
-        Spacer(Modifier.height(Space.m))
+        Spacer(Modifier.height(Space.xs))
         LazyRow(
             contentPadding = PaddingValues(horizontal = ScreenMargin),
             horizontalArrangement = Arrangement.spacedBy(Space.m),
@@ -512,10 +469,7 @@ private fun RecipeCarousel(title: String, recipes: List<RecipeSummary>, actions:
     }
 }
 
-/**
- * How long the outline's lines are: under Today's photo a kicker, a title and the meta line; under a
- * card's, its title and meta line; and a section's title.
- */
+/** How long the outline's lines are: under Today's photo a meal, a title and the meta line; under a card's, its title and meta. */
 private val TodayLineWidths = listOf(72.dp, 240.dp, 96.dp)
 private val CardLineWidths = listOf(128.dp, 72.dp)
 private val SectionTitleWidth = 120.dp
@@ -523,23 +477,22 @@ private val SectionTitleWidth = 120.dp
 /** The page's outline while it loads: the Today photo and caption, then a carousel of cards. */
 @Composable
 private fun HomeLoading() {
-    Column(Modifier.padding(top = Space.xxl)) {
+    Column {
         SectionTitlePlaceholder()
-        Spacer(Modifier.height(Space.m))
+        Spacer(Modifier.height(Space.xs))
         Column(Modifier.padding(horizontal = ScreenMargin)) {
             Placeholder(
                 Modifier
                     .fillMaxWidth()
                     .aspectRatio(3f / 2f),
             )
-            Spacer(Modifier.height(Space.m))
+            Spacer(Modifier.height(Space.s))
             Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
                 TodayLineWidths.forEach { PlaceholderLine(Modifier.width(it)) }
             }
         }
-        Spacer(Modifier.height(Space.xxl))
         SectionTitlePlaceholder()
-        Spacer(Modifier.height(Space.m))
+        Spacer(Modifier.height(Space.xs))
         Row(
             modifier =
                 Modifier
@@ -564,27 +517,16 @@ private fun HomeLoading() {
     }
 }
 
-/** Stands in for a [SectionHeader], centred in the same 48 dp. */
+/** Stands in for a [SectionHeader], in the same place. */
 @Composable
 private fun SectionTitlePlaceholder() {
     Box(
         Modifier
-            .padding(horizontal = ScreenMargin)
+            .padding(start = ScreenMargin, end = ScreenMargin, top = SectionSpace)
             .height(TouchTarget),
         contentAlignment = Alignment.CenterStart,
     ) { PlaceholderLine(Modifier.width(SectionTitleWidth)) }
 }
-
-/**
- * Lets a control's touch padding hang over its surroundings, so the drawn glyph rather than the
- * 48 dp target lines up with the text column and the margins.
- */
-private fun Modifier.touchOutdent(inset: Dp): Modifier =
-    layout { measurable, constraints ->
-        val px = inset.roundToPx()
-        val placeable = measurable.measure(constraints.offset(horizontal = 2 * px, vertical = 2 * px))
-        layout(placeable.width - 2 * px, placeable.height - 2 * px) { placeable.place(-px, -px) }
-    }
 
 private fun Meal.titleRes(): Int =
     when (this) {

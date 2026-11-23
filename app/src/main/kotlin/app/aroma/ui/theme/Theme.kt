@@ -9,6 +9,7 @@ import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -17,32 +18,54 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+
+/**
+ * Material's slots, for the components Aroma takes from Material: every slot is a role of
+ * [AromaType]. Kept apart from Type.kt, so the roles never wait on this while they are created.
+ */
+val AromaTypography =
+    Typography(
+        displayLarge = AromaType.PageTitle,
+        displayMedium = AromaType.PageTitle,
+        displaySmall = AromaType.PageTitle,
+        headlineLarge = AromaType.PageTitle,
+        headlineMedium = AromaType.SectionTitle,
+        headlineSmall = AromaType.SectionTitle,
+        titleLarge = AromaType.Name,
+        titleMedium = AromaType.BodyStrong,
+        titleSmall = AromaType.Label,
+        bodyLarge = AromaType.Body,
+        bodyMedium = AromaType.Small,
+        bodySmall = AromaType.Small,
+        labelLarge = AromaType.Label,
+        labelMedium = AromaType.Label,
+        labelSmall = AromaType.Caption,
+    )
 
 val AromaShapes =
     Shapes(
         extraSmall = RoundedCornerShape(4.dp),
-        small = RoundedCornerShape(8.dp),
-        medium = RoundedCornerShape(12.dp),
+        small = RoundedCornerShape(12.dp),
+        medium = RoundedCornerShape(16.dp),
         large = RoundedCornerShape(16.dp),
-        extraLarge = RoundedCornerShape(24.dp),
+        extraLarge = RoundedCornerShape(28.dp),
     )
 
 /**
- * Colours Material's scheme has no role for. [raised] is the paper of things that float above the
- * page, [card] the soft paper under rows that belong together and [cardHighlight] its sage-washed
- * variant for today and for questions to the user, [hairlineStrong] the border of controls, [cta]
- * the one filled action per screen (a deep tone-on-tone green in dark mode instead of a bright
- * mint slab).
+ * Colours Material's scheme has no role for. [card] is the soft fill of everything that holds or
+ * takes a tap: cards, fields, chips and quiet buttons. [selected] is the sage wash of a chosen chip,
+ * tab or day. [raised] is the paper of what floats above the page: the tab bar, sheets, menus.
+ * [cta] is the one filled action of a screen, a deep tone-on-tone green in dark mode instead of a
+ * bright mint slab.
  */
 @Immutable
 data class AromaExtras(
-    val raised: Color,
     val card: Color,
-    val cardHighlight: Color,
-    val hairlineStrong: Color,
+    val selected: Color,
+    val onSelected: Color,
+    val raised: Color,
     val cta: Color,
     val onCta: Color,
     val shadowInk: Color,
@@ -51,10 +74,10 @@ data class AromaExtras(
 
 private val LightExtras =
     AromaExtras(
+        card = Color(0xFFEEEFE7),
+        selected = Color(0xFFDCE7D4),
+        onSelected = Color(0xFF1C3319),
         raised = Color(0xFFFFFFFF),
-        card = Color(0xFFEFF0E9),
-        cardHighlight = Color(0xFFE6EDE1),
-        hairlineStrong = Color(0xFFCBCFC3),
         cta = Color(0xFF486447),
         onCta = Color(0xFFFFFFFF),
         shadowInk = Color(0xFF1B2A19),
@@ -63,10 +86,10 @@ private val LightExtras =
 
 private val DarkExtras =
     AromaExtras(
-        raised = Color(0xFF22251F),
-        card = Color(0xFF1B1D1A),
-        cardHighlight = Color(0xFF1C251B),
-        hairlineStrong = Color(0xFF3A3F37),
+        card = Color(0xFF1E211D),
+        selected = Color(0xFF2E3D2B),
+        onSelected = Color(0xFFDCEBD3),
+        raised = Color(0xFF242722),
         cta = Color(0xFF3A5638),
         onCta = Color(0xFFE2F0DA),
         shadowInk = Color.Black,
@@ -76,10 +99,10 @@ private val DarkExtras =
 /** With wallpaper colours, the extras follow the generated scheme instead of the sage defaults. */
 private fun dynamicExtras(scheme: ColorScheme, dark: Boolean): AromaExtras =
     (if (dark) DarkExtras else LightExtras).copy(
-        raised = if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainerLowest,
         card = scheme.surfaceContainer,
-        cardHighlight = scheme.primaryContainer.copy(alpha = 0.45f).compositeOver(scheme.surface),
-        hairlineStrong = scheme.onSurface.copy(alpha = 0.18f).compositeOver(scheme.surface),
+        selected = scheme.secondaryContainer,
+        onSelected = scheme.onSecondaryContainer,
+        raised = if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainerLowest,
         cta = if (dark) scheme.primaryContainer else scheme.primary,
         onCta = if (dark) scheme.onPrimaryContainer else scheme.onPrimary,
     )

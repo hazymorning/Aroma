@@ -3,6 +3,7 @@ package app.aroma.feature.settings
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,16 +44,19 @@ import app.aroma.data.settings.AppLanguage
 import app.aroma.data.settings.ThemeMode
 import app.aroma.data.update.UpdateState
 import app.aroma.ui.components.AromaAlertDialog
+import app.aroma.ui.components.AromaDropdownMenu
+import app.aroma.ui.components.AromaMenuItem
 import app.aroma.ui.components.Avatar
+import app.aroma.ui.components.CardGroup
 import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.InlineProgress
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.SecondaryButton
-import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.RowHeight
@@ -99,7 +104,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
         state.user?.let { user -> SoftCard(Modifier.padding(top = Space.l)) { Account(user, state.server) } }
         Group(stringResource(R.string.settings_appearance)) {
             Choice(
-                label = stringResource(R.string.settings_theme),
+                title = stringResource(R.string.settings_theme),
                 options = ThemeMode.entries,
                 selected = state.themeMode,
                 optionLabel = { stringResource(it.labelRes()) },
@@ -117,7 +122,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
         }
         Group(stringResource(R.string.settings_language)) {
             Choice(
-                label = null,
+                title = stringResource(R.string.settings_app_language),
                 options = AppLanguage.entries,
                 selected = state.language,
                 optionLabel = { stringResource(it.labelRes()) },
@@ -164,7 +169,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             RowDivider()
             NavigationRow(stringResource(R.string.settings_licenses), actions.onOpenLicenses)
         }
-        SoftCard(Modifier.padding(top = Space.xl)) { SignOutRow(onClick = { confirmSignOut = true }) }
+        SoftCard(Modifier.padding(top = Space.l)) { SignOutRow(onClick = { confirmSignOut = true }) }
     }
     if (confirmSignOut) {
         AromaAlertDialog(
@@ -182,25 +187,25 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
     }
 }
 
-/** Who is signed in where, set as plain text beside the initial; no card around it. */
+/** Who is signed in where: their photo or initial beside their name, address and server. */
 @Composable
 private fun Account(user: User, server: ServerInfo?) {
     val name = user.fullName.ifBlank { user.username }
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = ScreenMargin, vertical = Space.s)
+            .padding(horizontal = CardPadding, vertical = Space.m)
             .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Avatar(name, user.photo, ThumbnailSize)
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(name, style = AromaType.Name, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (user.email.isNotBlank()) {
                 Text(
                     text = user.email,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = AromaType.Small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -214,54 +219,64 @@ private fun Account(user: User, server: ServerInfo?) {
                             it.url.removePrefix("https://").removePrefix("http://"),
                             it.version,
                         ),
-                    style = MaterialTheme.typography.bodySmall.tabular(),
+                    style = AromaType.Small.tabular(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = Space.xxs),
                 )
             }
         }
     }
 }
 
-/** A group of settings: a kicker above a soft card that holds its rows. */
+/** A group of settings: its name in sage above the card that holds its rows. */
 @Composable
 private fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.padding(top = Space.xl)) {
-        Kicker(
-            text = title,
-            modifier =
-                Modifier
-                    .padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.s)
-                    .semantics { heading() },
-        )
-        SoftCard(content = content)
-    }
+    CardGroup(title, Modifier.padding(top = Space.l), content = content)
 }
 
+/** A setting with a few values: its name and the current value; a tap opens the others in a menu. */
 @Composable
 private fun <T> Choice(
-    label: String?,
+    title: String,
     options: List<T>,
     selected: T,
     optionLabel: @Composable (T) -> String,
     onSelect: (T) -> Unit,
 ) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = ScreenMargin, vertical = Space.s),
-    ) {
-        if (label != null) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.height(Space.xs))
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = RowHeight.oneLine)
+                .clickable(role = Role.DropdownList, onClick = { open = true })
+                .padding(horizontal = CardPadding),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, style = AromaType.Body, modifier = Modifier.weight(1f))
+            Text(optionLabel(selected), style = AromaType.Body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(Space.xxs))
+            Icon(
+                painterResource(R.drawable.ic_expand_more),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(Glyph.s),
+            )
         }
-        SegmentedControl(
-            options = options.map { optionLabel(it) },
-            selectedIndex = options.indexOf(selected),
-            onSelect = { onSelect(options[it]) },
-        )
+        AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.align(Alignment.TopEnd)) {
+            options.forEach { option ->
+                AromaMenuItem(
+                    text = optionLabel(option),
+                    icon = null,
+                    onClick = {
+                        open = false
+                        onSelect(option)
+                    },
+                    selected = option == selected,
+                )
+            }
+        }
     }
 }
 
@@ -303,18 +318,23 @@ private fun UpdateRow(version: String, update: UpdateState, onCheck: () -> Unit,
             .fillMaxWidth()
             .heightIn(min = RowHeight.twoLines)
             .clickable(enabled = canCheck, role = Role.Button, onClick = onCheck)
-            .padding(horizontal = ScreenMargin, vertical = Space.s)
+            .padding(horizontal = CardPadding, vertical = Space.s)
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Space.m),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.settings_version, version), style = MaterialTheme.typography.bodyLarge.tabular())
-            Text(status, style = MaterialTheme.typography.bodyMedium.tabular(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.settings_version, version), style = AromaType.Body.tabular())
+            Text(status, style = AromaType.Small.tabular(), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         when (update) {
             is UpdateState.Available -> {
-                SecondaryButton(stringResource(R.string.settings_updates_install), onClick = { onInstall(update) }, compact = true)
+                SecondaryButton(
+                    stringResource(R.string.settings_updates_install),
+                    onClick = { onInstall(update) },
+                    compact = true,
+                    onCard = true,
+                )
             }
 
             UpdateState.Checking, is UpdateState.Downloading -> {
@@ -333,20 +353,20 @@ private fun NavigationRow(title: String, onClick: () -> Unit) {
             .fillMaxWidth()
             .heightIn(min = RowHeight.oneLine)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = ScreenMargin),
+            .padding(horizontal = CardPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(title, style = AromaType.Body, modifier = Modifier.weight(1f))
         Icon(
             painterResource(R.drawable.ic_chevron_right),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(Glyph.s),
         )
     }
 }
 
-/** Signing out is a plain row in red, on a card of its own rather than a button. */
+/** Signing out is a row in red, on a card of its own rather than a button. */
 @Composable
 private fun SignOutRow(onClick: () -> Unit) {
     val color = MaterialTheme.colorScheme.error
@@ -355,19 +375,19 @@ private fun SignOutRow(onClick: () -> Unit) {
             .fillMaxWidth()
             .heightIn(min = RowHeight.oneLine)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = ScreenMargin),
+            .padding(horizontal = CardPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(R.drawable.ic_logout), contentDescription = null, tint = color)
+        Icon(painterResource(R.drawable.ic_logout), contentDescription = null, tint = color, modifier = Modifier.size(Glyph.m))
         Spacer(Modifier.width(Space.m))
-        Text(stringResource(R.string.settings_sign_out), style = MaterialTheme.typography.bodyLarge, color = color)
+        Text(stringResource(R.string.settings_sign_out), style = AromaType.Body, color = color)
     }
 }
 
-/** The hairline between rows of one group, inset to the text column. */
+/** The hairline between rows of one group, inset to their text. */
 @Composable
 private fun RowDivider() {
-    Hairline(Modifier.padding(horizontal = ScreenMargin))
+    Hairline(Modifier.padding(horizontal = CardPadding))
 }
 
 private fun ThemeMode.labelRes() =

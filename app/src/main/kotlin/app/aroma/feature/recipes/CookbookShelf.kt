@@ -36,6 +36,7 @@ import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.pageItem
 import app.aroma.ui.components.recipeGridPlaceholders
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
@@ -130,7 +131,7 @@ fun CookbookShelf(
                 ) {
                     Text(
                         text = pluralStringResource(R.plurals.recipe_count, cover.recipeCount, cover.recipeCount),
-                        style = MaterialTheme.typography.bodySmall.tabular(),
+                        style = AromaType.Small.tabular(),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

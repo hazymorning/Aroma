@@ -60,7 +60,7 @@ fun RecipeGrid(
         columns = GridCells.Adaptive(minSize = GridColumnWidth),
         state = state,
         contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(Space.m),
         modifier = modifier,
     ) {
         header()
@@ -107,4 +107,4 @@ fun LazyGridScope.pageItem(key: String, content: @Composable () -> Unit) =
 internal val GridColumnWidth = 160.dp
 
 /** Space between rows of cards. */
-internal val GridRowGap = 32.dp
+internal val GridRowGap = Space.l

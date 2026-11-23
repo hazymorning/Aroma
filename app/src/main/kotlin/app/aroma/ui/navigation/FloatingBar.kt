@@ -36,16 +36,21 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.ui.components.QuietPress
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.floatingShadow
 
 /** Height of the bar itself; the space it takes is this plus [FloatingBarGap] and the system bar. */
 internal val FloatingBarHeight = 64.dp
 internal val FloatingBarGap = 12.dp
+
+/** On wide screens the bar keeps the width it has on a phone. */
+private val FloatingBarMaxWidth = 440.dp
 
 /**
  * The tab bar: a stadium of paper resting above the page on a long, soft shadow, the one shadow a
@@ -57,13 +62,13 @@ internal fun FloatingBar(selected: Tab?, onSelect: (Tab) -> Unit, modifier: Modi
     val shape = CircleShape
     Row(
         modifier
-            .widthIn(max = 440.dp)
+            .widthIn(max = FloatingBarMaxWidth)
             .fillMaxWidth()
             .height(FloatingBarHeight)
             .floatingShadow(shape)
             .background(extras.raised, shape)
             .border(Lines.hairline, extras.floatingEdge, shape)
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = Space.xs)
             .selectableGroup(),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
@@ -112,10 +117,10 @@ private fun BarItem(
                 modifier = Modifier.size(Glyph.l),
             )
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Space.xxs))
         Text(
             text = stringResource(tab.label),
-            style = MaterialTheme.typography.labelSmall,
+            style = AromaType.Caption,
             color = labelColor,
             maxLines = 1,
             softWrap = false,
@@ -130,7 +135,7 @@ internal fun BarFade(barInset: Dp, modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxWidth()
-            .height(barInset + 24.dp)
+            .height(barInset + Space.l)
             .background(Brush.verticalGradient(0f to page.copy(alpha = 0f), 0.45f to page.copy(alpha = 0.85f), 1f to page)),
     )
 }

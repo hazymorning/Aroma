@@ -22,15 +22,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import app.aroma.core.format.IngredientLine
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
@@ -41,10 +44,10 @@ import app.aroma.ui.theme.tabular
 data class IngredientRow(val section: String?, val line: IngredientLine)
 
 /**
- * Ingredients as a two-column table. The measure column is as wide as its widest entry
- * (capped), so amounts line up the way they do in a printed cookbook. With [onCards], each
- * section is a [SoftCard] under its name; the list then takes the page's full width and keeps the
- * margins itself.
+ * Ingredients as a two-column table. The measure column is as wide as its widest entry (capped),
+ * so amounts line up the way they do in a printed cookbook. With [onCards], each section is a
+ * [SoftCard] under its [GroupLabel], and the list keeps the page margins itself; without, the rows
+ * run plainly between hairlines, as in a sheet.
  */
 @Composable
 fun IngredientList(
@@ -54,10 +57,7 @@ fun IngredientList(
     onToggle: ((Int) -> Unit)? = null,
     onCards: Boolean = false,
 ) {
-    val measureStyle =
-        MaterialTheme.typography.bodyLarge
-            .copy(fontWeight = FontWeight.Medium)
-            .tabular()
+    val measureStyle = AromaType.BodyStrong.tabular()
     val textMeasurer = rememberTextMeasurer()
     val measures = remember(rows) { rows.map { measureText(it.line) } }
     BoxWithConstraints(modifier.fillMaxWidth()) {
@@ -66,7 +66,7 @@ fun IngredientList(
             remember(measures, measureStyle) {
                 measures.maxOfOrNull { textMeasurer.measure(it, measureStyle).size.width } ?: 0
             }
-        val textWidth = if (onCards) maxWidth - ScreenMargin * 2 else maxWidth
+        val textWidth = if (onCards) maxWidth - (ScreenMargin + CardPadding) * 2 else maxWidth
         val columnWidth = with(density) { widest.toDp() }.coerceAtMost(textWidth * 0.42f)
         val item: @Composable (Int) -> Unit = { index ->
             IngredientRowItem(
@@ -75,34 +75,16 @@ fun IngredientList(
                 measureWidth = columnWidth,
                 checked = index in checked,
                 onToggle = onToggle?.let { { it(index) } },
-                modifier = if (onCards) Modifier.padding(horizontal = ScreenMargin) else Modifier,
+                modifier = if (onCards) Modifier.padding(horizontal = CardPadding) else Modifier,
             )
         }
         if (onCards) {
             val sections = remember(rows) { rows.indices.groupConsecutiveBy { !rows[it].section.isNullOrBlank() } }
-            Column {
-                sections.forEachIndexed { number, indexes ->
-                    rows[indexes.first()].section?.takeIf { it.isNotBlank() }?.let {
-                        Kicker(
-                            it,
-                            Modifier.padding(
-                                start = ScreenMargin,
-                                end = ScreenMargin,
-                                top =
-                                    if (number ==
-                                        0
-                                    ) {
-                                        0.dp
-                                    } else {
-                                        Space.l
-                                    },
-                                bottom = Space.s,
-                            ),
-                        )
-                    }
-                    SoftCard(Modifier.padding(top = if (number > 0 && rows[indexes.first()].section.isNullOrBlank()) Space.s else 0.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Space.l)) {
+                sections.forEach { indexes ->
+                    CardGroup(rows[indexes.first()].section) {
                         indexes.forEachIndexed { position, index ->
-                            if (position > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
+                            if (position > 0) Hairline(Modifier.padding(horizontal = CardPadding))
                             item(index)
                         }
                     }
@@ -112,7 +94,15 @@ fun IngredientList(
             Column {
                 rows.forEachIndexed { index, row ->
                     if (!row.section.isNullOrBlank()) {
-                        Kicker(row.section, Modifier.padding(top = if (index == 0) 0.dp else 24.dp, bottom = 8.dp))
+                        Text(
+                            text = row.section,
+                            style = AromaType.Label,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier =
+                                Modifier
+                                    .padding(top = if (index == 0) 0.dp else Space.l, bottom = Space.xs)
+                                    .semantics { heading() },
+                        )
                     } else if (index > 0) {
                         Hairline()
                     }
@@ -154,24 +144,21 @@ private fun IngredientRowItem(
                 .fillMaxWidth()
                 .heightIn(min = TouchTarget)
                 .alpha(fade)
-                .padding(vertical = 12.dp),
+                .padding(vertical = Space.s),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.Start,
     ) {
         if (measureWidth.value > 0f) {
             Text(
                 text = measure,
-                style =
-                    MaterialTheme.typography.bodyLarge
-                        .copy(fontWeight = FontWeight.Medium, textDecoration = decoration)
-                        .tabular(),
+                style = AromaType.BodyStrong.copy(textDecoration = decoration).tabular(),
                 modifier = Modifier.width(measureWidth),
             )
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(Space.m))
         }
         Text(
             text = ingredientText(row, MaterialTheme.colorScheme.onSurfaceVariant),
-            style = MaterialTheme.typography.bodyLarge.copy(textDecoration = decoration),
+            style = AromaType.Body.copy(textDecoration = decoration),
             modifier = Modifier.weight(1f),
         )
     }

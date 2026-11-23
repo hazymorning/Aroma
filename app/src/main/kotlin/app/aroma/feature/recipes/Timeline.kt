@@ -37,9 +37,9 @@ import app.aroma.data.AromaError
 import app.aroma.data.repository.TimelineRepository
 import app.aroma.ui.components.CardPart
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.GroupLabel
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.InlineProgress
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.PlaceholderLines
@@ -48,7 +48,8 @@ import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.currentLocale
-import app.aroma.ui.theme.CardTitle
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.ScreenMargin
@@ -175,11 +176,11 @@ fun Timeline(
             }
             days.forEach { (day, events) ->
                 item(key = "day-$day") {
-                    Kicker(dayLabel(day), Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl, bottom = Space.s))
+                    GroupLabel(dayLabel(day), Modifier.padding(top = Space.l))
                 }
                 itemsIndexed(events, key = { _, event -> event.id }) { index, event ->
                     SoftCard(part = CardPart.of(index, events.size)) {
-                        if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
+                        if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
                         TimelineRow(event, onClick = { onOpenRecipe(event.recipe) })
                     }
                 }
@@ -211,7 +212,7 @@ private fun TimelineRow(event: TimelineEvent, onClick: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .clickable(role = Role.Button, onClick = onClick)
-                .padding(horizontal = ScreenMargin, vertical = Space.s),
+                .padding(horizontal = CardPadding, vertical = Space.s),
         horizontalArrangement = Arrangement.spacedBy(Space.m),
     ) {
         RecipeImage(
@@ -222,17 +223,17 @@ private fun TimelineRow(event: TimelineEvent, onClick: () -> Unit) {
             modifier = Modifier.size(ThumbnailSize),
         )
         Column(Modifier.weight(1f)) {
-            Text(event.recipe.name, style = CardTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(event.recipe.name, style = AromaType.Name, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
                 text = "${event.subject} · $time",
-                style = MaterialTheme.typography.bodySmall.tabular(),
+                style = AromaType.Small.tabular(),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = Space.xxs),
             )
             event.message?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = Space.xs))
+                Text(it, style = AromaType.Body, modifier = Modifier.padding(top = Space.xs))
             }
         }
     }

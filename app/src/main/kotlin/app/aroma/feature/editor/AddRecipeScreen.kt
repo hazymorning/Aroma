@@ -64,7 +64,6 @@ import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.InlineProgress
-import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.PrimaryButton
@@ -73,6 +72,8 @@ import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.titleRes
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
@@ -156,8 +157,6 @@ fun AddRecipeScreen(state: AddRecipeUiState, actions: AddRecipeActions, modifier
                 Spacer(Modifier.height(Space.l))
                 FromWebsite(state, actions)
                 Spacer(Modifier.height(Space.xxl))
-                Hairline(Modifier.padding(horizontal = ScreenMargin))
-                Spacer(Modifier.height(Space.xxl))
                 WriteYourself(state, actions)
             }
         }
@@ -223,11 +222,10 @@ private fun FromWebsite(state: AddRecipeUiState, actions: AddRecipeActions) {
     }
 }
 
-/** Mealie's smarter reading, set between two hairlines; translating unfolds below the switch. */
+/** Mealie's smarter reading, on a card of its own; translating unfolds below the switch. */
 @Composable
 private fun AiOptions(state: AddRecipeUiState, actions: AddRecipeActions) {
-    Column {
-        Hairline(Modifier.padding(horizontal = ScreenMargin))
+    SoftCard {
         SwitchRow(
             title = stringResource(R.string.add_ai_title),
             subtitle = stringResource(R.string.add_ai_hint),
@@ -246,7 +244,6 @@ private fun AiOptions(state: AddRecipeUiState, actions: AddRecipeActions) {
                 onChange = actions.onTranslateChange,
             )
         }
-        Hairline(Modifier.padding(horizontal = ScreenMargin))
     }
 }
 
@@ -266,8 +263,8 @@ private fun ImportProgress(job: ImportJob, usesAi: Boolean, modifier: Modifier =
                     .animateContentSize(tween(Motion.EXPAND, easing = Settle)),
                 verticalArrangement = Arrangement.spacedBy(Space.xs),
             ) {
-                Row(Modifier.padding(horizontal = ScreenMargin), verticalAlignment = Alignment.CenterVertically) {
-                    Kicker(stringResource(R.string.import_running), Modifier.weight(1f))
+                Row(Modifier.padding(horizontal = CardPadding), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.import_running), style = AromaType.Label, modifier = Modifier.weight(1f))
                     Elapsed(job.startedAt)
                 }
                 steps.forEachIndexed { index, step ->
@@ -277,7 +274,7 @@ private fun ImportProgress(job: ImportJob, usesAi: Boolean, modifier: Modifier =
         }
         Text(
             text = stringResource(if (usesAi) R.string.add_progress_ai_hint else R.string.add_progress_hint),
-            style = MaterialTheme.typography.bodySmall,
+            style = AromaType.Small,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.s),
         )
@@ -286,7 +283,7 @@ private fun ImportProgress(job: ImportJob, usesAi: Boolean, modifier: Modifier =
 
 @Composable
 private fun StepRow(label: String, done: Boolean) {
-    Row(Modifier.padding(horizontal = ScreenMargin), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.padding(horizontal = CardPadding), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(StepMark), contentAlignment = Alignment.Center) {
             if (done) {
                 Icon(painterResource(R.drawable.ic_check), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -297,7 +294,7 @@ private fun StepRow(label: String, done: Boolean) {
         Spacer(Modifier.width(Space.s))
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            style = AromaType.Small,
             color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
             // The step under way is announced as it changes; finished ones and the clock are not.
             modifier = if (done) Modifier else Modifier.semantics { liveRegion = LiveRegionMode.Polite },
@@ -316,7 +313,7 @@ private fun Elapsed(startedAt: Long) {
     }
     Text(
         text = DateUtils.formatElapsedTime(seconds),
-        style = MaterialTheme.typography.labelMedium.tabular(),
+        style = AromaType.Label.tabular(),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
@@ -374,9 +371,9 @@ private fun WriteYourself(state: AddRecipeUiState, actions: AddRecipeActions) {
 @Composable
 private fun SectionIntro(title: String, body: String) {
     Column(Modifier.padding(horizontal = ScreenMargin)) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+        Text(title, style = AromaType.SectionTitle, modifier = Modifier.semantics { heading() })
         Spacer(Modifier.height(Space.xs))
-        Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(body, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -398,10 +395,10 @@ internal fun InlineError(error: AromaError, modifier: Modifier = Modifier) {
                     .size(ErrorGlyph),
         )
         Column {
-            Text(stringResource(error.titleRes()), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+            Text(stringResource(error.titleRes()), style = AromaType.Label, color = MaterialTheme.colorScheme.error)
             Text(
                 text = (error as? AromaError.ImportFailed)?.detail ?: stringResource(error.messageRes()),
-                style = MaterialTheme.typography.bodySmall,
+                style = AromaType.Small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

@@ -52,12 +52,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.RecipeImage
 import app.aroma.ui.components.AromaFilterChip
+import app.aroma.ui.components.CardActionPadding
 import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
@@ -71,8 +71,10 @@ import app.aroma.ui.components.PlaceholderLines
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SectionHeader
+import app.aroma.ui.components.SoftCard
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
@@ -166,13 +168,12 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
         )
         Spacer(Modifier.height(Space.l))
         Basics(form, change)
-        Spacer(Modifier.height(Space.xxl))
         SectionHeader(stringResource(R.string.recipe_ingredients))
         Text(
             text = stringResource(R.string.editor_ingredients_hint),
-            style = MaterialTheme.typography.bodySmall,
+            style = AromaType.Small,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = ScreenMargin),
+            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.s),
         )
         EditableRows(
             rows = form.ingredients.lines(),
@@ -182,8 +183,8 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
             removeLabel = R.string.editor_remove_ingredient,
             numbered = false,
         )
-        Spacer(Modifier.height(Space.xxl))
         SectionHeader(stringResource(R.string.recipe_steps))
+        Spacer(Modifier.height(Space.xs))
         EditableRows(
             rows = form.steps,
             onChange = { steps -> change { it.copy(steps = steps) } },
@@ -317,7 +318,7 @@ private fun NoPhoto(onPick: () -> Unit) {
             modifier = Modifier.size(Glyph.xl),
         )
         Spacer(Modifier.height(Space.s))
-        Text(stringResource(R.string.editor_pick_photo), style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.editor_pick_photo), style = AromaType.Label)
     }
 }
 
@@ -342,7 +343,7 @@ private fun EditableRows(
         onChange(rows + "")
         focusRow = rows.size
     }
-    Column {
+    SoftCard {
         rows.forEachIndexed { index, text ->
             key(rowKeys[index]) {
                 val focusRequester = remember { FocusRequester() }
@@ -353,7 +354,7 @@ private fun EditableRows(
                         focusRow = null
                     }
                 }
-                if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
+                if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
                 EditableRow(
                     text = text,
                     onTextChange = { value -> onChange(rows.toMutableList().also { it[index] = value }) },
@@ -385,7 +386,8 @@ private fun EditableRows(
                 )
             }
         }
-        QuietLink(addLabel, addRow, Modifier.padding(horizontal = ScreenMargin), tone = LinkTone.Ink, leadingIcon = R.drawable.ic_add)
+        Hairline(Modifier.padding(horizontal = CardPadding))
+        QuietLink(addLabel, addRow, Modifier.padding(horizontal = CardPadding), tone = LinkTone.Accent, leadingIcon = R.drawable.ic_add)
     }
 }
 
@@ -423,13 +425,13 @@ private fun EditableRow(
     onNext: (() -> Unit)?,
     focusRequester: FocusRequester,
 ) {
-    val body = MaterialTheme.typography.bodyLarge
+    val body = AromaType.Body
     // Lines starting with # become section headings; setting them in Medium shows that while typing.
     val style = if (text.trimStart().startsWith("#")) body.copy(fontWeight = FontWeight.Medium) else body
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = ScreenMargin, end = if (onRemove != null) Space.xs else ScreenMargin),
+            .padding(start = CardPadding, end = if (onRemove != null) CardActionPadding else CardPadding),
         verticalAlignment = Alignment.Top,
     ) {
         BasicTextField(
@@ -480,24 +482,23 @@ private fun RowScope.StepNumber(number: Int) {
     val label = stringResource(R.string.editor_step, number)
     Text(
         text = number.toString(),
-        style =
-            MaterialTheme.typography.titleLarge
-                .copy(lineHeight = 24.sp)
-                .tabular(),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = AromaType.SectionTitle.tabular(),
+        color = MaterialTheme.colorScheme.primary,
         modifier =
             Modifier
-                // Step text starts on the 64 dp keyline, as text after an icon does.
-                .width(IconKeyline - ScreenMargin)
+                .width(StepNumberWidth)
                 .alignByBaseline()
                 .semantics { contentDescription = label },
     )
 }
 
+/** The gutter a step's number stands in, as on the recipe page. */
+private val StepNumberWidth = 40.dp
+
 @Composable
 private fun OrganizerPicker(title: String, options: List<Organizer>, selected: List<Organizer>, onChange: (List<Organizer>) -> Unit) {
     if (options.isEmpty()) return
-    Column(Modifier.padding(top = Space.xxl)) {
+    Column {
         SectionHeader(title)
         FlowRow(
             modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),

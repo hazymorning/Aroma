@@ -35,14 +35,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.data.AromaError
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.extras
 
 /**
- * A message for empty lists, missing results and errors, set like text on the page: a line glyph,
- * a serif title and a quiet explanation on the left margin. [primaryAction] makes the action the
- * filled button, for when it is the only way forward.
+ * A message for empty lists, missing results and errors, set on the page's margin: a line glyph, a
+ * serif title and a quiet explanation. [primaryAction] makes the action the filled button, for when
+ * it is the only way forward.
  */
 @Composable
 fun MessageState(
@@ -54,30 +58,33 @@ fun MessageState(
     onAction: (() -> Unit)? = null,
     primaryAction: Boolean = false,
 ) {
-    Column(modifier = modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 32.dp, bottom = 24.dp)) {
+    Column(modifier = modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl, bottom = Space.l)) {
         Icon(
             painterResource(icon),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(Glyph.xl),
         )
-        Spacer(Modifier.height(16.dp))
-        Text(title, style = MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(Space.m))
+        Text(title, style = AromaType.SectionTitle)
         if (body != null) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Space.xs))
             Text(
                 text = body,
-                style = MaterialTheme.typography.bodyMedium,
+                style = AromaType.Body,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.widthIn(max = 320.dp),
+                modifier = Modifier.widthIn(max = MessageWidth),
             )
         }
         if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(Space.l))
             if (primaryAction) PrimaryButton(actionLabel, onAction) else SecondaryButton(actionLabel, onAction)
         }
     }
 }
+
+/** The longest a message's lines run, so it reads as a short note even on a tablet. */
+private val MessageWidth = 320.dp
 
 @Composable
 fun ErrorState(error: AromaError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
@@ -105,23 +112,23 @@ fun Placeholder(modifier: Modifier = Modifier, shape: Shape = MaterialTheme.shap
         modifier
             .graphicsLayer { this.alpha = alpha }
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer),
+            .background(extras.card),
     )
 }
 
 /** A line of text that is still loading, as long as [modifier] makes it. */
 @Composable
 fun PlaceholderLine(modifier: Modifier = Modifier) {
-    Placeholder(modifier.height(12.dp), shape = MaterialTheme.shapes.extraSmall)
+    Placeholder(modifier.height(Space.s), shape = MaterialTheme.shapes.extraSmall)
 }
 
 @Composable
 fun PlaceholderLines(lines: Int, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(Space.xs)) {
         repeat(lines) { index ->
             PlaceholderLine(
                 Modifier
-                    .widthIn(max = if (index == lines - 1) 180.dp else 320.dp)
+                    .widthIn(max = if (index == lines - 1) MessageWidth / 2 else MessageWidth)
                     .fillMaxWidth(),
             )
         }
@@ -131,5 +138,5 @@ fun PlaceholderLines(lines: Int, modifier: Modifier = Modifier) {
 /** The one way Aroma shows that something is under way: a fine ring in quiet ink. */
 @Composable
 fun InlineProgress(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
-    CircularProgressIndicator(strokeWidth = 1.5.dp, color = color, modifier = modifier.size(20.dp))
+    CircularProgressIndicator(strokeWidth = Lines.focus, color = color, modifier = modifier.size(Glyph.m))
 }

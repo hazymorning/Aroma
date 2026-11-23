@@ -40,62 +40,63 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.TouchTarget
 
 /**
- * The head of a tab page: an optional kicker, a large serif title (with an optional second line in
- * sage, as in the greeting) and plain icon actions whose last glyph ends on the right margin. The
- * actions stand centred beside the title; [actions] learns whether it runs over two lines or more.
+ * The head of a tab page: a large serif title on the margin (with an optional second line in sage,
+ * as in the greeting) and plain icon actions whose last glyph ends on the right margin. The actions
+ * stand centred beside the title; [actions] learns whether it runs over two lines or more.
  */
 @Composable
 fun PageHeader(
     title: String,
     modifier: Modifier = Modifier,
-    kicker: String? = null,
     accent: String? = null,
     actions: @Composable RowScope.(tall: Boolean) -> Unit = {},
 ) {
     var titleLines by remember { mutableIntStateOf(1) }
-    Column(
+    Row(
         modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = ScreenMargin, end = 8.dp, top = 24.dp),
+            .padding(start = ScreenMargin, end = EdgeActionPadding, top = Space.l),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        // The kicker line is kept even when empty, so titles sit at one height on every tab.
-        Kicker(kicker.orEmpty())
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = AromaType.PageTitle,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { titleLines = it.lineCount },
+                modifier = Modifier.semantics { heading() },
+            )
+            if (accent != null) {
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.displaySmall,
-                    maxLines = 2,
+                    text = accent,
+                    style = AromaType.PageTitle,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    onTextLayout = { titleLines = it.lineCount },
-                    modifier = Modifier.semantics { heading() },
                 )
-                if (accent != null) {
-                    Text(
-                        text = accent,
-                        style = MaterialTheme.typography.displaySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
             }
-            val tall = titleLines + (if (accent != null) 1 else 0) > 1
-            Row(verticalAlignment = Alignment.CenterVertically) { actions(tall) }
         }
+        val tall = titleLines + (if (accent != null) 1 else 0) > 1
+        Row(verticalAlignment = Alignment.CenterVertically) { actions(tall) }
     }
 }
+
+/** The padding before an icon action at the edge of a bar, so its glyph, not its target, ends on the margin. */
+val EdgeActionPadding: Dp = ScreenMargin - (TouchTarget - Glyph.l) / 2
 
 /** A plain 48 dp icon action for headers and bars, with a 24 dp glyph in ink or in [tint]. */
 @Composable
@@ -110,7 +111,7 @@ fun HeaderAction(
 }
 
 /**
- * The bar of a pushed screen: back on the left (its arrow lands on the 24 dp margin), actions on the
+ * The bar of a pushed screen: back on the left (its arrow lands on the margin), actions on the
  * right. The large title lives in the content; once it has scrolled away ([collapsed]), a small
  * title and a hairline fade in.
  */
@@ -132,7 +133,7 @@ fun DetailTopBar(
             Modifier
                 .fillMaxWidth()
                 .height(DetailTopBarHeight)
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = EdgeActionPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             HeaderAction(R.drawable.ic_arrow_back, stringResource(R.string.action_back), onBack)
@@ -144,10 +145,10 @@ fun DetailTopBar(
                 ) {
                     Text(
                         text = title.orEmpty(),
-                        style = MaterialTheme.typography.titleLarge,
+                        style = AromaType.Name,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 8.dp),
+                        modifier = Modifier.padding(start = Space.xs),
                     )
                 }
             }
@@ -165,10 +166,10 @@ val DetailTopBarHeight = 56.dp
 fun LargeTitle(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        style = MaterialTheme.typography.displaySmall,
+        style = AromaType.PageTitle,
         modifier =
             modifier
-                .padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp)
+                .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs)
                 .semantics { heading() },
     )
 }
@@ -222,6 +223,6 @@ fun StatusBarScrim(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .background(Brush.verticalGradient(listOf(page, page.copy(alpha = 0f))))
             .statusBarsPadding()
-            .height(16.dp),
+            .height(Space.m),
     )
 }

@@ -74,7 +74,8 @@
     <string name="home_open_profile">Profile and settings</string>
     <string name="home_today">Today</string>
     <string name="home_open_plan">Meal plan</string>
-    <string name="home_today_empty">Nothing planned for today yet.</string>
+    <string name="home_today_empty">Nothing planned for today</string>
+    <string name="home_today_plan">Plan a meal</string>
     <string name="home_recent">Recently added</string>
     <string name="home_favorites">Favorites</string>
     <string name="home_for_breakfast">For breakfast</string>
@@ -200,8 +201,8 @@
     <string name="cook_step_of">Step %1$d of %2$d</string>
     <string name="cook_step_ingredients">For this step</string>
     <plurals name="cook_ingredients_used">
-        <item quantity="one">Ingredients · %1$d of %2$d used</item>
-        <item quantity="other">Ingredients · %1$d of %2$d used</item>
+        <item quantity="one">%1$d of %2$d used</item>
+        <item quantity="other">%1$d of %2$d used</item>
     </plurals>
     <string name="cook_start_timer">Timer %1$s</string>
     <string name="cook_previous">Back</string>
@@ -355,6 +356,7 @@
     <string name="settings_dynamic_color">Colors from your wallpaper</string>
     <string name="settings_dynamic_color_hint">Uses Material You instead of Aroma’s sage tones.</string>
     <string name="settings_language">Language</string>
+    <string name="settings_app_language">App language</string>
     <string name="settings_language_system">System</string>
     <string name="settings_language_german">Deutsch</string>
     <string name="settings_language_english">English</string>

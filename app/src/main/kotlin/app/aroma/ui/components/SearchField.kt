@@ -1,10 +1,6 @@
 package app.aroma.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,7 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,16 +31,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.ControlHeight
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.TouchTarget
+import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.extras
 
-/**
- * The stadium field for search and quick entry: transparent with a hairline that turns sage while
- * focused, at the same width.
- */
+/** The stadium field for search and quick entry, on the soft fill every control shares. */
 @Composable
 fun PillTextField(
     value: String,
@@ -60,34 +53,27 @@ fun PillTextField(
 ) {
     val focusManager = LocalFocusManager.current
     val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    val border by animateColorAsState(
-        if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else extras.hairlineStrong,
-        tween(Motion.STATE),
-        label = "fieldBorder",
-    )
     Surface(
         shape = CircleShape,
-        color = Color.Transparent,
-        border = BorderStroke(Lines.control, border),
+        color = extras.card,
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(TouchTarget),
+                .height(ControlHeight),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 16.dp, end = 0.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = Space.m)) {
             Icon(
                 painterResource(leadingIcon),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(Glyph.m),
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Space.s))
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 if (value.isEmpty()) {
                     Text(
                         placeholder,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = AromaType.Body,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                     )
@@ -95,7 +81,7 @@ fun PillTextField(
                 BasicTextField(
                     state = rememberSyncedTextFieldState(value, onValueChange),
                     lineLimits = TextFieldLineLimits.SingleLine,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    textStyle = AromaType.Body.copy(color = MaterialTheme.colorScheme.onSurface),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     keyboardOptions = KeyboardOptions(imeAction = imeAction),
                     interactionSource = interaction,
@@ -119,9 +105,37 @@ fun PillTextField(
                 }
 
                 else -> {
-                    Spacer(Modifier.width(16.dp))
+                    Spacer(Modifier.width(Space.m))
                 }
             }
+        }
+    }
+}
+
+/**
+ * A search field that opens search elsewhere, as Home's opens it on the Recipes tab: it looks like
+ * [PillTextField] and reads as a button.
+ */
+@Composable
+fun SearchPill(placeholder: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = extras.card,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(ControlHeight),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = Space.m)) {
+            Icon(
+                painterResource(R.drawable.ic_search),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(Glyph.m),
+            )
+            Spacer(Modifier.width(Space.s))
+            Text(placeholder, style = AromaType.Body, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
     }
 }

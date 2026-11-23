@@ -31,6 +31,9 @@ import app.aroma.R
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.SoftCard
+import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
@@ -52,10 +55,11 @@ private val licenses =
 fun LicensesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     var openAsset by rememberSaveable { mutableStateOf<String?>(null) }
     DetailPage(title = stringResource(R.string.settings_licenses), onBack = onBack, modifier = modifier) {
-        Spacer(Modifier.height(Space.s))
-        licenses.forEachIndexed { index, item ->
-            if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
-            LicenseRow(item, onOpen = item.asset?.let { asset -> { openAsset = asset } })
+        SoftCard(Modifier.padding(top = Space.l)) {
+            licenses.forEachIndexed { index, item ->
+                if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
+                LicenseRow(item, onOpen = item.asset?.let { asset -> { openAsset = asset } })
+            }
         }
     }
     openAsset?.let { asset ->
@@ -71,19 +75,19 @@ private fun LicenseRow(item: License, onOpen: (() -> Unit)?) {
             .fillMaxWidth()
             .heightIn(min = RowHeight.twoLines)
             .then(if (onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
-            .padding(horizontal = ScreenMargin, vertical = Space.s),
+            .padding(horizontal = CardPadding, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(item.component, style = MaterialTheme.typography.titleMedium)
-            Text(item.license, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(item.component, style = AromaType.Body)
+            Text(item.license, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (onOpen != null) {
             Spacer(Modifier.width(Space.m))
             Icon(
                 painterResource(R.drawable.ic_chevron_right),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(Glyph.s),
             )
         }
@@ -109,7 +113,7 @@ private fun LicenseDialog(title: String, asset: String, onDismiss: () -> Unit) {
         content = {
             Text(
                 text = text,
-                style = MaterialTheme.typography.bodySmall,
+                style = AromaType.Small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             )

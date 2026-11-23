@@ -1,118 +1,121 @@
 # Aroma design
 
-A cookbook on warm paper: ink for words, photos for colour, one sage green for what you act on
-now. Soft paper cards hold what belongs together; type and space do the rest. Every choice can
-be explained in one sentence about calm, clarity or comfort.
+One look, everywhere: a calm page of warm paper, soft cards for everything that belongs together,
+one sage green for what is chosen or acted on, a serif for names and a sans for everything else.
+The photos bring the colour.
 
-The code holds the values: `ui/theme` the tokens (`Tokens.kt`, `Theme.kt`, `Color.kt`, `Type.kt`,
-`Shadows.kt`) and `ui/components` the components. Screens under `feature/` use tokens and
-components only. `DesignRulesTest` checks the rules marked *(checked)* on every build.
+The values live in `ui/theme` (`Tokens.kt`, `Type.kt`, `Theme.kt`, `Color.kt`, `Shadows.kt`), the
+pieces in `ui/components`. Screens under `feature/` are built from those two only.
+`DesignRulesTest` checks every rule marked *(checked)*.
 
-## Principles
+## The five decisions
 
-1. **Paper and ink.** Colour comes from the photos; sage marks the one action of a screen, the
-   selection and today. Nothing else is coloured.
-2. **One keyline.** Every title, sentence, photo and control starts on the 24 dp margin.
-3. **Groups are visible.** Rows that belong together sit on a soft card; groups are set apart by
-   space and named by a kicker or a serif heading above them.
-4. **Type before boxes.** Hierarchy comes from size, typeface and colour; a card groups, it never
-   decorates.
-5. **One focal point.** Each screen has at most one filled button.
-6. **Calm motion.** Things fade and settle; nothing bounces, blinks or wears a badge.
-7. **Removal test.** If nobody would miss an element, it goes.
+1. **One edge.** Everything on a page stands on the 16 dp margin: titles, photos, fields,
+   buttons, chips and the edges of cards. Text inside a card stands 16 dp further in, and the
+   label that names a card stands level with that text.
+2. **One container.** The soft card (`SoftCard`): the paper's fill one step darker, 16 dp corners,
+   no border, no shadow. Rows that belong together sit on one card, separated by hairlines inset
+   to their text. Nothing is outlined, and a card never holds another card.
+3. **One accent.** Sage marks only the filled main action of a screen, what is chosen (a chip,
+   a tab, a check, a switch, today) and links. It is never decoration.
+4. **Two typefaces, seven sizes.** Newsreader names things; Figtree carries everything that is
+   read or tapped. Nothing is set in capitals or tracked out.
+5. **One controls style.** Every control is a soft pill on the card fill; the one main action is
+   a sage pill; the chosen value of a chip or segment takes the sage wash.
 
-## Tokens
+## Type
 
-| Token | Values | Use |
+| Role (`AromaType`) | Face | sp | For |
+|---|---|---|---|
+| `PageTitle` | Newsreader Display | 28 / 34 | Page titles, a recipe's name on its page |
+| `SectionTitle` | Newsreader Text Medium | 22 / 28 | Sections, days of the plan, sheets, dialogs |
+| `Name` | Newsreader Text Medium | 18 / 24 | Recipe names on cards and in rows |
+| `Reading` | Figtree | 24 / 34 | The step in cook mode |
+| `Timer` | Figtree Medium, tabular | 28 / 34 | A running timer |
+| `Large` | Figtree | 22 / 28 | Items in shopping mode |
+| `Body` / `BodyStrong` | Figtree / Medium | 16 / 24 | Running text, rows; amounts and values |
+| `Small` | Figtree | 14 / 20 | Second lines, notes, meta ("25 min · 4.5") |
+| `Label` | Figtree Medium | 14 / 20 | Buttons, chips, tabs, group labels |
+| `Caption` | Figtree Medium | 12 / 16 | Tab bar labels, the "Today" badge |
+
+Material's type slots map onto these roles, so Material's own components stay on the scale.
+Screens use the roles, never Material's slots *(checked)*, never a font size *(checked)*, never
+capitals *(checked)* and never letter spacing *(checked)*. The scale has exactly these seven
+sizes *(checked)*.
+
+## Space
+
+| Token | dp | For |
 |---|---|---|
-| `Space` | xxs 4, xs 8, s 12, m 16, l 24, xl 32, xxl 48, xxxl 64 | Every distance in a layout |
-| `ScreenMargin` | 24 | The keyline on both sides |
-| `CardInset` | 12 | How far a soft card stands outside the keyline |
-| `IconKeyline` | 64 | Text after a 24 dp glyph in a row |
-| `ContentMaxWidth` | 600 | The widest a column of text and fields grows, on tablets |
-| `Glyph` | s 16, m 20, l 24, xl 32 | Line glyphs beside small text and links, in rows and fields, in bars, standing alone |
-| `PageEndSpace` | 24 | Free space after the last item of a scrolling page |
+| `ScreenMargin` | 16 | The page's edge, left and right |
+| `CardPadding` | 16 | Content inside a card |
+| `ContentEdge` | 32 | Text inside a card, and the label above it |
+| `SectionSpace` | 32 | Above a section's title |
+| `Space` | 4, 8, 12, 16, 24, 32, 48 | Every other distance |
+| `RowHeight` | 56, 72 | Rows of one line; of two lines or with a thumbnail |
+| `ControlHeight` | 52 | Buttons and fields that span a column |
+| `ChipHeight` | 36 | Chips and compact buttons |
 | `TouchTarget` | 48 | The least size of anything that takes a tap |
-| `RowHeight` | oneLine 56, twoLines 72 | The least height of a row; two lines or large text take the taller |
-| `ThumbnailSize` | 56 | A photo or a face beside the text of a row |
-| Shapes | extraSmall 4, small 8, medium 12, large 16, extraLarge 24; circle | Placeholder lines, thumbnails, photos and fields, cards, sheets; buttons, chips, avatars |
-| `Lines` | hairline 0.5, control 1, checkRing 1.25, rule 2 | Between rows, around controls, a check's ring, a rule beside a note or under cook mode's steps |
-| `Motion` | PRESS 120, STATE 180, EXPAND 240, PULSE 1000, with `Settle` | Pressing, changing state, moving and resizing; a pulse while something waits |
 
-Colours, by role (`MaterialTheme.colorScheme` and `extras`):
+Rhythm: a section starts `SectionSpace` below the last one, its content `Space.xs` below its title;
+groups inside a section sit `Space.l` apart; a caption sits `Space.xs` under its photo. Screens size
+with tokens or named constants only *(checked)*.
 
-| Role | Use |
+## Colour
+
+| Role | Light | Dark | For |
+|---|---|---|---|
+| `background` | #F8F8F3 | #121411 | The page |
+| `extras.card` | #EEEFE7 | #1E211D | Cards, fields, chips, quiet buttons |
+| `extras.selected` / `onSelected` | #DCE7D4 | #2E3D2B | The chosen chip, segment, today |
+| `extras.cta` / `onCta` | #486447 | #3A5638 | The one filled action |
+| `extras.raised` | #FFFFFF | #242722 | The tab bar, sheets, menus |
+| `primary` | #486447 | #AECDA5 | Links, checks, group labels, step numbers |
+| `onSurface` / `onSurfaceVariant` | ink / soft ink | | Text and glyphs |
+| `error` | | | Removing and failing, nothing else |
+
+No colour literals outside `ui/theme` *(checked)*. With "Colors from your wallpaper", the same roles
+come from Material You.
+
+## Shape and depth
+
+Photos and cards 16 dp, thumbnails 12 dp, sheets and dialogs 28 dp, controls fully round; shapes come
+from the theme *(checked)*. The page is flat. Only what floats over it casts the one soft shadow: the
+tab bar, the cook button, buttons on a photo, menus, sheets and the snackbar. Nothing on the page is
+outlined *(checked)*; a field shows a sage ring only while it has the cursor.
+
+## Pieces
+
+| Need | Component |
 |---|---|
-| `background` | The paper of every page |
-| `onSurface` / `onSurfaceVariant` | Ink / soft ink for second lines, kickers and icons |
-| `primary` | Sage: the selection, today, links in a cooking step |
-| `extras.cta` / `extras.onCta` | The one filled button of a screen |
-| `extras.card` | Soft paper under grouped rows |
-| `extras.cardHighlight` | The sage-washed card: today, and questions to the user |
-| `extras.raised` | Floating layers: the tab bar, sheets, menus, the thumb of a segmented control |
-| `extras.hairlineStrong` | Borders of controls |
-| `error` | Removing and failing, nothing else |
+| Page head | `PageHeader` (tab pages), `DetailPage` / `DetailTopBar` / `LargeTitle` (pushed pages) |
+| Section | `SectionHeader` (with an optional link to more) |
+| Group of rows | `CardGroup` = `GroupLabel` over a `SoftCard`; `CardPart` across lazy items; `Hairline` |
+| Views of a page | `PageTabs` |
+| Filters | `AromaFilterChip` |
+| A choice of two or three in a form | `SegmentedControl` |
+| Actions | `PrimaryButton` (one per screen), `SecondaryButton`, `QuietLink`, `IconAction`, `HeaderAction`, `TonalIconButton`, `OnPhotoButton` |
+| Values | `Stepper`, `SwitchRow`, `RatingStars`, `CheckCircle` |
+| Input | `LabeledTextField`, `LabeledSecureTextField`, `PillTextField`, `SearchPill` |
+| Layers | `AromaBottomSheet`, `SheetAction`, `SheetFooter`, `AromaDropdownMenu`, `AromaAlertDialog` |
+| Content | `RecipeCard`, `PhotoCard`, `RecipeListItem`, `RecipeImage`, `IngredientList`, `Avatar` |
+| States | `MessageState`, `ErrorState`, `OfflineNotice`, `Placeholder`, `InlineProgress` |
 
-Type (`Type.kt`): Newsreader for display and titles (`displaySmall` page titles,
-`headlineSmall` section and sheet titles, `CardTitle` titles in lists and cards, `Standfirst`
-leads, `CookStep` steps in cook mode, `StepNumber` step numbers, `TimerDigits` timers); Figtree
-for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode), labels
-(`label*`) and kickers (`KickerStyle`, tracked caps). Numbers that line up use `tabular()`.
+Screens use these, not Material's buttons, cards, sheets, menus, chips, switches, fields or
+dialogs *(checked)*.
 
-## Rules
+## Motion
 
-1. **Tokens only.** Screens use `Space`, the margins and the theme's sizes. A size that only one
-   file needs is a named constant there, never a bare number in a layout *(checked: no `N.dp` in
-   `feature/` outside a named constant)*.
-2. **Colours from the theme.** No colour literals outside `ui/theme` *(checked)*.
-3. **Shapes from the theme.** No `RoundedCornerShape` outside `ui/theme` and `ui/components`
-   *(checked)*.
-4. **Type from `Type.kt`.** No font sizes at call sites *(checked)*.
-5. **Components, not primitives.** Screens use Aroma's components; Material's buttons, cards,
-   dialogs, sheets, menus, switches, chips, fields, snackbars and progress indicators appear only
-   inside `ui/components` *(checked)*.
-6. **Motion from `Motion`.** No literal durations; movement and size changes settle with
-   `Motion.Settle` *(checked: no `tween(N)`)*.
-7. **Cards.** Rows that belong together sit on a `SoftCard`: a settings group, a day of the plan,
-   a section of ingredients or of the shopping list, a day of the timeline, the times of a recipe.
-   Hairlines separate rows only inside a card. A card's content keeps the 24 dp margin; the card
-   stands 12 dp outside it, with 16 dp corners, no border and no shadow. In lazy lists one card
-   spans several items through `CardPart`. Photos, prose and page headers never sit on cards.
-8. **Highlight.** `highlight = true` is for today and for a question to the user (how did it
-   taste?), at most one per screen.
-9. **One filled button.** A `PrimaryButton` per screen at most; everything else is a
-   `SecondaryButton`, a `QuietLink` or an icon action.
-10. **Headers.** Tab pages start with `PageHeader`; pushed pages are a `DetailPage`, which sets
-    `DetailTopBar` over a `LargeTitle` (a grid of recipes sets the two itself); sections start with
-    `SectionHeader` (serif) or a `Kicker` above a card.
-11. **Sheets.** `AromaBottomSheet` for every sheet: it opens at full height under the sheet's title,
-    with a kicker above it or a meta line below where needed. Rows of actions are `SheetAction`;
-    the one action of a form sits in a `SheetFooter`; an action that changes the page underneath
-    runs after `hideThen`. A sheet's content is already clear of the navigation bar and the
-    keyboard.
-12. **Progress.** `InlineProgress` for work in place, `Placeholder` shapes while a page loads,
-    `PrimaryButton(loading = true)` while its own action runs.
-13. **Touch.** Every target is at least 48 dp; the glyph, not its target, stands on the keyline.
-    Pressed text, links and photos dim (`QuietPress`, `PhotoPress`); rows and icon buttons ripple.
-14. **Words.** Strings live in `values` and `values-de`, in step; text is never concatenated in
-    code where a formatted string can say it.
-15. **Accessibility.** Page, section and sheet titles are headings; every control without words
-    has a description; live regions announce changes of state, not progress ticks.
-16. **Insets.** The root keeps every page clear of the system bars and cutouts at the sides. Tab
-    pages end above the bar through `LocalBottomBarInset`; pushed pages keep clear of the bars at
-    top and bottom themselves, as `DetailPage` does; a sheet's content is clear already.
+Things fade and settle (`Motion.Settle`); nothing bounces. 120 ms for a press, 180 ms for a change
+of state, 240 ms for moving and resizing; durations come from `Motion` *(checked)*.
 
-## Components
+## Words and access
 
-| Component | For |
-|---|---|
-| `PageHeader`, `DetailPage`, `DetailTopBar`, `LargeTitle`, `SectionHeader`, `Kicker` | Headings and pages |
-| `SoftCard`, `CardPart`, `Hairline` | Groups and the lines inside them |
-| `SwipeToRemove` | Taking a row off a list or the plan |
-| `PrimaryButton`, `SecondaryButton`, `QuietLink`, `HeaderAction`, `IconAction`, `HairlineIconButton`, `OnPhotoButton` | Actions |
-| `QuietPress`, `PhotoPress` | Pressing what has no ripple |
-| `SwitchRow`, `SegmentedControl`, `AromaFilterChip`, `Stepper`, `RatingStars`, `CheckCircle` | Choices |
-| `LabeledTextField`, `LabeledSecureTextField`, `PillTextField` | Input |
-| `AromaBottomSheet`, `SheetAction`, `SheetFooter`, `AromaAlertDialog`, `AromaDropdownMenu`, `AromaMenuItem` | Layers |
-| `PhotoCard`, `RecipeCard`, `RecipeListItem`, `RecipeImage`, `Avatar`, `IngredientList` | Content |
-| `InlineProgress`, `Placeholder`, `PlaceholderLine`, `PlaceholderLines`, `MessageState`, `ErrorState`, `OfflineNotice` | States |
+Strings live in `values` and `values-de`, in step. Page, section, group and sheet titles are
+headings; every control without words has a description; targets are at least 48 dp.
+
+## How changes are checked
+
+A change to a screen is judged with real photos, in light and dark, in English and German, next to
+the screens it sits between, and against how it looked before. A screen that fits the rules but not
+its neighbours is not done.

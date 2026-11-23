@@ -14,12 +14,10 @@ import androidx.compose.ui.res.stringResource
 import app.aroma.R
 import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.components.AromaBottomSheet
-import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.RecipeMeta
 import app.aroma.ui.components.SheetAction
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.rememberFullSheetState
-import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 
@@ -73,23 +71,14 @@ fun RecipeActionsSheet(
     ) {
         Column(Modifier.padding(bottom = Space.m)) {
             SheetAction(R.drawable.ic_cooking, stringResource(R.string.recipe_start_cooking), onClick = { choose(onCook) })
-            ActionDivider()
             SheetAction(R.drawable.ic_calendar_add, stringResource(R.string.recipe_add_to_plan), onClick = { choose(onPlan) })
-            ActionDivider()
             SheetAction(R.drawable.ic_basket_add, stringResource(R.string.recipe_add_to_list), onClick = { choose(onShop) })
-            ActionDivider()
             SheetAction(
                 icon = if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite,
                 label = stringResource(if (isFavorite) R.string.action_unfavorite else R.string.action_favorite),
                 onClick = { choose(onToggleFavorite) },
             )
-            ActionDivider()
             SheetAction(R.drawable.ic_share, stringResource(R.string.action_share), onClick = { choose(onShare) })
         }
     }
-}
-
-@Composable
-private fun ActionDivider() {
-    Hairline(Modifier.padding(start = IconKeyline, end = ScreenMargin))
 }

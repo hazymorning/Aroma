@@ -45,7 +45,7 @@ import app.aroma.ui.appContainer
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.LocalScrollToTop
-import app.aroma.ui.components.PrimaryButtonHeight
+import app.aroma.ui.theme.ControlHeight
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
@@ -195,7 +195,7 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                             showBar -> barInset + Space.xs
 
                             // Above the recipe's floating cook button.
-                            destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + Space.m + PrimaryButtonHeight + Space.xs
+                            destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + Space.m + ControlHeight + Space.xs
 
                             else -> navigationInset + Space.m
                         },
