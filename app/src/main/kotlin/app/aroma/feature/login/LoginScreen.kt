@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -28,11 +29,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
@@ -189,7 +193,7 @@ private fun CredentialsStep(state: LoginUiState, actions: LoginActions) {
         }
         if (state.useToken) {
             LabeledSecureTextField(
-                state = rememberSyncedTextFieldState(state.token, actions.onTokenChange),
+                state = rememberSecretState(state.token, actions.onTokenChange),
                 label = stringResource(R.string.login_token_label),
                 supportingText = stringResource(R.string.login_token_hint),
                 textObfuscationMode = obfuscation,
@@ -217,7 +221,7 @@ private fun CredentialsStep(state: LoginUiState, actions: LoginActions) {
             )
             Spacer(Modifier.height(Space.m))
             LabeledSecureTextField(
-                state = rememberSyncedTextFieldState(state.password, actions.onPasswordChange),
+                state = rememberSecretState(state.password, actions.onPasswordChange),
                 label = stringResource(R.string.login_password_label),
                 textObfuscationMode = obfuscation,
                 trailingIcon = { VisibilityToggle(showSecret) { showSecret = !showSecret } },
@@ -251,6 +255,22 @@ private fun CredentialsStep(state: LoginUiState, actions: LoginActions) {
             )
         }
     }
+}
+
+/**
+ * Like [rememberSyncedTextFieldState] for a password or token, but kept out of the screen's saved
+ * state, which the system holds outside the app. The view model keeps it across rotation and only
+ * clears it once signed in, when this screen goes away, so nothing needs writing back.
+ */
+@Composable
+private fun rememberSecretState(value: String, onValueChange: (String) -> Unit): TextFieldState {
+    val state = remember { TextFieldState(value) }
+    val latestOnChange by rememberUpdatedState(onValueChange)
+    val latestValue by rememberUpdatedState(value)
+    LaunchedEffect(state) {
+        snapshotFlow { state.text.toString() }.collect { text -> if (text != latestValue) latestOnChange(text) }
+    }
+    return state
 }
 
 /** The server that answered, as a line of text with a quiet way back to change it. */
