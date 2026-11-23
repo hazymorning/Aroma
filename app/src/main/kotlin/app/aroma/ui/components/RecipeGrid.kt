@@ -6,15 +6,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,22 +24,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
 
 /**
- * Two-column grid (more on wide screens) that asks for the next page shortly
- * before the end is reached.
+ * Two-column grid (more on wide screens) that asks for the next page shortly before the end is
+ * reached. A long press on a card asks for its [onLongPress] actions.
  */
 @Composable
 fun RecipeGrid(
     recipes: List<RecipeSummary>,
     onOpen: (RecipeSummary) -> Unit,
+    onLongPress: (RecipeSummary) -> Unit,
+    state: LazyGridState,
+    isLoadingMore: Boolean,
+    canLoadMore: Boolean,
+    onLoadMore: () -> Unit,
+    contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
-    state: LazyGridState = rememberLazyGridState(),
-    isLoadingMore: Boolean = false,
-    canLoadMore: Boolean = false,
-    onLoadMore: () -> Unit = {},
-    contentPadding: PaddingValues = PaddingValues(start = ScreenMargin, end = ScreenMargin, bottom = 32.dp),
-    header: LazyGridScope.() -> Unit = {},
+    header: LazyGridScope.() -> Unit,
 ) {
     val nearEnd by remember(state) {
         derivedStateOf {
@@ -70,36 +69,39 @@ fun RecipeGrid(
             RecipeCard(
                 recipe = recipe,
                 onClick = { onOpen(recipe) },
-                imageAspectRatio = 1f,
+                onLongClick = { onLongPress(recipe) },
                 modifier = Modifier.padding(bottom = GridRowGap),
             )
         }
         if (isLoadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "more") {
-                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
-                        strokeWidth = 1.5.dp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
+                Box(Modifier.fillMaxWidth().padding(Space.l), contentAlignment = Alignment.Center) { InlineProgress() }
             }
         }
     }
 }
 
-/** Grid-shaped placeholders that match [RecipeGrid]. */
-fun LazyGridScope.recipeGridPlaceholders(count: Int = 6) {
+/** Grid-shaped placeholders that match [RecipeGrid], or cards of another [aspectRatio]. */
+fun LazyGridScope.recipeGridPlaceholders(count: Int = 6, aspectRatio: Float = 1f) {
     items(count) {
         Placeholder(
             Modifier
                 .padding(bottom = GridRowGap)
                 .fillMaxWidth()
-                .aspectRatio(1f),
+                .aspectRatio(aspectRatio),
             shape = MaterialTheme.shapes.medium,
         )
     }
 }
 
-/** Space between rows of recipe cards. */
-private val GridRowGap = 32.dp
+/**
+ * A grid item across the whole width, reaching the screen edges, for content that keeps its own
+ * margins: a page's head and its messages.
+ */
+fun LazyGridScope.pageItem(key: String, content: @Composable () -> Unit) =
+    item(span = { GridItemSpan(maxLineSpan) }, key = key, contentType = key) {
+        Box(Modifier.fullBleed(ScreenMargin)) { content() }
+    }
+
+/** Space between rows of cards. */
+internal val GridRowGap = 32.dp

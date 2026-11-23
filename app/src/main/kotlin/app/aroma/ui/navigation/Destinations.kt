@@ -20,8 +20,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboard
@@ -41,7 +43,6 @@ import app.aroma.core.model.OrganizerKind
 import app.aroma.feature.cook.CookActions
 import app.aroma.feature.cook.CookScreen
 import app.aroma.feature.cook.CookViewModel
-import app.aroma.feature.cookbook.CookbookScreen
 import app.aroma.feature.editor.AddRecipeActions
 import app.aroma.feature.editor.AddRecipeResult
 import app.aroma.feature.editor.AddRecipeScreen
@@ -65,13 +66,25 @@ import app.aroma.feature.mealplan.MealPlanViewModel
 import app.aroma.feature.recipe.AddToListSheet
 import app.aroma.feature.recipe.PlanSheet
 import app.aroma.feature.recipe.RecipeActions
+import app.aroma.feature.recipe.RecipeActionsSheet
 import app.aroma.feature.recipe.RecipeEvent
+import app.aroma.feature.recipe.RecipeMenuSheet
+import app.aroma.feature.recipe.RecipeMenuState
 import app.aroma.feature.recipe.RecipeScreen
 import app.aroma.feature.recipe.RecipeViewModel
+import app.aroma.feature.recipes.CollectionActions
+import app.aroma.feature.recipes.CollectionKind
+import app.aroma.feature.recipes.CollectionScreen
+import app.aroma.feature.recipes.CookbookShelf
+import app.aroma.feature.recipes.CookbookShelfViewModel
 import app.aroma.feature.recipes.RecipeFilter
 import app.aroma.feature.recipes.RecipesActions
+import app.aroma.feature.recipes.RecipesHeader
 import app.aroma.feature.recipes.RecipesScreen
+import app.aroma.feature.recipes.RecipesSection
 import app.aroma.feature.recipes.RecipesViewModel
+import app.aroma.feature.recipes.Timeline
+import app.aroma.feature.recipes.TimelineViewModel
 import app.aroma.feature.settings.LicensesScreen
 import app.aroma.feature.settings.SettingsActions
 import app.aroma.feature.settings.SettingsScreen
@@ -79,6 +92,7 @@ import app.aroma.feature.settings.SettingsViewModel
 import app.aroma.feature.shopping.ShoppingActions
 import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingViewModel
+import app.aroma.ui.appContainer
 import app.aroma.ui.aromaViewModel
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatDuration
@@ -109,74 +123,223 @@ fun LoginDestination() {
 }
 
 @Composable
-fun HomeDestination(nav: NavController) {
+fun HomeDestination(nav: NavController, snackbar: SnackbarHostState, onSearch: () -> Unit) {
     val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, sessions, auth, ratingReminder) }
     val state by vm.state.collectAsStateWithLifecycle()
+    val menu = remember { RecipeMenuState() }
+    val favorites = stringResource(R.string.home_favorites)
     HomeScreen(
         state = state,
         actions =
             HomeActions(
-                onSearch = { nav.navigate(RecipesRoute(focusSearch = true)) },
+                onSearch = onSearch,
                 onOpenRecipe = { nav.navigate(RecipeRoute(it)) },
+                onRecipeMenu = menu::open,
                 onOpenSettings = { nav.navigate(SettingsRoute) },
                 onShowAllRecipes = { nav.navigateToTab(Tab.Recipes) },
-                onShowFavorites = { nav.navigate(RecipesRoute(favorites = true)) },
+                onShowFavorites = { nav.navigate(CollectionRoute(CollectionKind.Favorites, favorites)) },
                 onOpenMealPlan = { nav.navigateToTab(Tab.MealPlan) },
-                onOpenCookbook = { nav.navigate(CookbookRoute(it.slug, it.name, it.description)) },
                 onRefresh = vm::refresh,
                 onRateCooked = vm::rateCooked,
                 onDismissReminder = vm::dismissReminder,
             ),
     )
+    RecipeMenu(menu, nav, snackbar)
 }
 
+/** The recipe tab: the library, the cookbooks or the timeline; [focusSearch] asks once for the search field. */
 @Composable
-fun RecipesDestination(route: RecipesRoute, nav: NavController) {
-    val vm =
-        aromaViewModel {
-            val organizer = route.organizerId?.let { setOf(Organizer(it, route.organizerName.orEmpty(), "")) }.orEmpty()
-            val initial =
-                RecipeFilter(
-                    favoritesOnly = route.favorites,
-                    categories = if (route.organizerKind == OrganizerKind.Category.name) organizer else emptySet(),
-                    tags = if (route.organizerKind == OrganizerKind.Tag.name) organizer else emptySet(),
-                )
-            RecipesViewModel(recipes, initial)
+fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSearch: Boolean, onFocusSearchConsume: () -> Unit) {
+    var section by rememberSaveable { mutableStateOf(RecipesSection.All) }
+    val menu = remember { RecipeMenuState() }
+    val addRecipe = { nav.navigate(AddRecipeRoute()) }
+    val header: @Composable () -> Unit = { RecipesHeader(section, onSection = { section = it }, onAddRecipe = addRecipe) }
+    if (focusSearch) section = RecipesSection.All
+    when (section) {
+        RecipesSection.All -> {
+            val vm = aromaViewModel { RecipesViewModel(recipes) }
+            val state by vm.state.collectAsStateWithLifecycle()
+            val focus = remember { FocusRequester() }
+            val consumeFocusSearch by rememberUpdatedState(onFocusSearchConsume)
+            LaunchedEffect(focusSearch) {
+                if (focusSearch) {
+                    consumeFocusSearch()
+                    // The search field is part of the grid's first item, laid out a frame after this effect starts.
+                    withFrameNanos {}
+                    runCatching { focus.requestFocus() }
+                }
+            }
+            RecipesScreen(
+                state = state,
+                searchFocus = focus,
+                actions =
+                    RecipesActions(
+                        onSection = { section = it },
+                        onQueryChange = vm::onQueryChange,
+                        onToggleFavorites = vm::toggleFavorites,
+                        onToggleOrganizer = vm::toggleOrganizer,
+                        onSortChange = vm::setSort,
+                        onClearFilters = vm::clearFilters,
+                        onOpenRecipe = { nav.navigate(RecipeRoute(it.slug)) },
+                        onRecipeMenu = menu::open,
+                        onLoadMore = vm::loadMore,
+                        onAddRecipe = addRecipe,
+                        onRetry = vm::reload,
+                    ),
+            )
         }
-    val state by vm.state.collectAsStateWithLifecycle()
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(route.focusSearch) { if (route.focusSearch) runCatching { focus.requestFocus() } }
-    RecipesScreen(
-        state = state,
-        searchFocus = focus,
-        actions =
-            RecipesActions(
-                onQueryChange = vm::onQueryChange,
-                onToggleFavorites = vm::toggleFavorites,
-                onToggleOrganizer = vm::toggleOrganizer,
-                onSortChange = vm::setSort,
-                onClearFilters = vm::clearFilters,
+
+        RecipesSection.Cookbooks -> {
+            val vm = aromaViewModel { CookbookShelfViewModel(recipes) }
+            val state by vm.state.collectAsStateWithLifecycle()
+            CookbookShelf(
+                state = state,
+                header = header,
+                onOpen = { nav.navigate(CollectionRoute(CollectionKind.Cookbook, it.name, it.id, it.description)) },
+                onRetry = vm::reload,
+            )
+        }
+
+        RecipesSection.Timeline -> {
+            val vm = aromaViewModel { TimelineViewModel(timeline) }
+            val state by vm.state.collectAsStateWithLifecycle()
+            Timeline(
+                state = state,
+                header = header,
                 onOpenRecipe = { nav.navigate(RecipeRoute(it.slug)) },
                 onLoadMore = vm::loadMore,
-                onAddRecipe = { nav.navigate(AddRecipeRoute()) },
                 onRetry = vm::reload,
-            ),
-    )
+            )
+        }
+    }
+    RecipeMenu(menu, nav, snackbar)
 }
 
 @Composable
-fun CookbookDestination(route: CookbookRoute, nav: NavController) {
-    val vm = aromaViewModel(key = "cookbook-${route.slug}") { RecipesViewModel(recipes, cookbook = route.slug) }
+fun CollectionDestination(route: CollectionRoute, nav: NavController, snackbar: SnackbarHostState) {
+    val vm =
+        aromaViewModel {
+            val organizer = setOf(Organizer(route.id, route.name, ""))
+            when (route.kind) {
+                CollectionKind.Cookbook -> RecipesViewModel(recipes, cookbook = route.id)
+                CollectionKind.Favorites -> RecipesViewModel(recipes, RecipeFilter(favoritesOnly = true))
+                CollectionKind.Category -> RecipesViewModel(recipes, RecipeFilter(categories = organizer))
+                CollectionKind.Tag -> RecipesViewModel(recipes, RecipeFilter(tags = organizer))
+                CollectionKind.Tool -> RecipesViewModel(recipes, RecipeFilter(tools = organizer))
+            }
+        }
     val state by vm.state.collectAsStateWithLifecycle()
-    CookbookScreen(
+    val menu = remember { RecipeMenuState() }
+    CollectionScreen(
+        kind = route.kind,
         name = route.name,
         description = route.description,
         state = state,
-        onBack = { nav.popBackStack() },
-        onOpenRecipe = { nav.navigate(RecipeRoute(it.slug)) },
-        onLoadMore = vm::loadMore,
-        onRetry = vm::reload,
+        actions =
+            CollectionActions(
+                onBack = { nav.popBackStack() },
+                onOpenRecipe = { nav.navigate(RecipeRoute(it.slug)) },
+                onRecipeMenu = menu::open,
+                onLoadMore = vm::loadMore,
+                onRetry = vm::reload,
+            ),
     )
+    RecipeMenu(menu, nav, snackbar)
+}
+
+/** A long press on a recipe card: its actions, and the sheets to plan it or put it on a list. */
+@Composable
+fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHostState) {
+    val target = menu.recipe ?: return
+    val vm = aromaViewModel(key = "menu-${target.slug}") { RecipeViewModel(target.slug, recipes, shopping, mealPlans, sessions, settings) }
+    val state by vm.state.collectAsStateWithLifecycle()
+    val lists by vm.shoppingLists.collectAsStateWithLifecycle()
+    val preferredList by vm.preferredListId.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    RecipeFeedback(vm, snackbar)
+    when (menu.sheet) {
+        RecipeMenuSheet.Actions -> {
+            RecipeActionsSheet(
+                recipe = target,
+                isFavorite = state.isFavorite,
+                onCook = { nav.navigate(CookRoute(target.slug, 1.0)) },
+                onPlan = { menu.sheet = RecipeMenuSheet.Plan },
+                onShop = {
+                    vm.loadShoppingLists()
+                    menu.sheet = RecipeMenuSheet.Shop
+                },
+                onToggleFavorite = vm::toggleFavorite,
+                onShare = { vm.shareText()?.let { shareText(context, it) } },
+                onDismiss = { if (menu.sheet == RecipeMenuSheet.Actions) menu.sheet = null },
+            )
+        }
+
+        RecipeMenuSheet.Plan -> {
+            PlanSheet(
+                today = LocalDate.now(),
+                onPlan = { date, type ->
+                    vm.plan(date, type)
+                    menu.sheet = null
+                },
+                onDismiss = { menu.sheet = null },
+            )
+        }
+
+        RecipeMenuSheet.Shop -> {
+            val recipe = state.recipe
+            if (recipe != null) {
+                AddToListSheet(
+                    recipe = recipe,
+                    scale = state.scale,
+                    lists = lists,
+                    preferredListId = preferredList,
+                    onScale = vm::setScale,
+                    onAdd = { list, indexes ->
+                        vm.addToList(list, indexes)
+                        menu.sheet = null
+                    },
+                    onDismiss = { menu.sheet = null },
+                )
+            } else if (state.error != null) {
+                menu.sheet = null
+            }
+        }
+
+        null -> {}
+    }
+}
+
+/** Says what became of an action on a recipe; [onDelete] leaves the recipe once it is gone. */
+@Composable
+private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onDelete: () -> Unit = {}) {
+    val haptics = LocalHapticFeedback.current
+    val resources = LocalResources.current
+    val locale = currentLocale()
+    val leave by rememberUpdatedState(onDelete)
+    LaunchedEffect(vm) {
+        vm.events.collect { event ->
+            when (event) {
+                is RecipeEvent.AddedToList -> {
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    launch { snackbar.showSnackbar(resources.getString(R.string.recipe_added_to_list, event.listName)) }
+                }
+
+                is RecipeEvent.Planned -> {
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    val day = event.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+                    launch { snackbar.showSnackbar(resources.getString(R.string.recipe_planned, day)) }
+                }
+
+                RecipeEvent.Deleted -> {
+                    leave()
+                }
+
+                is RecipeEvent.Failed -> {
+                    launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -185,42 +348,10 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
     val state by vm.state.collectAsStateWithLifecycle()
     val lists by vm.shoppingLists.collectAsStateWithLifecycle()
     val preferredList by vm.preferredListId.collectAsStateWithLifecycle()
-    val haptics = LocalHapticFeedback.current
     val context = LocalContext.current
-    val resources = LocalResources.current
-    val locale = currentLocale()
-    var sheet by rememberSaveable { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(vm) {
-        vm.events.collect { event ->
-            when (event) {
-                is RecipeEvent.AddedToList -> {
-                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                    snackbar.showSnackbar(
-                        resources.getString(R.string.recipe_added_to_list, event.listName),
-                    )
-                }
-
-                is RecipeEvent.Planned -> {
-                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                    snackbar.showSnackbar(
-                        resources.getString(
-                            R.string.recipe_planned,
-                            event.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)),
-                        ),
-                    )
-                }
-
-                RecipeEvent.Deleted -> {
-                    nav.popBackStack()
-                }
-
-                is RecipeEvent.Failed -> {
-                    snackbar.showSnackbar(resources.getString(event.error.titleRes()))
-                }
-            }
-        }
-    }
+    var sheet by rememberSaveable { mutableStateOf<RecipeMenuSheet?>(null) }
+    RecipeFeedback(vm, snackbar, onDelete = { nav.popBackStack() })
+    LaunchedEffect(sheet) { if (sheet == RecipeMenuSheet.Shop) vm.loadShoppingLists() }
 
     RecipeScreen(
         state = state,
@@ -231,20 +362,21 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 onRate = vm::rate,
                 onScale = vm::setScale,
                 onToggleIngredient = vm::toggleIngredient,
-                onAddToShoppingList = {
-                    vm.loadShoppingLists()
-                    sheet = "list"
-                },
-                onAddToMealPlan = { sheet = "plan" },
+                onAddToShoppingList = { sheet = RecipeMenuSheet.Shop },
+                onAddToMealPlan = { sheet = RecipeMenuSheet.Plan },
                 onStartCooking = { nav.navigate(CookRoute(slug, state.scale)) },
                 onEdit = { nav.navigate(EditorRoute(slug)) },
                 onShare = { vm.shareText()?.let { shareText(context, it) } },
                 onOpenUrl = { openUrl(context, it) },
                 onDelete = vm::delete,
-                onOpenRecipe = { nav.navigate(RecipeRoute(it)) },
                 onOpenOrganizer = { kind, organizer ->
-                    val route = RecipesRoute(organizerKind = kind.name, organizerId = organizer.id, organizerName = organizer.name)
-                    nav.navigate(route)
+                    val collection =
+                        when (kind) {
+                            OrganizerKind.Category -> CollectionKind.Category
+                            OrganizerKind.Tag -> CollectionKind.Tag
+                            OrganizerKind.Tool -> CollectionKind.Tool
+                        }
+                    nav.navigate(CollectionRoute(collection, organizer.name, organizer.id))
                 },
                 onRetry = vm::load,
             ),
@@ -253,7 +385,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
     when {
         recipe == null -> {}
 
-        sheet == "list" -> {
+        sheet == RecipeMenuSheet.Shop -> {
             AddToListSheet(
                 recipe = recipe,
                 scale = state.scale,
@@ -268,7 +400,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
             )
         }
 
-        sheet == "plan" -> {
+        sheet == RecipeMenuSheet.Plan -> {
             PlanSheet(
                 today = LocalDate.now(),
                 onPlan = { date, type ->
@@ -283,7 +415,14 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
 
 @Composable
 fun CookDestination(slug: String, scale: Double, nav: NavController) {
-    val vm = aromaViewModel { CookViewModel(slug, scale, recipes, timers, settings, ratingReminder, sessions.current?.userId, it) }
+    val vm =
+        aromaViewModel { CookViewModel(slug, scale, recipes, timeline, timers, settings, ratingReminder, sessions.current?.userId, it) }
+    val cook =
+        appContainer()
+            .sessions.current
+            ?.let { it.fullName.ifBlank { it.username } }
+            .orEmpty()
+    val resources = LocalResources.current
     val state by vm.state.collectAsStateWithLifecycle()
     val keepScreenOn by vm.keepScreenOn.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -310,7 +449,7 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
                 onToggleTimer = vm::toggleTimer,
                 onDismissTimer = vm::dismissTimer,
                 onRate = vm::rate,
-                onMarkCooked = vm::markCooked,
+                onMarkCooked = { vm.markCooked(resources.getString(R.string.timeline_made_this, cook)) },
                 onFinished = vm::finished,
                 onAllowExactAlarms = {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

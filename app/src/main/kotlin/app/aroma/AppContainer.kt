@@ -13,6 +13,7 @@ import app.aroma.data.repository.AuthRepository
 import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.repository.ShoppingRepository
+import app.aroma.data.repository.TimelineRepository
 import app.aroma.data.session.KeystoreCipher
 import app.aroma.data.session.SessionManager
 import app.aroma.data.session.SessionStore
@@ -52,6 +53,7 @@ class AppContainer(context: Context) {
     val auth = AuthRepository(clients, sessions, database, deviceName = Build.MODEL)
     val recipes = RecipeRepository(sessions, database.recipes(), cache)
     val mealPlans = MealPlanRepository(sessions, cache)
+    val timeline = TimelineRepository(sessions, recipes)
     val shopping: ShoppingRepository =
         ShoppingRepository(sessions, database.cache(), cache, database.pendingChanges()) {
             scope.launch {

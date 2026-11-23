@@ -52,6 +52,9 @@ interface RecipeDao {
     @Query("SELECT * FROM recipe_summary WHERE name LIKE '%' || :query || '%' ORDER BY addedOn DESC, name LIMIT :limit")
     suspend fun search(query: String, limit: Int): List<RecipeSummaryEntity>
 
+    @Query("SELECT * FROM recipe_summary WHERE id IN (:ids)")
+    suspend fun summaries(ids: Collection<String>): List<RecipeSummaryEntity>
+
     @Upsert
     suspend fun upsertDetail(item: RecipeDetailEntity)
 

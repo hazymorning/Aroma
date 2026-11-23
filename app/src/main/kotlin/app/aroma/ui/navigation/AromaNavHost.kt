@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -56,6 +57,8 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
     val showBar = destination?.isTab() == true && !WindowInsets.isImeVisible
     val reselected = remember { MutableSharedFlow<Tab>(extraBufferCapacity = 1) }
     val snackbar = remember { SnackbarHostState() }
+    // Home's search opens the recipe tab with its search field focused, once.
+    val focusSearch = remember { mutableStateOf(false) }
 
     val sharedUrlConsume by rememberUpdatedState(onSharedUrlConsume)
     LaunchedEffect(sharedUrl) {
@@ -86,8 +89,19 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
             predictivePopEnterTransition = Transitions.predictivePopEnter,
             predictivePopExitTransition = Transitions.predictivePopExit,
         ) {
-            composable<HomeRoute> { underBar(Tab.Home) { HomeDestination(nav) } }
-            composable<RecipesRoute> { entry -> underBar(Tab.Recipes) { RecipesDestination(entry.toRoute(), nav) } }
+            composable<HomeRoute> {
+                underBar(Tab.Home) {
+                    HomeDestination(nav, snackbar) {
+                        focusSearch.value = true
+                        nav.navigateToTab(Tab.Recipes)
+                    }
+                }
+            }
+            composable<RecipesRoute> {
+                underBar(
+                    Tab.Recipes,
+                ) { RecipesDestination(nav, snackbar, focusSearch.value, onFocusSearchConsume = { focusSearch.value = false }) }
+            }
             composable<MealPlanRoute> { underBar(Tab.MealPlan) { MealPlanDestination(nav, snackbar) } }
             composable<ShoppingRoute> { underBar(Tab.Shopping) { ShoppingDestination() } }
             composable<RecipeRoute> { RecipeDestination(it.toRoute<RecipeRoute>().slug, nav, snackbar) }
@@ -95,7 +109,7 @@ fun AromaNavHost(sharedUrl: String?, onSharedUrlConsume: () -> Unit, modifier: M
                 val route = entry.toRoute<CookRoute>()
                 CookDestination(route.slug, route.scale, nav)
             }
-            composable<CookbookRoute> { CookbookDestination(it.toRoute(), nav) }
+            composable<CollectionRoute> { CollectionDestination(it.toRoute(), nav, snackbar) }
             composable<AddRecipeRoute> { AddRecipeDestination(it.toRoute<AddRecipeRoute>().sharedUrl, nav) }
             composable<EditorRoute> { EditorDestination(it.toRoute<EditorRoute>().slug, nav) }
             composable<SettingsRoute> { SettingsDestination(nav) }

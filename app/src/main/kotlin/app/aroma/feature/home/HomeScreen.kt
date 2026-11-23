@@ -89,6 +89,7 @@ import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.RecipeMeta
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SectionHeader
+import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.mealTypeLabel
@@ -120,9 +121,13 @@ data class HomeUiState(
     val photo: String? = null,
     val date: LocalDate? = null,
     val today: List<MealPlanEntry> = emptyList(),
+    val meal: Meal = Meal.Dinner,
+    /** Recipes for [meal], or any recipes where the household has no category or tag for it. */
+    val suggestions: List<RecipeSummary> = emptyList(),
+    val suggestionsForMeal: Boolean = false,
+    val cookedLongAgo: List<RecipeSummary> = emptyList(),
     val recent: List<RecipeSummary> = emptyList(),
     val favorites: List<RecipeSummary> = emptyList(),
-    val cookbooks: List<Cookbook> = emptyList(),
     val toRate: RateReminder? = null,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -133,11 +138,11 @@ data class HomeUiState(
 data class HomeActions(
     val onSearch: () -> Unit = {},
     val onOpenRecipe: (String) -> Unit = {},
+    val onRecipeMenu: (RecipeSummary) -> Unit = {},
     val onOpenSettings: () -> Unit = {},
     val onShowAllRecipes: () -> Unit = {},
     val onShowFavorites: () -> Unit = {},
     val onOpenMealPlan: () -> Unit = {},
-    val onOpenCookbook: (Cookbook) -> Unit = {},
     val onRefresh: () -> Unit = {},
     val onRateCooked: (Int) -> Unit = {},
     val onDismissReminder: () -> Unit = {},
@@ -182,12 +187,26 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                     item(key = "today") {
                         TodaySection(state.today, actions)
                     }
+                    if (state.suggestions.isNotEmpty()) {
+                        item(key = "suggestions") {
+                            RecipeCarousel(
+                                title = stringResource(if (state.suggestionsForMeal) state.meal.titleRes() else R.string.home_ideas),
+                                recipes = state.suggestions,
+                                actions = actions,
+                            )
+                        }
+                    }
+                    if (state.cookedLongAgo.isNotEmpty()) {
+                        item(key = "cookedLongAgo") {
+                            RecipeCarousel(stringResource(R.string.home_cooked_long_ago), state.cookedLongAgo, actions)
+                        }
+                    }
                     if (state.recent.isNotEmpty()) {
                         item(key = "recent") {
                             RecipeCarousel(
-                                title = stringResource(R.string.home_recent),
-                                recipes = state.recent,
-                                onOpen = actions.onOpenRecipe,
+                                stringResource(R.string.home_recent),
+                                state.recent,
+                                actions,
                                 onShowAll = actions.onShowAllRecipes,
                             )
                         }
@@ -195,14 +214,13 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                     if (state.favorites.isNotEmpty()) {
                         item(key = "favorites") {
                             RecipeCarousel(
-                                title = stringResource(R.string.home_favorites),
-                                recipes = state.favorites,
-                                onOpen = actions.onOpenRecipe,
+                                stringResource(R.string.home_favorites),
+                                state.favorites,
+                                actions,
                                 onShowAll = actions.onShowFavorites,
                             )
                         }
                     }
-                    if (state.cookbooks.isNotEmpty()) cookbookList(state.cookbooks, actions.onOpenCookbook)
                 }
             }
         }
@@ -291,12 +309,11 @@ private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions) {
     }
 }
 
-/** Asks, without a notification, how the last recipe cooked turned out: a strip between two hairlines. */
+/** Asks, without a notification, how the last recipe cooked turned out, on a card washed in sage. */
 @Composable
 private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
-    Column(Modifier.padding(top = Space.l)) {
-        Hairline(Modifier.padding(horizontal = ScreenMargin))
-        Row(Modifier.padding(horizontal = ScreenMargin, vertical = Space.m)) {
+    SoftCard(Modifier.padding(top = Space.l), highlight = true) {
+        Row(Modifier.padding(horizontal = ScreenMargin, vertical = Space.s)) {
             RecipeImage(
                 image = toRate.image,
                 size = ImageSize.Thumbnail,
@@ -347,7 +364,6 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                 )
             }
         }
-        Hairline(Modifier.padding(horizontal = ScreenMargin))
     }
 }
 
@@ -463,20 +479,22 @@ private fun TodayCaption(entry: MealPlanEntry, modifier: Modifier = Modifier, ti
 
 @Composable
 private fun EmptyToday(onPlan: () -> Unit) {
-    Column(Modifier.padding(horizontal = ScreenMargin)) {
-        Text(
-            text = stringResource(R.string.home_today_empty),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        QuietLink(stringResource(R.string.action_plan), onPlan, tone = LinkTone.Ink, chevron = true)
+    SoftCard {
+        Column(Modifier.padding(horizontal = ScreenMargin, vertical = Space.xs)) {
+            Text(
+                text = stringResource(R.string.home_today_empty),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            QuietLink(stringResource(R.string.action_plan), onPlan, tone = LinkTone.Ink, chevron = true)
+        }
     }
 }
 
 @Composable
-private fun RecipeCarousel(title: String, recipes: List<RecipeSummary>, onOpen: (String) -> Unit, onShowAll: () -> Unit) {
+private fun RecipeCarousel(title: String, recipes: List<RecipeSummary>, actions: HomeActions, onShowAll: (() -> Unit)? = null) {
     Column(Modifier.padding(top = Space.xxl)) {
-        SectionHeader(title = title, actionLabel = stringResource(R.string.action_show_all), onAction = onShowAll)
+        SectionHeader(title = title, actionLabel = onShowAll?.let { stringResource(R.string.action_show_all) }, onAction = onShowAll)
         Spacer(Modifier.height(Space.m))
         LazyRow(
             contentPadding = PaddingValues(horizontal = ScreenMargin),
@@ -485,62 +503,13 @@ private fun RecipeCarousel(title: String, recipes: List<RecipeSummary>, onOpen: 
             items(recipes, key = { it.id }) { recipe ->
                 RecipeCard(
                     recipe = recipe,
-                    onClick = { onOpen(recipe.slug) },
+                    onClick = { actions.onOpenRecipe(recipe.slug) },
+                    onLongClick = { actions.onRecipeMenu(recipe) },
                     imageAspectRatio = 4f / 5f,
                     modifier = Modifier.width(CarouselCardWidth),
                 )
             }
         }
-    }
-}
-
-/** Cookbooks as a plain list of names, one row each, with hairlines between them. */
-private fun LazyListScope.cookbookList(cookbooks: List<Cookbook>, onOpen: (Cookbook) -> Unit) {
-    item(key = "cookbooks") {
-        // As tall as the headers that carry a link, so every section on the page keeps one rhythm.
-        SectionHeader(
-            title = stringResource(R.string.home_cookbooks),
-            modifier =
-                Modifier
-                    .padding(top = Space.xxl)
-                    .heightIn(min = 48.dp),
-        )
-    }
-    itemsIndexed(cookbooks, key = { _, cookbook -> "cookbook-${cookbook.id}" }) { index, cookbook ->
-        if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))
-        CookbookRow(cookbook, onClick = { onOpen(cookbook) })
-    }
-}
-
-@Composable
-private fun CookbookRow(cookbook: Cookbook, onClick: () -> Unit) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(role = Role.Button, onClick = onClick)
-                .padding(horizontal = ScreenMargin, vertical = Space.m),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(cookbook.name, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (cookbook.description.isNotBlank()) {
-                Text(
-                    text = cookbook.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        Spacer(Modifier.width(Space.m))
-        Icon(
-            painterResource(R.drawable.ic_chevron_right),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.size(16.dp),
-        )
     }
 }
 
@@ -620,4 +589,12 @@ private fun Modifier.touchOutdent(inset: Dp): Modifier =
         val px = inset.roundToPx()
         val placeable = measurable.measure(constraints.offset(horizontal = 2 * px, vertical = 2 * px))
         layout(placeable.width - 2 * px, placeable.height - 2 * px) { placeable.place(-px, -px) }
+    }
+
+private fun Meal.titleRes(): Int =
+    when (this) {
+        Meal.Breakfast -> R.string.home_for_breakfast
+        Meal.Lunch -> R.string.home_for_lunch
+        Meal.Snack -> R.string.home_for_snack
+        Meal.Dinner -> R.string.home_for_dinner
     }

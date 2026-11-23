@@ -33,6 +33,9 @@ data class Cookbook(
     val description: String,
 )
 
+/** A cookbook with how many recipes it holds and the photo of its newest one. */
+data class CookbookCover(val cookbook: Cookbook, val recipeCount: Int, val photo: RecipeImage?)
+
 data class ShoppingListInfo(val id: String, val name: String)
 
 data class ShoppingLabel(val id: String, val name: String)

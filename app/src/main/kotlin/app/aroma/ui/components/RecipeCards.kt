@@ -1,11 +1,14 @@
 package app.aroma.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,8 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
@@ -36,46 +39,69 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.model.ImageSize
+import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.theme.CardTitle
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.tabular
 
+/** A recipe as a [PhotoCard], with its time and rating under the title. */
+@Composable
+fun RecipeCard(
+    recipe: RecipeSummary,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    imageAspectRatio: Float = 1f,
+) {
+    PhotoCard(recipe.image, recipe.name, onClick, modifier, onLongClick, imageAspectRatio) { RecipeMeta(recipe) }
+}
+
 /**
- * A recipe as a photo with its title set underneath, flush with the photo's edge. Pressing dims the
- * photo a little instead of drawing a ripple box around the whole card.
+ * A photo with its title set underneath, flush with the photo's edge, and a quiet line below.
+ * Pressing dims the photo a little instead of drawing a ripple box around the whole card.
  */
 @Composable
-fun RecipeCard(recipe: RecipeSummary, onClick: () -> Unit, modifier: Modifier = Modifier, imageAspectRatio: Float = 1f) {
+fun PhotoCard(
+    image: RecipeImage?,
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    imageAspectRatio: Float = 1f,
+    @DrawableRes fallbackIcon: Int = R.drawable.ic_plate,
+    meta: @Composable () -> Unit,
+) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val photoAlpha by animateFloatAsState(if (pressed) 0.88f else 1f, tween(if (pressed) Motion.PRESS else Motion.STATE), label = "press")
     Column(
         modifier =
-            modifier
-                .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
-                .semantics(mergeDescendants = true) {},
+            modifier.combinedClickable(
+                interactionSource = interaction,
+                indication = null,
+                role = Role.Button,
+                onLongClickLabel = onLongClick?.let { stringResource(R.string.action_more) },
+                onLongClick = onLongClick,
+                onClick = onClick,
+            ),
     ) {
         RecipeImage(
-            image = recipe.image,
+            image = image,
             size = ImageSize.Medium,
             shape = MaterialTheme.shapes.medium,
+            fallbackIcon = fallbackIcon,
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .aspectRatio(imageAspectRatio)
                     .graphicsLayer { alpha = photoAlpha },
         )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = recipe.name,
-            style = CardTitle,
-            maxLines = 2,
-            minLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        RecipeMeta(recipe, Modifier.padding(top = 4.dp))
+        Spacer(Modifier.height(Space.s))
+        Text(text = title, style = CardTitle, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
+        Box(Modifier.padding(top = Space.xxs)) { meta() }
     }
 }
 

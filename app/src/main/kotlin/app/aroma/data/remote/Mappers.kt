@@ -16,6 +16,7 @@ import app.aroma.core.model.RecipeNote
 import app.aroma.core.model.RecipeSummary
 import app.aroma.core.model.RecipeTime
 import app.aroma.core.model.Step
+import app.aroma.core.model.TimelineEvent
 import app.aroma.core.model.User
 import app.aroma.data.remote.dto.CookbookDto
 import app.aroma.data.remote.dto.FoodDto
@@ -25,6 +26,7 @@ import app.aroma.data.remote.dto.NutritionDto
 import app.aroma.data.remote.dto.OrganizerDto
 import app.aroma.data.remote.dto.RecipeDto
 import app.aroma.data.remote.dto.RecipeSummaryDto
+import app.aroma.data.remote.dto.TimelineEventDto
 import app.aroma.data.remote.dto.UnitDto
 import app.aroma.data.remote.dto.UserDto
 import java.time.Instant
@@ -47,6 +49,10 @@ internal fun servingsFrom(servings: Double?, yieldText: String?): Double =
     } ?: 0.0
 
 private fun date(value: String?): LocalDate? = value?.take(10)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+
+/** Mealie writes some timestamps without a zone; they are in UTC. */
+private fun instant(value: String?): Instant? =
+    value?.let { runCatching { Instant.parse(if (it.endsWith("Z") || it.contains('+')) it else "${it}Z") }.getOrNull() }
 
 fun OrganizerDto.toModel() = Organizer(id = id, name = name, slug = slug)
 
@@ -104,7 +110,7 @@ fun RecipeDto.toModel(serverUrl: String) =
             },
         nutrition = if (settings?.showNutrition == true) nutrition?.toModel().orEmpty() else emptyList(),
         dateAdded = date(dateAdded),
-        lastMade = lastMade?.let { runCatching { Instant.parse(if (it.endsWith("Z") || it.contains('+')) it else "${it}Z") }.getOrNull() },
+        lastMade = instant(lastMade),
     )
 
 fun IngredientDto.toModel() =
@@ -144,6 +150,12 @@ private fun NutritionDto.toModel(): List<NutritionValue> =
         NutritionKind.Sodium to sodiumContent,
         NutritionKind.Cholesterol to cholesterolContent,
     ).mapNotNull { (kind, value) -> value?.takeIf { it.isNotBlank() }?.let { NutritionValue(kind, it) } }
+
+/** Null for an event without a time, which Mealie does not write. */
+fun TimelineEventDto.toModel(recipe: RecipeSummary): TimelineEvent? =
+    instant(timestamp)?.let { time ->
+        TimelineEvent(id = id, recipe = recipe, subject = subject, message = eventMessage?.takeIf { it.isNotBlank() }, time = time)
+    }
 
 fun CookbookDto.toModel() = Cookbook(id = id, slug = slug ?: id, name = name, description = description.orEmpty())
 

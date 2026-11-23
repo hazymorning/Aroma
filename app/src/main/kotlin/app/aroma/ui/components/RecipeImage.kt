@@ -1,5 +1,6 @@
 package app.aroma.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -38,6 +39,7 @@ fun RecipeImage(
     modifier: Modifier = Modifier,
     shape: Shape = RectangleShape,
     fallbackIconSize: Dp = 28.dp,
+    @DrawableRes fallbackIcon: Int = R.drawable.ic_plate,
     placeholder: ImageSize? = null,
 ) {
     var failed by remember(image) { mutableStateOf(false) }
@@ -45,12 +47,12 @@ fun RecipeImage(
         modifier =
             modifier
                 .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceContainer),
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {
         if (image == null || failed) {
             Icon(
-                painter = painterResource(R.drawable.ic_plate),
+                painter = painterResource(fallbackIcon),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
                 modifier = Modifier.size(fallbackIconSize),

@@ -1,6 +1,6 @@
 package app.aroma.data.repository
 
-import app.aroma.core.model.Cookbook
+import app.aroma.core.model.CookbookCover
 import app.aroma.core.model.Organizers
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.RecipePage
@@ -21,7 +21,6 @@ import app.aroma.data.remote.MealieJson
 import app.aroma.data.remote.dto.CookbookDto
 import app.aroma.data.remote.dto.CreateRecipeDto
 import app.aroma.data.remote.dto.ImportRecipeDto
-import app.aroma.data.remote.dto.LastMadeDto
 import app.aroma.data.remote.dto.OrganizerDto
 import app.aroma.data.remote.dto.RatingDto
 import app.aroma.data.remote.dto.RatingUpdateDto
@@ -31,6 +30,8 @@ import app.aroma.data.remote.toModel
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,7 +51,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import retrofit2.HttpException
-import java.time.Instant
+import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -67,7 +68,7 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                 if (query.favoritesOnly) {
                     val ids = refreshRatings().filterValues { it.isFavorite }.keys
                     if (ids.isEmpty()) return RecipePage(emptyList(), 0, page, hasMore = false, isOffline = false)
-                    ids.joinToString(prefix = "id IN [", postfix = "]") { "\"$it\"" }
+                    idsFilter(ids)
                 } else {
                     null
                 }
@@ -134,10 +135,61 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                         perPage = limit,
                         orderBy = "rating",
                         orderDirection = "desc",
-                        queryFilter = ids.joinToString(prefix = "id IN [", postfix = "]") { "\"$it\"" },
+                        queryFilter = idsFilter(ids),
                     ).items
             }
         }
+
+    /** A choice of recipes filed under [names] as category or tag, or of all recipes without names; new each [day]. */
+    fun suggestions(names: List<String>, day: LocalDate, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
+        summaries("home:suggestions:${names.sorted().joinToString(",")}") {
+            val list = names.joinToString(prefix = "[", postfix = "]") { "\"${it.replace("\"", "\\\"")}\"" }
+            sessions
+                .api()
+                .recipes(
+                    page = 1,
+                    perPage = limit,
+                    orderBy = "random",
+                    orderDirection = "asc",
+                    queryFilter = if (names.isEmpty()) null else "recipe_category.name IN $list OR tags.name IN $list",
+                    paginationSeed = day.toString(),
+                ).items
+        }
+
+    /** A choice of recipes cooked before, but not since [since]; new each [day]. */
+    fun cookedLongAgo(since: LocalDate, day: LocalDate, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
+        summaries("home:cooked-long-ago") {
+            sessions
+                .api()
+                .recipes(
+                    page = 1,
+                    perPage = limit,
+                    orderBy = "random",
+                    orderDirection = "asc",
+                    // Recipes never cooked compare as earliest in Mealie 3, so a lower bound keeps them out.
+                    queryFilter = "lastMade > \"2000-01-01\" AND lastMade < \"$since\"",
+                    paginationSeed = day.toString(),
+                ).items
+        }
+
+    /** Summaries of [ids], from the stored copy where it has them and from Mealie for the rest. */
+    suspend fun summaries(ids: Set<String>): Map<String, RecipeSummary> {
+        if (ids.isEmpty()) return emptyMap()
+        val server = sessions.requireServerUrl()
+        val stored = dao.summaries(ids).map(::decodeSummary)
+        val missing = ids - stored.mapTo(mutableSetOf()) { it.id }
+        val fetched =
+            if (missing.isEmpty()) {
+                emptyList()
+            } else {
+                sessions.api().recipes(page = 1, perPage = missing.size, queryFilter = idsFilter(missing)).items.also { items ->
+                    dao.upsertSummaries(items.map { it.toEntity() })
+                }
+            }
+        return withContext(Dispatchers.Default) { (stored + fetched).associate { it.id to it.toModel(server) } }
+    }
+
+    private fun idsFilter(ids: Collection<String>) = ids.joinToString(prefix = "id IN [", postfix = "]") { "\"$it\"" }
 
     private fun summaries(key: String, fetch: suspend () -> List<RecipeSummaryDto>): Flow<Loadable<List<RecipeSummary>>> {
         val server = sessions.requireServerUrl()
@@ -213,11 +265,6 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     private fun ratingDtos() = mutableRatings.value.map { (id, rating) -> RatingDto(id, rating.rating, rating.isFavorite) }
 
     private fun userId(): String = sessions.current?.userId ?: throw AromaError.Unauthorized()
-
-    suspend fun markCooked(slug: String) =
-        mealieCall {
-            sessions.api().markMade(slug, LastMadeDto(Instant.now().toString()))
-        }
 
     suspend fun delete(slug: String) {
         mealieCall { sessions.api().deleteRecipe(slug) }
@@ -358,15 +405,39 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                 )
             }
 
-    fun cookbooks(): Flow<Loadable<List<Cookbook>>> =
-        cache
-            .stream("cookbooks", ListSerializer(CookbookDto.serializer())) {
-                sessions
-                    .api()
-                    .cookbooks()
-                    .items
-                    .sortedBy { it.position }
-            }.map { loadable -> Loadable(loadable.data.map { it.toModel() }, loadable.isRefreshing, loadable.error) }
+    /** The household's cookbooks, each with its number of recipes and the photo of its newest one. */
+    fun cookbooks(): Flow<Loadable<List<CookbookCover>>> {
+        val server = sessions.requireServerUrl()
+        return cache
+            .stream("cookbook-covers", ListSerializer(CookbookCoverDto.serializer())) {
+                val api = sessions.api()
+                val requests = Semaphore(PARALLEL_DOWNLOADS)
+                coroutineScope {
+                    api
+                        .cookbooks()
+                        .items
+                        .sortedBy { it.position }
+                        .map { book ->
+                            async {
+                                requests.withPermit {
+                                    val newest =
+                                        api.recipes(
+                                            page = 1,
+                                            perPage = 4,
+                                            orderBy = "created_at",
+                                            orderDirection = "desc",
+                                            cookbook = book.id,
+                                        )
+                                    CookbookCoverDto(book, newest.total, newest.items.firstOrNull { it.toModel(server).image != null })
+                                }
+                            }
+                        }.awaitAll()
+                }
+            }.map { loadable ->
+                val covers = loadable.data.map { CookbookCover(it.cookbook.toModel(), it.recipeCount, it.cover?.toModel(server)?.image) }
+                Loadable(covers, loadable.isRefreshing, loadable.error)
+            }
+    }
 
     /**
      * Keeps a copy of every recipe for offline use: fetches new and changed ones a few at a time
@@ -431,6 +502,9 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
         private const val NEWEST_WINDOW = 10
     }
 }
+
+@kotlinx.serialization.Serializable
+internal data class CookbookCoverDto(val cookbook: CookbookDto, val recipeCount: Int, val cover: RecipeSummaryDto?)
 
 @kotlinx.serialization.Serializable
 internal data class OrganizersDto(

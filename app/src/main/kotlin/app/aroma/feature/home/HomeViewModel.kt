@@ -3,6 +3,7 @@ package app.aroma.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.RecipeImage
+import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
 import app.aroma.data.Loadable
 import app.aroma.data.isConnectivity
@@ -13,6 +14,7 @@ import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.session.SessionManager
 import app.aroma.data.session.SessionState
 import app.aroma.data.toAromaError
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -21,6 +23,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -128,21 +133,38 @@ class HomeViewModel(
                 date = today,
             )
         }
-        var pending = 4
+        var pending = 5
 
         fun finished() {
             pending--
             if (pending == 0) mutableState.update { it.copy(isLoading = false, isRefreshing = false) }
         }
+        val meal = Meal.at(LocalTime.now(clock))
         loads =
             listOf(
                 viewModelScope.launch { refreshUser() },
                 collect(mealPlans.range(today, 1), ::finished) { copy(today = it) },
+                collect(suggestions(meal, today), ::finished) { (forMeal, list) ->
+                    copy(meal = meal, suggestionsForMeal = forMeal, suggestions = list)
+                },
+                collect(recipes.cookedLongAgo(since = today.minusWeeks(4), day = today), ::finished) { copy(cookedLongAgo = it) },
                 collect(recipes.recent(), ::finished) { copy(recent = it) },
                 collect(recipes.favorites(), ::finished) { copy(favorites = it) },
-                collect(recipes.cookbooks(), ::finished) { copy(cookbooks = it) },
             )
     }
+
+    /** Today's choice for [meal]; any recipes, and false, where the household has no category or tag for it. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun suggestions(meal: Meal, today: LocalDate): Flow<Loadable<Pair<Boolean, List<RecipeSummary>>>> =
+        recipes
+            .organizers()
+            .map { meal.namesIn(it.data) }
+            .distinctUntilChanged()
+            .flatMapLatest { names ->
+                recipes.suggestions(names, today).map { loadable ->
+                    Loadable(names.isNotEmpty() to loadable.data, loadable.isRefreshing, loadable.error)
+                }
+            }
 
     /** A new name or photo set in Mealie; the page neither waits for it nor misses it. */
     private suspend fun refreshUser() {

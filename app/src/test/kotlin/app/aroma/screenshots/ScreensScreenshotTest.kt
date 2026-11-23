@@ -14,7 +14,6 @@ import app.aroma.feature.cook.CookActions
 import app.aroma.feature.cook.CookScreen
 import app.aroma.feature.cook.CookTimerUi
 import app.aroma.feature.cook.CookUiState
-import app.aroma.feature.cookbook.CookbookScreen
 import app.aroma.feature.editor.AddMode
 import app.aroma.feature.editor.AddRecipeActions
 import app.aroma.feature.editor.AddRecipeScreen
@@ -28,6 +27,7 @@ import app.aroma.feature.home.Greeting
 import app.aroma.feature.home.HomeActions
 import app.aroma.feature.home.HomeScreen
 import app.aroma.feature.home.HomeUiState
+import app.aroma.feature.home.Meal
 import app.aroma.feature.home.RateReminder
 import app.aroma.feature.login.LoginActions
 import app.aroma.feature.login.LoginScreen
@@ -38,12 +38,22 @@ import app.aroma.feature.mealplan.MealPlanDay
 import app.aroma.feature.mealplan.MealPlanScreen
 import app.aroma.feature.mealplan.MealPlanUiState
 import app.aroma.feature.recipe.RecipeActions
+import app.aroma.feature.recipe.RecipeActionsSheet
 import app.aroma.feature.recipe.RecipeScreen
 import app.aroma.feature.recipe.RecipeUiState
+import app.aroma.feature.recipes.CollectionActions
+import app.aroma.feature.recipes.CollectionKind
+import app.aroma.feature.recipes.CollectionScreen
+import app.aroma.feature.recipes.CookbookShelf
+import app.aroma.feature.recipes.CookbookShelfUiState
 import app.aroma.feature.recipes.RecipeFilter
 import app.aroma.feature.recipes.RecipesActions
+import app.aroma.feature.recipes.RecipesHeader
 import app.aroma.feature.recipes.RecipesScreen
+import app.aroma.feature.recipes.RecipesSection
 import app.aroma.feature.recipes.RecipesUiState
+import app.aroma.feature.recipes.Timeline
+import app.aroma.feature.recipes.TimelineUiState
 import app.aroma.feature.settings.LicensesScreen
 import app.aroma.feature.settings.SettingsActions
 import app.aroma.feature.settings.SettingsScreen
@@ -86,7 +96,10 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                             today = sample.mealPlan.take(1),
                             recent = sample.recipes,
                             favorites = sample.recipes.reversed(),
-                            cookbooks = sample.cookbooks,
+                            meal = Meal.Dinner,
+                            suggestions = sample.recipes.drop(2),
+                            suggestionsForMeal = true,
+                            cookedLongAgo = sample.recipes.take(3),
                             toRate = sample.recipes.first().let { RateReminder(it.id, it.slug, it.name, it.image) },
                             isLoading = false,
                         ),
@@ -429,14 +442,66 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
     fun cookbook() {
         applyLocale()
         snapshot("cookbook_${variant.suffix}", variant.dark) {
-            CookbookScreen(
+            CollectionScreen(
+                kind = CollectionKind.Cookbook,
                 name = sample.cookbooks.first().name,
                 description = sample.cookbooks.first().description,
                 state = RecipesUiState(recipes = sample.recipes.take(4), total = 4, isLoading = false),
-                onBack = {},
-                onOpenRecipe = {},
-                onLoadMore = {},
-                onRetry = {},
+                actions = CollectionActions(),
+            )
+        }
+    }
+
+    @Test
+    fun cookbookShelf() {
+        applyLocale()
+        snapshot("cookbooks_${variant.suffix}", variant.dark) {
+            TabFrame(Tab.Recipes) {
+                CookbookShelf(
+                    state = CookbookShelfUiState(sample.cookbookCovers, isLoading = false),
+                    header = { RecipesHeader(RecipesSection.Cookbooks, onSection = {}, onAddRecipe = {}) },
+                    onOpen = {},
+                    onRetry = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun timeline() {
+        applyLocale()
+        snapshot("timeline_${variant.suffix}", variant.dark) {
+            TabFrame(Tab.Recipes) {
+                Timeline(
+                    state = TimelineUiState(sample.timeline, isLoading = false),
+                    header = { RecipesHeader(RecipesSection.Timeline, onSection = {}, onAddRecipe = {}) },
+                    onOpenRecipe = {},
+                    onLoadMore = {},
+                    onRetry = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun recipeMenu() {
+        applyLocale()
+        snapshot("recipe_menu_${variant.suffix}", variant.dark) {
+            TabFrame(Tab.Recipes) {
+                RecipesScreen(
+                    state = RecipesUiState(recipes = sample.recipes, total = sample.recipes.size, isLoading = false),
+                    actions = RecipesActions(),
+                )
+            }
+            RecipeActionsSheet(
+                recipe = sample.recipes[1],
+                isFavorite = true,
+                onCook = {},
+                onPlan = {},
+                onShop = {},
+                onToggleFavorite = {},
+                onShare = {},
+                onDismiss = {},
             )
         }
     }

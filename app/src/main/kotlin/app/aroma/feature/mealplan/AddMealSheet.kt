@@ -62,6 +62,7 @@ import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RecipeListItem
 import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.navigation.Transitions.Settle
 import app.aroma.ui.theme.Motion
@@ -130,16 +131,6 @@ fun AddMealSheet(
             }
         }
     }
-}
-
-/**
- * Lets the sheet slide away before [then] changes what is underneath, so the change happens in
- * plain sight. A second tap while the sheet is already leaving does nothing, so nothing runs twice.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-internal fun CoroutineScope.hideThen(sheet: SheetState, then: () -> Unit) {
-    if (sheet.targetValue == SheetValue.Hidden) return
-    launch { sheet.hide() }.invokeOnCompletion { then() }
 }
 
 /** The day as a kicker over the serif title, so a day of next week is never mistaken for this one's. */

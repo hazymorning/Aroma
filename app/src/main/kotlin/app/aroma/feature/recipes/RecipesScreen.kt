@@ -1,5 +1,6 @@
 package app.aroma.feature.recipes
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -69,11 +70,13 @@ import app.aroma.ui.components.PageHeader
 import app.aroma.ui.components.PillTextField
 import app.aroma.ui.components.RecipeGrid
 import app.aroma.ui.components.ScrollToTopOnReselect
+import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.StatusBarScrim
-import app.aroma.ui.components.fullBleed
+import app.aroma.ui.components.pageItem
 import app.aroma.ui.components.recipeGridPlaceholders
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
 import kotlinx.coroutines.launch
 
 data class RecipeFilter(
@@ -115,13 +118,24 @@ data class RecipesUiState(
         }
 }
 
+/** The tab's three views: the whole library, its cookbooks, and what the household cooked and added lately. */
+enum class RecipesSection(
+    @StringRes val label: Int,
+) {
+    All(R.string.recipes_all),
+    Cookbooks(R.string.recipes_cookbooks),
+    Timeline(R.string.recipes_timeline),
+}
+
 data class RecipesActions(
+    val onSection: (RecipesSection) -> Unit = {},
     val onQueryChange: (String) -> Unit = {},
     val onToggleFavorites: () -> Unit = {},
     val onToggleOrganizer: (OrganizerKind, Organizer) -> Unit = { _, _ -> },
     val onSortChange: (RecipeSort) -> Unit = {},
     val onClearFilters: () -> Unit = {},
     val onOpenRecipe: (RecipeSummary) -> Unit = {},
+    val onRecipeMenu: (RecipeSummary) -> Unit = {},
     val onLoadMore: () -> Unit = {},
     val onAddRecipe: () -> Unit = {},
     val onRetry: () -> Unit = {},
@@ -142,6 +156,7 @@ fun RecipesScreen(state: RecipesUiState, actions: RecipesActions, modifier: Modi
         RecipeGrid(
             recipes = state.recipes,
             onOpen = actions.onOpenRecipe,
+            onLongPress = actions.onRecipeMenu,
             state = grid,
             isLoadingMore = state.isLoadingMore,
             canLoadMore = state.canLoadMore,
@@ -216,15 +231,16 @@ private fun LazyGridScope.body(state: RecipesUiState, actions: RecipesActions) {
 private fun Header(state: RecipesUiState, actions: RecipesActions, searchFocus: FocusRequester?, openSheet: (RecipesSheet) -> Unit) {
     Column {
         val count = state.total?.takeIf { state.recipes.isNotEmpty() }
-        PageHeader(
-            title = stringResource(R.string.nav_recipes),
+        RecipesHeader(
+            section = RecipesSection.All,
+            onSection = actions.onSection,
+            onAddRecipe = actions.onAddRecipe,
             kicker = count?.let { pluralStringResource(R.plurals.recipe_count, it, it) },
         ) {
             val sortLabel = stringResource(R.string.sort_title) + ": " + stringResource(state.filter.sort.labelRes())
             HeaderAction(R.drawable.ic_sort, sortLabel, { openSheet(RecipesSheet.Sort) })
-            HeaderAction(R.drawable.ic_add, stringResource(R.string.recipes_add), actions.onAddRecipe)
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(Space.m))
         PillTextField(
             value = state.filter.query,
             onValueChange = actions.onQueryChange,
@@ -268,28 +284,30 @@ private fun FilterChips(state: RecipesUiState, actions: RecipesActions, openShee
 }
 
 /**
- * The number of recipes as a kicker, 24 dp under the page head and 16 dp above the first photos.
- * While the first page loads it keeps its line, so the photos do not shift when the count arrives;
- * without recipes it gives way to the message.
+ * The tab's title and actions above the switch between its three views, alike on each, so
+ * switching moves nothing but the content below.
  */
 @Composable
-internal fun RecipeCount(state: RecipesUiState) {
-    val count = state.total?.takeIf { state.recipes.isNotEmpty() }
-    if (count == null && !state.isLoading) return
-    Kicker(
-        text = count?.let { pluralStringResource(R.plurals.recipe_count, it, it) }.orEmpty(),
-        modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 24.dp, bottom = 16.dp),
-    )
-}
-
-/**
- * A grid item across the whole width, reaching the screen edges, for content that keeps its own
- * 24 dp margins: the page head and messages.
- */
-internal fun LazyGridScope.pageItem(key: String, content: @Composable () -> Unit) =
-    item(span = { GridItemSpan(maxLineSpan) }, key = key, contentType = key) {
-        Box(Modifier.fullBleed(ScreenMargin)) { content() }
+internal fun RecipesHeader(
+    section: RecipesSection,
+    onSection: (RecipesSection) -> Unit,
+    onAddRecipe: () -> Unit,
+    kicker: String? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Column {
+        PageHeader(title = stringResource(R.string.nav_recipes), kicker = kicker) {
+            actions()
+            HeaderAction(R.drawable.ic_add, stringResource(R.string.recipes_add), onAddRecipe)
+        }
+        SegmentedControl(
+            options = RecipesSection.entries.map { stringResource(it.label) },
+            selectedIndex = section.ordinal,
+            onSelect = { onSection(RecipesSection.entries[it]) },
+            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l),
+        )
     }
+}
 
 private fun OrganizerKind.labelRes() =
     when (this) {

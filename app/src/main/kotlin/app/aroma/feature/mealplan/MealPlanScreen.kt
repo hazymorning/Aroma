@@ -46,6 +46,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -64,6 +65,7 @@ import app.aroma.core.model.MealPlanEntry
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaPullToRefreshBox
+import app.aroma.ui.components.CardPart
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.Kicker
@@ -76,8 +78,11 @@ import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.ScrollToTopOnReselect
+import app.aroma.ui.components.SheetAction
+import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.rememberRowSwipeState
 import app.aroma.ui.navigation.Transitions.Settle
@@ -86,6 +91,7 @@ import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.tabular
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -235,31 +241,33 @@ private fun formatRange(start: LocalDate, end: LocalDate, locale: Locale): Strin
     }
 }
 
+/** A day is one card, today's washed in sage: its header, then one item per meal. */
 private fun LazyListScope.daySection(day: MealPlanDay, isToday: Boolean, actions: MealPlanActions, onMore: (MealPlanEntry) -> Unit) {
+    val parts = day.entries.size + 1
     item(key = "day-${day.date}") {
-        DayHeader(
-            date = day.date,
-            isToday = isToday,
-            isEmpty = day.entries.isEmpty(),
-            onAdd = { actions.onAdd(day.date) },
-            modifier = Modifier.settling(this),
-        )
-    }
-    itemsIndexed(day.entries, key = { _, entry -> "entry-${entry.id}" }) { index, entry ->
-        SwipeToRemove(
-            onRemove = { actions.onDeleteEntry(entry) },
+        SoftCard(
+            part = CardPart.of(0, parts),
+            highlight = isToday,
             modifier =
                 Modifier
                     .settling(this)
-                    .padding(top = if (index > 0) Space.xxs else 0.dp),
+                    .padding(top = Space.s),
         ) {
-            EntryRow(
-                entry = entry,
-                onClick = { if (entry.recipe != null) actions.onOpenEntry(entry) else onMore(entry) },
-                onMore = { onMore(entry) },
-                onShop = entry.recipe?.let { { actions.onShopEntry(entry) } },
-                onRemove = { actions.onDeleteEntry(entry) },
-            )
+            DayHeader(day.date, isToday, isEmpty = day.entries.isEmpty(), onAdd = { actions.onAdd(day.date) })
+        }
+    }
+    itemsIndexed(day.entries, key = { _, entry -> "entry-${entry.id}" }) { index, entry ->
+        SoftCard(part = CardPart.of(index + 1, parts), highlight = isToday, modifier = Modifier.settling(this)) {
+            SwipeToRemove(onRemove = { actions.onDeleteEntry(entry) }) {
+                EntryRow(
+                    entry = entry,
+                    paper = if (isToday) extras.cardHighlight else extras.card,
+                    onClick = { if (entry.recipe != null) actions.onOpenEntry(entry) else onMore(entry) },
+                    onMore = { onMore(entry) },
+                    onShop = entry.recipe?.let { { actions.onShopEntry(entry) } },
+                    onRemove = { actions.onDeleteEntry(entry) },
+                )
+            }
         }
     }
 }
@@ -277,27 +285,19 @@ private fun Modifier.settling(scope: LazyItemScope): Modifier =
 private fun weekday(date: LocalDate, locale: Locale): String = date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
 
 /**
- * A hairline, then the weekday and its date on one baseline with a quiet add at the end. An empty
- * day says so underneath, and the whole day becomes one target that plans a meal.
+ * The weekday and its date on one baseline with a quiet add at the end. An empty day says so
+ * underneath, and the whole day becomes one target that plans a meal.
  */
 @Composable
-private fun DayHeader(
-    date: LocalDate,
-    isToday: Boolean,
-    isEmpty: Boolean,
-    onAdd: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun DayHeader(date: LocalDate, isToday: Boolean, isEmpty: Boolean, onAdd: () -> Unit) {
     val locale = currentLocale()
     val weekday = remember(date, locale) { weekday(date, locale) }
     val addLabel = stringResource(R.string.plan_add_for, weekday)
-    Column(modifier.padding(top = Space.s)) {
-        Hairline(Modifier.padding(horizontal = ScreenMargin))
+    Column {
         Column(
             Modifier
                 .fillMaxWidth()
-                .then(if (isEmpty) Modifier.clickable(onClickLabel = addLabel, role = Role.Button, onClick = onAdd) else Modifier)
-                .padding(top = Space.xs),
+                .then(if (isEmpty) Modifier.clickable(onClickLabel = addLabel, role = Role.Button, onClick = onAdd) else Modifier),
         ) {
             Row(
                 modifier =
@@ -405,6 +405,7 @@ private fun SwipeToRemove(onRemove: () -> Unit, modifier: Modifier = Modifier, c
 @Composable
 private fun EntryRow(
     entry: MealPlanEntry,
+    paper: Color,
     onClick: () -> Unit,
     onMore: () -> Unit,
     onShop: (() -> Unit)?,
@@ -417,7 +418,7 @@ private fun EntryRow(
             Modifier
                 .fillMaxWidth()
                 // Opaque, so the swipe background only shows where the row has moved away.
-                .background(MaterialTheme.colorScheme.background)
+                .background(paper)
                 .combinedClickable(
                     role = Role.Button,
                     onLongClickLabel = stringResource(R.string.action_more),
@@ -478,7 +479,7 @@ private fun EntryThumbnail(entry: MealPlanEntry) {
         Box(
             Modifier
                 .size(Thumbnail)
-                .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.small),
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.small),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -527,37 +528,6 @@ private fun EntrySheet(entry: MealPlanEntry, onShop: () -> Unit, onRemove: () ->
             }
             SheetAction(R.drawable.ic_delete, stringResource(R.string.plan_remove), onClick = { choose(onRemove) }, destructive = true)
         }
-    }
-}
-
-/** A 56 dp sheet row; the label starts on the 64 dp keyline after its glyph. */
-@Composable
-private fun SheetAction(
-    @DrawableRes icon: Int,
-    label: String,
-    onClick: () -> Unit,
-    destructive: Boolean = false,
-) {
-    val color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .clickable(role = Role.Button, onClick = onClick)
-                .padding(horizontal = ScreenMargin),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(IconKeyline - ScreenMargin - Space.m), contentAlignment = Alignment.Center) {
-            Icon(
-                painterResource(icon),
-                contentDescription = null,
-                tint = if (destructive) color else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(RowGlyph),
-            )
-        }
-        Spacer(Modifier.width(Space.m))
-        Text(label, style = MaterialTheme.typography.bodyLarge, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

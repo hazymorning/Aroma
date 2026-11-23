@@ -68,7 +68,12 @@
     <string name="home_today_empty">Für heute ist noch nichts geplant.</string>
     <string name="home_recent">Neu hinzugefügt</string>
     <string name="home_favorites">Favoriten</string>
-    <string name="home_cookbooks">Kochbücher</string>
+    <string name="home_for_breakfast">Zum Frühstück</string>
+    <string name="home_for_lunch">Zum Mittagessen</string>
+    <string name="home_for_snack">Für zwischendurch</string>
+    <string name="home_for_dinner">Für heute Abend</string>
+    <string name="home_ideas">Ideen für heute</string>
+    <string name="home_cooked_long_ago">Lange nicht gekocht</string>
     <string name="search_recipes_hint">Rezepte durchsuchen</string>
     <string name="home_rate_open">Rezept öffnen</string>
     <string name="home_rate_dismiss">Ausblenden</string>
@@ -148,6 +153,9 @@
     <string name="login_http_hint">Läuft dein Server ohne https, gib die Adresse mit http:// davor ein.</string>
 
     <!-- Recipe library -->
+    <string name="recipes_all">Alle</string>
+    <string name="recipes_cookbooks">Kochbücher</string>
+    <string name="recipes_timeline">Zeitstrahl</string>
     <string name="recipes_add">Rezept hinzufügen</string>
     <string name="recipes_categories">Kategorien</string>
     <string name="recipes_tags">Schlagwörter</string>
@@ -255,8 +263,20 @@
     </plurals>
 
     <!-- Cookbooks -->
+    <string name="cookbooks_empty_title">Noch keine Kochbücher</string>
+    <string name="cookbooks_empty_message">Kochbücher, die du in Mealie anlegst, erscheinen hier.</string>
+    <string name="collection_cookbook">Kochbuch</string>
+    <string name="collection_category">Kategorie</string>
+    <string name="collection_tag">Tag</string>
+    <string name="collection_tool">Utensil</string>
     <string name="cookbook_empty_title">Dieses Kochbuch ist leer</string>
     <string name="cookbook_empty_message">Rezepte erscheinen hier, sobald sie in Mealie zu den Filtern des Kochbuchs passen.</string>
+
+    <!-- Timeline -->
+    <string name="timeline_made_this">%1$s hat das gekocht</string>
+    <string name="timeline_yesterday">Gestern</string>
+    <string name="timeline_empty_title">Noch nichts passiert</string>
+    <string name="timeline_empty_message">Was ihr kocht und neu hinzufügt, erscheint hier.</string>
 
     <!-- Add and edit -->
     <string name="add_from_web">Von einer Webseite</string>

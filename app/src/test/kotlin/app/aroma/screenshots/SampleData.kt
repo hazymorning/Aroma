@@ -1,6 +1,7 @@
 package app.aroma.screenshots
 
 import app.aroma.core.model.Cookbook
+import app.aroma.core.model.CookbookCover
 import app.aroma.core.model.Ingredient
 import app.aroma.core.model.IngredientFood
 import app.aroma.core.model.IngredientUnit
@@ -18,7 +19,10 @@ import app.aroma.core.model.ShoppingItem
 import app.aroma.core.model.ShoppingLabel
 import app.aroma.core.model.ShoppingList
 import app.aroma.core.model.Step
+import app.aroma.core.model.TimelineEvent
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 
 /** Hand-written sample content for screenshot tests, in German and English. */
 class SampleData(private val german: Boolean) {
@@ -65,6 +69,15 @@ class SampleData(private val german: Boolean) {
             Cookbook("c2", "weeknight", t("Unter der Woche", "Weeknights"), t("Schnell auf dem Tisch", "On the table in no time")),
             Cookbook("c3", "brunch", t("Sonntagsfrühstück", "Sunday brunch"), t("Für lange Vormittage", "For slow mornings")),
         )
+
+    val cookbookCovers =
+        cookbooks.mapIndexed { index, book ->
+            CookbookCover(
+                book,
+                12 - 3 * index,
+                recipes[(index * 2 + 1) % recipes.size].image,
+            )
+        }
 
     private val gram = unit("g", t("Gramm", "gram"), "g", fraction = false)
     private val tablespoon = unit("tbsp", t("Esslöffel", "tablespoon"), t("EL", "tbsp"), fraction = true)
@@ -166,6 +179,27 @@ class SampleData(private val german: Boolean) {
         )
 
     val today: LocalDate = LocalDate.of(2026, 11, 23)
+
+    private fun at(daysAgo: Long, hour: Int, minute: Int) =
+        today
+            .minusDays(daysAgo)
+            .atTime(LocalTime.of(hour, minute))
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+
+    val timeline =
+        listOf(
+            TimelineEvent(
+                "t1",
+                recipes[1],
+                t("Mara hat das gekocht", "Mara made this"),
+                t("Mit extra Limette, nächstes Mal mehr Chili.", "With extra lime; more chili next time."),
+                at(0, 19, 42),
+            ),
+            TimelineEvent("t2", recipes[0], t("Jonas hat das gekocht", "Jonas made this"), null, at(0, 8, 15)),
+            TimelineEvent("t3", recipes[4], t("Rezept erstellt", "Recipe created"), null, at(1, 17, 3)),
+            TimelineEvent("t4", recipes[2], t("Mara hat das gekocht", "Mara made this"), null, at(3, 12, 30)),
+        )
 
     val mealPlan =
         listOf(

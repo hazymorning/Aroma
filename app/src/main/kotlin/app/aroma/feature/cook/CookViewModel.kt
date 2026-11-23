@@ -3,8 +3,10 @@ package app.aroma.feature.cook
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.aroma.data.AromaError
 import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.repository.RecipeRepository
+import app.aroma.data.repository.TimelineRepository
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
 import app.aroma.timer.CookingTimer
@@ -23,6 +25,7 @@ class CookViewModel(
     private val slug: String,
     scale: Double,
     private val recipes: RecipeRepository,
+    private val timeline: TimelineRepository,
     private val timers: CookingTimers,
     private val settings: SettingsRepository,
     private val reminder: RatingReminder,
@@ -87,12 +90,19 @@ class CookViewModel(
 
     fun dismissTimer(id: Long) = timers.dismiss(id)
 
+    /** Only a saved rating ends the reminder; otherwise Home still asks later. */
     fun rate(stars: Int) {
         val recipe = base.value.recipe ?: return
-        base.update { it.copy(rating = stars.toDouble(), ratedHere = true) }
+        val previous = base.value.rating
+        base.update { it.copy(rating = stars.toDouble()) }
         viewModelScope.launch {
-            // Only a saved rating ends the reminder; otherwise Home still asks later.
-            runCatching { recipes.rate(recipe.id, recipe.slug, stars) }.onSuccess { reminder.clear(recipe.id) }
+            try {
+                recipes.rate(recipe.id, recipe.slug, stars)
+                base.update { it.copy(ratedHere = true) }
+                reminder.clear(recipe.id)
+            } catch (_: AromaError) {
+                base.update { it.copy(rating = previous) }
+            }
         }
     }
 
@@ -104,11 +114,16 @@ class CookViewModel(
         viewModelScope.launch { reminder.cooked(recipe, user) }
     }
 
-    fun markCooked() {
+    /** [subject] is the timeline's line for it, such as "Mara made this". */
+    fun markCooked(subject: String) {
+        val recipe = base.value.recipe ?: return
         viewModelScope.launch {
-            runCatching { recipes.markCooked(slug) }
-                .onSuccess { base.update { it.copy(markedCooked = true, markFailed = false) } }
-                .onFailure { base.update { it.copy(markFailed = true) } }
+            try {
+                timeline.cooked(recipe.id, recipe.slug, subject)
+                base.update { it.copy(markedCooked = true, markFailed = false) }
+            } catch (_: AromaError) {
+                base.update { it.copy(markFailed = true) }
+            }
         }
     }
 }
