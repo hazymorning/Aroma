@@ -7,9 +7,11 @@ import app.aroma.data.AromaError
 import app.aroma.data.Loadable
 import app.aroma.data.isConnectivity
 import app.aroma.data.reminder.RatingReminder
+import app.aroma.data.repository.AuthRepository
 import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.session.SessionManager
+import app.aroma.data.session.SessionState
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -29,23 +31,30 @@ class HomeViewModel(
     private val recipes: RecipeRepository,
     private val mealPlans: MealPlanRepository,
     private val sessions: SessionManager,
+    private val auth: AuthRepository,
     private val reminder: RatingReminder,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
-    private val mutableState =
-        MutableStateFlow(
-            HomeUiState(
-                greeting = greetingFor(LocalTime.now(clock)),
-                firstName = sessions.current?.let { it.fullName.ifBlank { it.username } }?.substringBefore(' '),
-            ),
-        )
+    private val mutableState = MutableStateFlow(HomeUiState(greeting = greetingFor(LocalTime.now(clock))))
     val state: StateFlow<HomeUiState> = mutableState.asStateFlow()
 
     private var loads: List<Job> = emptyList()
 
     init {
         load(refreshing = false)
+        watchUser()
         watchReminder()
+    }
+
+    private fun watchUser() {
+        viewModelScope.launch {
+            sessions.state.collect { session ->
+                val user = (session as? SessionState.SignedIn)?.session ?: return@collect
+                mutableState.update {
+                    it.copy(firstName = user.fullName.ifBlank { user.username }.substringBefore(' '), photo = user.photoUrl)
+                }
+            }
+        }
     }
 
     // The recipe being rated from the card, which the card itself puts away once that is saved.
@@ -127,11 +136,21 @@ class HomeViewModel(
         }
         loads =
             listOf(
+                viewModelScope.launch { refreshUser() },
                 collect(mealPlans.range(today, 1), ::finished) { copy(today = it) },
                 collect(recipes.recent(), ::finished) { copy(recent = it) },
                 collect(recipes.favorites(), ::finished) { copy(favorites = it) },
                 collect(recipes.cookbooks(), ::finished) { copy(cookbooks = it) },
             )
+    }
+
+    /** A new name or photo set in Mealie; the page neither waits for it nor misses it. */
+    private suspend fun refreshUser() {
+        try {
+            auth.refreshUser()
+        } catch (_: AromaError) {
+            // Offline or signed out meanwhile: the stored name and photo stay.
+        }
     }
 
     private fun <T> collect(source: Flow<Loadable<T>>, done: () -> Unit, apply: HomeUiState.(T) -> HomeUiState): Job =

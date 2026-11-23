@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Icon
@@ -20,6 +19,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -36,7 +39,8 @@ import app.aroma.ui.theme.ScreenMargin
 
 /**
  * The head of a tab page: an optional kicker, a large serif title (with an optional second line in
- * sage, as in the greeting) and plain icon actions whose last glyph ends on the right margin.
+ * sage, as in the greeting) and plain icon actions whose last glyph ends on the right margin. The
+ * actions stand centred beside the title; [actions] learns whether it runs over two lines or more.
  */
 @Composable
 fun PageHeader(
@@ -44,38 +48,41 @@ fun PageHeader(
     modifier: Modifier = Modifier,
     kicker: String? = null,
     accent: String? = null,
-    actions: @Composable RowScope.() -> Unit = {},
+    actions: @Composable RowScope.(tall: Boolean) -> Unit = {},
 ) {
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(start = ScreenMargin, end = 8.dp, top = 24.dp),
-        verticalAlignment = Alignment.Top,
+    var titleLines by remember { mutableIntStateOf(1) }
+    Column(
+        modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(start = ScreenMargin, end = 8.dp, top = 24.dp),
     ) {
-        Column(Modifier.weight(1f)) {
-            // The kicker line is kept even when empty, so titles sit at one height on every tab.
-            Kicker(kicker.orEmpty())
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.displaySmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { heading() },
-            )
-            if (accent != null) {
+        // The kicker line is kept even when empty, so titles sit at one height on every tab.
+        Kicker(kicker.orEmpty())
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
                 Text(
-                    text = accent,
+                    text = title,
                     style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { titleLines = it.lineCount },
+                    modifier = Modifier.semantics { heading() },
                 )
+                if (accent != null) {
+                    Text(
+                        text = accent,
+                        style = MaterialTheme.typography.displaySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+            val tall = titleLines + (if (accent != null) 1 else 0) > 1
+            Row(verticalAlignment = Alignment.CenterVertically) { actions(tall) }
         }
-        Row(Modifier.offset(y = 22.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
     }
 }
 

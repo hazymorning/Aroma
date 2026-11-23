@@ -3,6 +3,7 @@ package app.aroma.feature.home
 import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -62,7 +63,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
-import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.model.Cookbook
 import app.aroma.core.model.ImageSize
@@ -71,6 +71,7 @@ import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaPullToRefreshBox
+import app.aroma.ui.components.Avatar
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
@@ -116,6 +117,7 @@ data class RateReminder(
 data class HomeUiState(
     val greeting: Greeting = Greeting.Afternoon,
     val firstName: String? = null,
+    val photo: String? = null,
     val date: LocalDate? = null,
     val today: List<MealPlanEntry> = emptyList(),
     val recent: List<RecipeSummary> = emptyList(),
@@ -224,9 +226,9 @@ private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
             title = if (name == null) greeting else "$greeting,",
             kicker = state.date?.let { dateline(it) },
             accent = name,
-        ) {
+        ) { tall ->
             HeaderAction(R.drawable.ic_search, stringResource(R.string.search_recipes_hint), actions.onSearch)
-            ProfileButton(name, actions.onOpenSettings)
+            ProfileButton(name, state.photo, large = tall, onClick = actions.onOpenSettings)
         }
         if (state.isOffline) OfflineNotice(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs))
     }
@@ -241,35 +243,32 @@ private fun dateline(date: LocalDate): String {
     }
 }
 
-/** The user's initial in a fine ring; with the header's end padding, the ring ends on the right margin. */
+/**
+ * The user's photo or initial in a fine ring, which grows beside a greeting of two lines; with the
+ * header's end padding, the ring ends on the right margin.
+ */
 @Composable
-private fun ProfileButton(name: String?, onClick: () -> Unit) {
+private fun ProfileButton(name: String?, photo: String?, large: Boolean, onClick: () -> Unit) {
     val label = stringResource(R.string.home_open_profile)
+    val size by animateDpAsState(if (large) 56.dp else 40.dp, tween(Motion.STATE, easing = Settle), label = "profileSize")
     Box(
         modifier =
             Modifier
                 .padding(end = Space.s)
-                .size(48.dp)
+                .size(size + Space.xs)
                 .clickable(
                     interactionSource = null,
-                    indication = ripple(bounded = false, radius = 20.dp),
+                    indication = ripple(bounded = false, radius = size / 2),
                     role = Role.Button,
                     onClick = onClick,
                 ).semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            Modifier
-                .size(40.dp)
-                .border(Lines.control, extras.hairlineStrong, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            val initial = name?.first()?.uppercase(currentLocale())
-            val ink = MaterialTheme.colorScheme.onSurface
-            if (initial != null) {
-                Text(initial, style = MaterialTheme.typography.headlineMedium.copy(fontSize = 18.sp, lineHeight = 24.sp), color = ink)
-            } else {
-                Icon(painterResource(R.drawable.ic_settings), contentDescription = null, tint = ink, modifier = Modifier.size(20.dp))
+        if (name != null) {
+            Avatar(name, photo, size)
+        } else {
+            Box(Modifier.size(size).border(Lines.control, extras.hairlineStrong, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(painterResource(R.drawable.ic_settings), contentDescription = null, modifier = Modifier.size(20.dp))
             }
         }
     }

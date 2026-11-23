@@ -110,7 +110,7 @@ fun LoginDestination() {
 
 @Composable
 fun HomeDestination(nav: NavController) {
-    val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, sessions, ratingReminder) }
+    val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, sessions, auth, ratingReminder) }
     val state by vm.state.collectAsStateWithLifecycle()
     HomeScreen(
         state = state,

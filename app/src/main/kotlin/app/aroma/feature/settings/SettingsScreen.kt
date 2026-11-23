@@ -57,6 +57,7 @@ import app.aroma.data.settings.AppLanguage
 import app.aroma.data.settings.ThemeMode
 import app.aroma.data.update.UpdateState
 import app.aroma.ui.components.AromaAlertDialog
+import app.aroma.ui.components.Avatar
 import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.Hairline
@@ -227,7 +228,7 @@ private fun Account(user: User, server: ServerInfo?) {
             .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Monogram(name)
+        Avatar(name, user.photo, 56.dp)
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -256,23 +257,6 @@ private fun Account(user: User, server: ServerInfo?) {
                 )
             }
         }
-    }
-}
-
-/** The first letter of the name in a fine ring, like the profile button on Home. */
-@Composable
-private fun Monogram(name: String) {
-    Box(
-        Modifier
-            .size(48.dp)
-            .border(Lines.control, extras.hairlineStrong, CircleShape)
-            .clearAndSetSemantics {},
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = name.take(1).uppercase(currentLocale()),
-            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 20.sp, lineHeight = 26.sp),
-        )
     }
 }
 

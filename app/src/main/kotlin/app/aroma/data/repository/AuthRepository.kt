@@ -7,6 +7,7 @@ import app.aroma.data.mealieCall
 import app.aroma.data.remote.MealieClientFactory
 import app.aroma.data.remote.ServerAddress
 import app.aroma.data.remote.dto.ApiTokenRequest
+import app.aroma.data.remote.dto.UserDto
 import app.aroma.data.session.Session
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
@@ -77,7 +78,25 @@ class AuthRepository(
         start(server, token.trim(), null, user)
     }
 
-    private suspend fun start(server: ServerInfo, token: String, tokenId: Int?, user: app.aroma.data.remote.dto.UserDto) {
+    /** Reads the signed-in user again, so a new name or photo set in Mealie shows here too. */
+    suspend fun refreshUser() {
+        val user = mealieCall { sessions.api().currentUser() }
+        sessions.update {
+            if (it.userId != user.id) {
+                it
+            } else {
+                it.copy(
+                    username = user.username,
+                    fullName = user.fullName.orEmpty(),
+                    email = user.email,
+                    isAdmin = user.admin,
+                    photoKey = user.cacheKey,
+                )
+            }
+        }
+    }
+
+    private suspend fun start(server: ServerInfo, token: String, tokenId: Int?, user: UserDto) {
         sessions.start(
             Session(
                 serverUrl = server.url,
@@ -91,6 +110,7 @@ class AuthRepository(
                 groupSlug = user.groupSlug,
                 serverVersion = server.version,
                 allowPasswordLogin = server.allowPasswordLogin,
+                photoKey = user.cacheKey,
             ),
         )
     }

@@ -7,6 +7,8 @@ import app.aroma.data.remote.MealieClientFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
@@ -34,16 +36,32 @@ class SessionManager(private val store: SessionStore) {
         mutableState.value = store.load()?.let { SessionState.SignedIn(it) } ?: SessionState.SignedOut
     }
 
-    suspend fun start(session: Session) {
-        store.save(session)
-        mutableState.value = SessionState.SignedIn(session)
-    }
+    // Signing in, refreshing the user and signing out never interleave, so a refresh cannot bring
+    // back a session that just ended.
+    private val changes = Mutex()
 
-    suspend fun end() {
-        store.clear()
-        cachedApi = null
-        mutableState.value = SessionState.SignedOut
-    }
+    suspend fun start(session: Session) =
+        changes.withLock {
+            store.save(session)
+            mutableState.value = SessionState.SignedIn(session)
+        }
+
+    /** Keeps newer details of the signed-in user; does nothing once that user signed out. */
+    suspend fun update(change: (Session) -> Session) =
+        changes.withLock {
+            val session = current ?: return@withLock
+            val changed = change(session)
+            if (changed == session) return@withLock
+            store.save(changed)
+            mutableState.value = SessionState.SignedIn(changed)
+        }
+
+    suspend fun end() =
+        changes.withLock {
+            store.clear()
+            cachedApi = null
+            mutableState.value = SessionState.SignedOut
+        }
 
     fun credentials(): Credentials? = current?.let { Credentials(baseUrl(it.serverUrl), it.token) }
 

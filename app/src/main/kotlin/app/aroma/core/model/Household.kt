@@ -63,6 +63,7 @@ data class User(
     val fullName: String,
     val email: String,
     val isAdmin: Boolean,
+    val photo: String? = null,
 )
 
 data class ServerInfo(val url: String, val version: String, val allowPasswordLogin: Boolean)
