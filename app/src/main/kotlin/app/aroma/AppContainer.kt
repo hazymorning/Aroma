@@ -3,7 +3,9 @@ package app.aroma
 import android.content.Context
 import android.os.Build
 import android.webkit.WebSettings
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import app.aroma.data.JsonCache
@@ -20,6 +22,7 @@ import app.aroma.data.repository.TimelineRepository
 import app.aroma.data.session.KeystoreCipher
 import app.aroma.data.session.SessionManager
 import app.aroma.data.session.SessionStore
+import app.aroma.data.settings.AppSettings
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.settings.inAppLanguage
 import app.aroma.data.sync.OfflineRecipesWorker
@@ -32,6 +35,9 @@ import coil3.SingletonImageLoader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -41,11 +47,18 @@ class AppContainer(context: Context) {
     private val appContext = context.applicationContext
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val dataStore = PreferenceDataStoreFactory.create { appContext.preferencesDataStoreFile("aroma") }
+    // A file that cannot be read any more starts over empty, which signs out, rather than crashing every start.
+    private val dataStore =
+        PreferenceDataStoreFactory.create(corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }) {
+            appContext.preferencesDataStoreFile("aroma")
+        }
     private val database = Room.databaseBuilder(appContext, AromaDatabase::class.java, "aroma.db").build()
     private val cache = JsonCache(database.cache())
 
     val settings = SettingsRepository(dataStore)
+
+    /** The settings, held from the start, so the first frame already has the right theme; null until read. */
+    val appSettings: StateFlow<AppSettings?> = settings.settings.stateIn(scope, SharingStarted.Eagerly, null)
     val ratingReminder = RatingReminder(dataStore)
     val sessions = SessionManager(SessionStore(dataStore, KeystoreCipher()))
 

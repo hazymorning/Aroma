@@ -17,7 +17,6 @@ import androidx.compose.runtime.key
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.aroma.data.session.SessionState
-import app.aroma.data.settings.AppSettings
 import app.aroma.data.settings.ThemeMode
 import app.aroma.data.sync.OfflineRecipesWorker
 import app.aroma.ui.navigation.AromaNavHost
@@ -35,7 +34,7 @@ class MainActivity : AppCompatActivity() {
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
         val container = (application as AromaApplication).container
-        splash.setKeepOnScreenCondition { container.sessions.state.value == SessionState.Loading }
+        splash.setKeepOnScreenCondition { container.sessions.state.value == SessionState.Loading || container.appSettings.value == null }
         if (savedInstanceState == null) launch.value = LaunchRequest.from(intent)
         Shortcut.publish(this)
         container.updates.checkAtStart {
@@ -45,7 +44,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setContent {
-            val settings by container.settings.settings.collectAsStateWithLifecycle(AppSettings())
+            val settings = container.appSettings.collectAsStateWithLifecycle().value ?: return@setContent
             val session by container.sessions.state.collectAsStateWithLifecycle()
             val pendingLaunch by launch.collectAsStateWithLifecycle()
             val dark =
