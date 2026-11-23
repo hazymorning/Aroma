@@ -1,50 +1,76 @@
 package app.aroma.feature.mealplan
 
+import android.text.format.DateFormat
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.MealType
 import app.aroma.core.model.RecipeSummary
+import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaFilterChip
+import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.Kicker
+import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.PillTextField
+import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RecipeListItem
+import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.mealTypeLabel
+import app.aroma.ui.navigation.Transitions.Settle
+import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 
 /** Plan a meal for [date]: pick the meal, then tap a recipe or write a note. */
@@ -58,112 +84,198 @@ fun AddMealSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val locale = currentLocale()
     var type by rememberSaveable { mutableStateOf(MealType.Dinner) }
     var noteMode by rememberSaveable { mutableStateOf(false) }
     var title by rememberSaveable { mutableStateOf("") }
     var note by rememberSaveable { mutableStateOf("") }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded)),
-        modifier = modifier,
-    ) {
+    val sheetState = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
+    val scope = rememberCoroutineScope()
+    val plan = { recipe: RecipeSummary?, planTitle: String, planNote: String ->
+        scope.hideThen(sheetState) { onAdd(type, recipe, planTitle, planNote) }
+    }
+    AromaBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
         Column(
             Modifier
                 .navigationBarsPadding()
                 .imePadding(),
         ) {
-            Text(
-                text = stringResource(R.string.plan_for_day, date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(horizontal = 24.dp),
+            SheetHeading(date)
+            MealTypeChips(selected = type, onSelect = { type = it })
+            SegmentedControl(
+                options = listOf(stringResource(R.string.plan_mode_recipe), stringResource(R.string.plan_mode_note)),
+                selectedIndex = if (noteMode) 1 else 0,
+                onSelect = { noteMode = it == 1 },
+                modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
             )
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(MealType.entries) { option ->
-                    AromaFilterChip(selected = type == option, label = mealTypeLabel(option), onClick = { type = option })
+            // The sheet grows or shrinks with the form instead of jumping to its new height.
+            AnimatedContent(
+                targetState = noteMode,
+                transitionSpec = {
+                    fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) using
+                        SizeTransform(clip = false) { _, _ -> tween(Motion.EXPAND, easing = Settle) }
+                },
+                label = "addMealMode",
+            ) { notes ->
+                if (notes) {
+                    NoteForm(
+                        title = title,
+                        onTitleChange = { title = it },
+                        note = note,
+                        onNoteChange = { note = it },
+                        onPlan = { plan(null, title, note) },
+                    )
+                } else {
+                    RecipePicker(search, onSearch, onPick = { plan(it, "", "") })
                 }
             }
-            SingleChoiceSegmentedButtonRow(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-            ) {
-                SegmentedButton(
-                    selected = !noteMode,
-                    onClick = { noteMode = false },
-                    shape = SegmentedButtonDefaults.itemShape(0, 2),
-                    icon = {},
-                ) {
-                    Text(stringResource(R.string.plan_mode_recipe))
-                }
-                SegmentedButton(
-                    selected = noteMode,
-                    onClick = { noteMode = true },
-                    shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    icon = {},
-                ) {
-                    Text(stringResource(R.string.plan_mode_note))
-                }
+        }
+    }
+}
+
+/**
+ * Lets the sheet slide away before [then] changes what is underneath, so the change happens in
+ * plain sight. A second tap while the sheet is already leaving does nothing, so nothing runs twice.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+internal fun CoroutineScope.hideThen(sheet: SheetState, then: () -> Unit) {
+    if (sheet.targetValue == SheetValue.Hidden) return
+    launch { sheet.hide() }.invokeOnCompletion { then() }
+}
+
+/** The day as a kicker over the serif title, so a day of next week is never mistaken for this one's. */
+@Composable
+private fun SheetHeading(date: LocalDate) {
+    val locale = currentLocale()
+    val day =
+        remember(date, locale) { date.format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMMd"), locale)) }
+    Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs, bottom = Space.m)) {
+        Kicker(day)
+        Spacer(Modifier.height(Space.xs))
+        Text(
+            text = stringResource(R.string.plan_for_day, date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.semantics { heading() },
+        )
+    }
+}
+
+@Composable
+private fun MealTypeChips(selected: MealType, onSelect: (MealType) -> Unit) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = ScreenMargin),
+        horizontalArrangement = Arrangement.spacedBy(Space.xs),
+    ) {
+        items(MealType.entries) { option ->
+            AromaFilterChip(selected = selected == option, label = mealTypeLabel(option), onClick = { onSelect(option) })
+        }
+    }
+}
+
+@Composable
+private fun RecipePicker(search: PlanSearchState, onSearch: (String) -> Unit, onPick: (RecipeSummary) -> Unit) {
+    Column(Modifier.padding(top = Space.l)) {
+        PillTextField(
+            value = search.query,
+            onValueChange = onSearch,
+            placeholder = stringResource(R.string.search_recipes_hint),
+            modifier = Modifier.padding(horizontal = ScreenMargin),
+        )
+        Text(
+            text = stringResource(R.string.plan_tap_recipe),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs, bottom = Space.xxs),
+        )
+        when {
+            search.isLoading && search.results.isEmpty() -> {
+                ResultsPlaceholder()
             }
-            if (noteMode) {
-                Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        label = { Text(stringResource(R.string.plan_note_title)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = note,
-                        onValueChange = { note = it },
-                        label = { Text(stringResource(R.string.plan_note_text)) },
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Button(
-                        onClick = { onAdd(type, null, title, note) },
-                        enabled = title.isNotBlank(),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .height(52.dp),
-                    ) { Text(stringResource(R.string.action_plan)) }
-                }
-            } else {
-                PillTextField(
-                    value = search.query,
-                    onValueChange = onSearch,
-                    placeholder = stringResource(R.string.search_recipes_hint),
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                )
+
+            search.results.isEmpty() -> {
                 Text(
-                    text = stringResource(R.string.plan_tap_recipe),
-                    style = MaterialTheme.typography.bodySmall,
+                    text = stringResource(R.string.plan_search_empty),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 24.dp),
+                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m, bottom = Space.l),
                 )
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 120.dp, max = 460.dp),
+            }
+
+            else -> {
+                LazyColumn(
+                    contentPadding = PaddingValues(bottom = Space.xs),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 460.dp),
                 ) {
-                    if (search.isLoading && search.results.isEmpty()) {
-                        CircularProgressIndicator(Modifier.align(Alignment.Center).padding(24.dp))
-                    }
-                    LazyColumn {
-                        items(search.results, key = { it.id }) { recipe ->
-                            RecipeListItem(recipe = recipe, onClick = { onAdd(type, recipe, "", "") })
-                        }
+                    items(search.results, key = { it.id }) { recipe ->
+                        RecipeListItem(recipe = recipe, onClick = { onPick(recipe) })
                     }
                 }
             }
         }
+    }
+}
+
+/** Rows shaped like the results, while the first ones load. */
+@Composable
+private fun ResultsPlaceholder() {
+    Column(Modifier.padding(bottom = Space.xs)) {
+        repeat(3) {
+            Row(Modifier.padding(horizontal = ScreenMargin, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
+                Placeholder(Modifier.size(56.dp), shape = MaterialTheme.shapes.small)
+                Spacer(Modifier.width(Space.m))
+                Placeholder(
+                    Modifier
+                        .width(160.dp)
+                        .height(12.dp),
+                    shape = MaterialTheme.shapes.extraSmall,
+                )
+            }
+        }
+    }
+}
+
+/** A meal without a recipe: a title and an optional note, planned with the one button at the bottom. */
+@Composable
+private fun NoteForm(
+    title: String,
+    onTitleChange: (String) -> Unit,
+    note: String,
+    onNoteChange: (String) -> Unit,
+    onPlan: () -> Unit,
+) {
+    val titleFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { titleFocus.requestFocus() }
+    Column {
+        Column(
+            Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l, bottom = Space.l),
+            verticalArrangement = Arrangement.spacedBy(Space.m),
+        ) {
+            LabeledTextField(
+                value = title,
+                onValueChange = onTitleChange,
+                label = stringResource(R.string.plan_note_title),
+                fieldModifier = Modifier.focusRequester(titleFocus),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
+            )
+            LabeledTextField(
+                value = note,
+                onValueChange = onNoteChange,
+                label = stringResource(R.string.plan_note_text),
+                singleLine = false,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            )
+        }
+        Hairline()
+        PrimaryButton(
+            text = stringResource(R.string.action_plan),
+            onClick = onPlan,
+            enabled = title.isNotBlank(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ScreenMargin, vertical = Space.m),
+        )
     }
 }

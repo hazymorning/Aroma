@@ -196,10 +196,13 @@
     <!-- Meal plan -->
     <string name="plan_previous_week">Vorherige Woche</string>
     <string name="plan_next_week">Nächste Woche</string>
-    <string name="plan_this_week">Heute</string>
+    <string name="plan_this_week">Diese Woche</string>
+    <string name="plan_week_number">KW %1$d</string>
+    <string name="plan_week_numbers">KW %1$d–%2$d</string>
     <string name="plan_add_for">Mahlzeit für %1$s planen</string>
     <string name="plan_day_empty">Noch nichts geplant</string>
     <string name="plan_remove">Aus dem Plan entfernen</string>
+    <string name="plan_removed">Aus dem Plan entfernt</string>
     <string name="plan_tomorrow">Morgen</string>
     <string name="plan_day">Tag</string>
     <string name="plan_meal">Mahlzeit</string>
@@ -209,6 +212,7 @@
     <string name="plan_note_title">Was gibt es?</string>
     <string name="plan_note_text">Notiz (optional)</string>
     <string name="plan_tap_recipe">Tippe auf ein Rezept, um es einzuplanen.</string>
+    <string name="plan_search_empty">Kein Rezept gefunden</string>
 
     <!-- Shopping -->
     <string name="shopping_mode_on">Einkaufsmodus starten</string>

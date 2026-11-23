@@ -34,6 +34,9 @@ data class PlanSearchState(val query: String = "", val results: List<RecipeSumma
 sealed interface MealPlanEvent {
     data class AddedToList(val listName: String) : MealPlanEvent
 
+    /** [entry] is gone from the server; [MealPlanViewModel.restore] plans it again. */
+    data class Removed(val entry: MealPlanEntry) : MealPlanEvent
+
     data class Failed(val error: AromaError) : MealPlanEvent
 }
 
@@ -108,8 +111,10 @@ class MealPlanViewModel(
             val before = state.value.days
             mutableState.update { state -> state.copy(days = state.days.map { day -> day.copy(entries = day.entries - entry) }) }
             runCatching { mealPlans.delete(entry.id) }
-                .onSuccess { load(refreshing = false) }
-                .onFailure { error ->
+                .onSuccess {
+                    load(refreshing = false)
+                    mutableEvents.emit(MealPlanEvent.Removed(entry))
+                }.onFailure { error ->
                     mutableState.update { it.copy(days = before) }
                     mutableEvents.emit(MealPlanEvent.Failed(error.toAromaError()))
                 }
@@ -126,6 +131,9 @@ class MealPlanViewModel(
             .onSuccess { load(refreshing = false) }
             .onFailure { mutableEvents.emit(MealPlanEvent.Failed(it.toAromaError())) }
     }
+
+    /** Undoes a removal; the server gives the entry a new id, everything else stays as it was. */
+    fun restore(entry: MealPlanEntry) = add(entry.date, entry.type, entry.recipe, entry.title, entry.note)
 
     /** Puts all ingredients of a planned recipe on the most recently used shopping list. */
     fun shop(entry: MealPlanEntry) =

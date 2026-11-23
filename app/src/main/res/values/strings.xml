@@ -199,10 +199,13 @@
     <!-- Meal plan -->
     <string name="plan_previous_week">Previous week</string>
     <string name="plan_next_week">Next week</string>
-    <string name="plan_this_week">Today</string>
+    <string name="plan_this_week">This week</string>
+    <string name="plan_week_number">Week %1$d</string>
+    <string name="plan_week_numbers">Weeks %1$d–%2$d</string>
     <string name="plan_add_for">Plan a meal for %1$s</string>
     <string name="plan_day_empty">Nothing planned</string>
     <string name="plan_remove">Remove from plan</string>
+    <string name="plan_removed">Removed from the plan</string>
     <string name="plan_tomorrow">Tomorrow</string>
     <string name="plan_day">Day</string>
     <string name="plan_meal">Meal</string>
@@ -212,6 +215,7 @@
     <string name="plan_note_title">What’s for dinner?</string>
     <string name="plan_note_text">Note (optional)</string>
     <string name="plan_tap_recipe">Tap a recipe to add it.</string>
+    <string name="plan_search_empty">No recipe found</string>
 
     <!-- Shopping -->
     <string name="shopping_mode_on">Start shopping mode</string>

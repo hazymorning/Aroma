@@ -10,7 +10,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -333,6 +335,20 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
                     snackbar.showSnackbar(
                         resources.getString(R.string.recipe_added_to_list, event.listName),
                     )
+                }
+
+                is MealPlanEvent.Removed -> {
+                    // Launched, so a second removal replaces this snackbar instead of queueing behind it.
+                    snackbar.currentSnackbarData?.dismiss()
+                    launch {
+                        val result =
+                            snackbar.showSnackbar(
+                                message = resources.getString(R.string.plan_removed),
+                                actionLabel = resources.getString(R.string.action_undo),
+                                duration = SnackbarDuration.Short,
+                            )
+                        if (result == SnackbarResult.ActionPerformed) vm.restore(event.entry)
+                    }
                 }
 
                 is MealPlanEvent.Failed -> {
