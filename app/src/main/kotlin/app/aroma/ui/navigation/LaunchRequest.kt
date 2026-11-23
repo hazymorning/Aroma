@@ -11,11 +11,11 @@ import app.aroma.MainActivity
 import app.aroma.R
 import java.util.UUID
 
-/** What Aroma was opened for: a link shared to it, one of its launcher shortcuts, or a notification. */
+/** What Aroma was opened for: a link shared to it, one of its launcher shortcuts, a notification or a widget. */
 sealed interface LaunchRequest {
     data class Import(val url: String) : LaunchRequest
 
-    /** A recipe an import added. */
+    /** A recipe an import added, or a planned one tapped in a widget. */
     data class Recipe(val slug: String) : LaunchRequest {
         fun intent(context: Context): Intent = Intent(OPEN_RECIPE, null, context, MainActivity::class.java).putExtra(EXTRA, slug)
     }
@@ -29,9 +29,13 @@ sealed interface LaunchRequest {
 
     data object AddRecipe : LaunchRequest
 
-    data object MealPlan : LaunchRequest
+    data object MealPlan : LaunchRequest {
+        fun intent(context: Context): Intent = Shortcut.MealPlan.intent(context)
+    }
 
-    data object Shopping : LaunchRequest
+    data object Shopping : LaunchRequest {
+        fun intent(context: Context): Intent = Shortcut.Shopping.intent(context)
+    }
 
     companion object {
         /** The request [intent] carries, if any. */
@@ -87,6 +91,8 @@ enum class Shortcut(
 
     val action = "app.aroma.action.${name.uppercase()}"
 
+    fun intent(context: Context): Intent = Intent(action, null, context, MainActivity::class.java)
+
     companion object {
         /** Publishes the shortcuts in the app's current language; launchers keep them until the next call. */
         fun publish(context: Context) {
@@ -97,7 +103,7 @@ enum class Shortcut(
                         .setShortLabel(context.getString(shortcut.label))
                         .setLongLabel(context.getString(shortcut.longLabel))
                         .setIcon(IconCompat.createWithResource(context, shortcut.icon))
-                        .setIntent(Intent(shortcut.action, null, context, MainActivity::class.java))
+                        .setIntent(shortcut.intent(context))
                         .build()
                 }
             ShortcutManagerCompat.setDynamicShortcuts(context, shortcuts)

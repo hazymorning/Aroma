@@ -26,8 +26,11 @@ import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -60,6 +63,10 @@ class ShoppingRepository(
 ) {
     private val editLock = Mutex()
     private val syncLock = Mutex()
+    private val changeCount = MutableStateFlow(0)
+
+    /** Fires once a cached list changed here: an edit, the server's copy of a list, or a list deleted. */
+    val changes: Flow<Unit> = changeCount.drop(1).map { }
 
     fun lists(): Flow<Loadable<List<ShoppingListInfo>>> =
         cache
@@ -153,6 +160,7 @@ class ShoppingRepository(
     suspend fun deleteList(listId: String) {
         mealieCall { sessions.api().deleteShoppingList(listId) }
         cacheDao.delete(key(listId))
+        changed()
         refreshLists()
     }
 
@@ -229,7 +237,10 @@ class ShoppingRepository(
     private suspend fun store(listId: String, list: JsonObject) {
         val json = withContext(Dispatchers.Default) { list.toString() }
         cacheDao.put(CacheEntity(key(listId), json, System.currentTimeMillis()))
+        changed()
     }
+
+    private fun changed() = changeCount.update { it + 1 }
 
     /** Keeps the server's copy of a list, unless changes made here still wait: that copy would hide them. */
     private suspend fun storeIfSettled(listId: String, list: JsonObject) =

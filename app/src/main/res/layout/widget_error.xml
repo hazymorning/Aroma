@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    What a widget shows if a frame cannot be drawn at all; the next update tries again.
+    Launchers inflate it as RemoteViews, with the platform's views, so the tint is android:tint.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_paper"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_error"
+        android:tint="@color/widget_accent"
+        tools:ignore="UseAppTint" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:maxLines="3"
+        android:text="@string/widget_error"
+        android:textColor="@color/widget_ink"
+        android:textSize="14sp" />
+</LinearLayout>

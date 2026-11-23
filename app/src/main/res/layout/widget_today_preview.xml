@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The Today widget in the picker before Android 15: its four by two layout with a sample day.
+    Launchers inflate it as RemoteViews, with the platform's views, so tints are android:tint.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_paper"
+    android:baselineAligned="false"
+    android:orientation="horizontal"
+    android:padding="12dp">
+
+    <FrameLayout
+        android:layout_width="112dp"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_card"
+        android:backgroundTint="@color/widget_card">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_plate"
+            android:tint="@color/widget_soft_ink"
+            tools:ignore="UseAppTint" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:paddingHorizontal="8dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp"
+            android:text="@string/widget_today"
+            android:textColor="@color/widget_accent"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_card"
+            android:backgroundTint="@color/widget_selected"
+            android:orientation="vertical"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:text="@string/meal_dinner"
+                android:textColor="@color/widget_on_selected"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="2"
+                android:text="@string/widget_preview_dinner"
+                android:textColor="@color/widget_on_selected"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:paddingHorizontal="8dp"
+            android:paddingTop="6dp"
+            android:text="@string/meal_dessert"
+            android:textColor="@color/widget_soft_ink"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:paddingHorizontal="8dp"
+            android:text="@string/widget_preview_dessert"
+            android:textColor="@color/widget_ink"
+            android:textSize="14sp" />
+    </LinearLayout>
+</LinearLayout>

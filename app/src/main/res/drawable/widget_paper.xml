@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A widget's paper. Before Android 12 there is no system corner radius, so it brings its own. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/widget_page" />
+    <corners android:radius="16dp" />
+</shape>

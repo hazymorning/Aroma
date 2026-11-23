@@ -45,6 +45,47 @@
             android:name=".timer.TimerAlarmReceiver"
             android:exported="false" />
 
+        <!-- The home screen widgets; Today also follows the clock, as its next meal depends on the time. -->
+        <receiver
+            android:name=".widget.TodayWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_today_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_today_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.ShoppingWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_shopping_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_shopping_info" />
+        </receiver>
+
+        <!-- Which list a shopping widget shows; the launcher opens it, apart from the app's own task. -->
+        <activity
+            android:name=".widget.ShoppingWidgetConfigActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Aroma">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- A downloaded update: not exported, Android's installer may read it while it installs. -->
         <provider
             android:name="androidx.core.content.FileProvider"

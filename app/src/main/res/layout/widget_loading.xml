@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What a widget shows until its first frame is drawn: the outline the app's screens show while they load. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_paper"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <FrameLayout
+        android:layout_width="72dp"
+        android:layout_height="12dp"
+        android:background="@drawable/widget_pill"
+        android:backgroundTint="@color/widget_card" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="12dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/widget_pill"
+        android:backgroundTint="@color/widget_card" />
+</LinearLayout>

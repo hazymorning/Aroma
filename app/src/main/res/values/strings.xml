@@ -396,4 +396,61 @@
     <string name="measures_metric">Metric (g, ml)</string>
     <string name="measures_us">US (cups, oz)</string>
     <string name="measures_hint">Amounts, oven temperatures and pan sizes; only how they are shown changes.</string>
+
+    <!-- Widgets -->
+    <string name="widget_today_name">Today</string>
+    <string name="widget_today_description">The next meal on your plan, with the rest of the day and the days ahead.</string>
+    <string name="widget_shopping_name">Shopping list</string>
+    <string name="widget_shopping_description">Check off items on your home screen, sorted by aisle.</string>
+    <string name="widget_meal_plan">Meal plan</string>
+    <string name="widget_today">Today</string>
+    <string name="widget_tomorrow">Tomorrow</string>
+    <string name="widget_tomorrow_meal">Tomorrow · %1$s</string>
+    <string name="widget_today_empty">Nothing planned for today</string>
+    <string name="widget_tomorrow_empty">Nothing planned for tomorrow</string>
+    <string name="widget_day_empty">Nothing planned</string>
+    <string name="widget_plan_meal">Plan a meal</string>
+    <string name="widget_signed_out">Not signed in</string>
+    <string name="widget_today_signed_out">Sign in to Aroma to see your meal plan here.</string>
+    <string name="widget_shopping_signed_out">Sign in to Aroma to see your shopping list here.</string>
+    <string name="widget_sign_in">Sign in</string>
+    <string name="widget_unreachable_title">No connection</string>
+    <string name="widget_unreachable_message">Aroma can’t reach your Mealie server right now.</string>
+    <string name="widget_retry">Try again</string>
+    <string name="widget_error">Aroma can’t show this right now.</string>
+    <string name="widget_no_lists_title">No shopping list yet</string>
+    <string name="widget_no_lists_message">Create one in Aroma.</string>
+    <string name="widget_list_empty">The list is empty</string>
+    <string name="widget_list_done">All done</string>
+    <string name="widget_aisle_other">Other</string>
+    <string name="widget_add_item">Add to the list</string>
+    <string name="widget_item_open">%1$s, not checked off</string>
+    <string name="widget_item_checked">%1$s, checked off</string>
+    <plurals name="widget_items_left">
+        <item quantity="one">%1$d left</item>
+        <item quantity="other">%1$d left</item>
+    </plurals>
+    <plurals name="widget_items_left_on">
+        <item quantity="one">%2$s: %1$d item left</item>
+        <item quantity="other">%2$s: %1$d items left</item>
+    </plurals>
+    <string name="widget_config_title">Which list?</string>
+    <string name="widget_config_hint">The widget shows this list, and you can check items off right there.</string>
+    <string name="widget_config_signed_out">Sign in to Aroma to choose one of your lists.</string>
+    <string name="widget_config_follow">The list open in Aroma</string>
+    <string name="widget_config_follow_hint">Changes along when you switch lists in the app.</string>
+    <string name="widget_preview_lunch">Lentil soup</string>
+    <string name="widget_preview_dinner">Vegetable lasagne</string>
+    <string name="widget_preview_dessert">Lemon tart</string>
+    <string name="widget_preview_tomorrow">Green curry with rice</string>
+    <string name="widget_preview_list">Groceries</string>
+    <string name="widget_preview_left">5 left</string>
+    <string name="widget_preview_produce">Fruit and vegetables</string>
+    <string name="widget_preview_dairy">Dairy</string>
+    <string name="widget_preview_baking">Baking</string>
+    <string name="widget_preview_apples">Apples</string>
+    <string name="widget_preview_lemons">2 lemons</string>
+    <string name="widget_preview_milk">Milk</string>
+    <string name="widget_preview_butter">Butter</string>
+    <string name="widget_preview_flour">Flour</string>
 </resources>

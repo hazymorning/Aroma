@@ -10,14 +10,22 @@ import app.aroma.data.remote.dto.MealPlanEntryDto
 import app.aroma.data.remote.toModel
 import app.aroma.data.session.SessionManager
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.time.LocalDate
 
 class MealPlanRepository(private val sessions: SessionManager, private val cache: JsonCache) {
+    private val changeCount = MutableStateFlow(0)
+
+    /** Fires once an entry was added, moved or removed here, so copies of the plan kept elsewhere can follow. */
+    val changes: Flow<Unit> = changeCount.drop(1).map { }
+
     /**
      * The entries of [days] days from [start] on. One copy is kept per length of range and filtered
      * to the days asked for, so offline on a new day the week cached the day before still shows.
@@ -26,18 +34,29 @@ class MealPlanRepository(private val sessions: SessionManager, private val cache
         val server = sessions.requireServerUrl()
         val end = start.plusDays(days - 1)
         return cache
-            .stream("mealplan:$days", ListSerializer(MealPlanEntryDto.serializer())) {
+            .stream("mealplan:$days", EntriesSerializer) {
                 sessions.api().mealPlans(start.toString(), end.toString()).items
             }.map { loadable ->
-                val entries =
-                    loadable.data
-                        .mapNotNull { it.toModel(server) }
-                        .filter { it.date in start..end }
-                        .sortedWith(compareBy({ it.date }, { it.type.ordinal }))
+                val entries = loadable.data.toEntries(server).filter { it.date in start..end }
                 Loadable(entries, loadable.isRefreshing, loadable.error)
             }
             // A copy of other days has nothing here and would only flash an empty plan before the answer.
             .filterNot { it.isRefreshing && it.data.isEmpty() }
+    }
+
+    /**
+     * The week ahead as [refreshUpcoming] last fetched it, and again whenever that changes; null
+     * before the first fetch. It is a copy of its own, so a week browsed in the app never takes its place.
+     */
+    fun upcoming(): Flow<List<MealPlanEntry>?> {
+        val server = sessions.requireServerUrl()
+        return cache.observe(UPCOMING_KEY, EntriesSerializer).map { it?.toEntries(server) }
+    }
+
+    /** Fetches [today] and the [UPCOMING_DAYS] days after it for [upcoming]. */
+    suspend fun refreshUpcoming(today: LocalDate) {
+        val entries = mealieCall { sessions.api().mealPlans(today.toString(), today.plusDays(UPCOMING_DAYS).toString()).items }
+        cache.write(UPCOMING_KEY, EntriesSerializer, entries)
     }
 
     suspend fun add(
@@ -56,9 +75,9 @@ class MealPlanRepository(private val sessions: SessionManager, private val cache
                 recipeId = recipeId,
             ),
         )
-    }
+    }.also { changed() }
 
-    suspend fun delete(id: Int) = mealieCall { sessions.api().deleteMealPlanEntry(id) }
+    suspend fun delete(id: Int) = mealieCall { sessions.api().deleteMealPlanEntry(id) }.also { changed() }
 
     /** Moves an entry to another day and meal. Mealie wants the whole entry back, its ids included. */
     suspend fun move(id: Int, date: LocalDate, type: MealType) =
@@ -69,5 +88,19 @@ class MealPlanRepository(private val sessions: SessionManager, private val cache
                 id,
                 JsonObject(entry + ("date" to JsonPrimitive(date.toString())) + ("entryType" to JsonPrimitive(type.apiValue))),
             )
-        }
+        }.also { changed() }
+
+    private fun changed() = changeCount.update { it + 1 }
+
+    private companion object {
+        const val UPCOMING_KEY = "mealplan:upcoming"
+
+        /** After dinner the widgets look at tomorrow, and a week from there still lies in the copy. */
+        const val UPCOMING_DAYS = 7L
+
+        val EntriesSerializer = ListSerializer(MealPlanEntryDto.serializer())
+
+        fun List<MealPlanEntryDto>.toEntries(server: String): List<MealPlanEntry> =
+            mapNotNull { it.toModel(server) }.sortedWith(compareBy({ it.date }, { it.type.ordinal }))
+    }
 }

@@ -113,6 +113,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
@@ -131,6 +133,7 @@ dependencies {
     lintChecks(libs.compose.lint.checks)
 
     testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.androidx.glance.appwidget.testing)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.work.testing)
     testImplementation(libs.coil.test)

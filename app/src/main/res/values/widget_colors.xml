@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The widgets' colours, shared by their Glance layouts, their loading layout and their previews. -->
+<resources>
+    <color name="widget_page">#FFF8F8F3</color>
+    <color name="widget_card">#FFEEEFE7</color>
+    <color name="widget_ink">#FF1A1C18</color>
+    <color name="widget_soft_ink">#FF585D53</color>
+    <color name="widget_accent">#FF486447</color>
+    <color name="widget_selected">#FFDCE7D4</color>
+    <color name="widget_on_selected">#FF1C3319</color>
+    <color name="widget_button">#FF486447</color>
+    <color name="widget_on_button">#FFFFFFFF</color>
+    <color name="widget_ring">#FF8B9086</color>
+</resources>

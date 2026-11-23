@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_page">#FF121411</color>
+    <color name="widget_card">#FF1E211D</color>
+    <color name="widget_ink">#FFE3E4DD</color>
+    <color name="widget_soft_ink">#FFA8AEA2</color>
+    <color name="widget_accent">#FFAECDA5</color>
+    <color name="widget_selected">#FF2E3D2B</color>
+    <color name="widget_on_selected">#FFDCEBD3</color>
+    <color name="widget_button">#FF3A5638</color>
+    <color name="widget_on_button">#FFE2F0DA</color>
+    <color name="widget_ring">#FF6C7266</color>
+</resources>
