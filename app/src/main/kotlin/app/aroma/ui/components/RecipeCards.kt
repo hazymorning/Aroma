@@ -1,12 +1,10 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -43,7 +40,6 @@ import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.theme.CardTitle
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.tabular
@@ -76,8 +72,6 @@ fun PhotoCard(
     meta: @Composable () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val photoAlpha by animateFloatAsState(if (pressed) 0.88f else 1f, tween(if (pressed) Motion.PRESS else Motion.STATE), label = "press")
     Column(
         modifier =
             modifier.combinedClickable(
@@ -98,7 +92,7 @@ fun PhotoCard(
                 Modifier
                     .fillMaxWidth()
                     .aspectRatio(imageAspectRatio)
-                    .graphicsLayer { alpha = photoAlpha },
+                    .indication(interaction, PhotoPress),
         )
         Spacer(Modifier.height(Space.s))
         Text(text = title, style = CardTitle, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)

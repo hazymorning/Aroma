@@ -2,14 +2,11 @@ package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -31,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -46,6 +42,7 @@ import app.aroma.R
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.isDarkScheme
 import app.aroma.ui.theme.photoButtonShadow
@@ -141,8 +138,8 @@ fun SecondaryButton(
 enum class LinkTone { Soft, Ink, Destructive }
 
 /**
- * A text link with no container: the text sits exactly on the keyline and the touch area grows
- * away from it. Pressing dims it instead of blooming a ripple.
+ * A text link with no container: the text, or the [leadingIcon] before it, sits exactly on the
+ * keyline and the touch area grows away from it. Pressing dims it instead of blooming a ripple.
  */
 @Composable
 fun QuietLink(
@@ -150,20 +147,10 @@ fun QuietLink(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     tone: LinkTone = LinkTone.Soft,
+    @DrawableRes leadingIcon: Int? = null,
     chevron: Boolean = false,
     enabled: Boolean = true,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val alpha by animateFloatAsState(
-        when {
-            !enabled -> 0.38f
-            pressed -> 0.6f
-            else -> 1f
-        },
-        tween(Motion.PRESS),
-        label = "linkAlpha",
-    )
     val color =
         when (tone) {
             LinkTone.Soft -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -174,10 +161,14 @@ fun QuietLink(
         modifier =
             modifier
                 .heightIn(min = 48.dp)
-                .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
-                .alpha(alpha),
+                .clickable(interactionSource = null, indication = QuietPress, enabled = enabled, role = Role.Button, onClick = onClick)
+                .alpha(if (enabled) 1f else 0.38f),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        leadingIcon?.let {
+            Icon(painterResource(it), contentDescription = null, tint = color, modifier = Modifier.size(Glyph.s))
+            Spacer(Modifier.width(Space.xs))
+        }
         Text(text, style = MaterialTheme.typography.labelLarge, color = color, maxLines = 1)
         if (chevron) {
             Spacer(Modifier.width(4.dp))

@@ -2,12 +2,9 @@ package app.aroma.ui.navigation
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -39,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.aroma.ui.components.QuietPress
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
@@ -83,9 +80,6 @@ private fun BarItem(
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHapticFeedback.current
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val alpha by animateFloatAsState(if (pressed) 0.6f else 1f, tween(Motion.PRESS), label = "tabPress")
     val iconColor by animateColorAsState(
         if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         tween(Motion.STATE, easing = Settle),
@@ -99,14 +93,14 @@ private fun BarItem(
     Column(
         modifier
             .fillMaxHeight()
-            .selectable(selected = selected, interactionSource = interaction, indication = null, role = Role.Tab) {
+            .selectable(selected = selected, interactionSource = null, indication = QuietPress, role = Role.Tab) {
                 if (selected) {
                     onReselect(tab)
                 } else {
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                     onSelect(tab)
                 }
-            }.alpha(alpha),
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

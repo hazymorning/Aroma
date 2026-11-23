@@ -2,13 +2,9 @@ package app.aroma.feature.editor
 
 import android.net.Uri
 import androidx.annotation.StringRes
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -86,7 +82,6 @@ import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.theme.IconKeyline
-import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.tabular
@@ -431,7 +426,7 @@ private fun EditableRows(
                 )
             }
         }
-        AddRowLink(addLabel, onClick = addRow)
+        QuietLink(addLabel, addRow, Modifier.padding(horizontal = ScreenMargin), tone = LinkTone.Ink, leadingIcon = R.drawable.ic_add)
     }
 }
 
@@ -538,26 +533,6 @@ private fun RowScope.StepNumber(number: Int) {
                 .alignByBaseline()
                 .semantics { contentDescription = label },
     )
-}
-
-/** A quiet ink link with a small plus on the margin, like [QuietLink] with a leading glyph. */
-@Composable
-private fun AddRowLink(text: String, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val alpha by animateFloatAsState(if (pressed) 0.6f else 1f, tween(Motion.PRESS), label = "addRowAlpha")
-    Row(
-        Modifier
-            .padding(horizontal = ScreenMargin)
-            .heightIn(min = 48.dp)
-            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
-            .alpha(alpha),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.xs),
-    ) {
-        Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(16.dp))
-        Text(text, style = MaterialTheme.typography.labelLarge)
-    }
 }
 
 @Composable

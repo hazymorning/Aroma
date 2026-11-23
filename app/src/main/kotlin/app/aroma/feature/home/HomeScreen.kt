@@ -4,7 +4,6 @@ import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,8 +12,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -50,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -82,6 +80,7 @@ import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.PageHeader
+import app.aroma.ui.components.PhotoPress
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
@@ -407,8 +406,6 @@ private fun TodayCarousel(entries: List<MealPlanEntry>, onOpen: (MealPlanEntry) 
 @Composable
 private fun TodayCard(entry: MealPlanEntry, onClick: () -> Unit, modifier: Modifier = Modifier, holdTwoLines: Boolean = false) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val photoAlpha by animateFloatAsState(if (pressed) 0.88f else 1f, tween(if (pressed) Motion.PRESS else Motion.STATE), label = "press")
     Column(
         modifier =
             modifier
@@ -424,7 +421,7 @@ private fun TodayCard(entry: MealPlanEntry, onClick: () -> Unit, modifier: Modif
                 Modifier
                     .fillMaxWidth()
                     .aspectRatio(3f / 2f)
-                    .graphicsLayer { alpha = photoAlpha },
+                    .indication(interaction, PhotoPress),
         )
         Spacer(Modifier.height(Space.m))
         Box {

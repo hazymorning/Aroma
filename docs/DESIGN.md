@@ -85,6 +85,7 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
 12. **Progress.** `InlineProgress` for work in place, `Placeholder` shapes while a page loads,
     `PrimaryButton(loading = true)` while its own action runs.
 13. **Touch.** Every target is at least 48 dp; the glyph, not its target, stands on the keyline.
+    Pressed text, links and photos dim (`QuietPress`, `PhotoPress`); rows and icon buttons ripple.
 14. **Words.** Strings live in `values` and `values-de`, in step; text is never concatenated in
     code where a formatted string can say it.
 15. **Accessibility.** Page, section and sheet titles are headings; every control without words
@@ -97,6 +98,7 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
 | `PageHeader`, `DetailTopBar`, `LargeTitle`, `SectionHeader`, `Kicker` | Headings |
 | `SoftCard`, `CardPart`, `Hairline` | Groups and the lines inside them |
 | `PrimaryButton`, `SecondaryButton`, `QuietLink`, `HeaderAction`, `IconAction`, `HairlineIconButton`, `OnPhotoButton` | Actions |
+| `QuietPress`, `PhotoPress` | Pressing what has no ripple |
 | `SwitchRow`, `SegmentedControl`, `AromaFilterChip`, `Stepper`, `RatingStars`, `CheckCircle` | Choices |
 | `LabeledTextField`, `LabeledSecureTextField`, `PillTextField` | Input |
 | `AromaBottomSheet`, `SheetAction`, `AromaAlertDialog`, `AromaDropdownMenu`, `AromaMenuItem` | Layers |

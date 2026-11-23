@@ -3,15 +3,12 @@ package app.aroma.feature.recipe
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -61,7 +58,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -101,6 +97,7 @@ import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.OnPhotoButton
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PrimaryButton
+import app.aroma.ui.components.QuietPress
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SecondaryButton
@@ -549,14 +546,15 @@ private fun QuietTarget(
     onClickLabel: String? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val alpha by animateFloatAsState(if (pressed) 0.6f else 1f, tween(Motion.PRESS), label = "quietTarget")
     Row(
         modifier =
-            modifier
-                .clickable(interaction, indication = null, onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
-                .graphicsLayer { this.alpha = alpha },
+            modifier.clickable(
+                interactionSource = null,
+                indication = QuietPress,
+                onClickLabel = onClickLabel,
+                role = Role.Button,
+                onClick = onClick,
+            ),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
     )

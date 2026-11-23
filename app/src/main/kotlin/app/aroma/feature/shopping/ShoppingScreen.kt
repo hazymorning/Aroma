@@ -2,14 +2,11 @@ package app.aroma.feature.shopping
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +44,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -79,6 +75,7 @@ import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.PageHeader
 import app.aroma.ui.components.PillTextField
 import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.QuietPress
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.currentLocale
@@ -380,16 +377,13 @@ private fun ListMenu(openDialog: (ShoppingDialog) -> Unit) {
 private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val switchable = lists.size > 1
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val alpha by animateFloatAsState(if (pressed) 0.6f else 1f, tween(Motion.PRESS), label = "switcherAlpha")
     Box(
         Modifier
             .padding(horizontal = ScreenMargin)
             .heightIn(min = 48.dp)
             .clickable(
-                interactionSource = interaction,
-                indication = null,
+                interactionSource = null,
+                indication = QuietPress,
                 enabled = switchable,
                 onClickLabel = stringResource(R.string.shopping_switch_list),
                 role = Role.Button,
@@ -398,7 +392,7 @@ private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, o
             // The name sits 8 dp under the title, and the rest of its 48 dp target lies below it.
             .padding(top = 8.dp),
     ) {
-        Row(Modifier.graphicsLayer { this.alpha = alpha }, verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = current.name,
                 style = MaterialTheme.typography.titleMedium,
