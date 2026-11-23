@@ -10,6 +10,7 @@ import app.aroma.data.remote.dto.MealPlanEntryDto
 import app.aroma.data.remote.toModel
 import app.aroma.data.session.SessionManager
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonObject
@@ -17,16 +18,26 @@ import kotlinx.serialization.json.JsonPrimitive
 import java.time.LocalDate
 
 class MealPlanRepository(private val sessions: SessionManager, private val cache: JsonCache) {
+    /**
+     * The entries of [days] days from [start] on. One copy is kept per length of range and filtered
+     * to the days asked for, so offline on a new day the week cached the day before still shows.
+     */
     fun range(start: LocalDate, days: Long): Flow<Loadable<List<MealPlanEntry>>> {
         val server = sessions.requireServerUrl()
         val end = start.plusDays(days - 1)
         return cache
-            .stream("mealplan:$start:$days", ListSerializer(MealPlanEntryDto.serializer())) {
+            .stream("mealplan:$days", ListSerializer(MealPlanEntryDto.serializer())) {
                 sessions.api().mealPlans(start.toString(), end.toString()).items
             }.map { loadable ->
-                val entries = loadable.data.mapNotNull { it.toModel(server) }.sortedWith(compareBy({ it.date }, { it.type.ordinal }))
+                val entries =
+                    loadable.data
+                        .mapNotNull { it.toModel(server) }
+                        .filter { it.date in start..end }
+                        .sortedWith(compareBy({ it.date }, { it.type.ordinal }))
                 Loadable(entries, loadable.isRefreshing, loadable.error)
             }
+            // A copy of other days has nothing here and would only flash an empty plan before the answer.
+            .filterNot { it.isRefreshing && it.data.isEmpty() }
     }
 
     suspend fun add(
