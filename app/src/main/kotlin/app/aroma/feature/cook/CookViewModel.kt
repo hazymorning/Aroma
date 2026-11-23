@@ -1,5 +1,6 @@
 package app.aroma.feature.cook
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.data.reminder.RatingReminder
@@ -23,9 +24,10 @@ class CookViewModel(
     scale: Double,
     private val recipes: RecipeRepository,
     private val timers: CookingTimers,
-    settings: SettingsRepository,
+    private val settings: SettingsRepository,
     private val reminder: RatingReminder,
     private val userId: String?,
+    private val saved: SavedStateHandle,
 ) : ViewModel() {
     val keepScreenOn: StateFlow<Boolean> =
         settings.settings
@@ -35,11 +37,19 @@ class CookViewModel(
     private val base = MutableStateFlow(CookUiState(scale = scale))
 
     val state: StateFlow<CookUiState> =
-        combine(base, timers.timers, timers.now) { state, all, now ->
+        combine(
+            base,
+            timers.timers,
+            timers.now,
+            settings.settings.map { it.ingredientsInSteps },
+            saved.getStateFlow(CHECKED, IntArray(0)),
+        ) { state, all, now, ingredientsInSteps, checked ->
             val ownTimers = all.filter { it.recipeName == state.recipe?.name }
             state.copy(
                 timers = ownTimers.map { it.toUi(now) },
                 exactAlarmHint = ownTimers.any { it.isRunning } && !timers.canUseExactAlarms,
+                ingredientsInSteps = ingredientsInSteps,
+                checkedIngredients = checked.toSet(),
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), base.value)
 
@@ -64,6 +74,14 @@ class CookViewModel(
         val name = base.value.recipe?.name ?: return
         timers.start(seconds, label, name)
     }
+
+    /** Ticked off while cooking; kept until cook mode closes, even if Android ends the app meanwhile. */
+    fun toggleIngredient(index: Int) {
+        val checked = saved.get<IntArray>(CHECKED)?.toSet().orEmpty()
+        saved[CHECKED] = (if (index in checked) checked - index else checked + index).toIntArray()
+    }
+
+    fun setIngredientsInSteps(enabled: Boolean) = viewModelScope.launch { settings.setIngredientsInSteps(enabled) }
 
     fun toggleTimer(id: Long) = timers.toggle(id)
 
@@ -94,6 +112,8 @@ class CookViewModel(
         }
     }
 }
+
+private const val CHECKED = "checked"
 
 /** Seconds are rounded up so a timer shows 0:01 until it is really done. */
 private fun CookingTimer.toUi(now: Long) = CookTimerUi(id, label, (remaining(now) + 999) / 1000, isRunning)

@@ -48,6 +48,7 @@ class SettingsViewModel(
                 dynamicColorAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                 language = lang,
                 keepScreenOn = app.keepScreenOn,
+                ingredientsInSteps = app.ingredientsInSteps,
                 offlineRecipes = app.offlineRecipes,
                 offlineCount = offline,
                 version = BuildConfig.VERSION_NAME,
@@ -61,6 +62,8 @@ class SettingsViewModel(
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { settings.setDynamicColor(enabled) }
 
     fun setKeepScreenOn(enabled: Boolean) = viewModelScope.launch { settings.setKeepScreenOn(enabled) }
+
+    fun setIngredientsInSteps(enabled: Boolean) = viewModelScope.launch { settings.setIngredientsInSteps(enabled) }
 
     fun setOfflineRecipes(enabled: Boolean) =
         viewModelScope.launch {

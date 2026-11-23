@@ -81,6 +81,7 @@ data class SettingsUiState(
     val dynamicColorAvailable: Boolean = false,
     val language: AppLanguage = AppLanguage.System,
     val keepScreenOn: Boolean = true,
+    val ingredientsInSteps: Boolean = false,
     val offlineRecipes: Boolean = false,
     val offlineCount: Int = 0,
     val version: String = "",
@@ -94,6 +95,7 @@ data class SettingsActions(
     val onDynamicColor: (Boolean) -> Unit = {},
     val onLanguage: (AppLanguage) -> Unit = {},
     val onKeepScreenOn: (Boolean) -> Unit = {},
+    val onIngredientsInSteps: (Boolean) -> Unit = {},
     val onOfflineRecipes: (Boolean) -> Unit = {},
     val onCheckForUpdates: () -> Unit = {},
     val onInstallUpdate: (UpdateState.Available) -> Unit = {},
@@ -143,6 +145,13 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                 subtitle = stringResource(R.string.settings_keep_screen_on_hint),
                 checked = state.keepScreenOn,
                 onChange = actions.onKeepScreenOn,
+            )
+            RowDivider()
+            SwitchRow(
+                title = stringResource(R.string.settings_ingredients_in_steps),
+                subtitle = stringResource(R.string.settings_ingredients_in_steps_hint),
+                checked = state.ingredientsInSteps,
+                onChange = actions.onIngredientsInSteps,
             )
         }
         Group(stringResource(R.string.settings_offline)) {

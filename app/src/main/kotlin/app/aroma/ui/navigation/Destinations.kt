@@ -283,7 +283,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
 
 @Composable
 fun CookDestination(slug: String, scale: Double, nav: NavController) {
-    val vm = aromaViewModel { CookViewModel(slug, scale, recipes, timers, settings, ratingReminder, sessions.current?.userId) }
+    val vm = aromaViewModel { CookViewModel(slug, scale, recipes, timers, settings, ratingReminder, sessions.current?.userId, it) }
     val state by vm.state.collectAsStateWithLifecycle()
     val keepScreenOn by vm.keepScreenOn.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -305,6 +305,8 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
                     if (needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     vm.startTimer(seconds, label)
                 },
+                onToggleIngredient = vm::toggleIngredient,
+                onIngredientsInSteps = { vm.setIngredientsInSteps(it) },
                 onToggleTimer = vm::toggleTimer,
                 onDismissTimer = vm::dismissTimer,
                 onRate = vm::rate,
@@ -509,6 +511,7 @@ fun SettingsDestination(nav: NavController) {
                 onDynamicColor = { vm.setDynamicColor(it) },
                 onLanguage = vm::setLanguage,
                 onKeepScreenOn = { vm.setKeepScreenOn(it) },
+                onIngredientsInSteps = { vm.setIngredientsInSteps(it) },
                 onOfflineRecipes = { vm.setOfflineRecipes(it) },
                 onCheckForUpdates = vm::checkForUpdates,
                 onInstallUpdate = vm::installUpdate,

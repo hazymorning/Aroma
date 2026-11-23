@@ -229,6 +229,24 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
     }
 
     @Test
+    fun cookStepWithIngredients() {
+        applyLocale()
+        snapshot("cook_ingredients_${variant.suffix}", variant.dark) {
+            CookScreen(
+                state =
+                    CookUiState(
+                        recipe = sample.recipe,
+                        isLoading = false,
+                        ingredientsInSteps = true,
+                        checkedIngredients = setOf(0, 2),
+                    ),
+                actions = CookActions(),
+                initialPage = 1,
+            )
+        }
+    }
+
+    @Test
     fun cookFinished() {
         applyLocale()
         snapshot("cookdone_${variant.suffix}", variant.dark) {

@@ -18,6 +18,7 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.System,
     val dynamicColor: Boolean = false,
     val keepScreenOn: Boolean = true,
+    val ingredientsInSteps: Boolean = false,
     val offlineRecipes: Boolean = false,
     val lastShoppingList: String? = null,
     val importWithAi: Boolean = true,
@@ -30,6 +31,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val theme = stringPreferencesKey("theme")
         val dynamicColor = booleanPreferencesKey("dynamic_color")
         val keepScreenOn = booleanPreferencesKey("keep_screen_on")
+        val ingredientsInSteps = booleanPreferencesKey("ingredients_in_steps")
         val offlineRecipes = booleanPreferencesKey("offline_recipes")
         val lastShoppingList = stringPreferencesKey("last_shopping_list")
         val importWithAi = booleanPreferencesKey("import_with_ai")
@@ -43,6 +45,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 themeMode = prefs[Keys.theme]?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } } ?: ThemeMode.System,
                 dynamicColor = prefs[Keys.dynamicColor] ?: false,
                 keepScreenOn = prefs[Keys.keepScreenOn] ?: true,
+                ingredientsInSteps = prefs[Keys.ingredientsInSteps] ?: false,
                 offlineRecipes = prefs[Keys.offlineRecipes] ?: false,
                 lastShoppingList = prefs[Keys.lastShoppingList],
                 importWithAi = prefs[Keys.importWithAi] ?: true,
@@ -56,6 +59,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setDynamicColor(enabled: Boolean) = dataStore.edit { it[Keys.dynamicColor] = enabled }
 
     suspend fun setKeepScreenOn(enabled: Boolean) = dataStore.edit { it[Keys.keepScreenOn] = enabled }
+
+    suspend fun setIngredientsInSteps(enabled: Boolean) = dataStore.edit { it[Keys.ingredientsInSteps] = enabled }
 
     suspend fun setOfflineRecipes(enabled: Boolean) = dataStore.edit { it[Keys.offlineRecipes] = enabled }
 

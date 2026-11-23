@@ -180,6 +180,10 @@
     <string name="cook_close">Kochmodus verlassen</string>
     <string name="cook_step_of">Schritt %1$d von %2$d</string>
     <string name="cook_step_ingredients">Für diesen Schritt</string>
+    <plurals name="cook_ingredients_used">
+        <item quantity="one">Zutaten · %1$d von %2$d verwendet</item>
+        <item quantity="other">Zutaten · %1$d von %2$d verwendet</item>
+    </plurals>
     <string name="cook_start_timer">Timer %1$s</string>
     <string name="cook_previous">Zurück</string>
     <string name="cook_next">Weiter</string>
@@ -310,6 +314,8 @@
     <string name="settings_cooking">Kochen</string>
     <string name="settings_keep_screen_on">Bildschirm anlassen</string>
     <string name="settings_keep_screen_on_hint">Solange der Kochmodus geöffnet ist.</string>
+    <string name="settings_ingredients_in_steps">Zutaten unter jedem Schritt</string>
+    <string name="settings_ingredients_in_steps_hint">Im Kochmodus, zum Abhaken, was du schon verwendet hast.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_all">Alle Rezepte auf diesem Gerät speichern</string>
     <string name="settings_offline_all_hint">Geöffnete Rezepte werden immer gespeichert. Damit lädst du auch alle anderen.</string>
