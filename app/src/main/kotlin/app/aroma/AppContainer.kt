@@ -107,6 +107,7 @@ class AppContainer(context: Context) {
     fun signOut() =
         scope.launch {
             OfflineRecipesWorker.schedule(appContext, enabled = false)
+            imports.cancelAll()
             timers.dismissAll()
             settings.forgetAccount()
             ratingReminder.clear()

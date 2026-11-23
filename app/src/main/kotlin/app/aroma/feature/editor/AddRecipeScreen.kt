@@ -80,11 +80,6 @@ import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.tabular
 import kotlinx.coroutines.delay
 
-enum class AddMode { Import, Create }
-
-/** Something that went wrong, shown under the button of the [mode] that started it. */
-data class AddFailure(val mode: AddMode, val error: AromaError)
-
 /**
  * The add screen's state. [starting] covers the moment before an import exists; from then on
  * [import] is the import the screen follows, running or ended.
@@ -99,7 +94,7 @@ data class AddRecipeUiState(
     val starting: Boolean = false,
     val creating: Boolean = false,
     val import: ImportJob? = null,
-    val failure: AddFailure? = null,
+    val createError: AromaError? = null,
 ) {
     /** AI is only offered when the server has a provider set up for the group. */
     val usesAi: Boolean get() = aiAvailable && useAi
@@ -108,8 +103,7 @@ data class AddRecipeUiState(
 
     val canImport: Boolean get() = !isImporting && !creating && (url.isNotBlank() || text.isNotBlank())
 
-    val importError: AromaError?
-        get() = failure?.takeIf { it.mode == AddMode.Import }?.error ?: (import?.outcome as? ImportOutcome.Failed)?.error
+    val importError: AromaError? get() = (import?.outcome as? ImportOutcome.Failed)?.error
 }
 
 data class AddRecipeActions(
@@ -381,8 +375,8 @@ private fun WriteYourself(state: AddRecipeUiState, actions: AddRecipeActions) {
             )
             if (creating) InlineProgress(color = MaterialTheme.colorScheme.onSurface)
         }
-        state.failure?.takeIf { it.mode == AddMode.Create }?.let {
-            InlineError(it.error, Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m))
+        state.createError?.let {
+            InlineError(it, Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m))
         }
     }
 }

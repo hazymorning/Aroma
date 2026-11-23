@@ -1,18 +1,15 @@
 package app.aroma.core.format
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LinkPreviewTest {
     @Test
-    fun `reads an Instagram post's caption with its lines, its photo and that it is a video`() {
+    fun `reads an Instagram post's caption with its lines and its photo`() {
         val html =
             """
             <html><head>
-            <meta property="og:type" content="video.other" />
             <meta property="og:title"
               content="Koch mit mir on Instagram: &quot;Gnocchi &#x1f345;&#10;- 500 g Gnocchi&#10;1. Braten, bis sie &gt; goldbraun sind&quot;" />
             <meta property="og:image" content="https://scontent.cdninstagram.com/a.jpg?stp=1&amp;oh=2" />
@@ -23,7 +20,6 @@ class LinkPreviewTest {
 
         assertEquals("Koch mit mir on Instagram: \"Gnocchi 🍅\n- 500 g Gnocchi\n1. Braten, bis sie > goldbraun sind\"", preview.title)
         assertEquals("https://scontent.cdninstagram.com/a.jpg?stp=1&oh=2", preview.image)
-        assertTrue(preview.isVideo)
     }
 
     @Test
@@ -34,7 +30,6 @@ class LinkPreviewTest {
 
         assertEquals("Pizza", preview.title)
         assertEquals("Ofen auf > 180 °C", preview.description)
-        assertFalse(preview.isVideo)
         assertNull(preview.image)
     }
 
@@ -48,7 +43,7 @@ class LinkPreviewTest {
             """.trimIndent()
 
         assertEquals(
-            LinkPreview("Linsensuppe", "Wärmt von innen", "https://example.com/suppe.jpg", isVideo = false),
+            LinkPreview("Linsensuppe", "Wärmt von innen", "https://example.com/suppe.jpg"),
             LinkPreview.parse(html),
         )
     }

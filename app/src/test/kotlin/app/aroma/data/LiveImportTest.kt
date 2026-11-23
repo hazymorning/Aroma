@@ -91,7 +91,7 @@ class LiveImportTest {
         runBlocking<Unit> {
             val steps = mutableListOf<ImportStep>()
 
-            val slug = importer().import(ImportRequest(post), known) { steps += it }
+            val slug = importer().import(ImportRequest(post), onSending = {}) { steps += it }
             created += slug
 
             val recipe = env.recipes.recipeJson(slug)
@@ -119,7 +119,7 @@ class LiveImportTest {
         runBlocking<Unit> {
             assumeTrue("The server has no AI provider set up", env.recipes.canImportWithAi())
 
-            val slug = importer().import(ImportRequest(post, useAi = true), known) { }
+            val slug = importer().import(ImportRequest(post, useAi = true), onSending = {}) { }
             created += slug
 
             val recipe = env.recipes.recipeJson(slug)
@@ -135,7 +135,7 @@ class LiveImportTest {
         runBlocking<Unit> {
             val steps = mutableListOf<ImportStep>()
             try {
-                created += importer().import(ImportRequest("https://example.com/"), known) { steps += it }
+                created += importer().import(ImportRequest("https://example.com/"), onSending = {}) { steps += it }
                 fail("example.com holds no recipe")
             } catch (_: AromaError.ImportFailed) {
                 val streams =

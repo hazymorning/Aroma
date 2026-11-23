@@ -47,7 +47,7 @@ class AddRecipeViewModel(
 
     private val form = MutableStateFlow(AddRecipeUiState(url = sharedUrl.orEmpty(), starting = importsSharedLink))
 
-    private val jobId = saved.getStateFlow(JOB, shownJob)
+    private val jobId = saved.getStateFlow(FOLLOWED_IMPORT, shownJob)
 
     /** Collected by the screen only while it is shown, which is how an import knows whether to notify. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -66,12 +66,12 @@ class AddRecipeViewModel(
         currentJob()?.request?.let { request -> form.update { it.copy(url = request.url, text = request.text) } }
         viewModelScope.launch {
             val preferences = settings.settings.first()
-            val aiAvailable = recipes.canImportWithAi()
-            form.update {
-                it.copy(aiAvailable = aiAvailable, useAi = preferences.importWithAi, translate = preferences.translateImports)
-            }
-            // A link shared from another app starts right away, with the user's usual import settings.
+            form.update { it.copy(useAi = preferences.importWithAi, translate = preferences.translateImports) }
+            // A link shared from another app starts right away, with the user's usual import settings;
+            // whether the server has AI the import asks itself, so leaving the screen at once loses nothing.
             if (importsSharedLink) start()
+            val aiAvailable = recipes.canImportWithAi()
+            form.update { it.copy(aiAvailable = aiAvailable) }
         }
     }
 
@@ -79,7 +79,7 @@ class AddRecipeViewModel(
 
     fun onTextChange(text: String) = edit { it.copy(text = text) }
 
-    fun onNameChange(text: String) = form.update { it.copy(name = text, failure = null) }
+    fun onNameChange(text: String) = form.update { it.copy(name = text, createError = null) }
 
     fun onUseAiChange(enabled: Boolean) {
         edit { it.copy(useAi = enabled) }
@@ -104,11 +104,11 @@ class AddRecipeViewModel(
         val current = form.value
         if (current.name.isBlank() || current.creating || current.starting) return
         viewModelScope.launch {
-            form.update { it.copy(creating = true, failure = null) }
+            form.update { it.copy(creating = true, createError = null) }
             try {
                 outbox.send(recipes.create(current.name))
             } catch (error: AromaError) {
-                form.update { it.copy(failure = AddFailure(AddMode.Create, error)) }
+                form.update { it.copy(createError = error) }
             }
             form.update { it.copy(creating = false) }
         }
@@ -120,28 +120,21 @@ class AddRecipeViewModel(
             ImportRequest(
                 url = SharedLink.clean(current.url),
                 text = current.text.trim(),
-                useAi = current.usesAi,
-                translateTo = Locale.getDefault().toLanguageTag().takeIf { current.usesAi && current.translate },
+                useAi = current.useAi,
+                translateTo = Locale.getDefault().toLanguageTag().takeIf { current.useAi && current.translate },
             )
-        form.update { it.copy(starting = true, failure = null) }
-        viewModelScope.launch {
-            try {
-                saved[JOB] = imports.start(request).toString()
-            } catch (error: AromaError) {
-                form.update { it.copy(failure = AddFailure(AddMode.Import, error)) }
-            }
-            form.update { it.copy(starting = false) }
-        }
+        saved[FOLLOWED_IMPORT] = imports.start(request).toString()
+        form.update { it.copy(starting = false) }
     }
 
     /** A change to what is imported; an import that ended no longer belongs to it. */
     private fun edit(change: (AddRecipeUiState) -> AddRecipeUiState) {
-        if (currentJob()?.outcome != null) saved[JOB] = null
-        form.update { change(it).copy(failure = null) }
+        if (currentJob()?.outcome != null) saved[FOLLOWED_IMPORT] = null
+        form.update(change)
     }
 
     private fun currentJob(): ImportJob? = jobId.value?.let { imports.job(UUID.fromString(it)).value }
 }
 
-private const val JOB = "job"
+private const val FOLLOWED_IMPORT = "followedImport"
 private const val SHARED_LINK_IMPORTED = "sharedLinkImported"

@@ -12,7 +12,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /** A social media post as its link preview shows it. */
-data class SocialPost(val caption: String, val image: String?, val isVideo: Boolean)
+data class SocialPost(val caption: String, val image: String?)
 
 /** A photo as downloaded, with the file extension Mealie stores it under. */
 class Photo(val bytes: ByteArray, val extension: String)
@@ -42,7 +42,7 @@ class SocialPosts(client: OkHttpClient, private val userAgent: () -> String) {
                     source.request(MAX_PAGE_BYTES)
                     val preview = LinkPreview.parse(source.buffer.readUtf8(minOf(source.buffer.size, MAX_PAGE_BYTES)))
                     val caption = SocialCaption.extract(preview.title, preview.description)
-                    if (caption.isBlank()) null else SocialPost(caption, preview.image, preview.isVideo)
+                    if (caption.isBlank()) null else SocialPost(caption, preview.image)
                 }
             } catch (_: IOException) {
                 null
@@ -72,7 +72,8 @@ class SocialPosts(client: OkHttpClient, private val userAgent: () -> String) {
         return Request
             .Builder()
             .url(address)
-            .header("User-Agent", userAgent())
+            // A device name outside ASCII would make the header invalid.
+            .header("User-Agent", userAgent().filter { it in ' '..'~' })
             .header("Accept-Language", Locale.getDefault().toLanguageTag())
             .build()
     }

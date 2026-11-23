@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -54,13 +55,12 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
     /** Import [id] as it goes, collected by its screen while the screen is shown; null once the app was ended. */
     fun job(id: UUID): StateFlow<ImportJob?> = state(id)
 
-    /** Starts an import. Fails at once, with nothing sent, when Mealie cannot be reached. */
-    suspend fun start(request: ImportRequest): UUID {
-        val known = recipes.newestRecipeIds()
+    /** Queues an import; it starts at once unless another one is running. */
+    fun start(request: ImportRequest): UUID {
         val startedAt = System.currentTimeMillis()
         val work =
             OneTimeWorkRequestBuilder<ImportWorker>()
-                .setInputData(ImportWorker.input(request, known, startedAt))
+                .setInputData(ImportWorker.input(request, startedAt))
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
         state(work.id).value = ImportJob(request, startedAt)
@@ -72,17 +72,18 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
     /** The screen has shown how import [id] ended; its notification is no longer needed. */
     fun shown(id: UUID) = ImportNotifications.dismiss(context, id)
 
+    /** Drops the imports still queued, as when the user signs out. */
+    fun cancelAll() {
+        WorkManager.getInstance(context).cancelUniqueWork(QUEUE)
+    }
+
     /**
-     * Runs import [id] for its worker. [saved] is the request as the worker keeps it, without a
-     * pasted text, which may be too long for it: the text is taken from the running app.
+     * Runs import [id] for its worker. [saved] is the request as the worker keeps it; a pasted
+     * text too long for it is taken from the running app. [rerun] is set when Android ended the
+     * app during an earlier run: if that run had sent its request already, Mealie may be saving
+     * the recipe, so the import waits for it instead of sending the request again.
      */
-    internal suspend fun run(
-        id: UUID,
-        saved: ImportRequest,
-        known: Set<String>,
-        startedAt: Long,
-        resumed: Boolean,
-    ) {
+    internal suspend fun run(id: UUID, saved: ImportRequest, startedAt: Long, rerun: Boolean) {
         val state = state(id)
         val request = state.value?.request ?: saved
         state.value = ImportJob(request, startedAt)
@@ -92,14 +93,30 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
             val job = state.updateAndGet { it?.next(step) }
             if (job != null && !seen()) ImportNotifications.running(context, id, job)
         }
+        // The newest recipes from right before the request went out, kept on disk for a re-run.
+        val sent = File(context.noBackupFilesDir, "imports/$id")
         val outcome =
             try {
-                val slug = if (resumed) importer.resume(request, known, onStep) else importer.import(request, known, onStep)
+                val known = if (rerun && sent.exists()) sent.readLines().filter { it.isNotBlank() }.toSet() else null
+                val slug =
+                    if (known != null) {
+                        importer.resume(request, known, onStep)
+                    } else {
+                        importer.import(
+                            request,
+                            onSending = { newest ->
+                                sent.parentFile?.mkdirs()
+                                sent.writeText(newest.joinToString("\n"))
+                            },
+                            onStep = onStep,
+                        )
+                    }
                 ImportOutcome.Added(slug, nameOf(slug))
             } catch (error: Exception) {
                 // Whatever went wrong is told, rather than leaving the import running for good.
                 ImportOutcome.Failed(error.toAromaError())
             }
+        sent.delete()
         val job = state.updateAndGet { it?.copy(outcome = outcome) } ?: return
         ImportNotifications.ended(context, id, job, seen())
     }
@@ -131,12 +148,11 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         val request =
             ImportRequest(
                 url = inputData.getString(URL).orEmpty(),
+                text = inputData.getString(TEXT).orEmpty(),
                 useAi = inputData.getBoolean(USE_AI, false),
                 translateTo = inputData.getString(TRANSLATE_TO),
             )
-        val known = inputData.getStringArray(KNOWN).orEmpty().toSet()
-        // Ended by Android in the middle of it, the import may have reached Mealie already: it is not sent twice.
-        container.imports.run(id, request, known, inputData.startedAt, resumed = runAttemptCount > 0)
+        container.imports.run(id, request, inputData.startedAt, rerun = runAttemptCount > 0)
         // Success also when the import failed: that is told on its screen or in a notification, and
         // a failed import must not cancel the ones queued behind it.
         return Result.success()
@@ -146,17 +162,20 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
     companion object {
         private const val URL = "url"
+        private const val TEXT = "text"
         private const val USE_AI = "useAi"
         private const val TRANSLATE_TO = "translateTo"
-        private const val KNOWN = "known"
         private const val STARTED_AT = "startedAt"
 
-        fun input(request: ImportRequest, known: Set<String>, startedAt: Long): Data =
+        /** As long as a caption may be; three bytes a character keep it within WorkManager's limit for the data of a work. */
+        private const val MAX_SAVED_TEXT = 2400
+
+        fun input(request: ImportRequest, startedAt: Long): Data =
             workDataOf(
                 URL to request.url,
+                TEXT to request.text.takeIf { it.length <= MAX_SAVED_TEXT },
                 USE_AI to request.useAi,
                 TRANSLATE_TO to request.translateTo,
-                KNOWN to known.toTypedArray(),
                 STARTED_AT to startedAt,
             )
     }

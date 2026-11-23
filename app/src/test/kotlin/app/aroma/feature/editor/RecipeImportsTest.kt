@@ -50,7 +50,7 @@ class RecipeImportsTest {
             val id = UUID.randomUUID()
 
             // Signed out, the import fails at once, which is all this test needs.
-            imports.run(id, ImportRequest(PAGE), emptySet(), System.currentTimeMillis(), resumed = false)
+            imports.run(id, ImportRequest(PAGE), System.currentTimeMillis(), rerun = false)
 
             assertTrue(imports.job(id).value?.outcome is ImportOutcome.Failed)
             assertEquals("only the notification of the ended import is left", 1, notifications.size)
@@ -62,7 +62,7 @@ class RecipeImportsTest {
             val id = UUID.randomUUID()
             val screen = launch(Dispatchers.Unconfined) { imports.job(id).collect { } }
 
-            imports.run(id, ImportRequest(PAGE), emptySet(), System.currentTimeMillis(), resumed = false)
+            imports.run(id, ImportRequest(PAGE), System.currentTimeMillis(), rerun = false)
             screen.cancel()
 
             assertTrue(imports.job(id).value?.outcome is ImportOutcome.Failed)

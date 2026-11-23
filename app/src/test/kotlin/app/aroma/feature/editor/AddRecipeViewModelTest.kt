@@ -3,6 +3,7 @@ package app.aroma.feature.editor
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
+import androidx.work.testing.WorkManagerTestInitHelper
 import app.aroma.data.TestEnvironment
 import app.aroma.data.remote.SocialPosts
 import app.aroma.data.settings.SettingsRepository
@@ -11,6 +12,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -26,6 +28,9 @@ class AddRecipeViewModelTest {
 
     private val env = TestEnvironment()
     private val settings by lazy { SettingsRepository(PreferenceDataStoreFactory.create { folder.newFile("settings.preferences_pb") }) }
+
+    @Before
+    fun setUp() = WorkManagerTestInitHelper.initializeTestWorkManager(ApplicationProvider.getApplicationContext())
 
     @After
     fun tearDown() = env.close()

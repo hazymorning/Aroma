@@ -66,6 +66,10 @@ class RecipeImporterTest {
     @Volatile
     private var failingChecks = 0
 
+    /** Whether Mealie's AI answers with an error, as when its provider fails. */
+    @Volatile
+    private var aiFails = false
+
     /** The slug the imports answer with when they are not cut. */
     @Volatile
     private var answers = "gnocchi"
@@ -98,7 +102,7 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             val steps = mutableListOf<ImportStep>()
 
-            val slug = importer().import(ImportRequest(post, useAi = true, translateTo = "de-DE"), known) { steps += it }
+            val slug = importer().run(ImportRequest(post, useAi = true, translateTo = "de-DE")) { steps += it }
 
             assertEquals("gnocchi", slug)
             assertEquals(listOf("/api/recipes/create/ai/stream"), creations())
@@ -117,7 +121,7 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             caption = "Das Rezept steht im Video! #gnocchi"
 
-            importer().import(ImportRequest(post, useAi = true), known) { }
+            importer().run(ImportRequest(post, useAi = true))
 
             val sent = requests.single { it.url.encodedPath == "/api/recipes/create/ai/stream" }.body!!.utf8()
             assertTrue(sent.contains("name=\"url\""))
@@ -128,7 +132,7 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             val steps = mutableListOf<ImportStep>()
 
-            val slug = importer().import(ImportRequest(post), known) { steps += it }
+            val slug = importer().run(ImportRequest(post)) { steps += it }
 
             assertEquals("gnocchi", slug)
             assertEquals(emptyList<String>(), creations())
@@ -142,7 +146,7 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             caption = null
             try {
-                importer().import(ImportRequest(post), known) { }
+                importer().run(ImportRequest(post))
                 fail("Without its text the post cannot be read")
             } catch (failure: AromaError.ImportFailed) {
                 assertEquals(Reason.PostUnreadable, failure.reason)
@@ -155,7 +159,33 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             caption = null
 
-            assertEquals("gnocchi", importer().import(ImportRequest(post, text = CAPTION), known) { })
+            assertEquals("gnocchi", importer().run(ImportRequest(post, text = CAPTION)))
+        }
+
+    @Test
+    fun `with AI switched on, a website still goes through Mealie's regular import`() =
+        runBlocking<Unit> {
+            assertEquals("gnocchi", importer().run(ImportRequest(PAGE, useAi = true)))
+            assertEquals(listOf("/api/recipes/create/url/stream"), creations())
+        }
+
+    @Test
+    fun `when Mealie's AI fails on a post, Aroma reads the caption itself`() =
+        runBlocking<Unit> {
+            aiFails = true
+
+            assertEquals("gnocchi", importer().run(ImportRequest(post, useAi = true)))
+            assertTrue(requests.any { it.method == "POST" && it.url.encodedPath == "/api/recipes" })
+        }
+
+    @Test
+    fun `a recipe saved before the request went out is not taken for it`() =
+        runBlocking<Unit> {
+            // Saved by the import queued before this one, while this one waited.
+            listed.add(0, summary("id-frueher", "frueheres-rezept"))
+            cut = Cut("ai", arrives = "gnocchi")
+
+            assertEquals("gnocchi", importer().run(ImportRequest(post, useAi = true)))
         }
 
     @Test
@@ -170,7 +200,7 @@ class RecipeImporterTest {
                 )
             answers = "vorschau"
             try {
-                importer().import(ImportRequest(PAGE), known) { }
+                importer().run(ImportRequest(PAGE))
                 fail("The page holds no recipe")
             } catch (failure: AromaError.ImportFailed) {
                 assertEquals(Reason.NoRecipe, failure.reason)
@@ -184,7 +214,7 @@ class RecipeImporterTest {
             cut = Cut("url", arrives = "gnocchi")
             val steps = mutableListOf<ImportStep>()
 
-            val slug = importer().import(ImportRequest(PAGE), known) { steps += it }
+            val slug = importer().run(ImportRequest(PAGE)) { steps += it }
 
             assertEquals("gnocchi", slug)
             assertTrue(ImportStep.StillWorking in steps)
@@ -195,7 +225,7 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             cut = Cut("ai", arrives = "gnocchi")
 
-            assertEquals("gnocchi", importer().import(ImportRequest(post, useAi = true), known) { })
+            assertEquals("gnocchi", importer().run(ImportRequest(post, useAi = true)))
             assertTrue(requests.any { it.method == "PATCH" && it.body!!.utf8().contains(post) })
             assertTrue(requests.any { it.method == "PUT" && it.url.encodedPath == "/api/recipes/gnocchi/image" })
         }
@@ -207,7 +237,7 @@ class RecipeImporterTest {
             // Another household member saves a recipe while Aroma waits; it must not be mistaken for the import.
             listed.add(0, summary("id-fremd", "fremdes-rezept", link = PAGE, user = "someone-else"))
 
-            assertEquals("gnocchi", importer().import(ImportRequest(PAGE), known) { })
+            assertEquals("gnocchi", importer().run(ImportRequest(PAGE)))
         }
 
     @Test
@@ -215,7 +245,7 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             cut = Cut("ai", arrives = null)
             try {
-                importer(patience = 200.milliseconds).import(ImportRequest(post, useAi = true), known) { }
+                importer(patience = 200.milliseconds).run(ImportRequest(post, useAi = true))
                 fail("Nothing arrived, so the import cannot succeed")
             } catch (failure: AromaError.ImportFailed) {
                 assertEquals(Reason.NoAnswer, failure.reason)
@@ -229,7 +259,7 @@ class RecipeImporterTest {
             cut = Cut("url", arrives = "gnocchi")
             failingChecks = 3
 
-            assertEquals("gnocchi", importer().import(ImportRequest(PAGE), known) { })
+            assertEquals("gnocchi", importer().run(ImportRequest(PAGE)))
         }
 
     @Test
@@ -237,7 +267,7 @@ class RecipeImporterTest {
         runBlocking<Unit> {
             server.close()
             try {
-                importer(patience = 1000.seconds).import(ImportRequest(PAGE), known) { }
+                importer(patience = 1000.seconds).run(ImportRequest(PAGE))
                 fail("The server is gone, so the import cannot succeed")
             } catch (_: AromaError.Offline) {
                 // Expected, and quickly: the patience above would otherwise hold the test for minutes.
@@ -256,6 +286,9 @@ class RecipeImporterTest {
     private val post get() = "http://www.instagram.com:${server.port}/p/AromaTest02/"
 
     private fun creations() = requests.map { it.url.encodedPath }.filter { it.startsWith("/api/recipes/create/") }
+
+    private suspend fun RecipeImporter.run(request: ImportRequest, onStep: (ImportStep) -> Unit = {}) =
+        import(request, onSending = {}, onStep = onStep)
 
     private fun importer(patience: Duration = 2.seconds): RecipeImporter {
         // Every host is the test server, so the post keeps its real address.
@@ -291,6 +324,10 @@ class RecipeImporterTest {
                 list()
             }
 
+            path == "/api/groups/self" -> {
+                json("""{"aiProviderSettings":{"aiEnabled":true}}""")
+            }
+
             request.method == "POST" && path == "/api/recipes" -> {
                 json("\"gnocchi\"")
             }
@@ -301,6 +338,8 @@ class RecipeImporterTest {
                     cut = null
                     finishing = planned
                     cutStream()
+                } else if (aiFails && path.contains("/ai/")) {
+                    sse("event: error\ndata: {\"message\":\"The AI provider did not answer\"}\n\n")
                 } else {
                     sse("event: done\ndata: {\"slug\":\"$answers\"}\n\n")
                 }

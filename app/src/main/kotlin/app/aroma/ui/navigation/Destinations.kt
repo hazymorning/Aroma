@@ -606,10 +606,14 @@ fun AddRecipeDestination(route: AddRecipeRoute, nav: NavController) {
     }
     // An import may outlast the screen; a notification then says how it ended.
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    var askedForNotifications by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.isImporting) {
         val needsPermission =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-        if (state.isImporting && needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        if (state.isImporting && needsPermission && !askedForNotifications) {
+            askedForNotifications = true
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
     AddRecipeScreen(
         state = state,

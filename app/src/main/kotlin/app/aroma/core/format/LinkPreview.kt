@@ -4,12 +4,7 @@ package app.aroma.core.format
  * What a page tells link previews about itself, the way messengers show a shared link: its
  * `og:` meta tags, or the `twitter:` ones where those are missing.
  */
-data class LinkPreview(
-    val title: String,
-    val description: String,
-    val image: String?,
-    val isVideo: Boolean,
-) {
+data class LinkPreview(val title: String, val description: String, val image: String?) {
     companion object {
         // A quoted value may hold a ">", so the tag ends at the first one outside quotes.
         private val Meta = Regex("""<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>""", RegexOption.IGNORE_CASE)
@@ -38,7 +33,6 @@ data class LinkPreview(
                 title = first("og:title", "twitter:title").orEmpty(),
                 description = first("og:description", "twitter:description", "description").orEmpty(),
                 image = first("og:image:secure_url", "og:image", "twitter:image"),
-                isVideo = first("og:video", "og:video:secure_url") != null || first("og:type")?.startsWith("video") == true,
             )
         }
 

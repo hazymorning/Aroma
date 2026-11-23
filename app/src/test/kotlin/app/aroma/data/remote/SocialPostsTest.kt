@@ -25,7 +25,7 @@ class SocialPostsTest {
         server.start()
         // Every host is the test server, so the post keeps its real address.
         val client = OkHttpClient.Builder().dns(Dns { InetAddress.getAllByName(server.hostName).toList() }).build()
-        posts = SocialPosts(client) { "Test browser" }
+        posts = SocialPosts(client) { "Test browser (Küche)" }
     }
 
     @After
@@ -43,7 +43,7 @@ class SocialPostsTest {
 
             assertEquals("Gnocchi\n- 500 g Gnocchi", post.caption)
             assertEquals("https://cdn.example/g.jpg", post.image)
-            assertEquals("Test browser", server.takeRequest().headers["User-Agent"])
+            assertEquals("a device name outside ASCII is left out", "Test browser (Kche)", server.takeRequest().headers["User-Agent"])
         }
 
     @Test

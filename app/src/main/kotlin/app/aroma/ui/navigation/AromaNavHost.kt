@@ -71,12 +71,13 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                 nav.navigate(AddRecipeRoute())
             }
 
+            // An add screen already open would otherwise stay underneath and show the same import twice.
             is LaunchRequest.ShowImport -> {
-                nav.navigate(AddRecipeRoute(job = launch.job.toString()))
+                nav.navigate(AddRecipeRoute(job = launch.job.toString())) { popUpTo<AddRecipeRoute> { inclusive = true } }
             }
 
             is LaunchRequest.Recipe -> {
-                nav.navigate(RecipeRoute(launch.slug))
+                nav.navigate(RecipeRoute(launch.slug)) { popUpTo<AddRecipeRoute> { inclusive = true } }
             }
 
             LaunchRequest.Search -> {
