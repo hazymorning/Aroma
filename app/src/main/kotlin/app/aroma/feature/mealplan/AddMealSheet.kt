@@ -50,6 +50,7 @@ import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.PillTextField
 import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.PlaceholderLine
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RecipeListItem
 import app.aroma.ui.components.SegmentedControl
@@ -62,6 +63,7 @@ import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.ThumbnailSize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -177,7 +179,7 @@ private fun RecipePicker(search: PlanSearchState, onSearch: (String) -> Unit, on
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 460.dp),
+                            .heightIn(max = ResultsMaxHeight),
                 ) {
                     items(search.results, key = { it.id }) { recipe ->
                         RecipeListItem(recipe = recipe, onClick = { onPick(recipe) })
@@ -188,20 +190,21 @@ private fun RecipePicker(search: PlanSearchState, onSearch: (String) -> Unit, on
     }
 }
 
+/** The search results scroll within this height, so the sheet stops growing. */
+private val ResultsMaxHeight = 460.dp
+
+/** How long the line of a result's name is in the outline. */
+private val ResultWidth = 160.dp
+
 /** Rows shaped like the results, while the first ones load. */
 @Composable
 private fun ResultsPlaceholder() {
     Column(Modifier.padding(bottom = Space.xs)) {
         repeat(3) {
             Row(Modifier.padding(horizontal = ScreenMargin, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
-                Placeholder(Modifier.size(56.dp), shape = MaterialTheme.shapes.small)
+                Placeholder(Modifier.size(ThumbnailSize), shape = MaterialTheme.shapes.small)
                 Spacer(Modifier.width(Space.m))
-                Placeholder(
-                    Modifier
-                        .width(160.dp)
-                        .height(12.dp),
-                    shape = MaterialTheme.shapes.extraSmall,
-                )
+                PlaceholderLine(Modifier.width(ResultWidth))
             }
         }
     }

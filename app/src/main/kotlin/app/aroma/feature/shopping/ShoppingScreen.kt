@@ -71,17 +71,22 @@ import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.PageHeader
 import app.aroma.ui.components.PillTextField
 import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.PlaceholderLine
 import app.aroma.ui.components.QuietPress
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.PageEndSpace
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.extras
 
 data class ShoppingUiState(
@@ -158,7 +163,7 @@ fun ShoppingScreen(
                 .align(Alignment.BottomCenter)
                 .imePadding()
                 // 8 dp above the bar; while typing the bar is gone and the keyboard takes its place.
-                .padding(bottom = if (WindowInsets.isImeVisible) 16.dp else LocalBottomBarInset.current + 8.dp),
+                .padding(bottom = if (WindowInsets.isImeVisible) Space.m else LocalBottomBarInset.current + Space.xs),
         )
     }
     when (dialog) {
@@ -288,7 +293,7 @@ private fun Header(
                     text = stringResource(R.string.shopping_mode_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp),
+                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
                 )
             }
 
@@ -302,7 +307,7 @@ private fun Header(
                     imeAction = ImeAction.Done,
                     onSubmit = actions.onAddItem,
                     // With the switcher's target below the name, this sets the field about 24 dp under it.
-                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp),
+                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
                     trailing = { AddButton(visible = state.newItem.isNotBlank(), onClick = actions.onAddItem) },
                 )
             }
@@ -316,8 +321,8 @@ private fun Header(
 private fun SyncStatus(offline: Boolean, pendingChanges: Int) {
     if (!offline && pendingChanges == 0) return
     Column(
-        Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
+        verticalArrangement = Arrangement.spacedBy(Space.xxs),
     ) {
         if (offline) OfflineNotice()
         if (pendingChanges > 0) {
@@ -325,8 +330,8 @@ private fun SyncStatus(offline: Boolean, pendingChanges: Int) {
                 text = pluralStringResource(R.plurals.shopping_pending, pendingChanges, pendingChanges),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                // Under the notice's text, past its 16 dp glyph and 8 dp gap.
-                modifier = Modifier.padding(start = if (offline) 24.dp else 0.dp),
+                // Under the notice's text, past its glyph and the gap after it.
+                modifier = if (offline) Modifier.padding(start = Glyph.s + Space.xs) else Modifier,
             )
         }
     }
@@ -380,7 +385,7 @@ private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, o
     Box(
         Modifier
             .padding(horizontal = ScreenMargin)
-            .heightIn(min = 48.dp)
+            .heightIn(min = TouchTarget)
             .clickable(
                 interactionSource = null,
                 indication = QuietPress,
@@ -390,7 +395,7 @@ private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, o
                 onClick = { open = true },
             )
             // The name sits 8 dp under the title, and the rest of its 48 dp target lies below it.
-            .padding(top = 8.dp),
+            .padding(top = Space.xs),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -401,12 +406,12 @@ private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, o
                 modifier = Modifier.weight(1f, fill = false),
             )
             if (switchable) {
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(Space.xxs))
                 Icon(
                     painterResource(R.drawable.ic_expand_more),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(Glyph.s),
                 )
             }
         }
@@ -429,14 +434,14 @@ private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, o
 /** The add field's confirm: a small sage circle 8 dp from the field's end, there only while something is typed. */
 @Composable
 private fun AddButton(visible: Boolean, onClick: () -> Unit) {
-    Box(Modifier.size(48.dp)) {
+    Box(Modifier.size(TouchTarget)) {
         AnimatedVisibility(visible, enter = fadeIn(tween(Motion.STATE)), exit = fadeOut(tween(Motion.STATE))) {
             Box(
                 Modifier
-                    .size(48.dp)
+                    .size(TouchTarget)
                     .clickable(
                         interactionSource = null,
-                        indication = ripple(bounded = false, radius = 16.dp),
+                        indication = ripple(bounded = false, radius = AddCircle / 2),
                         role = Role.Button,
                         onClick = onClick,
                     ),
@@ -444,7 +449,7 @@ private fun AddButton(visible: Boolean, onClick: () -> Unit) {
             ) {
                 Box(
                     Modifier
-                        .size(32.dp)
+                        .size(AddCircle)
                         .background(extras.cta, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -452,13 +457,16 @@ private fun AddButton(visible: Boolean, onClick: () -> Unit) {
                         painterResource(R.drawable.ic_check),
                         contentDescription = stringResource(R.string.shopping_add),
                         tint = extras.onCta,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(Glyph.s),
                     )
                 }
             }
         }
     }
 }
+
+/** The sage circle of the add field's confirm. */
+private val AddCircle = 32.dp
 
 /** A name for a list or the text of an item, typed into one field. Saving needs something to save. */
 @Composable
@@ -484,29 +492,30 @@ private fun NameDialog(title: String, initial: String, onConfirm: (String) -> Un
     )
 }
 
+/** How long the outline's lines are: the category's name, then its items. */
+private val KickerWidth = 96.dp
 private val PlaceholderWidths = listOf(176.dp, 128.dp, 216.dp, 152.dp, 192.dp, 120.dp)
 
 /** The outline of a category while the list loads: a kicker, then rows of checks and lines. */
 @Composable
 private fun Loading() {
-    Column(Modifier.padding(top = 32.dp)) {
-        Placeholder(
+    Column(Modifier.padding(top = Space.xl)) {
+        PlaceholderLine(
             Modifier
                 .padding(horizontal = ScreenMargin)
-                .size(width = 96.dp, height = 12.dp),
-            shape = MaterialTheme.shapes.extraSmall,
+                .width(KickerWidth),
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Space.xs))
         PlaceholderWidths.forEach { width ->
             Row(
                 Modifier
-                    .height(56.dp)
+                    .height(RowHeight.oneLine)
                     .padding(horizontal = ScreenMargin),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Placeholder(Modifier.size(24.dp), shape = CircleShape)
-                Spacer(Modifier.width(IconKeyline - ScreenMargin - 24.dp))
-                Placeholder(Modifier.size(width = width, height = 12.dp), shape = MaterialTheme.shapes.extraSmall)
+                Placeholder(Modifier.size(CheckSize), shape = CircleShape)
+                Spacer(Modifier.width(IconKeyline - ScreenMargin - CheckSize))
+                PlaceholderLine(Modifier.width(width))
             }
         }
     }

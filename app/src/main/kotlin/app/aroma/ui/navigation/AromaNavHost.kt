@@ -29,7 +29,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -43,8 +42,11 @@ import app.aroma.ui.appContainer
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.LocalScrollToTop
+import app.aroma.ui.components.PrimaryButtonHeight
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Space
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -165,7 +167,7 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                 Modifier
                     .align(Alignment.BottomCenter)
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(start = 24.dp, end = 24.dp, bottom = FloatingBarGap),
+                    .padding(start = ScreenMargin, end = ScreenMargin, bottom = FloatingBarGap),
         ) {
             FloatingBar(
                 selected = Tab.entries.firstOrNull { destination?.isTab(it) == true },
@@ -181,12 +183,12 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                 .padding(
                     bottom =
                         when {
-                            showBar -> barInset + 8.dp
+                            showBar -> barInset + Space.xs
 
                             // Above the recipe's floating cook button.
-                            destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + 16.dp + 52.dp + 8.dp
+                            destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + Space.m + PrimaryButtonHeight + Space.xs
 
-                            else -> navigationInset + 16.dp
+                            else -> navigationInset + Space.m
                         },
                 ),
         )

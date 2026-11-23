@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.R
@@ -43,7 +42,6 @@ import app.aroma.ui.components.InlineProgress
 import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MessageState
-import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.PlaceholderLines
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.ScrollToTopOnReselect
@@ -51,8 +49,11 @@ import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.theme.CardTitle
+import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.ThumbnailSize
 import app.aroma.ui.theme.tabular
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -217,8 +218,8 @@ private fun TimelineRow(event: TimelineEvent, onClick: () -> Unit) {
             image = event.recipe.image,
             size = ImageSize.Thumbnail,
             shape = MaterialTheme.shapes.small,
-            fallbackIconSize = 20.dp,
-            modifier = Modifier.size(56.dp),
+            fallbackIconSize = Glyph.m,
+            modifier = Modifier.size(ThumbnailSize),
         )
         Column(Modifier.weight(1f)) {
             Text(event.recipe.name, style = CardTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)

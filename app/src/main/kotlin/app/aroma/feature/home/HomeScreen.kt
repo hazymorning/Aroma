@@ -78,10 +78,10 @@ import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.PageHeader
 import app.aroma.ui.components.PhotoPress
 import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.PlaceholderLine
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeCard
@@ -99,8 +99,11 @@ import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.ThumbnailSize
+import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.extras
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -150,6 +153,10 @@ data class HomeActions(
 )
 
 private const val RATE_STAR_SIZE = 28
+
+/** The ring of the profile button, which grows beside a greeting of two lines. */
+private val ProfileSize = 40.dp
+private val LargeProfileSize = 56.dp
 private val CarouselCardWidth = 160.dp
 
 @Composable
@@ -268,7 +275,7 @@ private fun dateline(date: LocalDate): String {
 @Composable
 private fun ProfileButton(name: String?, photo: String?, large: Boolean, onClick: () -> Unit) {
     val label = stringResource(R.string.home_open_profile)
-    val size by animateDpAsState(if (large) 56.dp else 40.dp, tween(Motion.STATE, easing = Settle), label = "profileSize")
+    val size by animateDpAsState(if (large) LargeProfileSize else ProfileSize, tween(Motion.STATE, easing = Settle), label = "profileSize")
     Box(
         modifier =
             Modifier
@@ -286,7 +293,7 @@ private fun ProfileButton(name: String?, photo: String?, large: Boolean, onClick
             Avatar(name, photo, size)
         } else {
             Box(Modifier.size(size).border(Lines.control, extras.hairlineStrong, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(painterResource(R.drawable.ic_settings), contentDescription = null, modifier = Modifier.size(20.dp))
+                Icon(painterResource(R.drawable.ic_settings), contentDescription = null, modifier = Modifier.size(Glyph.m))
             }
         }
     }
@@ -318,10 +325,10 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                 image = toRate.image,
                 size = ImageSize.Thumbnail,
                 shape = MaterialTheme.shapes.small,
-                fallbackIconSize = 20.dp,
+                fallbackIconSize = Glyph.m,
                 modifier =
                     Modifier
-                        .size(56.dp)
+                        .size(ThumbnailSize)
                         .clip(MaterialTheme.shapes.small)
                         .clickable(onClickLabel = stringResource(R.string.home_rate_open)) { actions.onOpenRecipe(toRate.slug) },
             )
@@ -354,7 +361,7 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                 actions.onDismissReminder,
                 // The cross is drawn 4 dp inside its box; the nudge puts its arms on the right margin.
                 Modifier
-                    .touchOutdent((48.dp - Glyph.m) / 2)
+                    .touchOutdent((TouchTarget - Glyph.m) / 2)
                     .offset(x = Space.xxs),
             )
         }
@@ -505,6 +512,14 @@ private fun RecipeCarousel(title: String, recipes: List<RecipeSummary>, actions:
     }
 }
 
+/**
+ * How long the outline's lines are: under Today's photo a kicker, a title and the meta line; under a
+ * card's, its title and meta line; and a section's title.
+ */
+private val TodayLineWidths = listOf(72.dp, 240.dp, 96.dp)
+private val CardLineWidths = listOf(128.dp, 72.dp)
+private val SectionTitleWidth = 120.dp
+
 /** The page's outline while it loads: the Today photo and caption, then a carousel of cards. */
 @Composable
 private fun HomeLoading() {
@@ -518,11 +533,9 @@ private fun HomeLoading() {
                     .aspectRatio(3f / 2f),
             )
             Spacer(Modifier.height(Space.m))
-            TextLinePlaceholder(72.dp)
-            Spacer(Modifier.height(Space.xs))
-            TextLinePlaceholder(240.dp)
-            Spacer(Modifier.height(Space.xs))
-            TextLinePlaceholder(96.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+                TodayLineWidths.forEach { PlaceholderLine(Modifier.width(it)) }
+            }
         }
         Spacer(Modifier.height(Space.xxl))
         SectionTitlePlaceholder()
@@ -542,9 +555,9 @@ private fun HomeLoading() {
                             .aspectRatio(4f / 5f),
                     )
                     Spacer(Modifier.height(Space.s))
-                    TextLinePlaceholder(128.dp)
-                    Spacer(Modifier.height(Space.xs))
-                    TextLinePlaceholder(72.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+                        CardLineWidths.forEach { PlaceholderLine(Modifier.width(it)) }
+                    }
                 }
             }
         }
@@ -557,19 +570,9 @@ private fun SectionTitlePlaceholder() {
     Box(
         Modifier
             .padding(horizontal = ScreenMargin)
-            .height(48.dp),
+            .height(TouchTarget),
         contentAlignment = Alignment.CenterStart,
-    ) { TextLinePlaceholder(120.dp) }
-}
-
-@Composable
-private fun TextLinePlaceholder(width: Dp) {
-    Placeholder(
-        Modifier
-            .width(width)
-            .height(12.dp),
-        shape = MaterialTheme.shapes.extraSmall,
-    )
+    ) { PlaceholderLine(Modifier.width(SectionTitleWidth)) }
 }
 
 /**

@@ -34,6 +34,7 @@ import app.aroma.core.format.IngredientLine
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.tabular
 
 /** An ingredient as shown in a list, optionally starting a new section. */
@@ -151,7 +152,7 @@ private fun IngredientRowItem(
             rowModifier
                 .then(modifier)
                 .fillMaxWidth()
-                .heightIn(min = 48.dp)
+                .heightIn(min = TouchTarget)
                 .alpha(fade)
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top,

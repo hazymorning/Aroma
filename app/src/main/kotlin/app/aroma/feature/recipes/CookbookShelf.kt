@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.R
@@ -27,16 +26,17 @@ import app.aroma.data.AromaError
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.toAromaError
 import app.aroma.ui.components.ErrorState
+import app.aroma.ui.components.GridColumnWidth
 import app.aroma.ui.components.GridRowGap
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.PhotoCard
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.pageItem
 import app.aroma.ui.components.recipeGridPlaceholders
+import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.tabular
@@ -88,7 +88,7 @@ fun CookbookShelf(
     ScrollToTopOnReselect(grid)
     Box(modifier.fillMaxSize()) {
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 160.dp),
+            columns = GridCells.Adaptive(minSize = GridColumnWidth),
             state = grid,
             contentPadding = PaddingValues(start = ScreenMargin, end = ScreenMargin, bottom = LocalBottomBarInset.current + PageEndSpace),
             horizontalArrangement = Arrangement.spacedBy(Space.m),

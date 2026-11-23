@@ -31,9 +31,12 @@ components only. `DesignRulesTest` checks the rules marked *(checked)* on every 
 | `IconKeyline` | 64 | Text after a 24 dp glyph in a row |
 | `ContentMaxWidth` | 600 | The widest a column of text and fields grows, on tablets |
 | `Glyph` | s 16, m 20, l 24, xl 32 | Line glyphs beside small text and links, in rows and fields, in bars, standing alone |
-| `PageEndSpace` | 32 | Free space after the last item of a scrolling page |
+| `PageEndSpace` | 24 | Free space after the last item of a scrolling page |
+| `TouchTarget` | 48 | The least size of anything that takes a tap |
+| `RowHeight` | oneLine 56, twoLines 72 | The least height of a row; two lines or large text take the taller |
+| `ThumbnailSize` | 56 | A photo or a face beside the text of a row |
 | Shapes | extraSmall 4, small 8, medium 12, large 16, extraLarge 24; circle | Placeholder lines, thumbnails, photos and fields, cards, sheets; buttons, chips, avatars |
-| `Lines` | hairline 0.5, control 1, checkRing 1.25 | Between rows, around controls, a check's ring |
+| `Lines` | hairline 0.5, control 1, checkRing 1.25, rule 2 | Between rows, around controls, a check's ring, a rule beside a note or under cook mode's steps |
 | `Motion` | PRESS 120, STATE 180, EXPAND 240, PULSE 1000, with `Settle` | Pressing, changing state, moving and resizing; a pulse while something waits |
 
 Colours, by role (`MaterialTheme.colorScheme` and `extras`):
@@ -58,9 +61,9 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
 
 ## Rules
 
-1. **Tokens only.** Screens use `Space`, the margins and the theme. A size that is not spacing is a
-   named constant in its file, never a bare number in a layout *(checked: no `N.dp` in `feature/`
-   outside a named constant)*.
+1. **Tokens only.** Screens use `Space`, the margins and the theme's sizes. A size that only one
+   file needs is a named constant there, never a bare number in a layout *(checked: no `N.dp` in
+   `feature/` outside a named constant)*.
 2. **Colours from the theme.** No colour literals outside `ui/theme` *(checked)*.
 3. **Shapes from the theme.** No `RoundedCornerShape` outside `ui/theme` and `ui/components`
    *(checked)*.
@@ -109,4 +112,4 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
 | `LabeledTextField`, `LabeledSecureTextField`, `PillTextField` | Input |
 | `AromaBottomSheet`, `SheetAction`, `SheetFooter`, `AromaAlertDialog`, `AromaDropdownMenu`, `AromaMenuItem` | Layers |
 | `PhotoCard`, `RecipeCard`, `RecipeListItem`, `RecipeImage`, `Avatar`, `IngredientList` | Content |
-| `InlineProgress`, `Placeholder`, `PlaceholderLines`, `MessageState`, `ErrorState`, `OfflineNotice` | States |
+| `InlineProgress`, `Placeholder`, `PlaceholderLine`, `PlaceholderLines`, `MessageState`, `ErrorState`, `OfflineNotice` | States |

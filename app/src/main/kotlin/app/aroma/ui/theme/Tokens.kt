@@ -28,6 +28,21 @@ val IconKeyline: Dp = 64.dp
 /** Content wider than this is centred, so lines stay readable on tablets. */
 val ContentMaxWidth: Dp = 600.dp
 
+/** Room below the last item of a scrolling page, so it never ends flush with an edge. */
+val PageEndSpace: Dp = 24.dp
+
+/** The least size of anything that takes a tap. */
+val TouchTarget: Dp = 48.dp
+
+/** The least height of a row: of one line, and of two lines or of large text. */
+object RowHeight {
+    val oneLine: Dp = 56.dp
+    val twoLines: Dp = 72.dp
+}
+
+/** A photo or a face beside the text of a row. */
+val ThumbnailSize: Dp = 56.dp
+
 /** Line glyphs: beside small text and links, in rows and fields, in bars, and standing alone. */
 object Glyph {
     val s: Dp = 16.dp
@@ -49,9 +64,10 @@ object Motion {
     val Settle = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 }
 
-/** Thin lines: between rows, around controls, and the ring of a check circle. */
+/** Thin lines: between rows, around controls, the ring of a check circle, and a rule that marks. */
 object Lines {
     val hairline: Dp = 0.5.dp
     val control: Dp = 1.dp
     val checkRing: Dp = 1.25.dp
+    val rule: Dp = 2.dp
 }

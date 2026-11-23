@@ -36,7 +36,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.format.IngredientFormatter
 import app.aroma.core.format.IngredientLine
@@ -61,6 +60,7 @@ import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import kotlinx.coroutines.delay
@@ -212,7 +212,7 @@ private fun IngredientChoice(line: IngredientLine, checked: Boolean, onToggle: (
         modifier =
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp)
+                .heightIn(min = RowHeight.oneLine)
                 .toggleable(checked, role = Role.Checkbox, onValueChange = { onToggle() })
                 .padding(horizontal = ScreenMargin, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,

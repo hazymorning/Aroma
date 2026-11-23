@@ -70,8 +70,10 @@ import app.aroma.ui.components.measureText
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.ShoppingModeItem
+import app.aroma.ui.theme.Space
 import java.util.Locale
 
 /** Open items grouped by label, in the order chosen in Mealie; unlabeled items come last. */
@@ -99,11 +101,14 @@ fun ShoppingList.grouped(): ShoppingGroups {
 private const val STRIKE_CENTER = 0.275f
 private const val STRIKE_THICKNESS = 0.05f
 
-/** The check's size: 24 dp in the list, 30 dp in shopping mode. */
-private fun checkSize(large: Boolean): Dp = if (large) 30.dp else 24.dp
+/** The check's size in the list, and in shopping mode. */
+internal val CheckSize = 24.dp
+private val LargeCheckSize = 30.dp
+
+private fun checkSize(large: Boolean): Dp = if (large) LargeCheckSize else CheckSize
 
 /** Where an item's text starts: 16 dp after the check in the list, a little further in shopping mode. */
-private fun textKeyline(large: Boolean): Dp = if (large) 72.dp else IconKeyline
+private fun textKeyline(large: Boolean): Dp = if (large) IconKeyline + Space.xs else IconKeyline
 
 /** The open items under their category kickers, then what is already in the basket. */
 internal fun LazyListScope.shoppingSections(
@@ -144,7 +149,7 @@ internal fun LazyListScope.shoppingSections(
                 modifier =
                     Modifier
                         .animateItem()
-                        .padding(start = ScreenMargin, end = ScreenMargin, top = 32.dp, bottom = 8.dp)
+                        .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl, bottom = Space.xs)
                         .semantics { heading() },
             )
         }
@@ -191,7 +196,7 @@ private fun BasketHeader(count: Int, onClear: () -> Unit, modifier: Modifier = M
             modifier
                 .fillMaxWidth()
                 // The link's 48 dp target adds 16 dp above the kicker.
-                .padding(start = ScreenMargin, end = ScreenMargin, top = 32.dp),
+                .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl),
     ) {
         Kicker(
             text = stringResource(R.string.shopping_in_cart, count),
@@ -250,8 +255,8 @@ private fun ItemRow(
                                 true
                             },
                         )
-                }.heightIn(min = if (large || item.recipeNames.isNotEmpty()) 72.dp else 56.dp)
-                .padding(horizontal = ScreenMargin, vertical = 12.dp),
+                }.heightIn(min = if (large || item.recipeNames.isNotEmpty()) RowHeight.twoLines else RowHeight.oneLine)
+                .padding(horizontal = ScreenMargin, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CheckCircle(checked, size = checkSize(large))

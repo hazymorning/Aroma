@@ -109,16 +109,20 @@ fun Placeholder(modifier: Modifier = Modifier, shape: Shape = MaterialTheme.shap
     )
 }
 
+/** A line of text that is still loading, as long as [modifier] makes it. */
+@Composable
+fun PlaceholderLine(modifier: Modifier = Modifier) {
+    Placeholder(modifier.height(12.dp), shape = MaterialTheme.shapes.extraSmall)
+}
+
 @Composable
 fun PlaceholderLines(lines: Int, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         repeat(lines) { index ->
-            Placeholder(
+            PlaceholderLine(
                 Modifier
-                    .height(12.dp)
                     .widthIn(max = if (index == lines - 1) 180.dp else 320.dp)
                     .fillMaxWidth(),
-                shape = MaterialTheme.shapes.extraSmall,
             )
         }
     }

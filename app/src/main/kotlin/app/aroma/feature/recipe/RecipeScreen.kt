@@ -87,6 +87,7 @@ import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaDropdownMenu
 import app.aroma.ui.components.AromaMenuItem
 import app.aroma.ui.components.DetailTopBar
+import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
@@ -96,7 +97,9 @@ import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.OnPhotoButton
 import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.PlaceholderLine
 import app.aroma.ui.components.PrimaryButton
+import app.aroma.ui.components.PrimaryButtonHeight
 import app.aroma.ui.components.QuietPress
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
@@ -107,6 +110,7 @@ import app.aroma.ui.components.Stepper
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.recipeTimeText
 import app.aroma.ui.components.rememberRichText
+import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.KickerStyle
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
@@ -116,6 +120,7 @@ import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.Standfirst
 import app.aroma.ui.theme.StepNumber
+import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.floatingShadow
 import app.aroma.ui.theme.tabular
@@ -158,11 +163,17 @@ data class RecipeActions(
 private const val HERO_KEY = "hero"
 private const val TITLE_KEY = "title"
 
-/** The bar over the photo and the paper bar after it share this height, status bar excluded. */
-private val BarHeight = 56.dp
+/** The plate that stands in for a missing photo at the head of the page. */
+private val HeroPlateSize = 48.dp
 
-/** The cook button's height, as [PrimaryButton] sets it. */
-private val CookButtonHeight = 52.dp
+/** Just enough shade at the top of the photo for the status bar and the buttons to read on it. */
+private val PhotoShadeHeight = 96.dp
+
+/** The glyph after the source, as small as the stars before it. */
+private val SourceGlyph = 14.dp
+
+/** Nutrition is a small table, set closer than rows that take a tap. */
+private val NutritionRowHeight = 44.dp
 
 @Composable
 fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifier = Modifier) {
@@ -170,7 +181,7 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
     val recipe = state.recipe
     var rateOpen by rememberSaveable { mutableStateOf(false) }
     val density = LocalDensity.current
-    val barBottom = WindowInsets.statusBars.getTop(density) + with(density) { BarHeight.roundToPx() }
+    val barBottom = WindowInsets.statusBars.getTop(density) + with(density) { DetailTopBarHeight.roundToPx() }
     // The bar turns to paper once the photo has slid beneath it, and shows the title once that has too.
     val barOverPhoto by remember(listState, barBottom) {
         derivedStateOf { listState.bottomOf(HERO_KEY)?.let { it > barBottom } ?: (listState.firstVisibleItemIndex == 0) }
@@ -207,7 +218,7 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
                         Modifier
                             .fillMaxSize()
                             .statusBarsPadding()
-                            .padding(top = BarHeight),
+                            .padding(top = DetailTopBarHeight),
                 )
             }
         }
@@ -231,7 +242,7 @@ private fun LazyListState.bottomOf(key: Any): Int? = layoutInfo.visibleItemsInfo
 @Composable
 private fun endSpace(canCook: Boolean) =
     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-        if (canCook) CookButtonHeight + Space.m + Space.xl else Space.xl
+        if (canCook) PrimaryButtonHeight + Space.m + Space.xl else Space.xl
 
 @Composable
 private fun Hero(recipe: Recipe) {
@@ -244,15 +255,14 @@ private fun Hero(recipe: Recipe) {
             image = recipe.image,
             size = ImageSize.Original,
             placeholder = ImageSize.Medium,
-            fallbackIconSize = 48.dp,
+            fallbackIconSize = HeroPlateSize,
             modifier = Modifier.fillMaxSize(),
         )
-        // Just enough shade for the status bar and the buttons to read on a bright photo.
         val scrim = MaterialTheme.colorScheme.scrim
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(96.dp)
+                .height(PhotoShadeHeight)
                 .background(Brush.verticalGradient(listOf(scrim.copy(alpha = 0.28f), scrim.copy(alpha = 0f)))),
         )
     }
@@ -384,7 +394,7 @@ private fun BoxScope.CookButton(visible: Boolean, onClick: () -> Unit) {
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(0f to page.copy(alpha = 0f), 0.45f to page.copy(alpha = 0.85f), 1f to page))
                     .navigationBarsPadding()
-                    .height(CookButtonHeight + Space.m + Space.l),
+                    .height(PrimaryButtonHeight + Space.m + Space.l),
             )
             PrimaryButton(
                 text = stringResource(R.string.recipe_start_cooking),
@@ -531,7 +541,7 @@ private fun Byline(rating: Double?, sourceUrl: String?, onOpenRating: () -> Unit
                     modifier =
                         Modifier
                             .padding(start = Space.xxs)
-                            .size(14.dp),
+                            .size(SourceGlyph),
                 )
             }
         }
@@ -614,7 +624,7 @@ private fun Facts(recipe: Recipe) {
                 Column(
                     Modifier
                         .weight(1f)
-                        .padding(start = if (index > 0) Space.m else 0.dp),
+                        .then(if (index > 0) Modifier.padding(start = Space.m) else Modifier),
                 ) {
                     Kicker(label)
                     Text(
@@ -705,7 +715,8 @@ private fun StepItem(index: Int, step: Step, modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier =
                 Modifier
-                    .width(40.dp)
+                    // Step text starts on the 64 dp keyline, as in the editor.
+                    .width(IconKeyline - ScreenMargin)
                     .alignByBaseline(),
         )
         Column(
@@ -737,7 +748,7 @@ private fun Note(note: RecipeNote, modifier: Modifier = Modifier) {
     Row(modifier.height(IntrinsicSize.Min)) {
         Box(
             Modifier
-                .width(2.dp)
+                .width(Lines.rule)
                 .fillMaxHeight()
                 .background(extras.hairlineStrong),
         )
@@ -760,7 +771,7 @@ private fun Nutrition(values: List<NutritionValue>) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 44.dp)
+                        .heightIn(min = NutritionRowHeight)
                         .padding(horizontal = ScreenMargin),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -801,6 +812,11 @@ private fun nutritionLabel(kind: NutritionKind): String =
         },
     )
 
+/** How the outline's lines measure: the categories over the title, the title, and the byline. */
+private val CategoriesWidth = 120.dp
+private val TitleHeight = 32.dp
+private val BylineWidth = 140.dp
+
 /** The page's outline while the recipe loads: photo, title, byline, actions and the description. */
 @Composable
 private fun RecipeLoading() {
@@ -812,45 +828,36 @@ private fun RecipeLoading() {
             shape = RectangleShape,
         )
         Column(Modifier.padding(horizontal = ScreenMargin)) {
-            Placeholder(
+            PlaceholderLine(
                 Modifier
                     .padding(top = Space.l)
-                    .size(width = 120.dp, height = 12.dp),
-                shape = MaterialTheme.shapes.extraSmall,
+                    .width(CategoriesWidth),
             )
             Placeholder(
                 Modifier
                     .padding(top = Space.s)
                     .fillMaxWidth(0.8f)
-                    .height(32.dp),
+                    .height(TitleHeight),
                 shape = MaterialTheme.shapes.extraSmall,
             )
-            Placeholder(
+            PlaceholderLine(
                 Modifier
                     .padding(top = Space.m)
-                    .size(width = 140.dp, height = 12.dp),
-                shape = MaterialTheme.shapes.extraSmall,
+                    .width(BylineWidth),
             )
             Row(Modifier.padding(top = Space.l), horizontalArrangement = Arrangement.spacedBy(Space.s)) {
                 repeat(2) {
                     Placeholder(
                         Modifier
                             .weight(1f)
-                            .height(48.dp),
+                            .height(TouchTarget),
                         shape = CircleShape,
                     )
                 }
             }
             // The description: two full lines and a short one, on the standfirst's line pitch.
             Column(Modifier.padding(top = Space.l), verticalArrangement = Arrangement.spacedBy(Space.m)) {
-                listOf(1f, 1f, 0.6f).forEach { width ->
-                    Placeholder(
-                        Modifier
-                            .fillMaxWidth(width)
-                            .height(12.dp),
-                        shape = MaterialTheme.shapes.extraSmall,
-                    )
-                }
+                listOf(1f, 1f, 0.6f).forEach { width -> PlaceholderLine(Modifier.fillMaxWidth(width)) }
             }
         }
     }

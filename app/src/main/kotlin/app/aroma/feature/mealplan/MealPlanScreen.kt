@@ -10,6 +10,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,7 +50,6 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.ImageSize
@@ -69,9 +69,9 @@ import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.PageHeader
 import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.PlaceholderLine
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.ScrollToTopOnReselect
@@ -84,11 +84,14 @@ import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.CardTitle
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.ThumbnailSize
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.tabular
 import java.time.LocalDate
@@ -121,9 +124,6 @@ data class MealPlanActions(
     val onMoveEntry: (MealPlanEntry, LocalDate, MealType) -> Unit = { _, _, _ -> },
     val onRefresh: () -> Unit = {},
 )
-
-private val Thumbnail = 56.dp
-private val RowGlyph = 20.dp
 
 /**
  * Shorter than the add button's 48 dp target, which Material lets reach past the row for touch,
@@ -456,13 +456,13 @@ private fun EntryThumbnail(entry: MealPlanEntry) {
             image = entry.recipe.image,
             size = ImageSize.Thumbnail,
             shape = MaterialTheme.shapes.small,
-            fallbackIconSize = RowGlyph,
-            modifier = Modifier.size(Thumbnail),
+            fallbackIconSize = Glyph.m,
+            modifier = Modifier.size(ThumbnailSize),
         )
     } else {
         Box(
             Modifier
-                .size(Thumbnail)
+                .size(ThumbnailSize)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.small),
             contentAlignment = Alignment.Center,
         ) {
@@ -470,7 +470,7 @@ private fun EntryThumbnail(entry: MealPlanEntry) {
                 painterResource(R.drawable.ic_notes),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(RowGlyph),
+                modifier = Modifier.size(Glyph.m),
             )
         }
     }
@@ -513,6 +513,10 @@ private fun EntrySheet(
     }
 }
 
+/** How long the outline's lines are: a day's name, then a meal's kicker and title. */
+private val DayWidth = 120.dp
+private val EntryLineWidths = listOf(64.dp, 180.dp)
+
 /** The week's outline while it loads: day lines with one meal each. */
 @Composable
 private fun Loading() {
@@ -524,29 +528,17 @@ private fun Loading() {
                     .padding(start = ScreenMargin, top = Space.xs)
                     .height(DayRowHeight),
                 contentAlignment = Alignment.CenterStart,
-            ) { TextLinePlaceholder(120.dp) }
+            ) { PlaceholderLine(Modifier.width(DayWidth)) }
             Row(Modifier.padding(horizontal = ScreenMargin, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
-                Placeholder(Modifier.size(Thumbnail), shape = MaterialTheme.shapes.small)
+                Placeholder(Modifier.size(ThumbnailSize), shape = MaterialTheme.shapes.small)
                 Spacer(Modifier.width(Space.m))
-                Column {
-                    TextLinePlaceholder(64.dp)
-                    Spacer(Modifier.height(Space.xs))
-                    TextLinePlaceholder(180.dp)
+                Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+                    EntryLineWidths.forEach { PlaceholderLine(Modifier.width(it)) }
                 }
             }
             Spacer(Modifier.height(Space.s))
         }
     }
-}
-
-@Composable
-private fun TextLinePlaceholder(width: Dp) {
-    Placeholder(
-        Modifier
-            .width(width)
-            .height(12.dp),
-        shape = MaterialTheme.shapes.extraSmall,
-    )
 }
 
 private fun MealPlanUiState.entry(id: Int?): MealPlanEntry? =

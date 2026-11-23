@@ -27,11 +27,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.Hairline
+import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 
@@ -68,7 +69,7 @@ private fun LicenseRow(item: License, onOpen: (() -> Unit)?) {
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 72.dp)
+            .heightIn(min = RowHeight.twoLines)
             .then(if (onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
             .padding(horizontal = ScreenMargin, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,
@@ -83,7 +84,7 @@ private fun LicenseRow(item: License, onOpen: (() -> Unit)?) {
                 painterResource(R.drawable.ic_chevron_right),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(Glyph.s),
             )
         }
     }

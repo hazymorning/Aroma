@@ -5,7 +5,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -18,9 +17,6 @@ val LocalBottomBarInset = staticCompositionLocalOf { 0.dp }
 
 /** Emits when the tab of the current page is tapped again, which takes the page back to its top. */
 val LocalScrollToTop = staticCompositionLocalOf<Flow<Unit>> { emptyFlow() }
-
-/** Room below the last item of a scrolling page, so it never ends flush with an edge. */
-val PageEndSpace: Dp = 24.dp
 
 /** Scrolls [state] back to the top when the page's tab is tapped again. */
 @Composable

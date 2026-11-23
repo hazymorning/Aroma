@@ -98,6 +98,10 @@ data class LoginActions(
 /** The space above the wordmark, as a share of the height left beside the keyboard. */
 private const val TOP_SPACE_FRACTION = 0.18f
 
+/** Signing in is a narrow column, also on a tablet; the tagline under the name a narrower one. */
+private val FormWidth = 460.dp
+private val TaglineWidth = 320.dp
+
 @Composable
 fun LoginScreen(state: LoginUiState, actions: LoginActions, modifier: Modifier = Modifier) {
     BoxWithConstraints(
@@ -117,7 +121,7 @@ fun LoginScreen(state: LoginUiState, actions: LoginActions, modifier: Modifier =
         ) {
             Column(
                 Modifier
-                    .widthIn(max = 460.dp)
+                    .widthIn(max = FormWidth)
                     .fillMaxWidth(),
             ) {
                 Text(
@@ -131,7 +135,7 @@ fun LoginScreen(state: LoginUiState, actions: LoginActions, modifier: Modifier =
                     text = stringResource(R.string.login_tagline),
                     style = Standfirst,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.widthIn(max = 320.dp),
+                    modifier = Modifier.widthIn(max = TaglineWidth),
                 )
                 Spacer(Modifier.height(Space.xxl))
                 AnimatedContent(

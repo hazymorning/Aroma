@@ -32,10 +32,10 @@ import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.RecipeGrid
 import app.aroma.ui.components.pageItem
 import app.aroma.ui.components.recipeGridPlaceholders
+import app.aroma.ui.theme.PageEndSpace
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.Standfirst

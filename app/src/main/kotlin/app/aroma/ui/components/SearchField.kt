@@ -39,6 +39,7 @@ import app.aroma.R
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.extras
 
 /**
@@ -72,7 +73,7 @@ fun PillTextField(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(48.dp),
+                .height(TouchTarget),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 16.dp, end = 0.dp)) {
             Icon(

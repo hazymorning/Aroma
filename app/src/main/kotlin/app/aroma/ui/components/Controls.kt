@@ -75,7 +75,9 @@ import app.aroma.ui.theme.KickerStyle
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.contactShadow
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.isDarkScheme
@@ -109,7 +111,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, actionLabel: Str
             modifier
                 .fillMaxWidth()
                 // The same height with or without a link, so sections keep one rhythm on every screen.
-                .heightIn(min = 48.dp)
+                .heightIn(min = TouchTarget)
                 .padding(horizontal = ScreenMargin),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -195,8 +197,8 @@ fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 
                         Modifier
                             // Five 48 dp targets where they fit; on narrow screens they share the width.
                             .weight(1f, fill = false)
-                            .widthIn(max = 48.dp)
-                            .height(48.dp)
+                            .widthIn(max = TouchTarget)
+                            .height(TouchTarget)
                             .selectable(selected = lit, role = Role.RadioButton, onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                                 onRate(star)
@@ -224,7 +226,7 @@ fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 
 private const val STAR_STAGGER_MILLIS = 50L
 
 /** Interactive stars leave this much room before the first glyph; offset the row by it to keep the keyline. */
-fun ratingTouchInset(starSize: Int): Dp = (48.dp - starSize.dp) / 2
+fun ratingTouchInset(starSize: Int): Dp = (TouchTarget - starSize.dp) / 2
 
 /** A hairline stadium chip; selected chips take the action colour. */
 @Composable
@@ -303,7 +305,7 @@ fun SwitchRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .heightIn(min = if (subtitle == null) 56.dp else 72.dp)
+                .heightIn(min = if (subtitle == null) RowHeight.oneLine else RowHeight.twoLines)
                 .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
                 .padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically,

@@ -43,6 +43,7 @@ import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.isDarkScheme
 import app.aroma.ui.theme.photoButtonShadow
@@ -72,7 +73,7 @@ fun PrimaryButton(
             ),
         elevation = null,
         contentPadding = PaddingValues(horizontal = 28.dp),
-        modifier = modifier.height(52.dp),
+        modifier = modifier.height(PrimaryButtonHeight),
     ) {
         Box(contentAlignment = Alignment.Center) {
             // The label keeps its place while loading, so the button never changes width.
@@ -91,6 +92,9 @@ fun PrimaryButton(
         }
     }
 }
+
+/** The height of [PrimaryButton], which a round button beside it takes as its size. */
+val PrimaryButtonHeight: Dp = 52.dp
 
 /**
  * A quiet action: a hairline stadium with an ink icon and label. [confirmed] turns the icon into
@@ -160,7 +164,7 @@ fun QuietLink(
     Row(
         modifier =
             modifier
-                .heightIn(min = 48.dp)
+                .heightIn(min = TouchTarget)
                 .clickable(interactionSource = null, indication = QuietPress, enabled = enabled, role = Role.Button, onClick = onClick)
                 .alpha(if (enabled) 1f else 0.38f),
         verticalAlignment = Alignment.CenterVertically,
@@ -228,7 +232,7 @@ fun HairlineIconButton(
     Box(
         modifier =
             modifier
-                .size(maxOf(size, 48.dp))
+                .size(maxOf(size, TouchTarget))
                 .clip(CircleShape)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -261,7 +265,7 @@ fun OnPhotoButton(
     Box(
         modifier =
             modifier
-                .size(48.dp)
+                .size(TouchTarget)
                 // Unbounded, so the press does not cut off the button's shadow.
                 .clickable(
                     interactionSource = null,

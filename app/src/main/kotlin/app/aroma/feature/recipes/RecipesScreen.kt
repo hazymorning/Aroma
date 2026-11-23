@@ -64,7 +64,6 @@ import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.PageEndSpace
 import app.aroma.ui.components.PageHeader
 import app.aroma.ui.components.PillTextField
 import app.aroma.ui.components.RecipeGrid
@@ -75,7 +74,10 @@ import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.pageItem
 import app.aroma.ui.components.recipeGridPlaceholders
 import app.aroma.ui.components.rememberFullSheetState
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.PageEndSpace
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 
@@ -254,17 +256,17 @@ private fun Header(state: RecipesUiState, actions: RecipesActions, searchFocus: 
             focusRequester = searchFocus,
             modifier = Modifier.padding(horizontal = ScreenMargin),
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Space.m))
         FilterChips(state, actions, openSheet)
-        if (state.isOffline) OfflineNotice(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp))
-        Spacer(Modifier.height(24.dp))
+        if (state.isOffline) OfflineNotice(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m))
+        Spacer(Modifier.height(Space.l))
     }
 }
 
 @Composable
 private fun FilterChips(state: RecipesUiState, actions: RecipesActions, openSheet: (RecipesSheet) -> Unit) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Space.xs),
         contentPadding = PaddingValues(horizontal = ScreenMargin),
     ) {
         item(key = "favorites") {
@@ -408,7 +410,7 @@ private fun ChoiceRow(label: String, chosen: Boolean, modifier: Modifier = Modif
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(RowHeight.oneLine)
                 .padding(horizontal = ScreenMargin),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -419,14 +421,14 @@ private fun ChoiceRow(label: String, chosen: Boolean, modifier: Modifier = Modif
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(Space.m))
         Icon(
             painterResource(R.drawable.ic_check),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier =
                 Modifier
-                    .size(20.dp)
+                    .size(Glyph.m)
                     .graphicsLayer { alpha = check },
         )
     }

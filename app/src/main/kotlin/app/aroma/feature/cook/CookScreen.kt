@@ -81,6 +81,7 @@ import app.aroma.core.model.Recipe
 import app.aroma.core.model.Step
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaBottomSheet
+import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HairlineIconButton
@@ -90,6 +91,7 @@ import app.aroma.ui.components.IngredientRow
 import app.aroma.ui.components.Kicker
 import app.aroma.ui.components.LinkTone
 import app.aroma.ui.components.PrimaryButton
+import app.aroma.ui.components.PrimaryButtonHeight
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
@@ -101,12 +103,16 @@ import app.aroma.ui.components.formatDuration
 import app.aroma.ui.components.fullBleed
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberRichText
+import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.CookStep
+import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TimerDigits
+import app.aroma.ui.theme.TouchTarget
 import kotlinx.coroutines.launch
 
 data class CookTimerUi(
@@ -152,6 +158,12 @@ private val CircleInset = 4.dp
 
 private const val DONE_STAR_SIZE = 32
 
+/** The recipe's photo on the page that ends cooking. */
+private val DonePhotoSize = 112.dp
+
+/** A timer's row, with room for its digits and its round buttons. */
+private val TimerRowHeight = 64.dp
+
 @Composable
 fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Modifier, initialPage: Int = 0) {
     val steps = state.recipe?.steps.orEmpty()
@@ -184,7 +196,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
             .statusBarsPadding()
             .navigationBarsPadding()
             .wrapContentWidth()
-            .widthIn(max = 600.dp),
+            .widthIn(max = ContentMaxWidth),
     ) {
         TopBar(
             title = state.recipe?.name.orEmpty(),
@@ -257,8 +269,8 @@ private fun TopBar(title: String, hasIngredients: Boolean, onClose: () -> Unit, 
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .padding(start = 8.dp, end = ScreenMargin),
+                .height(DetailTopBarHeight)
+                .padding(start = Space.xs, end = ScreenMargin),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HeaderAction(R.drawable.ic_close, stringResource(R.string.cook_close), onClose)
@@ -271,7 +283,7 @@ private fun TopBar(title: String, hasIngredients: Boolean, onClose: () -> Unit, 
             modifier =
                 Modifier
                     .weight(1f)
-                    .padding(start = 8.dp, end = 16.dp),
+                    .padding(start = Space.xs, end = Space.m),
         )
         if (hasIngredients) {
             QuietLink(stringResource(R.string.recipe_ingredients), onIngredients, tone = LinkTone.Ink)
@@ -286,8 +298,8 @@ private fun StepProgress(current: Int, steps: Int) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(start = ScreenMargin, end = ScreenMargin, top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
+        horizontalArrangement = Arrangement.spacedBy(Space.xxs),
     ) {
         repeat(steps) { index ->
             val fill by animateFloatAsState(if (index <= current) 1f else 0f, tween(Motion.EXPAND, easing = Settle), label = "stepFill")
@@ -295,7 +307,7 @@ private fun StepProgress(current: Int, steps: Int) {
             Box(
                 Modifier
                     .weight(1f)
-                    .height(2.dp)
+                    .height(Lines.rule)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.outlineVariant)
                     .drawBehind { drawRect(done, size = size.copy(width = size.width * fill)) },
@@ -325,20 +337,20 @@ private fun StepPage(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = ScreenMargin, end = ScreenMargin, top = 32.dp, bottom = 32.dp),
+            .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl, bottom = Space.xl),
     ) {
         Kicker(stepLabel)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Space.m))
         if (!step.title.isNullOrBlank()) {
             Text(step.title, style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Space.xs))
         }
         StepText(rememberRichText(step.text, onDuration = { onStartTimer(it.seconds, stepLabel) }))
         if (durations.isNotEmpty()) {
             FlowRow(
-                modifier = Modifier.padding(top = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = Space.l),
+                horizontalArrangement = Arrangement.spacedBy(Space.xs),
+                verticalArrangement = Arrangement.spacedBy(Space.xs),
             ) {
                 durations.forEach { seconds ->
                     SecondaryButton(
@@ -359,7 +371,7 @@ private fun StepPage(
                     } else {
                         stringResource(R.string.cook_step_ingredients)
                     },
-                modifier = Modifier.padding(top = 32.dp, bottom = 8.dp),
+                modifier = Modifier.padding(top = Space.xl, bottom = Space.xs),
             )
             IngredientList(
                 rows = ingredients.rows,
@@ -401,8 +413,8 @@ private fun StepText(text: AnnotatedString) {
 }
 
 private fun DrawScope.drawUnderlines(layout: TextLayoutResult, links: List<AnnotatedString.Range<LinkAnnotation>>, color: Color) {
-    val below = 4.dp.toPx()
-    val stroke = 1.dp.toPx()
+    val below = Space.xxs.toPx()
+    val stroke = Lines.control.toPx()
     links.forEach { link ->
         for (line in layout.getLineForOffset(link.start)..layout.getLineForOffset(link.end - 1)) {
             val start = maxOf(link.start, layout.getLineStart(line))
@@ -421,7 +433,7 @@ private fun DonePage(state: CookUiState, actions: CookActions) {
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = ScreenMargin, vertical = 32.dp),
+            .padding(horizontal = ScreenMargin, vertical = Space.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.weight(1f))
@@ -429,16 +441,16 @@ private fun DonePage(state: CookUiState, actions: CookActions) {
             image = state.recipe?.image,
             size = ImageSize.Medium,
             shape = MaterialTheme.shapes.large,
-            fallbackIconSize = 32.dp,
-            modifier = Modifier.size(112.dp),
+            fallbackIconSize = Glyph.xl,
+            modifier = Modifier.size(DonePhotoSize),
         )
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(Space.xl))
         Text(
             text = stringResource(R.string.cook_finished_title),
             style = MaterialTheme.typography.displayMedium,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(Space.s))
         Text(
             text = stringResource(R.string.cook_rate_question),
             style = MaterialTheme.typography.bodyLarge,
@@ -446,9 +458,9 @@ private fun DonePage(state: CookUiState, actions: CookActions) {
             textAlign = TextAlign.Center,
         )
         // The stars' touch targets reach beyond the glyphs; the gaps are measured to the glyphs.
-        Spacer(Modifier.height(16.dp - ratingTouchInset(DONE_STAR_SIZE)))
+        Spacer(Modifier.height(Space.m - ratingTouchInset(DONE_STAR_SIZE)))
         RatingStars(state.rating, starSize = DONE_STAR_SIZE, onRate = actions.onRate)
-        Spacer(Modifier.height(32.dp - ratingTouchInset(DONE_STAR_SIZE)))
+        Spacer(Modifier.height(Space.xl - ratingTouchInset(DONE_STAR_SIZE)))
         MarkCooked(state.markedCooked, state.markFailed, actions.onMarkCooked)
         Spacer(Modifier.weight(2f))
     }
@@ -466,7 +478,7 @@ private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
             Row(
                 modifier =
                     Modifier
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = TouchTarget)
                         .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -474,9 +486,9 @@ private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
                     painterResource(R.drawable.ic_check),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(Glyph.m),
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Space.xs))
                 Text(stringResource(R.string.cook_marked), style = MaterialTheme.typography.titleMedium)
             }
         } else {
@@ -491,7 +503,7 @@ private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
             textAlign = TextAlign.Center,
             modifier =
                 Modifier
-                    .padding(top = 8.dp)
+                    .padding(top = Space.xs)
                     .semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
@@ -528,7 +540,7 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(64.dp)
+                .height(TimerRowHeight)
                 .padding(start = ScreenMargin, end = ScreenMargin - CircleInset),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -536,9 +548,9 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
             painterResource(R.drawable.ic_timer),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(Glyph.m),
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Space.s))
         Row(
             modifier =
                 Modifier
@@ -561,7 +573,7 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
                 maxLines = 1,
             )
         }
-        Spacer(Modifier.width(16.dp - CircleInset))
+        Spacer(Modifier.width(Space.m - CircleInset))
         if (!finished) {
             HairlineIconButton(
                 icon = if (timer.isRunning) R.drawable.ic_pause else R.drawable.ic_play_arrow,
@@ -599,7 +611,7 @@ private fun ExactAlarmHint(onAllow: () -> Unit) {
             modifier =
                 Modifier
                     .weight(1f)
-                    .padding(end = 16.dp),
+                    .padding(end = Space.m),
         )
         QuietLink(stringResource(R.string.cook_exact_alarm_allow), onAllow, tone = LinkTone.Ink)
     }
@@ -613,17 +625,17 @@ private fun BottomActions(pager: PagerState, steps: Int, onClose: () -> Unit) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = ScreenMargin, vertical = 16.dp),
+                .padding(horizontal = ScreenMargin, vertical = Space.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HairlineIconButton(
             icon = R.drawable.ic_arrow_back,
             contentDescription = stringResource(R.string.cook_previous),
             onClick = { scope.launch { pager.animateScrollToPage(page - 1) } },
-            size = 52.dp,
+            size = PrimaryButtonHeight,
             enabled = page > 0,
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Space.s))
         PrimaryButton(
             text =
                 stringResource(
@@ -658,7 +670,7 @@ private fun IngredientsSheet(
                 .padding(bottom = Space.l),
         ) {
             IngredientList(rows, Modifier.padding(horizontal = ScreenMargin), checked, onToggle)
-            Hairline(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp))
+            Hairline(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m))
             SwitchRow(
                 title = stringResource(R.string.settings_ingredients_in_steps),
                 subtitle = stringResource(R.string.settings_ingredients_in_steps_hint),

@@ -47,6 +47,7 @@ import app.aroma.R
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.IconKeyline
 import app.aroma.ui.theme.Lines
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.extras
@@ -286,7 +287,7 @@ fun SheetAction(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(RowHeight.oneLine)
                 .clickable(role = Role.Button, onClick = onClick)
                 .padding(horizontal = ScreenMargin),
         verticalAlignment = Alignment.CenterVertically,

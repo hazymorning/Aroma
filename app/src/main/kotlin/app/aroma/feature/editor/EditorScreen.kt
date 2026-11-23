@@ -71,7 +71,9 @@ import app.aroma.ui.components.PlaceholderLines
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SectionHeader
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.IconKeyline
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.tabular
@@ -276,7 +278,7 @@ private fun Photo(newImage: Uri?, current: RecipeImage?, onPick: () -> Unit, mod
             }
 
             current != null -> {
-                RecipeImage(current, ImageSize.Medium, modifier = Modifier.fillMaxSize(), fallbackIconSize = 32.dp)
+                RecipeImage(current, ImageSize.Medium, modifier = Modifier.fillMaxSize(), fallbackIconSize = Glyph.xl)
             }
 
             else -> {
@@ -312,7 +314,7 @@ private fun NoPhoto(onPick: () -> Unit) {
             painterResource(R.drawable.ic_plate),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(Glyph.xl),
         )
         Spacer(Modifier.height(Space.s))
         Text(stringResource(R.string.editor_pick_photo), style = MaterialTheme.typography.labelLarge)
@@ -449,7 +451,7 @@ private fun EditableRow(
                 // The whole 56 dp row takes the tap, not just the line of text.
                 Row(
                     Modifier
-                        .heightIn(min = 56.dp)
+                        .heightIn(min = RowHeight.oneLine)
                         .padding(vertical = Space.m),
                 ) {
                     if (number != null) StepNumber(number)

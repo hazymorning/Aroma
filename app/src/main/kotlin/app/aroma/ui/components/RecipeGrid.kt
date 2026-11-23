@@ -57,7 +57,7 @@ fun RecipeGrid(
         if (nearEnd && canLoadMore && !isLoadingMore) loadMore()
     }
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 160.dp),
+        columns = GridCells.Adaptive(minSize = GridColumnWidth),
         state = state,
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -102,6 +102,9 @@ fun LazyGridScope.pageItem(key: String, content: @Composable () -> Unit) =
     item(span = { GridItemSpan(maxLineSpan) }, key = key, contentType = key) {
         Box(Modifier.fullBleed(ScreenMargin)) { content() }
     }
+
+/** The least width of a column of cards; wider screens fit more columns. */
+internal val GridColumnWidth = 160.dp
 
 /** Space between rows of cards. */
 internal val GridRowGap = 32.dp

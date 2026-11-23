@@ -34,7 +34,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.model.ServerInfo
@@ -53,9 +52,12 @@ import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Lines
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.ThumbnailSize
 import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.tabular
 
@@ -191,7 +193,7 @@ private fun Account(user: User, server: ServerInfo?) {
             .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(name, user.photo, 56.dp)
+        Avatar(name, user.photo, ThumbnailSize)
         Spacer(Modifier.width(Space.m))
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -299,7 +301,7 @@ private fun UpdateRow(version: String, update: UpdateState, onCheck: () -> Unit,
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 72.dp)
+            .heightIn(min = RowHeight.twoLines)
             .clickable(enabled = canCheck, role = Role.Button, onClick = onCheck)
             .padding(horizontal = ScreenMargin, vertical = Space.s)
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
@@ -329,7 +331,7 @@ private fun NavigationRow(title: String, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
+            .heightIn(min = RowHeight.oneLine)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = ScreenMargin),
         verticalAlignment = Alignment.CenterVertically,
@@ -339,7 +341,7 @@ private fun NavigationRow(title: String, onClick: () -> Unit) {
             painterResource(R.drawable.ic_chevron_right),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(Glyph.s),
         )
     }
 }
@@ -351,7 +353,7 @@ private fun SignOutRow(onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
+            .heightIn(min = RowHeight.oneLine)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = ScreenMargin),
         verticalAlignment = Alignment.CenterVertically,

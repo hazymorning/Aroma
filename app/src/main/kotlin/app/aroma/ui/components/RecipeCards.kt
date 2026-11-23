@@ -42,6 +42,7 @@ import app.aroma.ui.theme.CardTitle
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.ThumbnailSize
 import app.aroma.ui.theme.tabular
 
 /** A recipe as a [PhotoCard], with its time and rating under the title. */
@@ -117,7 +118,7 @@ fun RecipeListItem(recipe: RecipeSummary, onClick: () -> Unit, modifier: Modifie
             size = ImageSize.Thumbnail,
             shape = MaterialTheme.shapes.small,
             fallbackIconSize = Glyph.m,
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier.size(ThumbnailSize),
         )
         Column(Modifier.weight(1f)) {
             Text(text = recipe.name, style = CardTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
