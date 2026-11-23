@@ -71,6 +71,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                         HomeUiState(
                             greeting = Greeting.Evening,
                             firstName = "Mara",
+                            date = sample.today,
                             today = sample.mealPlan.take(1),
                             recent = sample.recipes,
                             favorites = sample.recipes.reversed(),

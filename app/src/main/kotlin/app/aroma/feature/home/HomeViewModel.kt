@@ -102,12 +102,14 @@ class HomeViewModel(
 
     private fun load(refreshing: Boolean) {
         loads.forEach { it.cancel() }
+        val today = LocalDate.now(clock)
         mutableState.update {
             it.copy(
                 isRefreshing = refreshing,
                 isOffline = false,
                 error = null,
                 greeting = greetingFor(LocalTime.now(clock)),
+                date = today,
             )
         }
         var pending = 4
@@ -118,7 +120,7 @@ class HomeViewModel(
         }
         loads =
             listOf(
-                collect(mealPlans.range(LocalDate.now(clock), 1), ::finished) { copy(today = it) },
+                collect(mealPlans.range(today, 1), ::finished) { copy(today = it) },
                 collect(recipes.recent(), ::finished) { copy(recent = it) },
                 collect(recipes.favorites(), ::finished) { copy(favorites = it) },
                 collect(recipes.cookbooks(), ::finished) { copy(cookbooks = it) },
