@@ -13,7 +13,10 @@ import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
+import java.io.IOException
+import kotlin.time.Duration.Companion.seconds
 
 class AuthRepository(
     private val clients: MealieClientFactory,
@@ -47,7 +50,8 @@ class AuthRepository(
 
     /**
      * Signs in with username and password, then trades the short-lived session token for a
-     * long-lived API token named after this device, so the user stays signed in.
+     * long-lived API token named after this device, so the user stays signed in. The user is read
+     * first: a token minted for a sign-in that then fails would stay valid with nobody holding it.
      */
     suspend fun signIn(server: ServerInfo, username: String, password: String) {
         val api = clients.create(SessionManager.baseUrl(server.url))
@@ -60,8 +64,14 @@ class AuthRepository(
                 throw error.toAromaError()
             }
         val bearer = "Bearer $accessToken"
-        val apiToken = runCatching { api.createApiToken(ApiTokenRequest("Aroma ($deviceName)"), bearer) }.getOrNull()
         val user = mealieCall { api.currentUser(bearer) }
+        val apiToken =
+            try {
+                mealieCall { api.createApiToken(ApiTokenRequest("Aroma ($deviceName)"), bearer) }
+            } catch (_: AromaError) {
+                // Servers that refuse API tokens still accept the session token until it expires.
+                null
+            }
         start(server, apiToken?.token ?: accessToken, apiToken?.id, user)
     }
 
@@ -115,14 +125,29 @@ class AuthRepository(
         )
     }
 
-    /** Revokes the token Aroma created (if reachable) and forgets everything stored locally. */
+    /**
+     * Ends the session at once, so the screens leave and no request carries the token any more,
+     * forgets everything stored for it, and then revokes the token Aroma created, if Mealie answers
+     * within a few seconds.
+     */
     suspend fun signOut() {
-        val tokenId = sessions.current?.tokenId
-        if (tokenId != null) runCatching { sessions.api().deleteApiToken(tokenId) }
-        withContext(Dispatchers.IO) { database.clearAllTables() }
+        val session = sessions.current ?: return
         sessions.end()
+        withContext(Dispatchers.IO) { database.clearAllTables() }
+        val tokenId = session.tokenId ?: return
+        withTimeoutOrNull(REVOKE_PATIENCE) {
+            try {
+                clients.create(SessionManager.baseUrl(session.serverUrl)).deleteApiToken(tokenId, "Bearer ${session.token}")
+            } catch (_: IOException) {
+                // Unreachable: the token stays valid on the server, as a token deleted there would anyway.
+            } catch (_: HttpException) {
+                // Already revoked in Mealie's settings.
+            }
+        }
     }
 }
+
+private val REVOKE_PATIENCE = 5.seconds
 
 object MealieVersion {
     /** Mealie 2.0 introduced households, which Aroma relies on. Development builds are accepted. */

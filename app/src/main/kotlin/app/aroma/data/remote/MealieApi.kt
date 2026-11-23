@@ -68,6 +68,7 @@ interface MealieApi {
     @DELETE("api/users/api-tokens/{id}")
     suspend fun deleteApiToken(
         @Path("id") id: Int,
+        @Header("Authorization") authorization: String,
     )
 
     @GET("api/recipes")

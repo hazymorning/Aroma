@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /** Creates and holds the app's long-lived objects. */
@@ -78,9 +79,11 @@ class AppContainer(context: Context) {
             timers.dismissAll()
             settings.forgetAccount()
             ratingReminder.clear()
-            SingletonImageLoader.get(appContext).run {
-                memoryCache?.clear()
-                diskCache?.clear()
+            withContext(Dispatchers.IO) {
+                SingletonImageLoader.get(appContext).run {
+                    memoryCache?.clear()
+                    diskCache?.clear()
+                }
             }
             auth.signOut()
         }
