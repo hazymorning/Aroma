@@ -29,6 +29,7 @@ components only. `DesignRulesTest` checks the rules marked *(checked)* on every 
 | `ScreenMargin` | 24 | The keyline on both sides |
 | `CardInset` | 12 | How far a soft card stands outside the keyline |
 | `IconKeyline` | 64 | Text after a 24 dp glyph in a row |
+| `ContentMaxWidth` | 600 | The widest a column of text and fields grows, on tablets |
 | `Glyph` | s 16, m 20, l 24, xl 32 | Line glyphs beside small text and links, in rows and fields, in bars, standing alone |
 | `PageEndSpace` | 32 | Free space after the last item of a scrolling page |
 | Shapes | extraSmall 4, small 8, medium 12, large 16, extraLarge 24; circle | Placeholder lines, thumbnails, photos and fields, cards, sheets; buttons, chips, avatars |
@@ -78,8 +79,9 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
    taste?), at most one per screen.
 9. **One filled button.** A `PrimaryButton` per screen at most; everything else is a
    `SecondaryButton`, a `QuietLink` or an icon action.
-10. **Headers.** Tab pages start with `PageHeader`; pushed pages with `DetailTopBar` over a
-    `LargeTitle`; sections with `SectionHeader` (serif) or a `Kicker` above a card.
+10. **Headers.** Tab pages start with `PageHeader`; pushed pages are a `DetailPage`, which sets
+    `DetailTopBar` over a `LargeTitle` (a grid of recipes sets the two itself); sections start with
+    `SectionHeader` (serif) or a `Kicker` above a card.
 11. **Sheets.** `AromaBottomSheet` for every sheet: it opens at full height under the sheet's title,
     with a kicker above it or a meta line below where needed. Rows of actions are `SheetAction`;
     the one action of a form sits in a `SheetFooter`; an action that changes the page underneath
@@ -98,7 +100,7 @@ for running text (`body*`, `Reading`, `ShoppingModeItem` items in shopping mode)
 
 | Component | For |
 |---|---|
-| `PageHeader`, `DetailTopBar`, `LargeTitle`, `SectionHeader`, `Kicker` | Headings |
+| `PageHeader`, `DetailPage`, `DetailTopBar`, `LargeTitle`, `SectionHeader`, `Kicker` | Headings and pages |
 | `SoftCard`, `CardPart`, `Hairline` | Groups and the lines inside them |
 | `SwipeToRemove` | Taking a row off a list or the plan |
 | `PrimaryButton`, `SecondaryButton`, `QuietLink`, `HeaderAction`, `IconAction`, `HairlineIconButton`, `OnPhotoButton` | Actions |

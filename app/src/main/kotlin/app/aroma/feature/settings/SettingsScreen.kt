@@ -3,40 +3,27 @@ package app.aroma.feature.settings
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -57,12 +44,10 @@ import app.aroma.data.settings.ThemeMode
 import app.aroma.data.update.UpdateState
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.Avatar
-import app.aroma.ui.components.DetailTopBar
-import app.aroma.ui.components.DetailTopBarHeight
+import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.InlineProgress
 import app.aroma.ui.components.Kicker
-import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.SoftCard
@@ -108,7 +93,7 @@ data class SettingsActions(
 @Composable
 fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: Modifier = Modifier) {
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
-    SettingsPage(title = stringResource(R.string.settings_title), onBack = actions.onBack, modifier = modifier) {
+    DetailPage(title = stringResource(R.string.settings_title), onBack = actions.onBack, modifier = modifier) {
         state.user?.let { user -> SoftCard(Modifier.padding(top = Space.l)) { Account(user, state.server) } }
         Group(stringResource(R.string.settings_appearance)) {
             Choice(
@@ -192,35 +177,6 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             dismissLabel = stringResource(R.string.action_cancel),
             destructive = true,
         )
-    }
-}
-
-/**
- * A pushed page of the settings: a large title and a scrolling column under [DetailTopBar]. Once
- * the title has scrolled beneath the bar, the bar shows it in small.
- */
-@Composable
-internal fun SettingsPage(title: String, onBack: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    val scroll = rememberScrollState()
-    var titleEnd by remember { mutableIntStateOf(Int.MAX_VALUE) }
-    val collapsed by remember { derivedStateOf { scroll.value > titleEnd } }
-    Box(modifier.fillMaxSize()) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(scroll)
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = DetailTopBarHeight)
-                .navigationBarsPadding()
-                .padding(bottom = Space.xl),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(Modifier.widthIn(max = 600.dp)) {
-                LargeTitle(title, Modifier.onSizeChanged { titleEnd = it.height }, bottomSpacing = 0.dp)
-                content()
-            }
-        }
-        DetailTopBar(onBack = onBack, title = title, collapsed = collapsed)
     }
 }
 

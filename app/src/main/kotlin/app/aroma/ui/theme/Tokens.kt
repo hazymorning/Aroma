@@ -25,6 +25,9 @@ val CardInset: Dp = 12.dp
 /** Text after a 24 dp check or icon. */
 val IconKeyline: Dp = 64.dp
 
+/** Content wider than this is centred, so lines stay readable on tablets. */
+val ContentMaxWidth: Dp = 600.dp
+
 /** Line glyphs: beside small text and links, in rows and fields, in bars, and standing alone. */
 object Glyph {
     val s: Dp = 16.dp

@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.ui.components.AromaAlertDialog
+import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
@@ -49,7 +50,7 @@ private val licenses =
 @Composable
 fun LicensesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     var openAsset by rememberSaveable { mutableStateOf<String?>(null) }
-    SettingsPage(title = stringResource(R.string.settings_licenses), onBack = onBack, modifier = modifier) {
+    DetailPage(title = stringResource(R.string.settings_licenses), onBack = onBack, modifier = modifier) {
         Spacer(Modifier.height(Space.s))
         licenses.forEachIndexed { index, item ->
             if (index > 0) Hairline(Modifier.padding(horizontal = ScreenMargin))

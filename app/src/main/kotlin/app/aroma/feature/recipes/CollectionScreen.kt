@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.components.DetailTopBar
@@ -143,7 +142,7 @@ private fun Header(
     Column {
         Column(Modifier.onSizeChanged { onTitleLaidOut(it.height) }) {
             kind.labelRes()?.let { Kicker(stringResource(it), Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs)) }
-            LargeTitle(name, bottomSpacing = 0.dp)
+            LargeTitle(name)
         }
         if (description.isNotBlank()) {
             Text(

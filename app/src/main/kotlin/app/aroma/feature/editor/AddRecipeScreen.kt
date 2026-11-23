@@ -73,6 +73,7 @@ import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.titleRes
+import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Settle
 import app.aroma.ui.theme.ScreenMargin
@@ -118,9 +119,6 @@ data class AddRecipeActions(
     val onCreate: () -> Unit = {},
 )
 
-/** Content wider than this is centred, so lines stay readable on tablets. */
-internal val FormMaxWidth = 600.dp
-
 /** The tick or the spinner in front of an import step, as large as [InlineProgress]. */
 private val StepMark = 20.dp
 
@@ -151,10 +149,10 @@ fun AddRecipeScreen(state: AddRecipeUiState, actions: AddRecipeActions, modifier
         ) {
             Column(
                 Modifier
-                    .widthIn(max = FormMaxWidth)
+                    .widthIn(max = ContentMaxWidth)
                     .fillMaxWidth(),
             ) {
-                LargeTitle(title, Modifier.onSizeChanged { titleEnd = it.height }, bottomSpacing = 0.dp)
+                LargeTitle(title, Modifier.onSizeChanged { titleEnd = it.height })
                 Spacer(Modifier.height(Space.l))
                 FromWebsite(state, actions)
                 Spacer(Modifier.height(Space.xxl))
