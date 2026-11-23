@@ -1,6 +1,7 @@
 package app.aroma.feature.editor
 
 import app.aroma.core.format.SocialCaption
+import app.aroma.core.format.withoutPictographs
 import app.aroma.data.AromaError
 import app.aroma.data.AromaError.ImportFailed.Reason.NoAnswer
 import app.aroma.data.AromaError.ImportFailed.Reason.PostUnreadable
@@ -9,6 +10,7 @@ import app.aroma.data.remote.SocialPosts
 import app.aroma.data.repository.RecipeRepository
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -83,7 +85,10 @@ class RecipeImporter(
      * out, [onSending] gets the newest recipes: the recipe the request makes is the one not among
      * them, should the connection drop, or Android end the app, before the answer arrives.
      */
-    suspend fun import(request: ImportRequest, onSending: suspend (Set<String>) -> Unit, onStep: (ImportStep) -> Unit): String {
+    suspend fun import(request: ImportRequest, onSending: suspend (Set<String>) -> Unit, onStep: (ImportStep) -> Unit): String =
+        withoutPictographs(importing(request, onSending, onStep))
+
+    private suspend fun importing(request: ImportRequest, onSending: suspend (Set<String>) -> Unit, onStep: (ImportStep) -> Unit): String {
         val sending = Sending(onStep, onSending)
         if (request.photos.isNotEmpty()) return sending.fromPhotos(request)
         if (!SocialPosts.isPost(request.url)) return sending.fromWebsite(request)
@@ -122,6 +127,14 @@ class RecipeImporter(
      * last request that creates one, [before] from right before the first.
      */
     suspend fun resume(
+        request: ImportRequest,
+        known: Set<String>,
+        before: Set<String>,
+        onSending: suspend (Set<String>) -> Unit,
+        onStep: (ImportStep) -> Unit,
+    ): String = withoutPictographs(resuming(request, known, before, onSending, onStep))
+
+    private suspend fun resuming(
         request: ImportRequest,
         known: Set<String>,
         before: Set<String>,
@@ -281,7 +294,7 @@ class RecipeImporter(
                     val fresh = recipes.recipeJson(slug)
                     val form =
                         RecipeDraft.formFrom(fresh, locale).copy(
-                            description = if (structured) parsed.description else text.trim(),
+                            description = if (structured) parsed.description else text.withoutPictographs().trim(),
                             ingredients = parsed.ingredients.joinToString("\n"),
                             steps = parsed.steps.ifEmpty { listOf("") },
                             servings = parsed.servings?.let(RecipeDraft::formatNumber).orEmpty(),
@@ -410,6 +423,56 @@ class RecipeImporter(
         return ingredients == listOf(PLACEHOLDER_INGREDIENTS) && steps == listOf(PLACEHOLDER_STEPS)
     }
 
+    /**
+     * Takes the emoji out of what Mealie saved from its AI, a page or a video, as Aroma's own
+     * reading of a text does: an amount behind one is not found to scale, and a recipe reads
+     * better without them. The recipe stays as it is where it cannot be changed.
+     */
+    private suspend fun withoutPictographs(slug: String): String {
+        val recipe =
+            try {
+                recipes.recipeJson(slug)
+            } catch (_: AromaError) {
+                return slug
+            }
+        val changes =
+            buildMap<String, JsonElement> {
+                for (key in listOf("name", "description")) {
+                    val text = recipe.text(key) ?: continue
+                    val clean = text.withoutPictographs()
+                    if (clean != text && clean.isNotBlank()) put(key, JsonPrimitive(clean))
+                }
+                for ((key, fields) in CleanedLists) cleaned(recipe.list(key), fields)?.let { put(key, it) }
+            }
+        if (changes.isEmpty()) return slug
+        return try {
+            recipes.update(slug, JsonObject(changes))
+        } catch (_: AromaError) {
+            // A name another recipe has already: the rest is still worth cleaning.
+            try {
+                recipes.update(slug, JsonObject(changes - "name"))
+            } catch (_: AromaError) {
+                slug
+            }
+        }
+    }
+
+    /** [items] with their text [fields] free of emoji, or null where none had any. */
+    private fun cleaned(items: List<JsonObject>, fields: Set<String>): JsonArray? {
+        var changed = false
+        val result =
+            items.map { item ->
+                JsonObject(
+                    item.mapValues { (field, value) ->
+                        val text = (value as? JsonPrimitive)?.takeIf { field in fields && it.isString }?.content ?: return@mapValues value
+                        val clean = text.withoutPictographs()
+                        if (clean == text) value else JsonPrimitive(clean).also { changed = true }
+                    },
+                )
+            }
+        return if (changed) JsonArray(result) else null
+    }
+
     /** Whether Aroma finds ingredients or steps in [text]. */
     private fun holdsRecipe(text: String): Boolean = SocialCaption.parse(text).let { it.ingredients.isNotEmpty() || it.steps.isNotEmpty() }
 
@@ -421,6 +484,14 @@ class RecipeImporter(
     private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
 
     private companion object {
+        /** The lists of a recipe whose words a reader sees, and the fields of their items that hold them. */
+        val CleanedLists =
+            mapOf(
+                "recipeIngredient" to setOf("title", "note", "display", "originalText"),
+                "recipeInstructions" to setOf("title", "text"),
+                "notes" to setOf("title", "text"),
+            )
+
         const val PLACEHOLDER_INGREDIENTS = "Could not detect ingredients"
         const val PLACEHOLDER_STEPS = "Could not detect instructions"
 

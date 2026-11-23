@@ -139,6 +139,33 @@ class RecipeImporterTest {
         }
 
     @Test
+    fun `the emoji Mealie's AI copies from a caption leave the recipe`() =
+        runBlocking<Unit> {
+            caption = PROSE
+            details["gnocchi"] =
+                recipe(
+                    "gnocchi",
+                    "Tomaten-Gnocchi 🍅",
+                    ingredients = listOf("🥔 500 g Gnocchi", "🍅 250 g Kirschtomaten"),
+                    steps = listOf("🔥 Braten."),
+                )
+
+            assertEquals("gnocchi", importer().run(ImportRequest(post, useAi = true)))
+            val cleaned = requests.last { it.method == "PATCH" && it.url.encodedPath == "/api/recipes/gnocchi" }.body!!.utf8()
+            assertTrue(cleaned.contains("\"note\":\"500 g Gnocchi\"") && cleaned.contains("\"text\":\"Braten.\""))
+            assertTrue(cleaned.contains("\"name\":\"Tomaten-Gnocchi\""))
+            assertFalse(cleaned.contains("🍅") || cleaned.contains("🔥"))
+        }
+
+    @Test
+    fun `a recipe without emoji is left as it is`() =
+        runBlocking<Unit> {
+            importer().run(ImportRequest(PAGE))
+
+            assertFalse(requests.any { it.method == "PATCH" })
+        }
+
+    @Test
     fun `a caption to be translated goes to Mealie's AI, ordered or not`() =
         runBlocking<Unit> {
             assertEquals("gnocchi", importer().run(ImportRequest(post, useAi = true, translateTo = "en-US")))
