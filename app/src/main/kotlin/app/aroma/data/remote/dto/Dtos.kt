@@ -66,6 +66,8 @@ data class RecipeSummaryDto(
     val recipeCategory: List<OrganizerDto> = emptyList(),
     val tags: List<OrganizerDto> = emptyList(),
     val dateAdded: String? = null,
+    /** When the recipe last changed, to refresh offline copies only when needed. */
+    val updatedAt: String? = null,
 )
 
 @Serializable
@@ -91,6 +93,8 @@ data class RecipeDto(
     val tools: List<OrganizerDto> = emptyList(),
     val orgURL: String? = null,
     val dateAdded: String? = null,
+    /** When the recipe last changed, to refresh offline copies only when needed. */
+    val updatedAt: String? = null,
     val lastMade: String? = null,
     val recipeIngredient: List<IngredientDto> = emptyList(),
     val recipeInstructions: List<StepDto>? = null,

@@ -31,6 +31,7 @@ import app.aroma.data.remote.toModel
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +39,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonObject
@@ -47,6 +51,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import retrofit2.HttpException
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.cancellation.CancellationException
 
 class RecipeRepository(private val sessions: SessionManager, private val dao: RecipeDao, private val cache: JsonCache) {
@@ -346,14 +351,41 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                     .sortedBy { it.position }
             }.map { loadable -> Loadable(loadable.data.map { it.toModel() }, loadable.isRefreshing, loadable.error) }
 
-    /** Downloads every recipe for offline use; returns how many are stored. */
+    /**
+     * Keeps a copy of every recipe for offline use: fetches new and changed ones a few at a time
+     * and forgets the ones deleted or renamed on the server. Returns how many are stored.
+     */
     suspend fun downloadAll(onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }): Int {
-        val first = mealieCall { sessions.api().recipes(page = 1, perPage = -1, orderBy = "name", orderDirection = "asc") }
-        dao.upsertSummaries(first.items.map { it.toEntity() })
-        val stored = dao.cachedSlugs().toSet()
-        first.items.forEachIndexed { index, summary ->
-            if (summary.slug !in stored) runCatching { fetchAndStore(summary.slug) }
-            onProgress(index + 1, first.items.size)
+        val listing = mealieCall { sessions.api().recipes(page = 1, perPage = -1, orderBy = "name", orderDirection = "asc") }.items
+        dao.upsertSummaries(listing.map { it.toEntity() })
+        val stored =
+            withContext(Dispatchers.Default) {
+                dao.details().associate { it.slug to decodeRecipe(it.json)?.updatedAt }
+            }
+        val current = listing.mapTo(mutableSetOf()) { it.slug }
+        (stored.keys - current).forEach { dao.deleteDetail(it) }
+        val ids = listing.mapTo(mutableSetOf()) { it.id }
+        dao.summaryIds().filterNot { it in ids }.forEach { dao.deleteSummaryById(it) }
+
+        val stale = listing.filter { it.slug !in stored || (it.updatedAt != null && stored[it.slug] != it.updatedAt) }
+        val done = AtomicInteger(listing.size - stale.size)
+        onProgress(done.get(), listing.size)
+        val downloads = Semaphore(PARALLEL_DOWNLOADS)
+        coroutineScope {
+            stale.forEach { summary ->
+                launch {
+                    downloads.withPermit {
+                        try {
+                            fetchAndStore(summary.slug)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            // The next run tries again; one failing recipe must not stop the others.
+                        }
+                    }
+                    onProgress(done.incrementAndGet(), listing.size)
+                }
+            }
         }
         return dao.cachedSlugs().size
     }
@@ -375,6 +407,8 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
 
     companion object {
         const val PAGE_SIZE = 30
+
+        private const val PARALLEL_DOWNLOADS = 4
 
         /** Enough of the newest recipes to spot one added meanwhile, even if others arrive at the same time. */
         private const val NEWEST_WINDOW = 10

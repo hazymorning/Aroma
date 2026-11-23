@@ -401,7 +401,7 @@ fun ShoppingDestination() {
 @Composable
 fun AddRecipeDestination(sharedUrl: String?, nav: NavController) {
     val untitled = stringResource(R.string.add_untitled)
-    val vm = aromaViewModel { AddRecipeViewModel(recipes, RecipeImporter(recipes, untitled), settings, sharedUrl) }
+    val vm = aromaViewModel { AddRecipeViewModel(recipes, RecipeImporter(recipes, untitled), settings, sharedUrl, scope) }
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()

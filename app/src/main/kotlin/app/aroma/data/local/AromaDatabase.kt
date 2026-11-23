@@ -69,6 +69,15 @@ interface RecipeDao {
 
     @Query("DELETE FROM recipe_summary WHERE slug = :slug")
     suspend fun deleteSummary(slug: String)
+
+    @Query("SELECT * FROM recipe_detail")
+    suspend fun details(): List<RecipeDetailEntity>
+
+    @Query("SELECT id FROM recipe_summary")
+    suspend fun summaryIds(): List<String>
+
+    @Query("DELETE FROM recipe_summary WHERE id = :id")
+    suspend fun deleteSummaryById(id: String)
 }
 
 @Dao

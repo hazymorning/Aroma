@@ -230,7 +230,8 @@ class ShoppingRepository(
     }
 
     private suspend fun store(listId: String, list: JsonObject) {
-        cacheDao.put(CacheEntity(key(listId), list.toString(), System.currentTimeMillis()))
+        val json = withContext(Dispatchers.Default) { list.toString() }
+        cacheDao.put(CacheEntity(key(listId), json, System.currentTimeMillis()))
     }
 
     private sealed class Change(val kind: String, val itemId: String, val payload: JsonObject) {

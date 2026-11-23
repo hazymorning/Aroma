@@ -6,6 +6,8 @@ import app.aroma.core.format.SharedLink
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -29,6 +31,7 @@ class AddRecipeViewModel(
     private val importer: RecipeImporter,
     private val settings: SettingsRepository,
     sharedUrl: String?,
+    private val appScope: CoroutineScope,
 ) : ViewModel() {
     private val mutableState =
         MutableStateFlow(
@@ -90,7 +93,10 @@ class AddRecipeViewModel(
                 useAi = current.usesAi,
                 translateTo = Locale.getDefault().toLanguageTag().takeIf { current.usesAi && current.translate },
             )
-        return AddRecipeResult.Imported(importer.import(request) { step -> mutableState.update { it.copy(step = step) } })
+        // The import runs on in the app's scope: going back only stops the waiting here, while the
+        // rebuild and the cleanup of half-finished recipes on the server still complete.
+        val import = appScope.async { importer.import(request) { step -> mutableState.update { it.copy(step = step) } } }
+        return AddRecipeResult.Imported(import.await())
     }
 
     private fun start(mode: AddMode, block: suspend () -> AddRecipeResult) {

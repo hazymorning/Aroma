@@ -15,6 +15,7 @@ import app.aroma.AromaApplication
 import app.aroma.data.session.SessionState
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
 
 private val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
@@ -43,7 +44,14 @@ class OfflineRecipesWorker(context: Context, params: WorkerParameters) : Corouti
     override suspend fun doWork(): Result {
         val container = (applicationContext as AromaApplication).container
         if (container.sessions.state.first { it != SessionState.Loading } !is SessionState.SignedIn) return Result.success()
-        return runCatching { container.recipes.downloadAll() }.fold({ Result.success() }, { Result.retry() })
+        return try {
+            container.recipes.downloadAll()
+            Result.success()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            Result.retry()
+        }
     }
 
     companion object {
