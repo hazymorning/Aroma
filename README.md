@@ -1,4 +1,4 @@
-<img src="docs/readme/hero.webp" alt="Aroma, good enough to eat">
+<img src="docs/readme/hero-2.webp" alt="Aroma, good enough to eat">
 
 <br>
 
