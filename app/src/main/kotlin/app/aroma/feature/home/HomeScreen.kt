@@ -2,22 +2,16 @@ package app.aroma.feature.home
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.snapping.SnapPosition
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
-import androidx.compose.foundation.indication
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,75 +20,94 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.Meal
 import app.aroma.core.model.MealPlanEntry
+import app.aroma.core.model.MealType
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaPullToRefreshBox
-import app.aroma.ui.components.Avatar
+import app.aroma.ui.components.BoxHeader
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.IconButton
+import app.aroma.ui.components.IconCircleMark
 import app.aroma.ui.components.LargeHeader
 import app.aroma.ui.components.LocalBottomBarInset
+import app.aroma.ui.components.MetaLine
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.PressTint
+import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.ProfileButton
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeCard
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.RecipeMetaLine
+import app.aroma.ui.components.RecipeRow
 import app.aroma.ui.components.ScrollToTopOnReselect
+import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SectionTitle
 import app.aroma.ui.components.Skeleton
 import app.aroma.ui.components.SkeletonLine
 import app.aroma.ui.components.StatusBarCover
+import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.Text
+import app.aroma.ui.components.TextAction
 import app.aroma.ui.components.TonalBox
 import app.aroma.ui.components.animateRow
+import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.mealLabel
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
+import app.aroma.ui.components.recipeTime
+import app.aroma.ui.components.rememberTitleLines
+import app.aroma.ui.components.weekdayShort
 import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxGap
 import app.aroma.ui.theme.BoxPadding
+import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.GridColumnGap
+import app.aroma.ui.theme.HeaderGap
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Decelerate
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.SectionGap
 import app.aroma.ui.theme.SectionTitleGap
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.ThumbnailSize
 import app.aroma.ui.theme.TouchTarget
+import app.aroma.ui.theme.tabular
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 enum class Greeting { Morning, Afternoon, Evening }
 
@@ -107,51 +120,86 @@ data class RateReminder(
     val stars: Int? = null,
 )
 
+/**
+ * The start page's state. [date] is today; [week] the plan of its calendar week, Monday to Sunday.
+ * [suggestions] are recipes for [meal], or any recipes where the household has no category or tag
+ * for it, the same all day; [quick] are ready in half an hour; [recent] are new in the collection.
+ */
 data class HomeUiState(
     val greeting: Greeting = Greeting.Afternoon,
-    /** For the initial on the profile button; the greeting itself names no one. */
+    /** For the greeting and the initial on the profile button. */
     val firstName: String? = null,
-    val today: List<MealPlanEntry> = emptyList(),
+    val date: LocalDate = LocalDate.now(),
+    val week: List<MealPlanEntry> = emptyList(),
     val meal: Meal = Meal.Dinner,
-    /** Recipes for [meal], or any recipes where the household has no category or tag for it. */
     val suggestions: List<RecipeSummary> = emptyList(),
     val suggestionsForMeal: Boolean = false,
-    /** Recipes ready in half an hour, all in, which work without any categories. */
     val quick: List<RecipeSummary> = emptyList(),
-    val cookedLongAgo: List<RecipeSummary> = emptyList(),
     val recent: List<RecipeSummary> = emptyList(),
-    val favorites: List<RecipeSummary> = emptyList(),
+    /** What is still to buy on the shopping list in use. */
+    val openItems: Int = 0,
     val toRate: RateReminder? = null,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val isOffline: Boolean = false,
     val error: AromaError? = null,
-)
+) {
+    val weekStart: LocalDate get() = date.with(DayOfWeek.MONDAY)
+
+    /** Today's meals, in the order of the day. */
+    val todays: List<MealPlanEntry> get() = week.filter { it.date == date }.sortedBy { it.type.hour }
+}
 
 data class HomeActions(
     val onSearch: () -> Unit = {},
     val onOpenRecipe: (String) -> Unit = {},
+    val onCook: (String) -> Unit = {},
     val onRecipeMenu: (RecipeSummary) -> Unit = {},
     val onOpenSettings: () -> Unit = {},
-    val onShowAllRecipes: () -> Unit = {},
-    val onShowFavorites: () -> Unit = {},
     /** All recipes for a meal, on a page under the given title. */
     val onShowMeal: (Meal, String) -> Unit = { _, _ -> },
-    /** All the quick recipes, on a page under the given title. */
-    val onShowQuick: (String) -> Unit = {},
-    val onOpenMealPlan: () -> Unit = {},
+    val onShowAllRecipes: () -> Unit = {},
+    /** The plan, at a day of it, or at today. */
+    val onOpenPlan: (LocalDate?) -> Unit = {},
+    /** Plans a suggestion for today's meal. */
+    val onPlanToday: (RecipeSummary) -> Unit = {},
+    val onOpenShopping: () -> Unit = {},
     val onRefresh: () -> Unit = {},
     val onRateCooked: (Int) -> Unit = {},
     val onDismissReminder: () -> Unit = {},
 )
 
-private val RateStarSize = 28.dp
-private val CarouselCardWidth = 160.dp
+/** Where in the day a meal comes, to tell today's next one. */
+private val MealType.hour: Int
+    get() =
+        when (this) {
+            MealType.Breakfast -> 0
+            MealType.Lunch -> 1
+            MealType.Snack -> 2
+            MealType.Dinner, MealType.Side -> 3
+            MealType.Dessert, MealType.Drink -> 4
+        }
 
+private val Meal.hour: Int
+    get() =
+        when (this) {
+            Meal.Breakfast -> 0
+            Meal.Lunch -> 1
+            Meal.Snack -> 2
+            Meal.Dinner, Meal.Side -> 3
+            Meal.Dessert, Meal.Drink -> 4
+        }
+
+/**
+ * The start page: the greeting, today's meal as a box to cook from, the week at a glance, the
+ * shopping list where something is still to buy, and inspiration in three formats below, each
+ * recipe only once on the page.
+ */
 @Composable
 fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
     ScrollToTopOnReselect(listState)
+    val inspiration = remember(state.week, state.date, state.suggestions, state.quick, state.recent) { state.inspiration() }
     AromaPullToRefreshBox(
         isRefreshing = state.isRefreshing,
         onRefresh = actions.onRefresh,
@@ -161,83 +209,102 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + EndSpace),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            item(key = "header") {
-                HomeHeader(state, actions)
-            }
-            item(key = "rate") {
-                RatePromptSlot(state.toRate, actions, Modifier.animateRow(this))
-            }
-            // The outline and the error give way at once; the sections fade in where they land.
+            item(key = "header") { HomeHeader(state, actions, Modifier.measure()) }
             when {
                 state.isLoading -> {
-                    item(key = "loading") { HomeLoading() }
+                    item(key = "loading") { HomeLoading(Modifier.measure()) }
                 }
 
-                state.error != null && state.recent.isEmpty() -> {
-                    item(key = "error") {
-                        ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.fillMaxWidth())
-                    }
+                state.error != null && state.recent.isEmpty() && state.week.isEmpty() -> {
+                    item(key = "error") { ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.measure()) }
                 }
 
                 else -> {
                     item(key = "today") {
-                        TodaySection(state.today, actions, Modifier.animateRow(this))
+                        TodayBox(
+                            state = state,
+                            suggestions = inspiration.forToday,
+                            actions = actions,
+                            modifier =
+                                Modifier
+                                    .animateRow(this)
+                                    .measure()
+                                    .padding(horizontal = PageMargin),
+                        )
                     }
-                    // From what suits the hour to what is worth remembering; each only once it has something to show.
-                    if (state.suggestions.isNotEmpty()) {
-                        item(key = "suggestions") {
+                    item(key = "week") {
+                        WeekBox(
+                            state = state,
+                            onOpenPlan = actions.onOpenPlan,
+                            modifier =
+                                Modifier
+                                    .animateRow(this)
+                                    .measure()
+                                    .padding(start = PageMargin, end = PageMargin, top = BoxGap),
+                        )
+                    }
+                    if (state.openItems > 0) {
+                        item(key = "shopping") {
+                            ShoppingBox(
+                                open = state.openItems,
+                                onOpen = actions.onOpenShopping,
+                                modifier =
+                                    Modifier
+                                        .animateRow(this)
+                                        .measure()
+                                        .padding(start = PageMargin, end = PageMargin, top = BoxGap),
+                            )
+                        }
+                    }
+                    item(key = "rate") {
+                        RatePromptSlot(
+                            state.toRate,
+                            actions,
+                            Modifier
+                                .animateRow(this)
+                                .measure(),
+                        )
+                    }
+                    if (inspiration.ideas.isNotEmpty()) {
+                        item(key = "ideas") {
                             val mealName = mealLabel(state.meal)
-                            RecipeCarousel(
-                                title = if (state.suggestionsForMeal) mealTitle(state.meal) else stringResource(R.string.home_ideas),
-                                recipes = state.suggestions,
+                            Ideas(
+                                recipes = inspiration.ideas,
                                 actions = actions,
-                                onShowAll = { actions.onShowMeal(state.meal, mealName) }.takeIf { state.suggestionsForMeal },
-                                modifier = Modifier.animateRow(this),
+                                onShowAll =
+                                    if (state.suggestionsForMeal) {
+                                        { actions.onShowMeal(state.meal, mealName) }
+                                    } else {
+                                        actions.onShowAllRecipes
+                                    },
+                                modifier =
+                                    Modifier
+                                        .animateRow(this)
+                                        .measure(),
                             )
                         }
                     }
-                    if (state.quick.isNotEmpty()) {
+                    if (inspiration.quick.isNotEmpty()) {
                         item(key = "quick") {
-                            val title = stringResource(R.string.home_quick)
-                            RecipeCarousel(
-                                title = title,
-                                recipes = state.quick,
-                                actions = actions,
-                                onShowAll = { actions.onShowQuick(title) },
-                                modifier = Modifier.animateRow(this),
+                            Quick(
+                                inspiration.quick,
+                                actions,
+                                Modifier
+                                    .animateRow(this)
+                                    .measure(),
                             )
                         }
                     }
-                    if (state.recent.isNotEmpty()) {
-                        item(key = "recent") {
-                            RecipeCarousel(
-                                stringResource(R.string.home_recent),
-                                state.recent,
+                    inspiration.newest?.let { newest ->
+                        item(key = "newest") {
+                            Newest(
+                                newest,
                                 actions,
-                                onShowAll = actions.onShowAllRecipes,
-                                modifier = Modifier.animateRow(this),
-                            )
-                        }
-                    }
-                    if (state.favorites.isNotEmpty()) {
-                        item(key = "favorites") {
-                            RecipeCarousel(
-                                stringResource(R.string.home_favorites),
-                                state.favorites,
-                                actions,
-                                onShowAll = actions.onShowFavorites,
-                                modifier = Modifier.animateRow(this),
-                            )
-                        }
-                    }
-                    if (state.cookedLongAgo.isNotEmpty()) {
-                        item(key = "cookedLongAgo") {
-                            RecipeCarousel(
-                                stringResource(R.string.home_cooked_long_ago),
-                                state.cookedLongAgo,
-                                actions,
-                                modifier = Modifier.animateRow(this),
+                                Modifier
+                                    .animateRow(this)
+                                    .measure(),
                             )
                         }
                     }
@@ -248,20 +315,85 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
     }
 }
 
-/** The greeting, which names no one, with the user's initial beside it, and the search that opens on the Recipes tab. */
+/** The page keeps a reading measure on wide screens. */
+private fun Modifier.measure(): Modifier = widthIn(max = ContentMaxWidth).fillMaxWidth()
+
+/** What the inspiration shows: suggestions for an unplanned today, the ideas, the quick ones and the newest, none twice. */
+internal data class Inspiration(
+    val forToday: List<RecipeSummary>,
+    val ideas: List<RecipeSummary>,
+    val quick: List<RecipeSummary>,
+    val newest: RecipeSummary?,
+)
+
+/**
+ * The page's recipes from the top down, each only once; a section that cannot show three gives way,
+ * and the large one needs one. Today's planned meals come first and are shown in their box.
+ */
+internal fun HomeUiState.inspiration(): Inspiration {
+    val seen = todays.mapNotNull { it.recipe?.id }.toMutableSet()
+
+    fun pick(from: List<RecipeSummary>, most: Int, least: Int): List<RecipeSummary> {
+        val picked = from.filter { it.id !in seen }.distinctBy { it.id }.take(most)
+        if (picked.size < least) return emptyList()
+        seen += picked.map { it.id }
+        return picked
+    }
+    val forToday = if (todays.isEmpty()) pick(suggestions, TODAY_SUGGESTIONS, 1) else emptyList()
+    val ideas = pick(suggestions, IDEAS, SECTION_LEAST)
+    val quick = pick(quick, QUICK_ROWS, SECTION_LEAST)
+    val newest = pick(recent, 1, 1).firstOrNull()
+    return Inspiration(forToday, ideas, quick, newest)
+}
+
+private const val TODAY_SUGGESTIONS = 3
+private const val IDEAS = 8
+private const val QUICK_ROWS = 3
+private const val SECTION_LEAST = 3
+
+/**
+ * "Guten Abend, Mara" and today's date, with the search and the profile as icon buttons. The
+ * greeting names the user where Mealie knows a first name.
+ */
 @Composable
-private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
-    val greeting =
-        stringResource(
-            when (state.greeting) {
-                Greeting.Morning -> R.string.greeting_morning
-                Greeting.Afternoon -> R.string.greeting_afternoon
-                Greeting.Evening -> R.string.greeting_evening
-            },
-        )
+private fun HomeHeader(state: HomeUiState, actions: HomeActions, modifier: Modifier = Modifier) {
     val name = state.firstName?.takeIf { it.isNotBlank() }
-    Column {
-        LargeHeader(title = greeting) {
+    val greeting =
+        when (state.greeting) {
+            Greeting.Morning -> {
+                if (name !=
+                    null
+                ) {
+                    stringResource(R.string.greeting_morning_name, name)
+                } else {
+                    stringResource(R.string.greeting_morning)
+                }
+            }
+
+            Greeting.Afternoon -> {
+                if (name !=
+                    null
+                ) {
+                    stringResource(R.string.greeting_afternoon_name, name)
+                } else {
+                    stringResource(R.string.greeting_afternoon)
+                }
+            }
+
+            Greeting.Evening -> {
+                if (name !=
+                    null
+                ) {
+                    stringResource(R.string.greeting_evening_name, name)
+                } else {
+                    stringResource(R.string.greeting_evening)
+                }
+            }
+        }
+    val locale = currentLocale()
+    val date = remember(state.date, locale) { longDate(state.date, locale) }
+    Column(modifier.padding(bottom = HeaderGap)) {
+        LargeHeader(title = greeting, subtitle = { Subtitle(date) }) {
             IconButton(R.drawable.ic_search, stringResource(R.string.search_recipes_hint), actions.onSearch)
             ProfileButton(name, stringResource(R.string.home_open_profile), actions.onOpenSettings)
         }
@@ -269,11 +401,336 @@ private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
     }
 }
 
+/** "Dienstag, 24. November" in German, "Tuesday, November 24" in English. */
+private fun longDate(date: LocalDate, locale: Locale): String =
+    date.format(DateTimeFormatter.ofPattern(if (locale.language == "de") "EEEE, d. MMMM" else "EEEE, MMMM d", locale))
+
 /**
- * Holds the rate prompt. Answered or dismissed, the card fades where it stands and gives up its room
- * once it has all but faded, and the page below glides in; the glide starts easy, so nothing passes
- * over the card while it can still be seen. A new prompt takes its room at once and fades in as the
- * page glides aside.
+ * Today: the next meal planned, its photo across the top of the box, ready to cook, and the other
+ * meals of the day as rows below. With nothing planned, three suggestions to plan for today.
+ */
+@Composable
+private fun TodayBox(state: HomeUiState, suggestions: List<RecipeSummary>, actions: HomeActions, modifier: Modifier = Modifier) {
+    val todays = state.todays
+    val next = todays.firstOrNull { it.type.hour >= state.meal.hour } ?: todays.lastOrNull()
+    if (next == null) {
+        NothingPlanned(suggestions, actions, modifier)
+        return
+    }
+    val recipe = next.recipe
+    TonalBox(modifier, contentPadding = PaddingValues()) {
+        if (recipe != null) {
+            RecipeImage(
+                image = recipe.image,
+                size = ImageSize.Medium,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(TODAY_PHOTO)
+                        .clickable(
+                            role = Role.Button,
+                            onClickLabel = stringResource(R.string.home_open_recipe),
+                        ) { actions.onOpenRecipe(recipe.slug) },
+            )
+        }
+        Column(Modifier.padding(BoxPadding)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = todayMealLabel(next.type),
+                    style = AromaTheme.type.label,
+                    color = AromaTheme.colors.inkSecondary,
+                    modifier = Modifier.weight(1f),
+                )
+                if (recipe != null) recipeTime(recipe)?.let { MetaLine(listOf(it), icon = R.drawable.ic_clock) }
+            }
+            Text(
+                text = recipe?.name ?: next.title,
+                style = AromaTheme.type.section,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .padding(top = Space.s4)
+                        .semantics { heading() },
+            )
+            if (recipe == null && next.note.isNotBlank()) {
+                Text(next.note, style = AromaTheme.type.bodySmall, modifier = Modifier.padding(top = Space.s4))
+            }
+            if (recipe != null) {
+                Row(Modifier.padding(top = Space.s12), horizontalArrangement = Arrangement.spacedBy(Space.s8)) {
+                    PrimaryButton(
+                        stringResource(R.string.recipe_start_cooking),
+                        { actions.onCook(recipe.slug) },
+                        compact = true,
+                        icon = R.drawable.ic_cooking,
+                    )
+                    SecondaryButton(stringResource(R.string.home_recipe), { actions.onOpenRecipe(recipe.slug) }, compact = true)
+                }
+            }
+        }
+        val others = todays - next
+        if (others.isNotEmpty()) {
+            Column(
+                Modifier.padding(start = BoxPadding, end = BoxPadding, bottom = BoxPadding),
+                verticalArrangement = Arrangement.spacedBy(Space.s12),
+            ) {
+                others.forEach { entry -> PlannedRow(entry, actions) }
+            }
+        }
+    }
+}
+
+/** Today's other meals, with what they are and their time under the name. */
+@Composable
+private fun PlannedRow(entry: MealPlanEntry, actions: HomeActions) {
+    val recipe = entry.recipe
+    RecipeRow(
+        title = recipe?.name ?: entry.title,
+        image = recipe?.image,
+        onClick = { if (recipe != null) actions.onOpenRecipe(recipe.slug) else actions.onOpenPlan(entry.date) },
+        meta = listOfNotNull(mealTypeLabel(entry.type), recipe?.let { recipeTime(it) }),
+        fallbackIcon = if (recipe == null) R.drawable.ic_notes else R.drawable.ic_plate,
+    )
+}
+
+/** "Heute Abend": the meal as today names it. */
+@Composable
+private fun todayMealLabel(type: MealType): String =
+    when (type) {
+        MealType.Breakfast -> stringResource(R.string.home_today_breakfast)
+        MealType.Lunch -> stringResource(R.string.home_today_lunch)
+        MealType.Dinner -> stringResource(R.string.home_today_dinner)
+        else -> stringResource(R.string.home_today_other, mealTypeLabel(type))
+    }
+
+/** Nothing planned for today: three suggestions as rows, each to plan with a tap. */
+@Composable
+private fun NothingPlanned(suggestions: List<RecipeSummary>, actions: HomeActions, modifier: Modifier = Modifier) {
+    TonalBox(modifier) {
+        BoxHeader(stringResource(R.string.home_today_empty))
+        if (suggestions.isEmpty()) {
+            TextAction(stringResource(R.string.home_today_plan), { actions.onOpenPlan(null) }, icon = R.drawable.ic_add)
+        } else {
+            Column(Modifier.padding(top = Space.s12), verticalArrangement = Arrangement.spacedBy(Space.s12)) {
+                suggestions.forEach { recipe ->
+                    RecipeRow(
+                        recipe = recipe,
+                        onClick = { actions.onOpenRecipe(recipe.slug) },
+                        onLongClick = { actions.onRecipeMenu(recipe) },
+                        trailing = { TextAction(stringResource(R.string.recipe_action_plan), { actions.onPlanToday(recipe) }) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The week at a glance: seven columns from Monday, today's figure in an ink circle, a sage dot under
+ * every day with something planned, past days faded. A day opens the plan there; the head, at today.
+ */
+@Composable
+private fun WeekBox(state: HomeUiState, onOpenPlan: (LocalDate?) -> Unit, modifier: Modifier = Modifier) {
+    val locale = currentLocale()
+    val planned = remember(state.week) { state.week.map { it.date }.toSet() }
+    val days = remember(state.weekStart) { (0L until DAYS).map { state.weekStart.plusDays(it) } }
+    TonalBox(modifier, contentPadding = PaddingValues(start = BoxPadding, end = BoxPadding, bottom = Space.s12)) {
+        BoxHeader(
+            title = stringResource(R.string.home_this_week),
+            meta = days.count { it in planned }.let { count -> pluralStringResource(R.plurals.home_week_planned, count, count, DAYS) },
+            chevron = true,
+            modifier =
+                Modifier
+                    .heightIn(min = TouchTarget)
+                    .clickable(role = Role.Button) { onOpenPlan(null) },
+        )
+        Row(Modifier.padding(top = Space.s4)) {
+            days.forEach { day ->
+                WeekDay(
+                    day = day,
+                    today = state.date,
+                    planned = day in planned,
+                    locale = locale,
+                    onClick = { onOpenPlan(day) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+private const val DAYS = 7L
+
+/** One day of the week's strip: its short name over its figure, and a dot where something is planned. */
+@Composable
+private fun WeekDay(
+    day: LocalDate,
+    today: LocalDate,
+    planned: Boolean,
+    locale: Locale,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = AromaTheme.colors
+    val past = day.isBefore(today)
+    val isToday = day == today
+    val name = remember(day, locale) { weekdayShort(day, locale) }
+    val described = stringResource(if (planned) R.string.home_week_day_planned else R.string.home_week_day_free, name, day.dayOfMonth)
+    Column(
+        modifier
+            .clip(AromaTheme.shapes.box)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(vertical = Space.s4)
+            .semantics(mergeDescendants = true) {
+                contentDescription = described
+                selected = isToday
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(name, style = AromaTheme.type.meta, color = if (past) colors.inkTertiary else colors.inkSecondary)
+        Box(
+            Modifier
+                .padding(top = Space.s4)
+                .size(TodayCircle)
+                .then(if (isToday) Modifier.background(colors.ink, CircleShape) else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = day.dayOfMonth.toString(),
+                style = AromaTheme.type.cardTitle.tabular(),
+                color =
+                    when {
+                        isToday -> colors.onInk
+                        past -> colors.inkTertiary
+                        else -> colors.ink
+                    },
+                textAlign = TextAlign.Center,
+            )
+        }
+        Box(
+            Modifier
+                .padding(top = Space.s4)
+                .size(PlannedDot)
+                .then(if (planned) Modifier.background(colors.accent, CircleShape) else Modifier),
+        )
+    }
+}
+
+/** Today's figure stands in a circle this large; a planned day has a dot this large under it. */
+private val TodayCircle = 32.dp
+private val PlannedDot = 4.dp
+
+/** The shopping list, while something is still to buy on it. */
+@Composable
+private fun ShoppingBox(open: Int, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    TonalBox(modifier, onClick = onOpen) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconCircleMark(R.drawable.ic_basket)
+            Column(
+                Modifier
+                    .weight(1f)
+                    .padding(start = Space.s12),
+            ) {
+                Text(stringResource(R.string.home_shopping_list), style = AromaTheme.type.label)
+                Text(pluralStringResource(R.plurals.home_shopping_open, open, open), style = AromaTheme.type.meta)
+            }
+            Icon(
+                painterResource(R.drawable.ic_chevron_right),
+                contentDescription = null,
+                tint = AromaTheme.colors.inkSecondary,
+                modifier = Modifier.size(Glyph.control),
+            )
+        }
+    }
+}
+
+/** Ideas for today: a carousel of cards 148 dp wide, the third cut by the edge so the row reads as more. */
+@Composable
+private fun Ideas(recipes: List<RecipeSummary>, actions: HomeActions, onShowAll: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.padding(top = SectionGap)) {
+        SectionTitle(
+            title = stringResource(R.string.home_ideas),
+            actionLabel = stringResource(R.string.action_show_all),
+            onAction = onShowAll,
+            modifier = Modifier.padding(bottom = SectionTitleGap),
+        )
+        val lines = rememberTitleLines(recipes.map { it.name }, CarouselCardWidth)
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = PageMargin),
+            horizontalArrangement = Arrangement.spacedBy(GridColumnGap),
+        ) {
+            items(recipes, key = { it.id }) { recipe ->
+                RecipeCard(
+                    recipe = recipe,
+                    onClick = { actions.onOpenRecipe(recipe.slug) },
+                    onLongClick = { actions.onRecipeMenu(recipe) },
+                    titleLines = lines,
+                    modifier = Modifier.width(CarouselCardWidth),
+                )
+            }
+        }
+    }
+}
+
+private val CarouselCardWidth = 148.dp
+
+/** Quick ones: three rows of recipes on the table in half an hour. */
+@Composable
+private fun Quick(recipes: List<RecipeSummary>, actions: HomeActions, modifier: Modifier = Modifier) {
+    Column(modifier.padding(top = SectionGap)) {
+        SectionTitle(stringResource(R.string.home_quick), Modifier.padding(bottom = SectionTitleGap))
+        Column(Modifier.padding(horizontal = PageMargin), verticalArrangement = Arrangement.spacedBy(Space.s12)) {
+            recipes.forEach { recipe ->
+                RecipeRow(recipe = recipe, onClick = { actions.onOpenRecipe(recipe.slug) }, onLongClick = { actions.onRecipeMenu(recipe) })
+            }
+        }
+    }
+}
+
+/** The newest recipe in the collection, large: its photo across the page, its name, two lines of its headnote. */
+@Composable
+private fun Newest(recipe: RecipeSummary, actions: HomeActions, modifier: Modifier = Modifier) {
+    Column(modifier.padding(top = SectionGap)) {
+        SectionTitle(stringResource(R.string.home_newest), Modifier.padding(bottom = SectionTitleGap))
+        Column(
+            Modifier
+                .padding(horizontal = PageMargin)
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.home_open_recipe),
+                ) { actions.onOpenRecipe(recipe.slug) },
+        ) {
+            RecipeImage(
+                image = recipe.image,
+                size = ImageSize.Medium,
+                shape = AromaTheme.shapes.cardImage,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(NEWEST_PHOTO),
+            )
+            Text(recipe.name, style = AromaTheme.type.section, modifier = Modifier.padding(top = Space.s12))
+            if (recipe.description.isNotBlank()) {
+                Text(
+                    text = recipe.description,
+                    style = AromaTheme.type.headnote,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = Space.s4),
+                )
+            }
+            RecipeMetaLine(recipe, Modifier.padding(top = Space.s8))
+        }
+    }
+}
+
+private const val TODAY_PHOTO = 16f / 10f
+private const val NEWEST_PHOTO = 4f / 3f
+
+/**
+ * Holds the rate prompt. Answered or dismissed, the box fades where it stands and gives up its room
+ * once it has all but faded, and the page below glides in. A new prompt takes its room at once and
+ * fades in as the page glides aside.
  */
 @Composable
 private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions, modifier: Modifier = Modifier) {
@@ -281,10 +738,8 @@ private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions, modifier
         targetState = toRate,
         contentKey = { it?.recipeId },
         transitionSpec = {
-            val arrive =
-                fadeIn(tween(Motion.STATE, easing = Motion.Decelerate)) +
-                    scaleIn(tween(Motion.STATE, easing = Motion.Decelerate), RATE_SCALE)
-            val leave = fadeOut(tween(Motion.EDGE)) + scaleOut(tween(Motion.EDGE), RATE_SCALE)
+            val arrive = fadeIn(Motion.state()) + scaleIn(Motion.state(), RATE_SCALE)
+            val leave = fadeOut(Motion.edge()) + scaleOut(Motion.edge(), RATE_SCALE)
             arrive togetherWith leave using
                 SizeTransform(clip = false) { initial, target -> if (target.height < initial.height) snap(Motion.EDGE / 2) else snap() }
         },
@@ -301,9 +756,9 @@ private const val RATE_SCALE = 0.96f
 /** Asks, without a notification, how the last recipe cooked turned out. */
 @Composable
 private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
-    TonalBox(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s24), contentPadding = PaddingValues()) {
+    TonalBox(Modifier.padding(start = PageMargin, end = PageMargin, top = BoxGap), contentPadding = PaddingValues()) {
         Box {
-            // As much space under the stars' ink as above the photo; their own targets take most of it.
+            // As much room under the stars' ink as above the photo; their own targets take most of it.
             Row(Modifier.padding(start = BoxPadding, top = Space.s12, bottom = Space.s16 - ratingTouchInset(RateStarSize))) {
                 RecipeImage(
                     image = toRate.image,
@@ -313,9 +768,9 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                     modifier =
                         Modifier
                             .padding(top = Space.s4)
-                            .size(ThumbnailSize)
+                            .size(app.aroma.ui.theme.ThumbnailSize)
                             .clip(AromaTheme.shapes.thumbnail)
-                            .clickable(onClickLabel = stringResource(R.string.home_rate_open)) { actions.onOpenRecipe(toRate.slug) },
+                            .clickable(onClickLabel = stringResource(R.string.home_open_recipe)) { actions.onOpenRecipe(toRate.slug) },
                 )
                 Spacer(Modifier.width(Space.s16))
                 // The words keep clear of the close button; the stars may pass under it, so five fit on a small phone.
@@ -323,14 +778,13 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                     Text(
                         text = stringResource(R.string.cook_rate_question),
                         style = AromaTheme.type.bodySmall,
-                        color = AromaTheme.colors.inkSecondary,
                         modifier = Modifier.padding(end = TouchTarget),
                     )
                     Text(
                         text = toRate.name,
                         style = AromaTheme.type.cardTitle,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         modifier = Modifier.padding(end = TouchTarget),
                     )
                     RatingStars(
@@ -349,220 +803,38 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                 modifier =
                     Modifier
                         .align(Alignment.TopEnd)
-                        .padding(top = Space.s12),
+                        .padding(top = Space.s4, end = Space.s4),
             )
         }
     }
 }
 
-@Composable
-private fun TodaySection(entries: List<MealPlanEntry>, actions: HomeActions, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        SectionTitle(
-            title = stringResource(R.string.home_today),
-            actionLabel = stringResource(R.string.home_open_plan),
-            onAction = actions.onOpenMealPlan,
-            modifier = Modifier.padding(top = SectionGap, bottom = SectionTitleGap),
-        )
-        val open = { entry: MealPlanEntry -> entry.recipe?.let { actions.onOpenRecipe(it.slug) } ?: actions.onOpenMealPlan() }
-        when (entries.size) {
-            0 -> EmptyToday(onPlan = actions.onOpenMealPlan)
-            1 -> TodayCard(entries.single(), onClick = { open(entries.single()) }, Modifier.padding(horizontal = PageMargin))
-            else -> TodayCarousel(entries, open)
-        }
-    }
-}
+private val RateStarSize = 28.dp
 
-/** Several meals today: each a column wide less 32 dp, so the next one shows at the edge. */
+/** The page's outline while it loads: today's box with its photo, and the week's. */
 @Composable
-private fun TodayCarousel(entries: List<MealPlanEntry>, onOpen: (MealPlanEntry) -> Unit) {
-    val rowState = rememberLazyListState()
-    BoxWithConstraints {
-        val itemWidth = maxWidth - PageMargin * 2 - Space.s32
-        LazyRow(
-            state = rowState,
-            flingBehavior = rememberSnapFlingBehavior(rowState, SnapPosition.Start),
-            contentPadding = PaddingValues(horizontal = PageMargin),
-            horizontalArrangement = Arrangement.spacedBy(Space.s16),
-        ) {
-            items(entries, key = { it.id }) { entry ->
-                TodayCard(entry, onClick = { onOpen(entry) }, Modifier.width(itemWidth), holdTwoLines = true)
-            }
-        }
-    }
-}
-
-/**
- * Today's meal as a 3:2 photo with its caption set underneath; pressing dims the photo. With
- * [holdTwoLines], the card is always as tall as a two-line title needs, so a row of meals keeps
- * one height while it scrolls.
- */
-@Composable
-private fun TodayCard(entry: MealPlanEntry, onClick: () -> Unit, modifier: Modifier = Modifier, holdTwoLines: Boolean = false) {
-    val interaction = remember { MutableInteractionSource() }
-    Column(
-        modifier =
-            modifier
+private fun HomeLoading(modifier: Modifier = Modifier) {
+    Column(modifier.padding(horizontal = PageMargin)) {
+        Skeleton(
+            Modifier
                 .fillMaxWidth()
-                .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
-                .semantics(mergeDescendants = true) {},
-    ) {
-        RecipeImage(
-            image = entry.recipe?.image,
-            size = ImageSize.Medium,
+                .aspectRatio(TODAY_PHOTO),
             shape = AromaTheme.shapes.box,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(3f / 2f)
-                    .indication(interaction, PressTint),
         )
-        Spacer(Modifier.height(Space.s8))
-        Text(
-            text = mealTypeLabel(entry.type),
-            style = AromaTheme.type.bodySmall,
-            color = AromaTheme.colors.inkSecondary,
+        SkeletonLine(
+            Modifier
+                .padding(top = Space.s16)
+                .fillMaxWidth(TITLE_SHARE),
         )
-        Text(
-            text = entry.recipe?.name ?: entry.title,
-            style = AromaTheme.type.section,
-            maxLines = 2,
-            minLines = if (holdTwoLines) 2 else 1,
-            overflow = TextOverflow.Ellipsis,
+        Skeleton(
+            Modifier
+                .padding(top = BoxGap)
+                .fillMaxWidth()
+                .height(WeekSkeletonHeight),
+            shape = AromaTheme.shapes.box,
         )
-        val recipe = entry.recipe
-        if (recipe != null) {
-            RecipeMetaLine(recipe, Modifier.padding(top = Space.s4))
-        } else if (entry.note.isNotBlank()) {
-            Text(
-                text = entry.note,
-                style = AromaTheme.type.bodySmall,
-                color = AromaTheme.colors.inkSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = Space.s4),
-            )
-        }
     }
 }
 
-/** Nothing planned yet: a card that says so and leads to the plan. */
-@Composable
-private fun EmptyToday(onPlan: () -> Unit) {
-    TonalBox(Modifier.padding(horizontal = PageMargin), onClick = onPlan) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.home_today_empty), style = AromaTheme.type.body)
-                Text(stringResource(R.string.home_today_plan), style = AromaTheme.type.bodySmall, color = AromaTheme.colors.accent)
-            }
-            Icon(
-                painterResource(R.drawable.ic_chevron_right),
-                contentDescription = null,
-                tint = AromaTheme.colors.inkSecondary,
-                modifier = Modifier.size(Glyph.control),
-            )
-        }
-    }
-}
-
-@Composable
-private fun RecipeCarousel(
-    title: String,
-    recipes: List<RecipeSummary>,
-    actions: HomeActions,
-    modifier: Modifier = Modifier,
-    onShowAll: (() -> Unit)? = null,
-) {
-    Column(modifier) {
-        SectionTitle(
-            title = title,
-            actionLabel = onShowAll?.let { stringResource(R.string.action_show_all) },
-            onAction = onShowAll,
-            modifier = Modifier.padding(top = SectionGap, bottom = SectionTitleGap),
-        )
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = PageMargin),
-            horizontalArrangement = Arrangement.spacedBy(Space.s16),
-        ) {
-            items(recipes, key = { it.id }) { recipe ->
-                RecipeCard(
-                    recipe = recipe,
-                    onClick = { actions.onOpenRecipe(recipe.slug) },
-                    onLongClick = { actions.onRecipeMenu(recipe) },
-                    modifier = Modifier.width(CarouselCardWidth),
-                )
-            }
-        }
-    }
-}
-
-/** How long the outline's lines are: under Today's photo a meal, a title and the meta line; under a card's, its title and meta. */
-private val TodayLineWidths = listOf(72.dp, 240.dp, 96.dp)
-private val CardLineWidths = listOf(128.dp, 72.dp)
-private val SectionTitleWidth = 120.dp
-
-/** The page's outline while it loads: the Today photo and caption, then a carousel of cards. */
-@Composable
-private fun HomeLoading() {
-    Column {
-        SectionTitlePlaceholder()
-        Spacer(Modifier.height(Space.s8))
-        Column(Modifier.padding(horizontal = PageMargin)) {
-            Skeleton(
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(3f / 2f),
-            )
-            Spacer(Modifier.height(Space.s12))
-            Column(verticalArrangement = Arrangement.spacedBy(Space.s8)) {
-                TodayLineWidths.forEach { SkeletonLine(Modifier.width(it)) }
-            }
-        }
-        SectionTitlePlaceholder()
-        Spacer(Modifier.height(Space.s8))
-        Row(
-            modifier =
-                Modifier
-                    .wrapContentWidth(Alignment.Start, unbounded = true)
-                    .padding(horizontal = PageMargin),
-            horizontalArrangement = Arrangement.spacedBy(Space.s16),
-        ) {
-            repeat(3) {
-                Column(Modifier.width(CarouselCardWidth)) {
-                    Skeleton(
-                        Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(4f / 5f),
-                    )
-                    Spacer(Modifier.height(Space.s12))
-                    Column(verticalArrangement = Arrangement.spacedBy(Space.s8)) {
-                        CardLineWidths.forEach { SkeletonLine(Modifier.width(it)) }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Stands in for a [SectionTitle], in the same place. */
-@Composable
-private fun SectionTitlePlaceholder() {
-    Box(
-        Modifier
-            .padding(start = PageMargin, end = PageMargin, top = SectionGap)
-            .height(TouchTarget),
-        contentAlignment = Alignment.CenterStart,
-    ) { SkeletonLine(Modifier.width(SectionTitleWidth)) }
-}
-
-/** The suggestions' titles for the meals that have one of their own; any other meal goes by its name. */
-private val MealTitles =
-    mapOf(
-        Meal.Breakfast to R.string.home_for_breakfast,
-        Meal.Lunch to R.string.home_for_lunch,
-        Meal.Snack to R.string.home_for_snack,
-        Meal.Dinner to R.string.home_for_dinner,
-    )
-
-@Composable
-private fun mealTitle(meal: Meal): String = MealTitles[meal]?.let { stringResource(it) } ?: mealLabel(meal)
+private const val TITLE_SHARE = 0.6f
+private val WeekSkeletonHeight = 120.dp

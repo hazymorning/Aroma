@@ -139,6 +139,8 @@ class RecipesViewModel(
 
     fun toggleQuick() = changeFilter { it.copy(quick = !it.quick) }
 
+    fun toggleLongAgo() = changeFilter { it.copy(longAgo = !it.longAgo) }
+
     /** One meal at a time: choosing another replaces it, choosing it again clears it. */
     fun toggleMeal(meal: Meal) = changeFilter { it.copy(meal = meal.takeIf { _ -> it.meal != meal }) }
 
@@ -218,6 +220,11 @@ class RecipesViewModel(
                 cookbook = cookbook,
                 mealNames = names.orEmpty(),
                 readyWithin = QUICK_MINUTES.takeIf { filter.quick },
+                cookedBefore =
+                    java.time.LocalDate
+                        .now()
+                        .minusWeeks(LONG_AGO_WEEKS)
+                        .takeIf { filter.longAgo },
                 sort = filter.sort,
                 seed = randomSeed,
             )
@@ -251,3 +258,6 @@ class RecipesViewModel(
         }
     }
 }
+
+/** How long a recipe has not been cooked to count as cooked long ago. */
+private const val LONG_AGO_WEEKS = 4L

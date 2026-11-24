@@ -59,6 +59,7 @@ import app.aroma.feature.editor.copiedText
 import app.aroma.feature.editor.readPickedPhoto
 import app.aroma.feature.editor.reworkReason
 import app.aroma.feature.home.HomeActions
+import app.aroma.feature.home.HomeEvent
 import app.aroma.feature.home.HomeScreen
 import app.aroma.feature.home.HomeViewModel
 import app.aroma.feature.login.LoginActions
@@ -125,24 +126,36 @@ fun LoginDestination() {
 }
 
 @Composable
-fun HomeDestination(nav: NavController, snackbar: SnackbarHostState, onSearch: () -> Unit) {
-    val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, sessions, auth, ratingReminder, connection) }
+fun HomeDestination(nav: NavController, snackbar: SnackbarHostState, planFocus: PlanFocus, onSearch: () -> Unit) {
+    val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, shopping, settings, sessions, auth, ratingReminder, connection) }
     val state by vm.state.collectAsStateWithLifecycle()
     val menu = remember { RecipeMenuState() }
-    val favorites = stringResource(R.string.home_favorites)
+    val resources = LocalResources.current
+    LaunchedEffect(vm) {
+        vm.events.collect { event ->
+            when (event) {
+                is HomeEvent.Planned -> launch { snackbar.showSnackbar(resources.getString(R.string.home_planned_today)) }
+                is HomeEvent.Failed -> launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
+            }
+        }
+    }
     HomeScreen(
         state = state,
         actions =
             HomeActions(
                 onSearch = onSearch,
                 onOpenRecipe = { nav.navigate(RecipeRoute(it)) },
+                onCook = { nav.navigate(CookRoute(it, 1.0)) },
                 onRecipeMenu = menu::open,
                 onOpenSettings = { nav.navigate(SettingsRoute) },
                 onShowAllRecipes = { nav.navigateToTab(Tab.Recipes) },
-                onShowFavorites = { nav.navigate(CollectionRoute(CollectionKind.Favorites, favorites)) },
                 onShowMeal = { meal, title -> nav.navigate(CollectionRoute(CollectionKind.Meal, title, meal.name)) },
-                onShowQuick = { title -> nav.navigate(CollectionRoute(CollectionKind.Quick, title)) },
-                onOpenMealPlan = { nav.navigateToTab(Tab.MealPlan) },
+                onOpenPlan = { day ->
+                    planFocus.day = day ?: LocalDate.now()
+                    nav.navigateToTab(Tab.MealPlan)
+                },
+                onPlanToday = vm::planToday,
+                onOpenShopping = { nav.navigateToTab(Tab.Shopping) },
                 onRefresh = vm::refresh,
                 onRateCooked = vm::rateCooked,
                 onDismissReminder = vm::dismissReminder,
@@ -176,6 +189,7 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
                 onToggleMeal = vm::toggleMeal,
                 onToggleQuick = vm::toggleQuick,
                 onToggleFavorites = vm::toggleFavorites,
+                onToggleLongAgo = vm::toggleLongAgo,
                 onToggleOrganizer = vm::toggleOrganizer,
                 onSortChange = vm::setSort,
                 onClearFilters = vm::clearFilters,
@@ -544,9 +558,12 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
 }
 
 @Composable
-fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
+fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState, focus: PlanFocus) {
     val vm = aromaViewModel { MealPlanViewModel(mealPlans, recipes, shopping, settings, connection) }
     val state by vm.state.collectAsStateWithLifecycle()
+    // A day asked for from elsewhere: its week first, then the day in view.
+    val focusDay = focus.day
+    LaunchedEffect(focusDay) { focusDay?.let(vm::showWeekOf) }
     val search by vm.search.collectAsStateWithLifecycle()
     val resources = LocalResources.current
     var addFor by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -605,6 +622,8 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
                 onMoveEntry = vm::move,
                 onRefresh = vm::refresh,
             ),
+        focus = focusDay,
+        onFocusConsume = { focus.day = null },
     )
     addFor?.let { day ->
         AddMealSheet(

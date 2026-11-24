@@ -125,6 +125,7 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
             val scrollToTop = remember(tab) { reselected.filter { it == tab }.map { } }
             CompositionLocalProvider(LocalBottomBarInset provides barInset, LocalScrollToTop provides scrollToTop, content = page)
         }
+        val planFocus = remember { PlanFocus() }
         NavHost(
             nav,
             startDestination = HomeRoute,
@@ -138,7 +139,7 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
         ) {
             composable<HomeRoute> {
                 underBar(Tab.Home) {
-                    HomeDestination(nav, snackbar) {
+                    HomeDestination(nav, snackbar, planFocus) {
                         focusSearch.value = true
                         nav.navigateToTab(Tab.Recipes)
                     }
@@ -149,7 +150,7 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                     Tab.Recipes,
                 ) { RecipesDestination(nav, snackbar, focusSearch.value, onFocusSearchConsume = { focusSearch.value = false }) }
             }
-            composable<MealPlanRoute> { underBar(Tab.MealPlan) { MealPlanDestination(nav, snackbar) } }
+            composable<MealPlanRoute> { underBar(Tab.MealPlan) { MealPlanDestination(nav, snackbar, planFocus) } }
             composable<ShoppingRoute> {
                 underBar(Tab.Shopping) { ShoppingDestination(shoppingRequest.value, onRequestConsume = { shoppingRequest.value = null }) }
             }

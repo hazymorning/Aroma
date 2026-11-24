@@ -9,7 +9,7 @@ Wird nach jedem Schritt aktualisiert.
 - [x] P1 Fehler beheben (Abschnitt 8)
 - [x] P2 Grundlagen (4) und Komponenten (5), alte Varianten migriert und gelöscht
 - [x] P3 Rezeptseite
-- [ ] P4 Start und Wochenplan
+- [x] P4 Start und Wochenplan
 - [ ] P5 Rezepte, Kochmodus, Einkauf, Einstellungen, übrige Screens, Sheets, Dialoge, Zustände
 - [ ] P6 Dark Mode, Bewegung, Haptik, Barrierefreiheit
 - [ ] P7 Art-Director-Review, `BERICHT.md`
@@ -243,6 +243,53 @@ Geprüft mit `DesignScreenshotTest` (Testtexte aus Abschnitt 14: voll mit 30 Zut
 Gruppen, nur ein Name, längster Titel mit „1 Blech"; hell und dunkel, 100, 130 und 200 %, auch als
 ganze Seite).
 
+## P4 – Start und Wochenplan (erledigt)
+
+**Start (6.2).**
+
+- Kopf „Guten Morgen/Tag/Abend, {Vorname}" (5–11, 11–18, ab 18 Uhr) mit dem Datum als Unterzeile
+  („Dienstag, 24. November"); Suche und Profil-Initiale als Icon-Buttons, kein Suchfeld.
+- Box „Heute": die nächste Mahlzeit des Tages mit Bild 16 : 10 oben (die Box rundet seine oberen
+  Ecken), „Heute Abend" und Zeit, Rezeptname in `section` (höchstens zwei Zeilen), „Jetzt kochen"
+  (Primär, kompakt, öffnet den Kochmodus) und „Rezept" (Sekundär, kompakt); die übrigen Mahlzeiten
+  des Tages als Rezeptzeilen. Ohne Plan heißt sie „Für heute ist noch nichts geplant" und zeigt drei
+  Vorschläge mit „Einplanen", das sie für die Mahlzeit der Stunde auf heute legt.
+- Box „Diese Woche": „5 von 7 geplant" mit Chevron, sieben Spalten Mo–So, heute im Tintenkreis,
+  Punkte unter geplanten Tagen, Vergangenes in `inkTertiary`; ein Tag öffnet den Wochenplan dort.
+- Box „Einkaufsliste" nur bei offenen Artikeln (der zuletzt genutzten Liste): Korb im Icon-Kreis,
+  „12 Artikel offen", Chevron.
+- Bewertung nach dem Kochen als Box unter den drei Boxen (bestehende Funktion).
+- Inspiration, offen: „Ideen für heute" mit „Alle" als Karussell (Karten 148 dp, die dritte
+  angeschnitten, den ganzen Tag dieselbe Auswahl), „Schnell gemacht" als drei Zeilen (höchstens 30
+  Min.), „Neu in deiner Sammlung" groß (4 : 3, Radius 14, Name, zwei Zeilen Kopfnote, Metazeile).
+  Kein Rezept zweimal auf der Seite; ein Abschnitt mit weniger als drei Rezepten entfällt.
+- Akzeptanz: Kopf, ganze Heute-Box und Anfang von „Diese Woche" stehen ohne Scrollen auf dem
+  Bildschirm.
+
+**Wochenplan (6.3).**
+
+- Kalenderwoche Montag bis Sonntag statt sieben Tagen ab heute; Unterzeile „23.–29. November ·
+  KW 48", über den Monatswechsel „30. Nov.–6. Dez. · KW 49", außerhalb der aktuellen Woche mit
+  „Zur aktuellen Woche". Wochenwechsler als Pill 40 dp mit ‹ und ›; Wischen wechselt die Woche,
+  die neue schiebt sich von ihrer Seite herein.
+- Agenda ohne Linien, 8 dp zwischen den Tagen; links 44 dp mit Kürzel (`meta`) über der Ziffer
+  (`numeral`, `inkSecondary`); rechts Rezeptzeilen mit „Abendessen · 45 Min.", 8 dp untereinander,
+  und ein Plus für eine weitere Mahlzeit. Leere Tage: „Gericht planen", höchstens 56 dp.
+- Heute auf `surface` (Radius 20), 12 dp über die Spalte hinaus, „Heute" in `accent` (500), Ziffer
+  in Tinte. Vergangene Tage in `inkTertiary`, Bilder mit 60 %; ab zwei vergangenen Tagen eine
+  aufklappbare Zeile „Mo–Mi · 4 Gerichte".
+- Box „Zutaten der Woche" am Ende: Korb im Icon-Kreis, „aus 7 Gerichten · 46 Artikel", „Auf die
+  Liste" (Sekundär, kompakt); sie ersetzt das Korb-Icon im Kopf. Die Artikel zählen die Zutaten der
+  Rezepte aus der Kopie auf dem Gerät oder von Mealie.
+- Tippen öffnet das Rezept, langes Drücken das Sheet mit Einkaufen, Verschieben und Entfernen;
+  TalkBack bekommt Einkaufen und Entfernen direkt an der Zeile.
+
+**Verschoben.** Vom Start: „Favoriten" → Rezepte, Filter „Gemerkt"; „Neu hinzugefügt" → „Neu in
+deiner Sammlung" und Rezepte (Sortierung „Neueste"); „In 30 Minuten fertig" → „Schnell gemacht"
+und Rezepte, Filter „Schnell"; „Lange nicht gekocht" → Rezepte, Filter „Lange nicht gekocht"
+(neu im Filter-Sheet, gleiche Abfrage wie vorher). Im Wochenplan: Wischen zum Entfernen → „Entfernen"
+im Sheet (Wischen wechselt jetzt die Woche); Korb im Kopf → Box „Zutaten der Woche".
+
 ## Entscheidungen
 
 1. **Branch** `design/kochbuch`, wie im Auftrag.
@@ -280,6 +327,14 @@ ganze Seite).
     die Liste wie eine Einstellungsliste; die Ziele grenzen lückenlos aneinander und sind so breit wie
     die Seite. Im Kochmodus, mit Abhak-Kreis, 48 dp.
 16. **Rezept ohne Foto:** kein Hero und kein Platzhalter, sondern der Kopf einer Detailseite (7).
+17. **Gruß in zwei Zeilen:** „Guten Morgen," steht über dem Namen. Ausgeglichen gesetzt hätte der
+    Satz sonst „Guten Mor-/gen, Mara" getrennt.
+18. **„Einplanen" in der leeren Heute-Box** legt das Rezept auf heute, als Mahlzeit der Stunde, ohne
+    Sheet; der Wochenplan hält alles Weitere bereit.
+19. **Vergangene Tage falten sich nur in der laufenden Woche**; eine Woche in der Vergangenheit, die
+    man bewusst aufruft, steht offen.
+20. **„Heute" in `meta`-Größe** (500, Salbei): als Kürzelersatz in der 44-dp-Spalte; in `label`
+    stieß es ans Bild.
 
 ## Abweichungen
 

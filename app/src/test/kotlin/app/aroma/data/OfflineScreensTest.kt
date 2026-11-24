@@ -150,7 +150,7 @@ class OfflineScreensTest {
     @Test
     fun `without a network, home shows its stored sections at once and says it is offline`() {
         goOffline()
-        val home = HomeViewModel(env.recipes, env.mealPlans, env.sessions, env.auth, reminder(), env.connection)
+        val home = HomeViewModel(env.recipes, env.mealPlans, env.shopping, settings, env.sessions, env.auth, reminder(), env.connection)
         val shown = until { !home.state.value.isLoading && home.state.value.isOffline }
         assertTrue("shown after $shown ms", shown < AT_ONCE)
         assertEquals(

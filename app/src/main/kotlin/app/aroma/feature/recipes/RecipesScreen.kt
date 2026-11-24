@@ -3,6 +3,7 @@ package app.aroma.feature.recipes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -75,13 +76,15 @@ data class RecipeFilter(
     val meal: Meal? = null,
     val quick: Boolean = false,
     val favoritesOnly: Boolean = false,
+    /** Only recipes cooked before, but not in the last four weeks. */
+    val longAgo: Boolean = false,
     val categories: Set<Organizer> = emptySet(),
     val tags: Set<Organizer> = emptySet(),
     val tools: Set<Organizer> = emptySet(),
     val sort: RecipeSort = RecipeSort.Newest,
 ) {
     val hasFilters: Boolean
-        get() = favoritesOnly || quick || meal != null || categories.isNotEmpty() || tags.isNotEmpty() || tools.isNotEmpty()
+        get() = favoritesOnly || quick || longAgo || meal != null || categories.isNotEmpty() || tags.isNotEmpty() || tools.isNotEmpty()
 
     fun selected(kind: OrganizerKind): Set<Organizer> =
         when (kind) {
@@ -141,6 +144,7 @@ data class RecipesActions(
     val onToggleMeal: (Meal) -> Unit = {},
     val onToggleQuick: () -> Unit = {},
     val onToggleFavorites: () -> Unit = {},
+    val onToggleLongAgo: () -> Unit = {},
     val onToggleOrganizer: (OrganizerKind, Organizer) -> Unit = { _, _ -> },
     val onSortChange: (RecipeSort) -> Unit = {},
     val onClearFilters: () -> Unit = {},
@@ -326,9 +330,10 @@ private fun FilterSheet(state: RecipesUiState, actions: RecipesActions, onOrgani
                 onSelect = { actions.onSortChange(RecipeSort.entries[it]) },
             )
             GroupHead(stringResource(R.string.recipes_narrow), Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16))
-            Row(Modifier.padding(start = PageMargin - SegmentInset, end = PageMargin)) {
+            FlowRow(Modifier.padding(start = PageMargin - SegmentInset, end = PageMargin)) {
                 Segment(stringResource(R.string.recipes_quick), state.filter.quick, actions.onToggleQuick)
                 Segment(stringResource(R.string.recipes_saved), state.filter.favoritesOnly, actions.onToggleFavorites)
+                Segment(stringResource(R.string.recipes_long_ago), state.filter.longAgo, actions.onToggleLongAgo)
             }
             listOf(OrganizerKind.Category, OrganizerKind.Tag).filter { state.options(it).isNotEmpty() }.forEach { kind ->
                 val chosen = state.filter.selected(kind)

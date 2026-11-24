@@ -184,10 +184,12 @@ fun RecipeRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            // A row's meta line may take a second line with large text, so nothing of it is lost.
             MetaLine(
                 items = meta,
                 icon = metaIcon,
                 color = if (dimmed) colors.inkTertiary else colors.inkSecondary,
+                maxLines = ROW_META_LINES,
                 modifier = Modifier.padding(top = Space.s4),
             )
         }
@@ -243,3 +245,6 @@ private val FallbackGlyph = 20.dp
 
 /** How much of a past day's photos still shows. */
 private const val DIMMED_PHOTO = 0.6f
+
+/** How many lines a row's meta line may take. */
+private const val ROW_META_LINES = 2

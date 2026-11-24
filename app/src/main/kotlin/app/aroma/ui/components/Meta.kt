@@ -26,6 +26,7 @@ fun MetaLine(
     modifier: Modifier = Modifier,
     @DrawableRes icon: Int? = null,
     color: Color = AromaTheme.colors.inkSecondary,
+    maxLines: Int = 1,
 ) {
     val text = items.filter { it.isNotBlank() }.joinToString(SEPARATOR)
     if (text.isEmpty()) return
@@ -34,7 +35,7 @@ fun MetaLine(
             Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(Glyph.meta))
             Spacer(Modifier.width(Space.s4))
         }
-        Text(text, style = AromaTheme.type.meta, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, style = AromaTheme.type.meta, color = color, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
     }
 }
 

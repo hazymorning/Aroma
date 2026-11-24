@@ -133,7 +133,7 @@ private fun trimmed(text: String, end: Int, start: Int): Int? {
 }
 
 /** What a shortened text drops before its "…": "Teig, …" reads as "Teig…". */
-private const val TRAILING = ",;:–-"
+private const val TRAILING = ",;:–-·"
 
 /** The text up to [end], and "…" after it, in the style of the last character kept. */
 fun AnnotatedString.ellipsis(end: Int): AnnotatedString =

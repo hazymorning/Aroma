@@ -73,22 +73,32 @@
     <string name="greeting_morning">Good morning</string>
     <string name="greeting_afternoon">Good afternoon</string>
     <string name="greeting_evening">Good evening</string>
+    <string name="greeting_morning_name">Good morning,\n%1$s</string>
+    <string name="greeting_afternoon_name">Good afternoon,\n%1$s</string>
+    <string name="greeting_evening_name">Good evening,\n%1$s</string>
     <string name="home_open_profile">Profile and settings</string>
     <string name="home_today">Today</string>
-    <string name="home_open_plan">Meal plan</string>
-    <string name="home_today_empty">Nothing planned for today</string>
+    <string name="home_today_breakfast">This morning</string>
+    <string name="home_today_lunch">Lunch today</string>
+    <string name="home_today_dinner">Tonight</string>
+    <string name="home_today_other">Today\u00A0· %1$s</string>
+    <string name="home_recipe">Recipe</string>
+    <string name="home_open_recipe">Open recipe</string>
+    <string name="home_this_week">This week</string>
+    <plurals name="home_week_planned">
+        <item quantity="one">%1$d of %2$d planned</item>
+        <item quantity="other">%1$d of %2$d planned</item>
+    </plurals>
+    <string name="home_week_day_planned">%1$s %2$d, planned</string>
+    <string name="home_week_day_free">%1$s %2$d</string>
+    <string name="home_shopping_list">Shopping list</string>
+    <string name="home_today_empty">Nothing planned for today yet</string>
     <string name="home_today_plan">Plan a meal</string>
-    <string name="home_recent">Recently added</string>
-    <string name="home_favorites">Favorites</string>
-    <string name="home_for_breakfast">For breakfast</string>
-    <string name="home_for_lunch">For lunch</string>
-    <string name="home_for_snack">For in between</string>
-    <string name="home_for_dinner">For tonight</string>
     <string name="home_ideas">Ideas for today</string>
-    <string name="home_quick">Ready in 30 minutes</string>
-    <string name="home_cooked_long_ago">Not cooked in a while</string>
+    <string name="home_quick">Quick to make</string>
+    <string name="home_newest">New in your collection</string>
+    <string name="home_planned_today">Planned for today</string>
     <string name="search_recipes_hint">Search recipes</string>
-    <string name="home_rate_open">Open recipe</string>
     <string name="home_rate_dismiss">Dismiss</string>
 
     <!-- Meal types -->
@@ -188,6 +198,7 @@
     <string name="recipes_all_kinds">All</string>
     <string name="recipes_narrow">Show</string>
     <string name="recipes_saved">Saved</string>
+    <string name="recipes_long_ago">Not cooked in a while</string>
     <string name="recipes_quick">Quick</string>
     <string name="recipes_categories">Categories</string>
     <string name="recipes_tags">Tags</string>
@@ -243,14 +254,16 @@
     <!-- Meal plan -->
     <string name="plan_previous_week">Previous week</string>
     <string name="plan_next_week">Next week</string>
-    <string name="plan_this_week">This week</string>
+    <string name="plan_this_week">Back to this week</string>
     <string name="plan_week_number">Week %1$d</string>
     <string name="plan_week_numbers">Weeks %1$d–%2$d</string>
     <string name="plan_add_for">Plan a meal for %1$s</string>
-    <string name="plan_day_empty">Nothing planned</string>
+    <string name="plan_dish">Plan a dish</string>
+    <string name="plan_show_past">Show past days</string>
     <string name="plan_remove">Remove from plan</string>
     <string name="plan_removed">Removed from the plan</string>
-    <string name="plan_shop_week">Shop for the week</string>
+    <string name="plan_week_ingredients">This week’s ingredients</string>
+    <string name="plan_to_list">Add to list</string>
     <string name="plan_move">Move</string>
     <string name="plan_shop_week_confirm">Add</string>
     <plurals name="plan_shop_week_message">
@@ -500,4 +513,20 @@
     <string name="widget_preview_milk">Milk</string>
     <string name="widget_preview_butter">Butter</string>
     <string name="widget_preview_flour">Flour</string>
+    <plurals name="home_shopping_open">
+        <item quantity="one">%1$d\u00A0item to buy</item>
+        <item quantity="other">%1$d\u00A0items to buy</item>
+    </plurals>
+    <plurals name="plan_week_from">
+        <item quantity="one">from %1$d\u00A0dish</item>
+        <item quantity="other">from %1$d\u00A0dishes</item>
+    </plurals>
+    <plurals name="plan_week_items">
+        <item quantity="one">%1$d\u00A0item</item>
+        <item quantity="other">%1$d\u00A0items</item>
+    </plurals>
+    <plurals name="plan_past_dishes">
+        <item quantity="one">%1$d\u00A0dish</item>
+        <item quantity="other">%1$d\u00A0dishes</item>
+    </plurals>
 </resources>

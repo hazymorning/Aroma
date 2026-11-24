@@ -1,9 +1,18 @@
 package app.aroma.screenshots
 
 import androidx.compose.runtime.Composable
+import app.aroma.core.model.Meal
+import app.aroma.feature.home.Greeting
+import app.aroma.feature.home.HomeActions
+import app.aroma.feature.home.HomeScreen
+import app.aroma.feature.home.HomeUiState
+import app.aroma.feature.mealplan.MealPlanActions
+import app.aroma.feature.mealplan.MealPlanScreen
+import app.aroma.feature.mealplan.MealPlanUiState
 import app.aroma.feature.recipe.RecipeActions
 import app.aroma.feature.recipe.RecipeScreen
 import app.aroma.feature.recipe.RecipeUiState
+import app.aroma.ui.navigation.Tab
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
@@ -64,6 +73,157 @@ class DesignScreenshotTest(private val look: Look) : ScreenshotTest() {
 
     @Test
     fun recipeLoading() = shoot("rezept_laden", content = recipe(RecipeUiState(isLoading = true)))
+
+    private fun home(state: HomeUiState): @Composable () -> Unit = { TabFrame(Tab.Home) { HomeScreen(state, HomeActions()) } }
+
+    private val homeFull =
+        HomeUiState(
+            greeting = Greeting.Evening,
+            firstName = "Mara",
+            date = KochbuchWeek.today,
+            week = KochbuchWeek.entries,
+            meal = Meal.Dinner,
+            suggestions = KochbuchSamples.summaries,
+            suggestionsForMeal = true,
+            quick = SampleData(german = true).recipes,
+            recent = SampleData(german = true).recipes.reversed(),
+            openItems = 12,
+            isLoading = false,
+        )
+
+    /** Today's dinner with the longest title, lunch below, the week, the list and all three kinds of inspiration. */
+    @Test
+    fun homeFull() = shoot("start_voll", content = home(homeFull))
+
+    @Test
+    fun homeFullWhole() = shoot("start_voll_ganz", height = WHOLE_PAGE, content = home(homeFull))
+
+    /** Nothing planned and nothing to buy: the suggestions to plan for today, and no more. */
+    @Test
+    fun homeEmpty() =
+        shoot(
+            "start_leer",
+            content =
+                home(
+                    HomeUiState(
+                        greeting = Greeting.Morning,
+                        firstName = "Mara",
+                        date = KochbuchWeek.today,
+                        meal = Meal.Breakfast,
+                        suggestions = KochbuchSamples.summaries.take(3),
+                        isLoading = false,
+                    ),
+                ),
+        )
+
+    /** A long name in the greeting, and the rate prompt after cooking. */
+    @Test
+    fun homeExtreme() =
+        shoot(
+            "start_extrem",
+            content =
+                home(
+                    homeFull.copy(
+                        firstName = "Maximiliane",
+                        greeting = Greeting.Afternoon,
+                        toRate =
+                            KochbuchSamples.summaries[5].let {
+                                app.aroma.feature.home.RateReminder(
+                                    it.id,
+                                    it.slug,
+                                    it.name,
+                                    it.image,
+                                )
+                            },
+                    ),
+                ),
+        )
+
+    private fun plan(state: MealPlanUiState): @Composable () -> Unit =
+        { TabFrame(Tab.MealPlan) { MealPlanScreen(state, MealPlanActions()) } }
+
+    /** The week under way: Monday folded away, today on its surface, empty days with their link, the week's ingredients. */
+    @Test
+    fun planFull() =
+        shoot(
+            "wochenplan_voll",
+            content =
+                plan(
+                    MealPlanUiState(
+                        today = KochbuchWeek.today,
+                        weekStart = KochbuchWeek.monday,
+                        days = KochbuchWeek.days,
+                        weekItems = 46,
+                        isLoading = false,
+                    ),
+                ),
+        )
+
+    @Test
+    fun planFullWhole() =
+        shoot(
+            "wochenplan_voll_ganz",
+            height = WHOLE_PAGE,
+            content =
+                plan(
+                    MealPlanUiState(
+                        today = KochbuchWeek.today,
+                        weekStart = KochbuchWeek.monday,
+                        days = KochbuchWeek.days,
+                        weekItems = 46,
+                        isLoading = false,
+                    ),
+                ),
+        )
+
+    /** Thursday: Monday to Wednesday folded into one line above today. */
+    @Test
+    fun planFolded() =
+        shoot(
+            "wochenplan_gefaltet",
+            content =
+                plan(
+                    MealPlanUiState(
+                        today = KochbuchWeek.monday.plusDays(3),
+                        weekStart = KochbuchWeek.monday,
+                        days = KochbuchWeek.days,
+                        weekItems = 46,
+                        isLoading = false,
+                    ),
+                ),
+        )
+
+    /** A week with nothing planned yet. */
+    @Test
+    fun planEmpty() =
+        shoot(
+            "wochenplan_leer",
+            content =
+                plan(
+                    MealPlanUiState(
+                        today = KochbuchWeek.today,
+                        weekStart = KochbuchWeek.monday,
+                        days = KochbuchWeek.emptyDays,
+                        isLoading = false,
+                    ),
+                ),
+        )
+
+    /** The week across the turn of the month, with the link back to this week. */
+    @Test
+    fun planExtreme() =
+        shoot(
+            "wochenplan_extrem",
+            content =
+                plan(
+                    MealPlanUiState(
+                        today = KochbuchWeek.today,
+                        weekStart = KochbuchWeek.nextMonday,
+                        days = KochbuchWeek.turnOfMonth,
+                        isLoading = false,
+                    ),
+                ),
+        )
 
     companion object {
         private const val PERCENT = 100
