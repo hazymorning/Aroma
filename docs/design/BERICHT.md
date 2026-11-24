@@ -14,9 +14,8 @@ sind in der CI des Pull Requests grün.
 
 Gerendert mit Roborazzi auf 411 × 891 dp, Deutsch. Alle Bilder liegen unter
 [`screenshots/vorher`](screenshots/vorher) (308) und [`screenshots/nachher`](screenshots/nachher)
-(390 mit denselben Namen und zusätzlich 130 % Schrift, dazu 169 unter `nachher/kochbuch` mit den
-Testtexten aus Abschnitt 14 in 100, 130 und 200 %, auf 360 und 480 dp Breite und den Einzelbildern
-des Übergangs).
+(390 mit denselben Namen und zusätzlich 130 % Schrift, dazu 172 unter `nachher/kochbuch` mit den
+Testtexten aus Abschnitt 14 in 100, 130 und 200 %, auf 360 und 480 dp Breite und der Snackbar).
 
 | | Vorher | Nachher |
 |---|---|---|
@@ -75,11 +74,11 @@ Navigationsleiste 80 dp mit 16 dp über der Pill, Aktionsleisten mit 16 dp rings
 Zurück-Zeile und Titel, im Wochenplan 24 dp zwischen den Tagen. Einstellungszeilen mit
 Beschreibung über die volle Breite; alle Screens zusätzlich bei 130 % Schrift gerendert.
 
-**P6 – Bewegung, Dark Mode, Barrierefreiheit.** Foto und Name wandern von Karte, Zeile oder
-Heute-Box ins Hero und zurück (Shared Element), Screen-Wechsel in 350 ms, bei abgeschalteten
-Animationen nur Überblendungen. Jeder Screenshot-Test prüft, dass alles Antippbare einen Namen für
-TalkBack hat; drei Lücken geschlossen. Bedeutungstragende Formen haben 3 : 1. Bei 200 % bricht
-alles um, nichts wird abgeschnitten.
+**P6 – Bewegung, Dark Mode, Barrierefreiheit.** Screen-Wechsel als ruhige Überblendungen, bei
+abgeschalteten Animationen ohne Gleiten. Jeder Screenshot-Test prüft, dass alles Antippbare einen
+Namen für TalkBack hat; drei Lücken geschlossen. Bedeutungstragende Formen haben 3 : 1. Bei 200 %
+bricht alles um, nichts wird abgeschnitten. (Das Shared Element aus dieser Phase ist nach der
+Rückmeldung zum ersten Draft wieder entfernt, siehe unten.)
 
 **P7 – Art-Director-Review.** Alle Screens in doppelter Größe mit gemessenen Abständen
 durchgesehen, die Hauptscreens zusätzlich auf 360 und 480 dp Breite. Kurze Wörter werden nicht mehr
@@ -88,10 +87,18 @@ die Wochen-Unterzeile hat eine Schriftgröße. Auf 360 dp stehen morgens Suche u
 Gruß, der so zwei Zeilen behält, und „Einplanen" rückt unter die Metazeile, wenn der Name sonst zu
 schmal würde. Eine ungenutzte Abfrage und 96 unbenutzte Imports sind entfernt.
 
+**Nachbesserung nach dem ersten Draft.** Das Shared Element (Foto und Name wuchsen ins Hero) wirkte
+auf dem Gerät unruhig und langsam und ist entfernt: Screens wechseln in 220 ms mit einer schlichten
+Überblendung und wenigen dp Gleiten, nichts zoomt. Auswahl-Pills beginnen bündig an der Seitenkante,
+der Heute-Tag im Wochenplan hat 16 dp Innenabstand oben und unten, unter Eyebrows wie „Wie hat es
+geschmeckt?" stehen 8 dp, und die Snackbar zeigt ihren Text wieder in vollem Kontrast (die
+Material-Typografie brachte die zweite Tinte mit).
+
 **P8 – Release.** Version 0.7.0 (versionCode 9), Changelog-Eintrag, Pull Request in den
-Hauptbranch. Der Release-Workflow legt jetzt standardmäßig nur einen Draft an (ohne Tag, für die
-Update-Prüfung der App unsichtbar) und darf das auch von einem anderen Branch als `main`;
-veröffentlicht wird von Hand auf der Release-Seite. Der Draft für 0.7.0 trägt das signierte APK.
+Hauptbranch, auf Wunsch gemergt. Der Release-Workflow legt jetzt standardmäßig nur einen Draft an
+(ohne Tag, für die Update-Prüfung der App unsichtbar), ein erneuter Lauf ersetzt den Draft derselben
+Version; veröffentlicht wird von Hand auf der Release-Seite. Der Draft für 0.7.0 ist von `main`
+gebaut und trägt das signierte APK.
 
 ## Wohin verschobene Funktionen gewandert sind
 
@@ -140,29 +147,30 @@ veröffentlicht wird von Hand auf der Release-Seite. Der Draft für 0.7.0 trägt
    waren Tage und Gerichte nicht zu unterscheiden (Rückmeldung während der Runde).
 8. **`inkTertiary` minimal angepasst** (#837E76 hell, #837D76 dunkel statt #8F8A81 und #77716A):
    Offener Abhak-Ring und ausgeschalteter Schalter erreichten die 3 : 1 aus Abschnitt 9 nicht.
-9. **Reduzierte Bewegung:** Android setzt mit „Animationen entfernen" alle Dauern auf null. Aroma
-   schaltet dann auf reine Überblendungen ohne Gleiten und ohne Shared Element; kurze sichtbare
+9. **Screen-Wechsel 220 ms ohne Shared Element** statt 350 ms mit Foto und Titel, die von der Karte
+   ins Hero wachsen (4.7): auf dem Gerät unruhig, langsam und ruckelig (Rückmeldung zum ersten
+   Draft). Jetzt eine schlichte Überblendung mit wenigen dp Gleiten.
+10. **Auswahl-Pills beginnen an der Seitenkante**, bündig mit Suchfeld und Boxen, statt mit ihrer
+    Fläche 12 dp über die Kante zu ragen (Rückmeldung zum ersten Draft).
+11. **Reduzierte Bewegung:** Android setzt mit „Animationen entfernen" alle Dauern auf null. Aroma
+   schaltet dann auf reine Überblendungen ohne Gleiten; kurze sichtbare
    Überblendungen gegen die Systemeinstellung erzwingen wir nicht.
-10. **Rasterabstand 28 dp** zwischen Kartenreihen, obwohl 28 nicht in der Abstandsliste steht:
+12. **Rasterabstand 28 dp** zwischen Kartenreihen, obwohl 28 nicht in der Abstandsliste steht:
     4.3 verlangt ihn ausdrücklich.
-11. **Genau ein Primär-Button** gilt als „höchstens einer": Screens ohne Hauptaktion (Rezepte,
+13. **Genau ein Primär-Button** gilt als „höchstens einer": Screens ohne Hauptaktion (Rezepte,
     Wochenplan, Einkauf, Einstellungen) haben keinen, statt einen zu erfinden.
-12. **Suche und Profil über dem Gruß** auf schmalen Telefonen (360 dp), wenn „Guten Morgen," nicht
+14. **Suche und Profil über dem Gruß** auf schmalen Telefonen (360 dp), wenn „Guten Morgen," nicht
     neben die beiden Buttons passt: sonst bräche der Gruß in drei Zeilen. Ab 411 dp stehen sie wie
     in 6.2 neben der ersten Titelzeile.
-13. **Neue Anzeigen aus vorhandenen Daten**, ohne Änderung an API, Datenmodell der Server-Antworten,
+15. **Neue Anzeigen aus vorhandenen Daten**, ohne Änderung an API, Datenmodell der Server-Antworten,
     Sync oder Anmeldung: `Recipe.yieldText` liest das schon gelieferte Feld `recipeYield` für die
     Ertragszeile, `RecipeQuery.cookedBefore` stellt die bisherige Abfrage „Lange nicht gekocht" als
     Filter bereit. Die Offline-Kopie bleibt unverändert.
 
 ## Offene Punkte
 
-- **Gerät:** Übergänge, Haptik und die Zurück-Geste mit Shared Element sind mit Robolectric
-  (Einzelbilder `nachher/kochbuch/uebergang_hin_*`) und in Screenshots geprüft, nicht auf einem
-  echten Gerät. Ein kurzer Blick auf einem Telefon vor dem Veröffentlichen lohnt sich.
-- **Fotos im Übergang:** Das Hero zeigt bis zum großen Bild die Kopie der Karte aus dem Speicher.
-  Öffnet man ein Rezept aus einer Liste, deren Bilder noch nicht geladen waren, wächst kurz die
-  Platzhalterfläche ins Hero.
+- **Gerät:** Übergänge und Haptik sind in Robolectric und Screenshots geprüft; ob sich 220 ms auf
+  dem Telefon richtig anfühlen, zeigt erst der Draft auf dem Gerät.
 - **Widgets** nutzen die neue Palette, aber Glance kennt die eigenen Schriften nicht; sie setzen
   die Systemschrift.
 - **Silbentrennung:** Wörter mit vier bis sieben Buchstaben trennen nie. Das ist eine Faustregel;

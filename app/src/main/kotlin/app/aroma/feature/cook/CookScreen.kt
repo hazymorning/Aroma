@@ -121,6 +121,7 @@ import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.EndSpace
+import app.aroma.ui.theme.EyebrowGap
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.PageMargin
@@ -387,7 +388,7 @@ private fun StepPage(
         }
         Spacer(Modifier.height(Space.s16))
         if (!step.title.isNullOrBlank()) {
-            Text(step.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = Space.s8))
+            Text(step.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = EyebrowGap))
         }
         StepText(rememberStepText(text, amounts, onDuration = { onStartTimer(it.seconds, stepLabel) }))
         if (durations.isNotEmpty()) {
@@ -440,7 +441,7 @@ private fun StepIngredientsBox(ingredients: StepIngredients, checked: Set<Int>, 
 private fun NextStep(next: Step, modifier: Modifier = Modifier) {
     Column(modifier) {
         Text(stringResource(R.string.cook_next_step), style = AromaTheme.type.label, color = AromaTheme.colors.inkSecondary)
-        Spacer(Modifier.height(Space.s4))
+        Spacer(Modifier.height(EyebrowGap))
         Text(
             text = remember(next) { Markdown.parse(next.title?.let { "$it. ${next.text}" } ?: next.text).text },
             style = AromaTheme.type.body,

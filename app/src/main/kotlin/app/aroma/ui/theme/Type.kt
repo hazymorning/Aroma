@@ -147,25 +147,31 @@ class AromaTypography(colors: AromaColors, private val locale: LocaleList) {
     /** The initial in the profile's 56 dp circle in the settings (6.7). */
     val initial = text(22, 28, weight = FontWeight.Medium)
 
-    /** Material's slots, for the parts Aroma takes from Material: each is one of the roles above. */
+    /**
+     * Material's slots, for the parts Aroma takes from Material: each is one of the roles above,
+     * without its colour. Material sets its words in the colour of the ground it puts them on (the
+     * snackbar's paper on ink); a role's own second ink would win over it and fade them.
+     */
     internal val material =
         Typography(
-            displayLarge = display,
-            displayMedium = display,
-            displaySmall = recipeTitle,
-            headlineLarge = recipeTitle,
-            headlineMedium = section,
-            headlineSmall = section,
-            titleLarge = barTitle,
-            titleMedium = label,
-            titleSmall = label,
-            bodyLarge = body,
-            bodyMedium = bodySmall,
-            bodySmall = meta,
-            labelLarge = label,
-            labelMedium = label,
-            labelSmall = meta,
+            displayLarge = display.uncoloured(),
+            displayMedium = display.uncoloured(),
+            displaySmall = recipeTitle.uncoloured(),
+            headlineLarge = recipeTitle.uncoloured(),
+            headlineMedium = section.uncoloured(),
+            headlineSmall = section.uncoloured(),
+            titleLarge = barTitle.uncoloured(),
+            titleMedium = label.uncoloured(),
+            titleSmall = label.uncoloured(),
+            bodyLarge = body.uncoloured(),
+            bodyMedium = bodySmall.uncoloured(),
+            bodySmall = meta.uncoloured(),
+            labelLarge = label.uncoloured(),
+            labelMedium = label.uncoloured(),
+            labelSmall = meta.uncoloured(),
         )
+
+    private fun TextStyle.uncoloured() = copy(color = Color.Unspecified)
 }
 
 /** Tabular figures for a role that does not have them: amounts, counts and clocks. */

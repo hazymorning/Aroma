@@ -55,7 +55,6 @@ import app.aroma.ui.components.RecipeRow
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.Segment
 import app.aroma.ui.components.SegmentGap
-import app.aroma.ui.components.SegmentInset
 import app.aroma.ui.components.SelectionRow
 import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.TextAction
@@ -334,7 +333,7 @@ private fun FilterSheet(state: RecipesUiState, actions: RecipesActions, onOrgani
             )
             GroupHead(stringResource(R.string.recipes_narrow), Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16))
             FlowRow(
-                Modifier.padding(start = PageMargin - SegmentInset, end = PageMargin),
+                Modifier.padding(horizontal = PageMargin),
                 horizontalArrangement = Arrangement.spacedBy(SegmentGap),
             ) {
                 Segment(stringResource(R.string.recipes_quick), state.filter.quick, actions.onToggleQuick)

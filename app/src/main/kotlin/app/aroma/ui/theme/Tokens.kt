@@ -50,6 +50,9 @@ val NavigationGap: Dp = Space.s16
 /** From a title to the line under it. */
 val SubtitleGap: Dp = Space.s4
 
+/** From a small line over a title, its eyebrow ("Heute Abend", "Wie hat es geschmeckt?"), to the title. */
+val EyebrowGap: Dp = Space.s8
+
 /** From a page's head to its content. */
 val HeaderGap: Dp = Space.s24
 
@@ -103,12 +106,13 @@ object Radius {
 
 /**
  * Motion: 150 ms for edges and things that fade in, 250 ms for a change of state and the selection
- * pill, 350 ms for a change of page. Everything decelerates; springs never overshoot.
+ * pill, 220 ms for a quiet change of page. Everything decelerates; springs never overshoot, and
+ * nothing zooms.
  */
 object Motion {
     const val EDGE = 150
     const val STATE = 250
-    const val PAGE = 350
+    const val PAGE = 220
 
     /** A photo fading in over its placeholder. */
     const val IMAGE = 200

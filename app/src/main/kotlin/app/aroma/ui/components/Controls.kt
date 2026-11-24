@@ -166,8 +166,8 @@ private val StepperValueWidth = 64.dp
 
 /**
  * A row of choices set as words, of which one is chosen: the chosen one on a soft sage pill, which
- * glides to the next choice, the others in second ink. It scrolls sideways, its first word standing
- * on the page's edge.
+ * glides to the next choice, the others in second ink. It scrolls sideways, its first pill starting
+ * on the page's edge, flush with the search field and the boxes above and below it.
  */
 @Composable
 fun SelectionRow(
@@ -198,7 +198,7 @@ fun SelectionRow(
             modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = contentPadding - SegmentPadding)
+                .padding(horizontal = contentPadding)
                 .drawBehind {
                     if (chosen != null && width.value > 0f) {
                         val height = SegmentHeight.toPx()
@@ -273,9 +273,6 @@ private fun SegmentWord(
 /** The pill of a chosen word, and the room inside it on either side of the word. */
 private val SegmentHeight = 36.dp
 private val SegmentPadding = Space.s12
-
-/** How far a segment's word stands inside the segment: rows of segments start this much before the edge, so the words stand on it. */
-val SegmentInset: Dp = SegmentPadding
 
 /** The air between two segments, so two chosen pills side by side never touch. */
 val SegmentGap: Dp = Space.s4

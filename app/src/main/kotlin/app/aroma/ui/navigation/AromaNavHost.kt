@@ -1,7 +1,6 @@
 package app.aroma.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -26,12 +25,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -41,9 +38,7 @@ import app.aroma.ui.appContainer
 import app.aroma.ui.components.ActionBarHeight
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.LocalBottomBarInset
-import app.aroma.ui.components.LocalScreenTransition
 import app.aroma.ui.components.LocalScrollToTop
-import app.aroma.ui.components.LocalSharedTransition
 import app.aroma.ui.components.reducedMotion
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Space
@@ -132,56 +127,46 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
             CompositionLocalProvider(LocalBottomBarInset provides barInset, LocalScrollToTop provides scrollToTop, content = page)
         }
         val planFocus = remember { PlanFocus() }
-        // With the system's animations off, pages only cross-fade, and nothing travels between them.
+        // With the system's animations off, pages only cross-fade.
         val quiet = reducedMotion()
-        // A recipe's photo and name travel from where they stood to the page that opens, and back.
-        SharedTransitionLayout(Modifier.fillMaxSize()) {
-            CompositionLocalProvider(LocalSharedTransition provides this) {
-                NavHost(
-                    nav,
-                    startDestination = HomeRoute,
-                    modifier = Modifier.fillMaxSize(),
-                    enterTransition = if (quiet) Transitions.fadeIn else Transitions.enter,
-                    exitTransition = if (quiet) Transitions.fadeOut else Transitions.exit,
-                    popEnterTransition = if (quiet) Transitions.fadeIn else Transitions.popEnter,
-                    popExitTransition = if (quiet) Transitions.fadeOut else Transitions.popExit,
-                    predictivePopEnterTransition = Transitions.predictivePopEnter,
-                    predictivePopExitTransition = Transitions.predictivePopExit,
-                ) {
-                    screen<HomeRoute> {
-                        underBar(Tab.Home) {
-                            HomeDestination(nav, snackbar, planFocus) {
-                                focusSearch.value = true
-                                nav.navigateToTab(Tab.Recipes)
-                            }
-                        }
+        NavHost(
+            nav,
+            startDestination = HomeRoute,
+            modifier = Modifier.fillMaxSize(),
+            enterTransition = if (quiet) Transitions.fadeIn else Transitions.enter,
+            exitTransition = if (quiet) Transitions.fadeOut else Transitions.exit,
+            popEnterTransition = if (quiet) Transitions.fadeIn else Transitions.popEnter,
+            popExitTransition = if (quiet) Transitions.fadeOut else Transitions.popExit,
+            predictivePopEnterTransition = Transitions.predictivePopEnter,
+            predictivePopExitTransition = Transitions.predictivePopExit,
+        ) {
+            composable<HomeRoute> {
+                underBar(Tab.Home) {
+                    HomeDestination(nav, snackbar, planFocus) {
+                        focusSearch.value = true
+                        nav.navigateToTab(Tab.Recipes)
                     }
-                    screen<RecipesRoute> {
-                        underBar(
-                            Tab.Recipes,
-                        ) { RecipesDestination(nav, snackbar, focusSearch.value, onFocusSearchConsume = { focusSearch.value = false }) }
-                    }
-                    screen<MealPlanRoute> { underBar(Tab.MealPlan) { MealPlanDestination(nav, snackbar, planFocus) } }
-                    screen<ShoppingRoute> {
-                        underBar(Tab.Shopping) {
-                            ShoppingDestination(shoppingRequest.value, onRequestConsume = {
-                                shoppingRequest.value =
-                                    null
-                            })
-                        }
-                    }
-                    screen<RecipeRoute> { RecipeDestination(it.toRoute<RecipeRoute>().slug, nav, snackbar) }
-                    screen<CookRoute> { entry ->
-                        val route = entry.toRoute<CookRoute>()
-                        CookDestination(route.slug, route.scale, nav)
-                    }
-                    screen<CollectionRoute> { CollectionDestination(it.toRoute(), nav, snackbar) }
-                    screen<AddRecipeRoute> { AddRecipeDestination(it.toRoute(), nav, sharedRecipe.value) { sharedRecipe.value = null } }
-                    screen<EditorRoute> { EditorDestination(it.toRoute<EditorRoute>().slug, nav) }
-                    screen<SettingsRoute> { SettingsDestination(nav) }
-                    screen<LicensesRoute> { LicensesDestination(nav) }
                 }
             }
+            composable<RecipesRoute> {
+                underBar(
+                    Tab.Recipes,
+                ) { RecipesDestination(nav, snackbar, focusSearch.value, onFocusSearchConsume = { focusSearch.value = false }) }
+            }
+            composable<MealPlanRoute> { underBar(Tab.MealPlan) { MealPlanDestination(nav, snackbar, planFocus) } }
+            composable<ShoppingRoute> {
+                underBar(Tab.Shopping) { ShoppingDestination(shoppingRequest.value, onRequestConsume = { shoppingRequest.value = null }) }
+            }
+            composable<RecipeRoute> { RecipeDestination(it.toRoute<RecipeRoute>().slug, nav, snackbar) }
+            composable<CookRoute> { entry ->
+                val route = entry.toRoute<CookRoute>()
+                CookDestination(route.slug, route.scale, nav)
+            }
+            composable<CollectionRoute> { CollectionDestination(it.toRoute(), nav, snackbar) }
+            composable<AddRecipeRoute> { AddRecipeDestination(it.toRoute(), nav, sharedRecipe.value) { sharedRecipe.value = null } }
+            composable<EditorRoute> { EditorDestination(it.toRoute<EditorRoute>().slug, nav) }
+            composable<SettingsRoute> { SettingsDestination(nav) }
+            composable<LicensesRoute> { LicensesDestination(nav) }
         }
         // The bar comes and goes in step with the tab pages it belongs to.
         AnimatedVisibility(
@@ -221,11 +206,6 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
 }
 
 private fun NavDestination.isTab(tab: Tab): Boolean = hasRoute(tab.route::class)
-
-/** A destination that tells its content how it comes and goes, so a recipe's photo and name can travel with it. */
-private inline fun <reified T : Any> NavGraphBuilder.screen(noinline content: @Composable (NavBackStackEntry) -> Unit) {
-    composable<T> { entry -> CompositionLocalProvider(LocalScreenTransition provides this) { content(entry) } }
-}
 
 /** Switches tabs the way Android users expect: one copy per tab, state kept when coming back. */
 fun NavController.navigateToTab(tab: Tab) {

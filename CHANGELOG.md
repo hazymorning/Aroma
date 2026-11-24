@@ -4,7 +4,7 @@
 
 **New**
 - A new look, like a well-set cookbook: paper, ink and sage, a book face for recipes and calm, even spacing on every screen, in light and dark.
-- Open a recipe and its photo grows from the card into the page, with the name travelling along.
+- Screens change with a quick, quiet fade.
 - The meal plan shows the calendar week from Monday to Sunday: swipe to turn the week, and put the week's ingredients on your list at its end.
 
 **Better**

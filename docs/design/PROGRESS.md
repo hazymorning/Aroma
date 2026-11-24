@@ -345,15 +345,8 @@ hell und dunkel rendert.
 
 **Bewegung (4.7).**
 
-- Screen-Wechsel dauern 350 ms: Die alte Seite blendet in 150 ms aus, die neue in 200 ms danach ein;
-  beide gleiten auf einer Abbremskurve über die ganzen 350 ms. Tabs blenden nur über.
-- **Shared Element:** Beim Öffnen wächst das Foto von der Karte, der Rezeptzeile, der Heute-Box oder
-  „Neu in deiner Sammlung" ins Hero; seine runden Ecken werden auf dem Weg eckig. Der Name wandert
-  mit: Der alte blendet beim Losgehen aus, der Titel nach 150 ms ein, sodass nie zwei Schriften
-  übereinanderstehen. Zurück geht es umgekehrt. Das Hero zeigt bis zum Laden des großen Bilds die
-  Kopie der Karte aus dem Speicher.
-- Nicht mit unterwegs: Rezepte aus Sheets (eigene Fenster) und ein Rezept, das in derselben Woche
-  zweimal geplant ist (sein Foto wüsste nicht, aus welcher Zeile es kam).
+- Screen-Wechsel dauerten 350 ms, dazu ein Shared Element (Foto und Name wuchsen von der Karte ins
+  Hero). Nach der Rückmeldung zum ersten Draft wieder entfernt: siehe „Nachbesserung".
 - **Reduzierte Bewegung** (Entscheidung 32): Pages und Wochen blenden nur über, nichts gleitet,
   nichts fliegt.
 - Unverändert aus P2 und P3: Pill gleitet in 250 ms, Karten und Boxen geben beim Drücken auf 0,98
@@ -378,8 +371,7 @@ und Schatten mit doppelter Deckkraft ab, ohne Linien. Alle Screens in dunkel dur
   Namen enden auch nach einem Teil eines Bindestrich-Worts („Kürbis-Couscous…" statt
   „Kürbis-Couscous-…", „Auberginen-Tikka…" statt „Cremiges…").
 
-Geprüft mit `TravelScreenshotTest` (Einzelbilder des Übergangs von der Karte zur Rezeptseite,
-`kochbuch/uebergang_hin_*`), den Screenshot-Tests in 100, 130 und 200 % und `DesignRulesTest`.
+Geprüft mit den Screenshot-Tests in 100, 130 und 200 % und `DesignRulesTest`.
 
 ## P7 – Art-Director-Review (erledigt)
 
@@ -413,12 +405,34 @@ Bericht mit Vorher-Nachher-Bildern: [`BERICHT.md`](BERICHT.md); Nachher-Bilder u
   Update-Prüfung der App. Veröffentlichen heißt, den Draft auf der Release-Seite zu veröffentlichen.
   Wer „draft" abwählt, veröffentlicht wie bisher sofort, nur von `main`. Kein Workflow hängt an
   Tag-Pushes.
-- Branch gepusht, Pull Request in `main` geöffnet (nicht gemergt):
-  https://github.com/hazymorning/Aroma/pull/1. Die CI des Pull Requests ist grün, auch die
-  Live-Tests gegen den Mealie-Container.
-- Release-Workflow als Draft auf `design/kochbuch` gelaufen: „Aroma 0.7.0" mit dem signierten APK
-  (Signaturprüfung bestanden) und den Release-Notes aus dem Changelog, nicht veröffentlicht:
-  https://github.com/hazymorning/Aroma/releases/tag/untagged-cc28bf45b1d3f2f56c09
+- Branch gepusht, Pull Request in `main` geöffnet: https://github.com/hazymorning/Aroma/pull/1.
+  Ein erster Draft entstand vom Branch. Nach der Rückmeldung (siehe „Nachbesserung") wird der Pull
+  Request auf Wunsch nach grüner CI gemergt, und der Draft für 0.7.0 entsteht neu von `main`; er
+  ersetzt den ersten und bleibt unveröffentlicht, bis er nach dem Test auf der Release-Seite
+  veröffentlicht wird.
+
+## Nachbesserung nach dem ersten Draft
+
+Rückmeldung zum Draft auf dem Gerät, in einem Durchgang umgesetzt:
+
+1. **Übergänge:** Das Shared Element (Foto und Name wachsen von der Karte ins Hero) wirkte unruhig,
+   langsam und ruckelig und ist vollständig entfernt. Screens wechseln jetzt in 220 ms: Die alte
+   Seite blendet in 90 ms aus, die neue blendet darüber ein und gleitet die letzten Pixel (ein
+   Vierundzwanzigstel der Breite) an ihren Platz. Nichts skaliert, nichts wächst, nichts wandert
+   zwischen Screens; Tabs blenden nur über, die Navigationsleiste blendet mit. Eine neue Woche gleitet
+   nur noch ein Zwölftel der Breite herein (Entscheidung 35).
+2. **Auswahl-Pills bündig:** Die erste Pill einer Auswahlreihe beginnt an der Seitenkante, bündig mit
+   Suchfeld und Boxen, statt mit ihrer Fläche 12 dp darüber hinauszuragen; ebenso im Filter-Sheet, bei
+   Kategorien und Schlagwörtern, der Art des Gerichts und den KI-Optionen (Entscheidung 36).
+3. **Heute im Wochenplan:** 16 dp Innenabstand oben und unten wie in jeder Box (vorher 12 dp); seitlich
+   reicht die Fläche weiter 12 dp über die Spalte.
+4. **Eyebrows:** 8 dp unter jeder kleinen Zeile über einem Titel („Wie hat es geschmeckt?",
+   „Heute Abend", „Als Nächstes", Schritt-Überschriften), vorher 0 bis 4 dp (Token `EyebrowGap`).
+5. **Snackbar:** Ihr Text stand in `inkSecondary` statt in Papier auf Tinte, weil die
+   Material-Typografie die Farbe der Rolle mitbrachte. Die Rollen gehen jetzt ohne Farbe an Material;
+   die Snackbar zeigt Papier auf Tinte (hell) und Tinte auf Papier (dunkel), mit Screenshot-Test.
+6. **Release:** Ein erneuter Draft-Lauf ersetzt den Draft derselben Version, statt übersprungen zu
+   werden; der Changelog-Eintrag 0.7.0 nennt die ruhigen Übergänge statt des wachsenden Fotos.
 
 ## Entscheidungen
 
@@ -493,7 +507,7 @@ Bericht mit Vorher-Nachher-Bildern: [`BERICHT.md`](BERICHT.md); Nachher-Bilder u
     3 : 1 aus Abschnitt 9 nicht. Der Ton ist kaum dunkler bzw. heller, die Widgets folgen.
 32. **Reduzierte Bewegung:** Android kennt dafür „Animationen entfernen", das die Animationsdauer
     auf 0 setzt; Compose folgt dem von selbst. Aroma schaltet dann zusätzlich auf reine
-    Überblendungen ohne Gleiten und ohne Shared Element; das System verkürzt sie auf null, statt
+    Überblendungen ohne Gleiten; das System verkürzt sie auf null, statt
     sie kurz zu zeigen. Eigene Überblendungen gegen die Systemeinstellung erzwingen wir nicht.
 33. **Kurze Wörter werden nicht getrennt:** Ein unsichtbarer Wortverbinder (U+2060) nach dem ersten
     Buchstaben eines Worts mit vier bis sieben Buchstaben hält Androids Silbentrennung von ihm fern;
@@ -502,6 +516,11 @@ Bericht mit Vorher-Nachher-Bildern: [`BERICHT.md`](BERICHT.md); Nachher-Bilder u
 34. **Suche und Profil über dem Gruß auf schmalen Telefonen:** Passt „Guten Morgen," nicht neben die
     beiden Buttons (360 dp), stehen sie in einer eigenen Zeile darüber wie der Zurück-Button einer
     Detailseite, und der Gruß behält zwei Zeilen statt drei.
+35. **Screen-Wechsel 220 ms, ohne Shared Element** statt 350 ms mit Foto und Titel, die ins Hero
+    wachsen (4.7): auf dem Gerät unruhig, langsam und ruckelig. Jetzt kurze, schlichte Überblendungen
+    mit wenigen dp Gleiten.
+36. **Auswahl-Pills beginnen an der Seitenkante**, bündig mit Suchfeld und Boxen (4.3: Boxkanten auf
+    einer Linie); vorher stand das Wort auf der Kante und die Pill ragte 12 dp darüber hinaus.
 
 ## Abweichungen
 
@@ -515,9 +534,11 @@ Bericht mit Vorher-Nachher-Bildern: [`BERICHT.md`](BERICHT.md); Nachher-Bilder u
 8. `inkTertiary` leicht angepasst, damit bedeutungstragende Formen 3 : 1 erreichen (Entscheidung 31).
 9. Reduzierte Bewegung: Überblendungen, die das System auf null verkürzt (Entscheidung 32).
 10. Auf 360 dp stehen Suche und Profil über dem Gruß statt neben ihm (Entscheidung 34).
+11. Screen-Wechsel in 220 ms ohne Shared Element statt 350 ms mit Foto und Titel, die ins Hero
+    wachsen (Entscheidung 35).
 
 ## Offene Punkte
 
 Stehen im Bericht unter [„Offene Punkte"](BERICHT.md#offene-punkte): Prüfung auf einem echten Gerät,
-Platzhalter im Übergang bei noch nicht geladenen Bildern, Systemschrift in den Widgets, die
+Systemschrift in den Widgets, die
 Faustregel der Silbentrennung, Querformat außerhalb des Kochmodus und die Live-Tests gegen Mealie.

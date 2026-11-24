@@ -76,7 +76,6 @@ import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeCard
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.RecipeMetaLine
-import app.aroma.ui.components.RecipePart
 import app.aroma.ui.components.RecipeRow
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SecondaryButton
@@ -96,13 +95,13 @@ import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.recipeTime
 import app.aroma.ui.components.rememberTitleLines
-import app.aroma.ui.components.sharedRecipe
 import app.aroma.ui.components.weekdayShort
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxGap
 import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.EndSpace
+import app.aroma.ui.theme.EyebrowGap
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.GridColumnGap
 import app.aroma.ui.theme.HeaderGap
@@ -471,7 +470,6 @@ private fun TodayBox(state: HomeUiState, suggestions: List<RecipeSummary>, actio
                     Modifier
                         .fillMaxWidth()
                         .aspectRatio(TODAY_PHOTO)
-                        .sharedRecipe(RecipePart.Photo, recipe.slug)
                         .clickable(
                             role = Role.Button,
                             onClickLabel = stringResource(R.string.home_open_recipe),
@@ -497,8 +495,7 @@ private fun TodayBox(state: HomeUiState, suggestions: List<RecipeSummary>, actio
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier =
                     Modifier
-                        .padding(top = Space.s4)
-                        .sharedRecipe(RecipePart.Name, recipe?.slug)
+                        .padding(top = EyebrowGap)
                         .semantics { heading() },
             )
             if (recipe == null && next.note.isNotBlank()) {
@@ -760,16 +757,12 @@ private fun Newest(recipe: RecipeSummary, actions: HomeActions, modifier: Modifi
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .aspectRatio(NEWEST_PHOTO)
-                        .sharedRecipe(RecipePart.Photo, recipe.slug),
+                        .aspectRatio(NEWEST_PHOTO),
             )
             Text(
                 recipe.name,
                 style = AromaTheme.type.section,
-                modifier =
-                    Modifier
-                        .padding(top = Space.s12)
-                        .sharedRecipe(RecipePart.Name, recipe.slug),
+                modifier = Modifier.padding(top = Space.s12),
             )
             if (recipe.description.isNotBlank()) {
                 Text(
@@ -840,7 +833,7 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                     Text(
                         text = stringResource(R.string.cook_rate_question),
                         style = AromaTheme.type.bodySmall,
-                        modifier = Modifier.padding(end = TouchTarget),
+                        modifier = Modifier.padding(end = TouchTarget, bottom = EyebrowGap),
                     )
                     Text(
                         text = toRate.name,

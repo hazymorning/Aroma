@@ -1,6 +1,16 @@
 package app.aroma.screenshots
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import app.aroma.core.model.Meal
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.ShoppingList
@@ -29,6 +39,7 @@ import app.aroma.feature.settings.SettingsUiState
 import app.aroma.feature.shopping.ShoppingActions
 import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingUiState
+import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.navigation.Tab
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -362,10 +373,22 @@ class DesignScreenshotTest(private val look: Look) : ScreenshotTest() {
             },
         )
 
+    /** A message on its ink with its action: paper on ink, readable in light and dark. */
+    @Test
+    fun snackbar() =
+        shoot("snackbar") {
+            val state = remember { SnackbarHostState() }
+            LaunchedEffect(state) {
+                state.showSnackbar("Nicht mehr gemerkt", actionLabel = "Rückgängig", duration = SnackbarDuration.Indefinite)
+            }
+            Box(Modifier.fillMaxSize()) { AromaSnackbarHost(state, Modifier.align(Alignment.BottomCenter).padding(bottom = SNACKBAR_LIFT)) }
+        }
+
     companion object {
         private const val PERCENT = 100
         private const val PHONE_HEIGHT = 891
         private const val PHONE_WIDTH = 411
+        private val SNACKBAR_LIFT = 96.dp
 
         /** The narrowest and the widest phone the brief aims at. */
         private const val NARROW = 360

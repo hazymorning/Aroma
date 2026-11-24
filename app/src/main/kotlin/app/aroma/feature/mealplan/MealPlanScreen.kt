@@ -93,6 +93,7 @@ import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.weekday
 import app.aroma.ui.components.weekdayShort
 import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.Glyph
@@ -170,7 +171,7 @@ fun MealPlanScreen(
     val previousWeek by rememberUpdatedState(actions.onPreviousWeek)
     val nextWeek by rememberUpdatedState(actions.onNextWeek)
     AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = modifier.fillMaxSize()) {
-        // Another week slides in from the side it comes from, as a page of a diary turns.
+        // Another week drifts in a little from the side it comes from.
         // With the system's animations off, the weeks only cross-fade.
         val quiet = reducedMotion()
         AnimatedContent(
@@ -253,8 +254,8 @@ fun MealPlanScreen(
     }
 }
 
-/** How far another week slides: a third of the page, the rest is a fade. */
-private const val WEEK_SLIDE = 3
+/** How far another week drifts in: a twelfth of the page, enough to show which way the week turned. */
+private const val WEEK_SLIDE = 12
 
 /** How far a finger goes across the page before the week turns. */
 private val SwipeDistance = 64.dp
@@ -275,16 +276,6 @@ private fun WeekPage(
     val past = if (state.showsToday) state.days.filter { it.date < state.today } else emptyList()
     val folded = past.size >= FOLD_FROM && !pastOpen
     val shown = if (folded) state.days - past.toSet() else state.days
-    // A recipe planned twice in the week stays put as it opens: its photo could not tell which row it left.
-    val repeated =
-        remember(state.days) {
-            state.days
-                .flatMap { day -> day.entries.mapNotNull { it.recipe?.slug } }
-                .groupingBy { it }
-                .eachCount()
-                .filterValues { it > 1 }
-                .keys
-        }
     val focused by rememberUpdatedState(onFocusConsume)
     LaunchedEffect(focus, state.isLoading, state.weekStart) {
         val day = focus ?: return@LaunchedEffect
@@ -322,7 +313,7 @@ private fun WeekPage(
                         )
                     }
                 }
-                agenda(shown, state.today, actions, onMore, repeated)
+                agenda(shown, state.today, actions, onMore)
                 if (state.weekRecipes > 0) {
                     item(key = "shop") {
                         WeekIngredients(
@@ -455,13 +446,7 @@ internal fun formatRange(start: LocalDate, end: LocalDate, locale: Locale): Stri
 }
 
 /** The days, 24 dp apart: a day's meals stand closer together than the days do. */
-private fun LazyListScope.agenda(
-    days: List<MealPlanDay>,
-    today: LocalDate,
-    actions: MealPlanActions,
-    onMore: (MealPlanEntry) -> Unit,
-    repeated: Set<String>,
-) {
+private fun LazyListScope.agenda(days: List<MealPlanDay>, today: LocalDate, actions: MealPlanActions, onMore: (MealPlanEntry) -> Unit) {
     days.forEachIndexed { index, day ->
         item(key = "day-${day.date}") {
             DayRow(
@@ -469,7 +454,6 @@ private fun LazyListScope.agenda(
                 today = today,
                 actions = actions,
                 onMore = onMore,
-                repeated = repeated,
                 modifier =
                     Modifier
                         .animateRow(this)
@@ -491,7 +475,6 @@ private fun DayRow(
     today: LocalDate,
     actions: MealPlanActions,
     onMore: (MealPlanEntry) -> Unit,
-    repeated: Set<String>,
     modifier: Modifier = Modifier,
 ) {
     val locale = currentLocale()
@@ -509,16 +492,7 @@ private fun DayRow(
                     } else {
                         Row {
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MealGap)) {
-                                day.entries.forEach { entry ->
-                                    EntryRow(
-                                        entry,
-                                        past,
-                                        actions,
-                                        onMore,
-                                        travels =
-                                            entry.recipe?.slug !in repeated,
-                                    )
-                                }
+                                day.entries.forEach { entry -> EntryRow(entry, past, actions, onMore) }
                             }
                             val addLabel = stringResource(R.string.plan_add_for, remember(day.date, locale) { weekday(day.date, locale) })
                             // Level with the first meal's thumbnail.
@@ -531,7 +505,8 @@ private fun DayRow(
     if (isToday) {
         TonalBox(
             modifier.padding(horizontal = PageMargin - HighlightReach),
-            contentPadding = PaddingValues(HighlightReach),
+            // On the column at the sides; above and below, a box's own air.
+            contentPadding = PaddingValues(horizontal = HighlightReach, vertical = BoxPadding),
         ) { content() }
     } else {
         Box(modifier.padding(horizontal = PageMargin)) { content() }
@@ -589,13 +564,7 @@ private val MealGap = Space.s12
  * long press the meal's sheet; screen readers get the sheet's actions on the row itself.
  */
 @Composable
-private fun EntryRow(
-    entry: MealPlanEntry,
-    past: Boolean,
-    actions: MealPlanActions,
-    onMore: (MealPlanEntry) -> Unit,
-    travels: Boolean,
-) {
+private fun EntryRow(entry: MealPlanEntry, past: Boolean, actions: MealPlanActions, onMore: (MealPlanEntry) -> Unit) {
     val recipe = entry.recipe
     val shopLabel = stringResource(R.string.recipe_add_to_list)
     val removeLabel = stringResource(R.string.plan_remove)
@@ -608,7 +577,6 @@ private fun EntryRow(
         meta = listOfNotNull(mealTypeLabel(entry.type), time ?: entry.note.takeIf { it.isNotBlank() }),
         dimmed = past,
         fallbackIcon = if (recipe == null) R.drawable.ic_notes else R.drawable.ic_plate,
-        slug = recipe?.slug?.takeIf { travels },
         modifier =
             Modifier.semantics {
                 customActions =

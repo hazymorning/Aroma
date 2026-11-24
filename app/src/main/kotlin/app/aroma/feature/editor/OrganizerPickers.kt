@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -25,7 +24,6 @@ import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.PillField
 import app.aroma.ui.components.Segment
 import app.aroma.ui.components.SegmentGap
-import app.aroma.ui.components.SegmentInset
 import app.aroma.ui.components.mealLabel
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
@@ -38,7 +36,7 @@ import app.aroma.ui.theme.Space
 fun MealChips(chosen: Set<Meal>, onToggle: (Meal, String) -> Unit, modifier: Modifier = Modifier) {
     LazyRow(
         modifier = modifier,
-        contentPadding = PaddingValues(horizontal = PageMargin - SegmentInset),
+        contentPadding = PaddingValues(horizontal = PageMargin),
         horizontalArrangement = Arrangement.spacedBy(SegmentGap),
     ) {
         items(Meal.entries) { meal ->
@@ -79,7 +77,7 @@ fun OrganizerChips(
     Column(modifier.padding(horizontal = PageMargin)) {
         if (shown.isNotEmpty()) {
             FlowRow(
-                modifier = Modifier.padding(bottom = Space.s8).offset(x = -SegmentInset),
+                modifier = Modifier.padding(bottom = Space.s8),
                 horizontalArrangement = Arrangement.spacedBy(SegmentGap),
             ) {
                 shown.forEach { option ->

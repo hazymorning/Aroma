@@ -32,8 +32,6 @@ import app.aroma.R
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
-import app.aroma.ui.components.RecipePart
-import app.aroma.ui.components.sharedRecipe
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.ThumbnailSize
@@ -86,7 +84,6 @@ fun RecipeCard(
                 modifier =
                     Modifier
                         .matchParentSize()
-                        .sharedRecipe(RecipePart.Photo, recipe.slug)
                         .indication(interaction, PressTint),
             )
             Ribbon(saved, Modifier.align(Alignment.TopEnd).padding(end = Space.s12))
@@ -98,7 +95,6 @@ fun RecipeCard(
             minLines = titleLines.coerceIn(MIN_TITLE_LINES, MAX_TITLE_LINES),
             maxLines = MAX_TITLE_LINES,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.sharedRecipe(RecipePart.Name, recipe.slug),
         )
         RecipeMetaLine(recipe, Modifier.padding(top = Space.s4))
     }
@@ -127,8 +123,7 @@ fun rememberTitleLines(names: List<String>, width: Dp): Int {
  * A recipe as a row: a 56 dp thumbnail with 12 dp corners, the name beside it in at most two lines
  * and a meta line under it. Rows stand 12 dp apart. A [dimmed] row is past: its words in tertiary
  * ink and its photo faded. A [trailing] action stands on the right; on a narrow phone or with large
- * text it moves under the meta line, so the name keeps its width instead of a narrow column. With the
- * recipe's [slug], photo and name travel to its page as it opens.
+ * text it moves under the meta line, so the name keeps its width instead of a narrow column.
  */
 @Composable
 fun RecipeRow(
@@ -142,7 +137,6 @@ fun RecipeRow(
     onLongClickLabel: String? = null,
     dimmed: Boolean = false,
     @DrawableRes fallbackIcon: Int = R.drawable.ic_plate,
-    slug: String? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val colors = AromaTheme.colors
@@ -174,7 +168,6 @@ fun RecipeRow(
                         modifier =
                             Modifier
                                 .size(ThumbnailSize)
-                                .sharedRecipe(RecipePart.Photo, slug)
                                 .alpha(if (dimmed) DIMMED_PHOTO else 1f)
                                 .indication(interaction, PressTint),
                     )
@@ -187,7 +180,6 @@ fun RecipeRow(
                             color = if (dimmed) colors.inkTertiary else colors.ink,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.sharedRecipe(RecipePart.Name, slug),
                         )
                         // A row's meta line may take a second line with large text, so nothing of it is lost.
                         MetaLine(
@@ -252,7 +244,6 @@ fun RecipeRow(
         metaIcon = if (time != null) R.drawable.ic_clock else null,
         onLongClick = onLongClick,
         modifier = modifier,
-        slug = recipe.slug,
         trailing = trailing,
     )
 }

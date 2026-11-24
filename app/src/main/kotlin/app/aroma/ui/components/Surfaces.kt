@@ -48,8 +48,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import app.aroma.R
-import app.aroma.ui.components.LocalScreenTransition
-import app.aroma.ui.components.LocalSharedTransition
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.LocalTonalFill
@@ -98,12 +96,7 @@ fun AromaBottomSheet(
             )
         },
     ) {
-        // A sheet is a window of its own: nothing in it travels to the next screen.
-        CompositionLocalProvider(
-            LocalTonalFill provides colors.surfaceOnBar,
-            LocalSharedTransition provides null,
-            LocalScreenTransition provides null,
-        ) {
+        CompositionLocalProvider(LocalTonalFill provides colors.surfaceOnBar) {
             Column(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s4, bottom = Space.s16)) {
                 Text(
                     text = title,

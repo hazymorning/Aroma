@@ -102,7 +102,6 @@ import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
-import app.aroma.ui.components.RecipePart
 import app.aroma.ui.components.Ribbon
 import app.aroma.ui.components.RibbonSize
 import app.aroma.ui.components.SEPARATOR
@@ -125,11 +124,11 @@ import app.aroma.ui.components.recipeTimeText
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.components.rememberStepText
-import app.aroma.ui.components.sharedRecipe
 import app.aroma.ui.components.totalTime
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.EndSpace
+import app.aroma.ui.theme.EyebrowGap
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.HeaderTop
 import app.aroma.ui.theme.Motion
@@ -518,7 +517,7 @@ private fun Hero(recipe: Recipe, saved: Boolean, onUnsave: () -> Unit) {
             size = ImageSize.Original,
             placeholder = ImageSize.Medium,
             fallbackIconSize = HeroPlateSize,
-            modifier = Modifier.fillMaxSize().sharedRecipe(RecipePart.Photo, recipe.slug),
+            modifier = Modifier.fillMaxSize(),
         )
         val scrim = AromaTheme.colors.scrim
         Box(
@@ -661,7 +660,7 @@ private fun TitleBlock(
         Text(
             recipe.name,
             style = AromaTheme.type.recipeTitle,
-            modifier = Modifier.sharedRecipe(RecipePart.Name, recipe.slug).semantics { heading() },
+            modifier = Modifier.semantics { heading() },
         )
         Byline(recipe.categories, recipe.tags, recipe.sourceUrl, onOpenUrl, Modifier.padding(top = SubtitleGap))
         if (rating != null) Stars(rating, Modifier.padding(top = Space.s8))
@@ -947,7 +946,7 @@ private fun StepItem(
                 .alignByBaseline(),
         ) {
             if (!step.title.isNullOrBlank()) {
-                Text(step.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = Space.s4))
+                Text(step.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = EyebrowGap))
             }
             Text(text = rememberStepText(text, amounts), style = AromaTheme.type.body)
             // The ingredients the step uses, as the list shows them, so the step reads on its own.
