@@ -155,8 +155,11 @@ class RecipeRepository(
                 tools = query.tools.ifEmpty { null },
                 cookbook = query.cookbook,
                 queryFilter =
-                    listOfNotNull(favoriteFilter, query.mealNames.takeIf { it.isNotEmpty() }?.let(::namesFilter))
-                        .takeIf { it.isNotEmpty() }
+                    listOfNotNull(
+                        favoriteFilter,
+                        query.mealNames.takeIf { it.isNotEmpty() }?.let(::namesFilter),
+                        query.cookedBefore?.let(::cookedBeforeFilter),
+                    ).takeIf { it.isNotEmpty() }
                         ?.joinToString(" AND ") { "($it)" },
                 paginationSeed = query.seed.takeIf { query.sort == RecipeSort.Random },
             )
@@ -220,7 +223,11 @@ class RecipeRepository(
                             (query.mealNames.isEmpty() || (recipe.recipeCategory + recipe.tags).any { it.name in query.mealNames }) &&
                             query.categories.all { wanted -> recipe.recipeCategory.any { it.slug == wanted || it.id == wanted } } &&
                             query.tags.all { wanted -> recipe.tags.any { it.slug == wanted || it.id == wanted } } &&
-                            query.tools.all { wanted -> recipe.tools.any { it.slug == wanted || it.id == wanted } }
+                            query.tools.all { wanted -> recipe.tools.any { it.slug == wanted || it.id == wanted } } &&
+                            query.cookedBefore.let { day ->
+                                day == null ||
+                                    recipe.lastMade?.take(DATE_LENGTH)?.let { it > EARLIEST_MADE && it < day.toString() } == true
+                            }
                     }.sortedFor(query)
                     .map { it.toModel(server) }
                     .filter { recipe -> query.readyWithin?.let { recipe.isReadyWithin(it) } ?: true }
@@ -242,7 +249,7 @@ class RecipeRepository(
     private val RecipeQuery.isWholeCollection: Boolean
         get() =
             search.isBlank() && !favoritesOnly && categories.isEmpty() && tags.isEmpty() && tools.isEmpty() && mealNames.isEmpty() &&
-                readyWithin == null
+                readyWithin == null && cookedBefore == null
 
     /**
      * Notes which recipes a cookbook holds, for the stored copy to show it offline. A page of a
@@ -313,21 +320,11 @@ class RecipeRepository(
         }
     }
 
-    /** A choice of recipes cooked before, but not since [since]; new each [day]. */
-    fun cookedLongAgo(since: LocalDate, day: LocalDate, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
-        summaries("home:cooked-long-ago") {
-            sessions
-                .api()
-                .recipes(
-                    page = 1,
-                    perPage = limit,
-                    orderBy = "random",
-                    orderDirection = "asc",
-                    // Recipes never cooked compare as earliest in Mealie 3, so a lower bound keeps them out.
-                    queryFilter = "lastMade > \"2000-01-01\" AND lastMade < \"$since\"",
-                    paginationSeed = day.toString(),
-                ).items
-        }
+    /**
+     * Mealie's filter for recipes cooked before, but not since, [day]. Recipes never cooked compare as
+     * earliest in Mealie 3, so a lower bound keeps them out.
+     */
+    private fun cookedBeforeFilter(day: java.time.LocalDate) = "lastMade > \"$EARLIEST_MADE\" AND lastMade < \"$day\""
 
     /** Summaries of [ids], from the stored copy where it has them and from Mealie for the rest. */
     suspend fun summaries(ids: Set<String>): Map<String, RecipeSummary> {
@@ -801,6 +798,12 @@ class RecipeRepository(
 
         /** More recipes than a household keeps, so the stored copy shows them all. */
         private const val STORED_LIMIT = 10_000
+
+        /** Recipes never cooked compare as earliest in Mealie 3, so a lower bound keeps them out of "cooked before". */
+        private const val EARLIEST_MADE = "2000-01-01"
+
+        /** "2026-11-24": the date at the start of Mealie's timestamps. */
+        private const val DATE_LENGTH = 10
 
         private val IdsSerializer = ListSerializer(String.serializer())
 

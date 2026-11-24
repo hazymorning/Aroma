@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.0 – 2026-11-24
+
+**New**
+- A new look, like a well-set cookbook: paper, ink and sage, a book face for recipes and calm, even spacing on every screen, in light and dark.
+- Screens change with a quick, quiet fade.
+- The meal plan shows the calendar week from Monday to Sunday: swipe to turn the week, and put the week's ingredients on your list at its end.
+
+**Better**
+- The recipe page reads like a cookbook: the times at a glance, amounts in their own column, and everything to manage it in the ⋯ menu.
+- Home leads with today's meal, the week at a glance and ideas, each recipe once; save recipes with a bookmark ribbon instead of a heart.
+- Large text and TalkBack work everywhere: nothing is cut off, and every button says what it does.
+
+**Fixed**
+- Long names break at sensible points, and short words are no longer hyphenated.
+- Nothing runs under the status bar any more, and times like "PT1H20M" or "10–15 min" show as they should.
+
 ## 0.6.0 – 2026-11-24
 
 **New**

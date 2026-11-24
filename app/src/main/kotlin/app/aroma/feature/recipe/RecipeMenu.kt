@@ -14,11 +14,11 @@ import androidx.compose.ui.res.stringResource
 import app.aroma.R
 import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.components.AromaBottomSheet
-import app.aroma.ui.components.RecipeMeta
+import app.aroma.ui.components.RecipeMetaLine
 import app.aroma.ui.components.SheetAction
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.rememberFullSheetState
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Space
 
 /** Which sheet a long press on a recipe card has open. */
@@ -65,16 +65,17 @@ fun RecipeActionsSheet(
     AromaBottomSheet(
         onDismissRequest = onDismiss,
         title = recipe.name,
+        titleStyle = AromaTheme.type.cardTitle,
         modifier = modifier,
         sheetState = sheetState,
-        meta = { RecipeMeta(recipe) },
+        meta = { RecipeMetaLine(recipe) },
     ) {
-        Column(Modifier.padding(bottom = Space.m)) {
+        Column(Modifier.padding(bottom = Space.s16)) {
             SheetAction(R.drawable.ic_cooking, stringResource(R.string.recipe_start_cooking), onClick = { choose(onCook) })
             SheetAction(R.drawable.ic_calendar_add, stringResource(R.string.recipe_add_to_plan), onClick = { choose(onPlan) })
             SheetAction(R.drawable.ic_basket_add, stringResource(R.string.recipe_add_to_list), onClick = { choose(onShop) })
             SheetAction(
-                icon = if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite,
+                icon = if (isFavorite) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark,
                 label = stringResource(if (isFavorite) R.string.action_unfavorite else R.string.action_favorite),
                 onClick = { choose(onToggleFavorite) },
             )

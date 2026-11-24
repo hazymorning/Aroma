@@ -9,6 +9,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
@@ -22,6 +25,7 @@ import coil3.request.SuccessResult
 import coil3.test.FakeImageLoaderEngine
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.Dispatchers
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.robolectric.annotation.GraphicsMode
@@ -70,6 +74,27 @@ abstract class ScreenshotTest {
         interact()
         composeRule.waitForIdle()
         composeRule.onRoot().captureRoboImage("build/outputs/roborazzi/$name.png")
+        assertTapsAreNamed(name)
+    }
+
+    /**
+     * Everything that takes a tap says what it is, in its own words or in a description for TalkBack
+     * (section 9): a button without either is read out as an unnamed button.
+     */
+    private fun assertTapsAreNamed(name: String) {
+        val unnamed =
+            composeRule
+                .onAllNodes(hasClickAction())
+                .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                .filter { node ->
+                    val config = node.config
+                    // A link inside a text is read with the text it is part of.
+                    if (config.any { (key, _) -> key.name == "LinkTestMarker" }) return@filter false
+                    val words = config.getOrNull(SemanticsProperties.Text).orEmpty().joinToString("") { it.text }
+                    val description = config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().joinToString("")
+                    words.isBlank() && description.isBlank() && !config.contains(SemanticsProperties.EditableText)
+                }.map { node -> "${node.boundsInRoot} ${node.config}" }
+        assertTrue("$name: taps without a name for TalkBack:\n" + unnamed.joinToString("\n"), unnamed.isEmpty())
     }
 
     private fun gradient(seed: String): Bitmap {

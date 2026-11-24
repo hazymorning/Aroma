@@ -18,6 +18,8 @@ data class RecipeQuery(
     val mealNames: List<String> = emptyList(),
     /** The most minutes a recipe may take all in. Mealie keeps times as text, so the phone picks these. */
     val readyWithin: Int? = null,
+    /** Only recipes cooked before, but not since, this day. */
+    val cookedBefore: java.time.LocalDate? = null,
     val sort: RecipeSort = RecipeSort.Newest,
     val seed: String? = null,
 )

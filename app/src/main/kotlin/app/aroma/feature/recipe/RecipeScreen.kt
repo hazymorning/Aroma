@@ -1,7 +1,7 @@
 package app.aroma.feature.recipe
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -12,46 +12,45 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -60,8 +59,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.format.IngredientFormatter
@@ -71,14 +70,13 @@ import app.aroma.core.format.Quantities
 import app.aroma.core.format.StepAmount
 import app.aroma.core.format.StepMeasures
 import app.aroma.core.format.StyledText
+import app.aroma.core.format.UnitSpacing
 import app.aroma.core.format.ingredientsByStep
 import app.aroma.core.format.stepAmounts
-import app.aroma.core.model.Filing
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.NutritionKind
 import app.aroma.core.model.NutritionValue
 import app.aroma.core.model.Organizer
-import app.aroma.core.model.OrganizerKind
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.RecipeNote
 import app.aroma.core.model.Step
@@ -87,48 +85,60 @@ import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.feature.editor.ReworkJob
 import app.aroma.feature.editor.WorkProgress
 import app.aroma.ui.components.AromaAlertDialog
+import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaDropdownMenu
-import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.AromaMenuItem
-import app.aroma.ui.components.CardGroup
-import app.aroma.ui.components.DetailTopBar
-import app.aroma.ui.components.DetailTopBarHeight
+import app.aroma.ui.components.BackButton
+import app.aroma.ui.components.BottomActionBar
+import app.aroma.ui.components.ChoiceRow
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.FloatingAction
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.HeaderAction
-import app.aroma.ui.components.IconAction
+import app.aroma.ui.components.IconButton
+import app.aroma.ui.components.IconButtonPlace
+import app.aroma.ui.components.IconButtonReach
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
-import app.aroma.ui.components.MenuChip
+import app.aroma.ui.components.NARROW_NO_BREAK_SPACE
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.OnPhotoButton
-import app.aroma.ui.components.Placeholder
-import app.aroma.ui.components.PlaceholderLine
-import app.aroma.ui.components.QuietLink
-import app.aroma.ui.components.QuietPress
+import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
-import app.aroma.ui.components.SecondaryButton
-import app.aroma.ui.components.SectionHeader
-import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.Ribbon
+import app.aroma.ui.components.RibbonSize
+import app.aroma.ui.components.SEPARATOR
+import app.aroma.ui.components.SectionTitle
+import app.aroma.ui.components.Skeleton
+import app.aroma.ui.components.SkeletonLine
+import app.aroma.ui.components.StatusBarCover
+import app.aroma.ui.components.StatusBarOverPhoto
 import app.aroma.ui.components.Stepper
+import app.aroma.ui.components.Text
+import app.aroma.ui.components.TextAction
+import app.aroma.ui.components.TonalBox
+import app.aroma.ui.components.TopBar
+import app.aroma.ui.components.TopBarHeight
+import app.aroma.ui.components.actionBarInset
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.ratingDescription
 import app.aroma.ui.components.recipeTimeText
+import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.components.rememberStepText
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
-import app.aroma.ui.theme.ChipHeight
-import app.aroma.ui.theme.ControlHeight
+import app.aroma.ui.components.totalTime
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.ContentMaxWidth
+import app.aroma.ui.theme.EndSpace
+import app.aroma.ui.theme.EyebrowGap
 import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.HeaderTop
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.ScreenMargin
-import app.aroma.ui.theme.SectionSpace
+import app.aroma.ui.theme.NavigationGap
+import app.aroma.ui.theme.PageMargin
+import app.aroma.ui.theme.SectionGap
+import app.aroma.ui.theme.SectionTitleGap
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.SubtitleGap
 import app.aroma.ui.theme.TouchTarget
-import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.tabular
 import java.net.URI
 import java.util.Locale
@@ -136,6 +146,7 @@ import java.util.Locale
 /**
  * The recipe page's state. Mealie's AI may rework the recipe where the server has it ([aiAvailable]),
  * translated by default where the user last chose so ([translate]); [rework] is one under way.
+ * [isFavorite] is Mealie's favourite, which Aroma shows as a saved recipe with its ribbon.
  */
 data class RecipeUiState(
     val recipe: Recipe? = null,
@@ -155,7 +166,7 @@ data class RecipeUiState(
     val rework: ReworkJob? = null,
 )
 
-/** The two actions under the title; [RecipeUiState.confirmed] marks one that just went through. */
+/** The two icon buttons of the action bar; [RecipeUiState.confirmed] marks one that just went through. */
 enum class QuickAction { Plan, Shop }
 
 data class RecipeActions(
@@ -173,7 +184,6 @@ data class RecipeActions(
     val onOpenUrl: (String) -> Unit = {},
     val onDelete: () -> Unit = {},
     val onRework: (translate: Boolean) -> Unit = {},
-    val onOpenOrganizer: (OrganizerKind, Organizer) -> Unit = { _, _ -> },
     val onOrganize: () -> Unit = {},
     val onRetry: () -> Unit = {},
 )
@@ -181,72 +191,68 @@ data class RecipeActions(
 private const val HERO_KEY = "hero"
 private const val TITLE_KEY = "title"
 
+/** The hero's proportions; in landscape it takes at most [HERO_MAX_SHARE] of the screen's height. */
+private const val HERO_RATIO = 4f / 3f
+private const val HERO_MAX_SHARE = 0.6f
+
 /** The plate that stands in for a missing photo at the head of the page. */
 private val HeroPlateSize = 48.dp
 
-/** Just enough shade at the top of the photo for the status bar and the buttons to read on it. */
-private val PhotoShadeHeight = 96.dp
+/** The shade at the top of the photo, so the status bar and the buttons read on light photos too. */
+private val PhotoShadeHeight = 120.dp
 
-/** The glyph after the source, as small as the stars before it. */
-private val SourceGlyph = 14.dp
+/** How dark the shade starts at the top edge; it fades to nothing at [PhotoShadeHeight]. */
+private const val PHOTO_SHADE = 0.45f
 
+/**
+ * The recipe as a cookbook page: the photo to the edges, the title and what it is, the headnote,
+ * the times, the ingredients and the steps, open on paper. Cooking is the page's one main action, in
+ * the bar at its foot beside planning and shopping. All that manages the recipe waits in the menu.
+ */
 @Composable
 fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
     val recipe = state.recipe
     var rateOpen by rememberSaveable { mutableStateOf(false) }
     var reworkOpen by rememberSaveable { mutableStateOf(false) }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val density = LocalDensity.current
-    val barBottom = WindowInsets.statusBars.getTop(density) + with(density) { DetailTopBarHeight.roundToPx() }
-    // The bar turns to paper once the photo has slid beneath it, and shows the title once that has too.
-    val barOverPhoto by remember(listState, barBottom) {
-        derivedStateOf { listState.bottomOf(HERO_KEY)?.let { it > barBottom } ?: (listState.firstVisibleItemIndex == 0) }
+    val barBottom = WindowInsets.statusBars.getTop(density) + with(density) { TopBarHeight.roundToPx() }
+    // A recipe without a photo starts with its buttons and its title, as any pushed page does.
+    val hasPhoto = recipe?.image != null
+    val leadKey = if (hasPhoto) HERO_KEY else TITLE_KEY
+    // The collapsed head takes over once the photo, or the title, has slid beneath it.
+    val scrolledAway by remember(listState, barBottom, leadKey) {
+        derivedStateOf { listState.bottomOf(leadKey)?.let { it <= barBottom } ?: (listState.firstVisibleItemIndex > 0) }
     }
-    val titleGone by remember(listState, barBottom) {
-        derivedStateOf { listState.bottomOf(TITLE_KEY)?.let { it <= barBottom } ?: (listState.firstVisibleItemIndex > 0) }
-    }
-    val canCook = recipe?.steps?.isNotEmpty() == true
-    // Folded to its glyph while reading on down the page; whole again at the top or once the page heads back up.
-    val cookUnfolded by remember(listState) { derivedStateOf { !listState.canScrollBackward || !listState.lastScrolledForward } }
-    val locale = currentLocale()
-    // What each step uses, scaled and in the chosen measures like the list above it.
-    val stepUses =
-        remember(recipe, state.scale, state.measures, locale) {
-            if (recipe == null) return@remember emptyList()
-            val lines =
-                recipe.ingredients.map { ingredient ->
-                    val line = IngredientFormatter.format(ingredient, state.scale, locale, state.measures)
-                    // As the list sets it: the note after a comma.
-                    listOfNotNull(line.measureText(), line.text, line.note?.let { ", $it" })
-                        .filter { it.isNotBlank() }
-                        .joinToString(" ")
-                        .replace(" ,", ",")
-                }
-            recipe.ingredientsByStep(locale).map { used -> used.mapNotNull(lines::getOrNull) }
-        }
-    // The steps as they read: temperatures and pan sizes in the chosen measures, and the amounts written in where chosen.
-    val stepTexts =
-        remember(recipe, state.measures, locale) {
-            recipe?.steps.orEmpty().map { Markdown.parse(StepMeasures.convert(it.text, state.measures, locale)) }
-        }
-    val stepAmounts =
-        remember(recipe, stepTexts, state.scale, state.measures, locale, state.amountsInSteps) {
-            if (recipe == null || !state.amountsInSteps) {
-                emptyList()
-            } else {
-                recipe.stepAmounts(stepTexts.map { it.text }, state.scale, locale, state.measures)
-            }
-        }
+    val collapsed = if (recipe != null) scrolledAway else !state.isLoading
+    val overPhoto = if (recipe != null) hasPhoto && !scrolledAway else state.isLoading
+    val menu =
+        PageMenu(
+            // One rework at a time: the next only once the page showed how the last ended.
+            onRework = { reworkOpen = true }.takeIf { state.aiAvailable && state.rework == null },
+            onRate = { rateOpen = true },
+            onDelete = { confirmDelete = true },
+        )
+    val steps = rememberSteps(recipe, state)
     Box(modifier.fillMaxSize()) {
         when {
             recipe != null -> {
                 LazyColumn(
                     state = listState,
-                    contentPadding = PaddingValues(bottom = endSpace(canCook)),
+                    // The last section ends 24 dp above the action bar.
+                    contentPadding = PaddingValues(bottom = actionBarInset() + EndSpace),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    item(key = HERO_KEY) { Hero(recipe) }
-                    recipeBody(recipe, state, actions, Steps(stepTexts, stepAmounts, stepUses), onOpenRating = { rateOpen = true })
+                    item(key = HERO_KEY) {
+                        if (hasPhoto) {
+                            Hero(recipe, saved = state.isFavorite, onUnsave = actions.onToggleFavorite)
+                        } else {
+                            PageButtons(state.isFavorite, actions, menu)
+                        }
+                    }
+                    recipeBody(recipe, state, actions, steps, underPhoto = hasPhoto)
                 }
             }
 
@@ -260,116 +266,29 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
                     onRetry = actions.onRetry,
                     modifier =
                         Modifier
-                            .fillMaxSize()
                             .statusBarsPadding()
-                            .padding(top = DetailTopBarHeight),
+                            .padding(top = TopBarHeight + HeaderTop),
                 )
             }
         }
-        RecipeTopBar(
-            recipe = recipe,
-            overPhoto = if (recipe != null) barOverPhoto else state.isLoading,
-            titleGone = titleGone,
-            isFavorite = state.isFavorite,
-            actions = actions,
-            // One rework at a time: the next only once the page showed how the last ended.
-            onRework = { reworkOpen = true }.takeIf { state.aiAvailable && state.rework == null },
-        )
-        // There with the recipe, from its first frame, and moving only with the page.
-        if (canCook) {
-            FloatingAction(
-                text = stringResource(R.string.recipe_start_cooking),
-                icon = R.drawable.ic_cooking,
-                onClick = actions.onStartCooking,
-                expanded = cookUnfolded,
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .navigationBarsPadding()
-                        .padding(end = ScreenMargin, bottom = Space.m),
+        RecipeHead(recipe, collapsed, overPhoto, state.isFavorite, actions, menu)
+        if (recipe != null) {
+            RecipeActionBar(
+                canShop = recipe.ingredients.isNotEmpty(),
+                canCook = recipe.steps.isNotEmpty(),
+                confirmed = state.confirmed,
+                actions = actions,
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }
+    // Light icons over the photo's shade; the theme's own once the photo has gone beneath the head.
+    StatusBarOverPhoto(overPhoto)
     if (rateOpen && recipe != null) {
         RatingSheet(rating = state.userRating, onRate = actions.onRate, onDismiss = { rateOpen = false })
     }
     if (reworkOpen && recipe != null) {
         ReworkSheet(translate = state.translate, onRework = actions.onRework, onDismiss = { reworkOpen = false })
-    }
-}
-
-private fun LazyListState.bottomOf(key: Any): Int? = layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.let { it.offset + it.size }
-
-/** Room below the last section, so it can scroll clear above the cook button when there is one. */
-@Composable
-private fun endSpace(canCook: Boolean) =
-    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-        if (canCook) ControlHeight + Space.m + Space.xl else Space.xl
-
-@Composable
-private fun Hero(recipe: Recipe) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .aspectRatio(4f / 3f),
-    ) {
-        RecipeImage(
-            image = recipe.image,
-            size = ImageSize.Original,
-            placeholder = ImageSize.Medium,
-            fallbackIconSize = HeroPlateSize,
-            modifier = Modifier.fillMaxSize(),
-        )
-        val scrim = MaterialTheme.colorScheme.scrim
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(PhotoShadeHeight)
-                .background(Brush.verticalGradient(listOf(scrim.copy(alpha = 0.28f), scrim.copy(alpha = 0f)))),
-        )
-    }
-}
-
-/**
- * Over the photo, back, favourite and more rest on paper circles. Once the photo has gone, they
- * become the plain bar every pushed screen has, which takes up the title when that has scrolled away.
- * The menu offers a rework with Mealie's AI where there is [onRework].
- */
-@Composable
-private fun RecipeTopBar(
-    recipe: Recipe?,
-    overPhoto: Boolean,
-    titleGone: Boolean,
-    isFavorite: Boolean,
-    actions: RecipeActions,
-    onRework: (() -> Unit)?,
-) {
-    var confirmDelete by rememberSaveable { mutableStateOf(false) }
-    Box {
-        AnimatedVisibility(visible = !overPhoto, enter = fadeIn(tween(Motion.STATE)), exit = fadeOut(tween(Motion.STATE))) {
-            DetailTopBar(onBack = actions.onBack, title = recipe?.name, collapsed = titleGone) {
-                if (recipe != null) {
-                    FavoriteButton(isFavorite, actions.onToggleFavorite, onPhoto = false)
-                    MoreMenu(recipe, actions, onRework, onDelete = { confirmDelete = true }, onPhoto = false)
-                }
-            }
-        }
-        AnimatedVisibility(visible = overPhoto, enter = fadeIn(tween(Motion.STATE)), exit = fadeOut(tween(Motion.STATE))) {
-            // The circles sit 16 dp from the edges and 8 dp apart; their touch areas reach 4 dp further.
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = Space.s, vertical = Space.xxs),
-            ) {
-                OnPhotoButton(R.drawable.ic_arrow_back, stringResource(R.string.action_back), actions.onBack)
-                Spacer(Modifier.weight(1f))
-                if (recipe != null) {
-                    FavoriteButton(isFavorite, actions.onToggleFavorite, onPhoto = true)
-                    MoreMenu(recipe, actions, onRework, onDelete = { confirmDelete = true }, onPhoto = true)
-                }
-            }
-        }
     }
     if (confirmDelete && recipe != null) {
         AromaAlertDialog(
@@ -387,117 +306,322 @@ private fun RecipeTopBar(
     }
 }
 
+private fun LazyListState.bottomOf(key: Any): Int? = layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.let { it.offset + it.size }
+
+/** What the menu opens on the page itself: a rework where Mealie's AI is there, the rating and the question before deleting. */
+private class PageMenu(val onRework: (() -> Unit)?, val onRate: () -> Unit, val onDelete: () -> Unit)
+
+/** The steps' [texts] as they read, the [amounts] written into them and the ingredients each [uses], as the list shows them. */
+private class Steps(val texts: List<StyledText>, val amounts: List<List<StepAmount>>, val uses: List<List<String>>)
+
 @Composable
-private fun FavoriteButton(isFavorite: Boolean, onClick: () -> Unit, onPhoto: Boolean) {
-    val icon = if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite
-    val label = stringResource(if (isFavorite) R.string.action_unfavorite else R.string.action_favorite)
-    val tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-    if (onPhoto) {
-        OnPhotoButton(icon, label, onClick, tint = tint)
-    } else {
-        HeaderAction(icon, label, onClick, tint = tint)
+private fun rememberSteps(recipe: Recipe?, state: RecipeUiState): Steps {
+    val locale = currentLocale()
+    // What each step uses, scaled and in the chosen measures like the list above it.
+    val uses =
+        remember(recipe, state.scale, state.measures, locale) {
+            if (recipe == null) return@remember emptyList()
+            val lines =
+                recipe.ingredients.map { ingredient ->
+                    val line = IngredientFormatter.format(ingredient, state.scale, locale, state.measures)
+                    // As the list sets it: the note after a comma.
+                    listOfNotNull(line.measureText(NARROW_NO_BREAK_SPACE), line.text, line.note?.let { ", $it" })
+                        .filter { it.isNotBlank() }
+                        .joinToString(" ")
+                        .replace(" ,", ",")
+                }
+            recipe.ingredientsByStep(locale).map { used -> used.mapNotNull(lines::getOrNull) }
+        }
+    // The steps as they read: temperatures and pan sizes in the chosen measures, and the amounts written in where chosen.
+    val texts =
+        remember(recipe, state.measures, locale) {
+            recipe?.steps.orEmpty().map { Markdown.parse(UnitSpacing.apply(StepMeasures.convert(it.text, state.measures, locale))) }
+        }
+    val amounts =
+        remember(recipe, texts, state.scale, state.measures, locale, state.amountsInSteps) {
+            if (recipe == null || !state.amountsInSteps) {
+                emptyList()
+            } else {
+                recipe.stepAmounts(texts.map { it.text }, state.scale, locale, state.measures)
+            }
+        }
+    return remember(texts, amounts, uses) { Steps(texts, amounts, uses) }
+}
+
+/** The page's text keeps a reading measure on wide screens, centred under the photo. */
+private fun Modifier.measure(): Modifier = widthIn(max = ContentMaxWidth).fillMaxWidth()
+
+/**
+ * Over the photo, back, save and more stand on paper circles; a saved recipe's ribbon hangs where
+ * its save button stood. Once the photo has gone, or the title of a recipe without one, they become
+ * the collapsed head every pushed screen has, with the recipe's name.
+ */
+@Composable
+private fun RecipeHead(
+    recipe: Recipe?,
+    collapsed: Boolean,
+    overPhoto: Boolean,
+    saved: Boolean,
+    actions: RecipeActions,
+    menu: PageMenu,
+) {
+    // Without a photo, the page's own paper keeps the status bar clear until the head collapses.
+    if (!collapsed && !overPhoto) StatusBarCover()
+    AnimatedVisibility(visible = collapsed, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
+        TopBar(
+            title = recipe?.name.orEmpty(),
+            collapsed = true,
+            raised = true,
+            navigation = { BackButton(actions.onBack) },
+        ) {
+            if (recipe != null) {
+                SaveButton(saved, actions.onToggleFavorite, IconButtonPlace.Content)
+                MoreMenu(actions, menu, IconButtonPlace.Content)
+            }
+        }
+    }
+    AnimatedVisibility(visible = overPhoto && !collapsed, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = PageMargin - IconButtonReach, vertical = Space.s4),
+        ) {
+            IconButton(R.drawable.ic_arrow_back, stringResource(R.string.action_back), actions.onBack, place = IconButtonPlace.Photo)
+            Spacer(Modifier.weight(1f))
+            if (recipe != null) {
+                AnimatedVisibility(visible = !saved, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
+                    SaveButton(saved = false, onToggle = actions.onToggleFavorite, place = IconButtonPlace.Photo)
+                }
+                MoreMenu(actions, menu, IconButtonPlace.Photo)
+            }
+        }
     }
 }
 
+/** The head of a recipe without a photo: back, save and more, in the row a pushed page has above its title. */
 @Composable
-private fun MoreMenu(
-    recipe: Recipe,
-    actions: RecipeActions,
-    onRework: (() -> Unit)?,
-    onDelete: () -> Unit,
-    onPhoto: Boolean,
-) {
+private fun PageButtons(saved: Boolean, actions: RecipeActions, menu: PageMenu) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .height(TopBarHeight)
+            .padding(horizontal = PageMargin - IconButtonReach),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BackButton(actions.onBack)
+        Spacer(Modifier.weight(1f))
+        SaveButton(saved, actions.onToggleFavorite, IconButtonPlace.Content)
+        MoreMenu(actions, menu, IconButtonPlace.Content)
+    }
+}
+
+/** Saves the recipe, with a tap of the phone to feel it, or lets it go. */
+@Composable
+private fun SaveButton(saved: Boolean, onToggle: () -> Unit, place: IconButtonPlace) {
+    val haptics = LocalHapticFeedback.current
+    IconButton(
+        icon = if (saved) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark,
+        contentDescription = stringResource(if (saved) R.string.action_unfavorite else R.string.action_favorite),
+        onClick = {
+            if (!saved) haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            onToggle()
+        },
+        place = place,
+    )
+}
+
+/** What manages the recipe, and is not needed to cook it: editing, filing, rating, reworking, sharing and deleting. */
+@Composable
+private fun MoreMenu(actions: RecipeActions, menu: PageMenu, place: IconButtonPlace) {
     var open by remember { mutableStateOf(false) }
     val choose: (() -> Unit) -> Unit = { action ->
         open = false
         action()
     }
     Box {
-        val label = stringResource(R.string.action_more)
-        if (onPhoto) {
-            OnPhotoButton(R.drawable.ic_more_horiz, label, onClick = { open = true })
-        } else {
-            HeaderAction(R.drawable.ic_more_horiz, label, onClick = { open = true })
-        }
+        IconButton(R.drawable.ic_more_horiz, stringResource(R.string.action_more), onClick = { open = true }, place = place)
         AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            AromaMenuItem(stringResource(R.string.recipe_add_to_plan), R.drawable.ic_calendar_add, { choose(actions.onAddToMealPlan) })
-            if (recipe.ingredients.isNotEmpty()) {
-                AromaMenuItem(
-                    stringResource(R.string.recipe_add_to_list),
-                    R.drawable.ic_basket_add,
-                    { choose(actions.onAddToShoppingList) },
-                )
-            }
-            Hairline(Modifier.padding(vertical = Space.xxs))
             AromaMenuItem(stringResource(R.string.action_edit), R.drawable.ic_edit, { choose(actions.onEdit) })
-            onRework?.let { AromaMenuItem(stringResource(R.string.recipe_rework), R.drawable.ic_sparkle, { choose(it) }) }
+            AromaMenuItem(stringResource(R.string.organizers_title), R.drawable.ic_tag, { choose(actions.onOrganize) })
+            AromaMenuItem(stringResource(R.string.recipe_rate), R.drawable.ic_star, { choose(menu.onRate) })
+            menu.onRework?.let { AromaMenuItem(stringResource(R.string.recipe_rework), R.drawable.ic_sparkle, { choose(it) }) }
             AromaMenuItem(stringResource(R.string.action_share), R.drawable.ic_share, { choose(actions.onShare) })
-            recipe.sourceUrl?.let { url ->
-                AromaMenuItem(stringResource(R.string.recipe_open_source), R.drawable.ic_open_in_new, { choose { actions.onOpenUrl(url) } })
-            }
-            AromaMenuItem(stringResource(R.string.action_delete), R.drawable.ic_delete, { choose(onDelete) }, destructive = true)
+            AromaMenuItem(stringResource(R.string.action_delete), R.drawable.ic_delete, { choose(menu.onDelete) }, destructive = true)
         }
     }
 }
 
-/** The steps' [texts] as they read, the [amounts] written into them and the ingredients each [uses], as the list shows them. */
-private class Steps(val texts: List<StyledText>, val amounts: List<List<StepAmount>>, val uses: List<List<String>>)
+/**
+ * Plan and shop as icon buttons, the two things people do with a recipe besides cooking it, and
+ * cooking itself across the rest of the bar, the page's one main action. Shop is there where
+ * there is something to buy; cooking, where there are steps to cook by.
+ */
+@Composable
+private fun RecipeActionBar(
+    canShop: Boolean,
+    canCook: Boolean,
+    confirmed: QuickAction?,
+    actions: RecipeActions,
+    modifier: Modifier = Modifier,
+) {
+    BottomActionBar(modifier) {
+        IconButton(
+            icon = R.drawable.ic_calendar_add,
+            contentDescription = stringResource(R.string.recipe_action_plan),
+            onClick = actions.onAddToMealPlan,
+            place = IconButtonPlace.Bar,
+            confirmed = confirmed == QuickAction.Plan,
+        )
+        if (canShop) {
+            IconButton(
+                icon = R.drawable.ic_basket,
+                contentDescription = stringResource(R.string.recipe_action_shop),
+                onClick = actions.onAddToShoppingList,
+                place = IconButtonPlace.Bar,
+                confirmed = confirmed == QuickAction.Shop,
+            )
+        }
+        PrimaryButton(
+            text = stringResource(R.string.recipe_start_cooking),
+            onClick = actions.onStartCooking,
+            icon = R.drawable.ic_cooking,
+            enabled = canCook,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** How tall the hero stands: 4 : 3 to the edges, and no more than [HERO_MAX_SHARE] of the window in landscape. */
+@Composable
+private fun heroHeight(): Dp {
+    val window = LocalWindowInfo.current.containerSize
+    return with(LocalDensity.current) { minOf(window.width.toDp() / HERO_RATIO, window.height.toDp() * HERO_MAX_SHARE) }
+}
+
+/**
+ * The photo to the edges, with a shade at its top. A saved recipe's ribbon hangs from its top edge
+ * where the save button stood, its foot level with the buttons; a tap on it lets the recipe go.
+ */
+@Composable
+private fun Hero(recipe: Recipe, saved: Boolean, onUnsave: () -> Unit) {
+    val statusBar = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(heroHeight()),
+    ) {
+        RecipeImage(
+            image = recipe.image,
+            size = ImageSize.Original,
+            placeholder = ImageSize.Medium,
+            fallbackIconSize = HeroPlateSize,
+            modifier = Modifier.fillMaxSize(),
+        )
+        val scrim = AromaTheme.colors.scrim
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(PhotoShadeHeight)
+                .background(Brush.verticalGradient(listOf(scrim.copy(alpha = PHOTO_SHADE), Color.Transparent))),
+        )
+        Ribbon(
+            saved = saved,
+            size = RibbonSize.Hero,
+            animated = true,
+            // Behind the status bar it reaches up to the photo's edge; below it, it is as long as a hero's ribbon.
+            hang = statusBar,
+            onClick = onUnsave,
+            onClickLabel = stringResource(R.string.action_unfavorite),
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(end = RibbonEnd),
+        )
+    }
+}
+
+/** Where the ribbon hangs from the right edge: centred where the save button stood, left of the menu's. */
+private val RibbonEnd = PageMargin - IconButtonReach + TouchTarget + (TouchTarget - RibbonSize.Hero.size.width) / 2
 
 private fun LazyListScope.recipeBody(
     recipe: Recipe,
     state: RecipeUiState,
     actions: RecipeActions,
     steps: Steps,
-    onOpenRating: () -> Unit,
+    underPhoto: Boolean,
 ) {
-    item(key = TITLE_KEY) { TitleBlock(recipe, state.isOffline) }
-    item(key = "byline") {
-        Byline(
+    item(key = TITLE_KEY) {
+        TitleBlock(
+            recipe = recipe,
             rating = state.userRating ?: recipe.rating,
-            sourceUrl = recipe.sourceUrl,
-            onOpenRating = onOpenRating,
+            isOffline = state.isOffline,
             onOpenUrl = actions.onOpenUrl,
-        )
-    }
-    item(key = "actions") {
-        RecipeQuickActions(
-            canShop = recipe.ingredients.isNotEmpty(),
-            confirmed = state.confirmed,
-            onPlan = actions.onAddToMealPlan,
-            onShop = actions.onAddToShoppingList,
-            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l),
+            modifier =
+                Modifier
+                    .measure()
+                    // 24 dp under the photo; without one, right under the buttons, as on any pushed page.
+                    .padding(top = if (underPhoto) Space.s24 else NavigationGap),
         )
     }
     state.rework?.takeIf { it.outcome == null }?.let { job ->
         item(key = "rework") {
-            Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l)) {
+            Column(
+                Modifier
+                    .measure()
+                    .padding(start = PageMargin, end = PageMargin, top = Space.s24),
+            ) {
                 WorkProgress(job.steps, job.startedAt, stringResource(R.string.recipe_rework_running), Modifier.fillMaxWidth())
                 Text(
                     text = stringResource(R.string.recipe_rework_progress_hint),
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = CardPadding, end = CardPadding, top = Space.s),
+                    style = AromaTheme.type.bodySmall,
+                    modifier = Modifier.padding(top = Space.s12),
                 )
             }
         }
     }
     if (recipe.description.isNotBlank()) {
-        item(key = "description") {
+        item(key = "headnote") {
             Text(
                 text = rememberRichText(recipe.description),
-                style = AromaType.Body,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l),
+                style = AromaTheme.type.headnote,
+                modifier =
+                    Modifier
+                        .measure()
+                        .padding(start = PageMargin, end = PageMargin, top = Space.s16),
             )
         }
     }
-    item(key = "facts") { Facts(recipe) }
-    item(key = "organizers") { Organizers(recipe, actions.onOpenOrganizer, actions.onOrganize) }
+    item(key = "facts") {
+        Facts(
+            recipe,
+            Modifier
+                .measure()
+                .padding(start = PageMargin, end = PageMargin, top = Space.s24),
+        )
+    }
     if (recipe.ingredients.isNotEmpty()) {
-        item(key = "ingredients") { Ingredients(recipe, state, actions) }
+        item(key = "ingredients") {
+            Ingredients(
+                recipe,
+                state,
+                actions,
+                Modifier
+                    .measure()
+                    .padding(start = PageMargin, end = PageMargin, top = SectionGap),
+            )
+        }
     }
     if (recipe.steps.isNotEmpty()) {
-        item(key = "stepsHeader") { SectionHeader(stringResource(R.string.recipe_steps)) }
+        item(key = "stepsHead") {
+            SectionTitle(
+                stringResource(R.string.recipe_steps),
+                Modifier
+                    .measure()
+                    .padding(top = SectionGap, bottom = SectionTitleGap),
+            )
+        }
         itemsIndexed(recipe.steps, key = { index, step -> step.id ?: "step$index" }) { index, step ->
             StepItem(
                 index = index,
@@ -505,279 +629,271 @@ private fun LazyListScope.recipeBody(
                 text = steps.texts.getOrNull(index) ?: StyledText(step.text, emptyList()),
                 amounts = steps.amounts.getOrNull(index).orEmpty(),
                 uses = if (state.ingredientsInSteps == IngredientsInSteps.None) emptyList() else steps.uses.getOrNull(index).orEmpty(),
-                modifier = Modifier.padding(top = if (index == 0) Space.xs else Space.l),
+                modifier =
+                    Modifier
+                        .measure()
+                        .padding(top = if (index == 0) 0.dp else Space.s24),
             )
         }
     }
     if (recipe.notes.isNotEmpty()) {
-        item(key = "notes") { Notes(recipe.notes) }
+        item(key = "notes") { Notes(recipe.notes, Modifier.measure()) }
     }
     if (recipe.nutrition.isNotEmpty()) {
-        item(key = "nutrition") { Nutrition(recipe.nutrition) }
-    }
-}
-
-@Composable
-private fun TitleBlock(recipe: Recipe, isOffline: Boolean) {
-    Column(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l)) {
-        if (isOffline) OfflineNotice(Modifier.padding(bottom = Space.m))
-        Text(recipe.name, style = AromaType.PageTitle, modifier = Modifier.semantics { heading() })
+        item(key = "nutrition") { Nutrition(recipe.nutrition, Modifier.measure()) }
     }
 }
 
 /**
- * Categories and tags as soft chips; each opens the recipes it names. After them, a pencil to change
- * them, or, while nothing says what kind of dish it is, a link to choose that.
+ * The title, and under it what the recipe is and where it is from: its category, two tags and the
+ * source's domain, which opens the original. Stars follow on a line of their own where it is rated.
  */
 @Composable
-private fun Organizers(recipe: Recipe, onOpen: (OrganizerKind, Organizer) -> Unit, onOrganize: () -> Unit) {
-    val organizers =
-        remember(recipe.categories, recipe.tags) {
-            recipe.categories.map { OrganizerKind.Category to it } + recipe.tags.map { OrganizerKind.Tag to it }
-        }
-    val hasMeal = remember(recipe.categories, recipe.tags) { Filing(recipe.categories, recipe.tags).meals.isNotEmpty() }
-    FlowRow(
-        modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
-        horizontalArrangement = Arrangement.spacedBy(Space.xs),
-        verticalArrangement = Arrangement.spacedBy(Space.xs),
-        itemVerticalAlignment = Alignment.CenterVertically,
-    ) {
-        organizers.forEach { (kind, organizer) ->
-            AromaFilterChip(selected = false, label = organizer.name, onClick = { onOpen(kind, organizer) })
-        }
-        if (hasMeal) {
-            IconAction(R.drawable.ic_edit, stringResource(R.string.organizers_change), onOrganize, glyphSize = Glyph.s)
-        } else {
-            QuietLink(stringResource(R.string.organizers_choose_meal), onOrganize, leadingIcon = R.drawable.ic_add)
-        }
+private fun TitleBlock(
+    recipe: Recipe,
+    rating: Double?,
+    isOffline: Boolean,
+    onOpenUrl: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.padding(horizontal = PageMargin)) {
+        Text(
+            recipe.name,
+            style = AromaTheme.type.recipeTitle,
+            modifier = Modifier.semantics { heading() },
+        )
+        Byline(recipe.categories, recipe.tags, recipe.sourceUrl, onOpenUrl, Modifier.padding(top = SubtitleGap))
+        if (rating != null) Stars(rating, Modifier.padding(top = Space.s8))
+        if (isOffline) OfflineNotice(Modifier.padding(top = Space.s8))
     }
 }
 
-/** Stars and the source on one quiet line: the stars open the rating sheet, the host the original page. */
+/**
+ * "Backen · Weihnachten · Plätzchen · chefkoch.de ↗": the source in sage, a link to the original
+ * that keeps its domain on one line and moves to the next as a whole.
+ */
 @Composable
-private fun Byline(rating: Double?, sourceUrl: String?, onOpenRating: () -> Unit, onOpenUrl: (String) -> Unit) {
+private fun Byline(
+    categories: List<Organizer>,
+    tags: List<Organizer>,
+    sourceUrl: String?,
+    onOpenUrl: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val kinds = remember(categories, tags) { (categories.take(1) + tags.take(TAGS_SHOWN)).map { it.name } }
+    val host = remember(sourceUrl) { sourceUrl?.let(::sourceHost) }
+    if (kinds.isEmpty() && host == null) return
+    FlowRow(modifier, itemVerticalAlignment = Alignment.CenterVertically) {
+        if (kinds.isNotEmpty()) {
+            Text(kinds.joinToString(SEPARATOR) + if (host != null) SEPARATOR else "", style = AromaTheme.type.subtitle)
+        }
+        if (host != null && sourceUrl != null) SourceLink(host, onClick = { onOpenUrl(sourceUrl) })
+    }
+}
+
+/** The source's domain and an arrow out, in sage: opens the original page. */
+@Composable
+private fun SourceLink(host: String, onClick: () -> Unit) {
+    val accent = AromaTheme.colors.accent
+    Row(
+        Modifier
+            .clip(AromaTheme.shapes.round)
+            .clickable(onClickLabel = stringResource(R.string.recipe_open_source), role = Role.Button, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(host, style = AromaTheme.type.subtitle, color = accent, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        Icon(
+            painterResource(R.drawable.ic_arrow_up_right),
+            contentDescription = null,
+            tint = accent,
+            modifier =
+                Modifier
+                    .padding(start = Space.s4)
+                    .size(Glyph.meta),
+        )
+    }
+}
+
+private const val TAGS_SHOWN = 2
+
+/** The source's domain, without "www.". */
+private fun sourceHost(url: String): String? = runCatching { URI(url).host?.removePrefix("www.") }.getOrNull()?.takeIf { it.isNotBlank() }
+
+/** The rating as small sage stars and its figure; only shown where the recipe is rated. */
+@Composable
+private fun Stars(rating: Double, modifier: Modifier = Modifier) {
     val locale = currentLocale()
-    val host = remember(sourceUrl) { sourceUrl?.let { runCatching { URI(it).host?.removePrefix("www.") }.getOrNull() } }
-    val meta = AromaType.Small
     val description = ratingDescription(rating)
     Row(
-        Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
+        modifier.semantics(mergeDescendants = true) { contentDescription = description },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        QuietTarget(
-            onClick = onOpenRating,
-            onClickLabel = stringResource(R.string.recipe_rate),
-            modifier = Modifier.semantics { contentDescription = description },
-        ) {
-            RatingStars(rating, Modifier.clearAndSetSemantics {})
-            if (rating != null) {
-                Text(
-                    text = remember(rating, locale) { "%.1f".format(locale, rating) },
-                    style = meta.tabular(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier =
-                        Modifier
-                            .padding(start = Space.xs)
-                            .clearAndSetSemantics {},
-                )
-            }
-        }
-        if (host != null && sourceUrl != null) {
-            Dot(meta)
-            QuietTarget(onClick = { onOpenUrl(sourceUrl) }, modifier = Modifier.weight(1f, fill = false)) {
-                Text(
-                    text = host,
-                    style = meta,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                Icon(
-                    painterResource(R.drawable.ic_open_in_new),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier =
-                        Modifier
-                            .padding(start = Space.xxs)
-                            .size(SourceGlyph),
-                )
-            }
-        }
-    }
-}
-
-/** A target made of text: no ripple, it dims while pressed, as a quiet link does. */
-@Composable
-private fun QuietTarget(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    onClickLabel: String? = null,
-    content: @Composable RowScope.() -> Unit,
-) {
-    Row(
-        modifier =
-            modifier.clickable(
-                interactionSource = null,
-                indication = QuietPress,
-                onClickLabel = onClickLabel,
-                role = Role.Button,
-                onClick = onClick,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        content = content,
-    )
-}
-
-/** The middle dot between items on a line, a shade lighter than the items. */
-@Composable
-private fun Dot(style: TextStyle) {
-    Text("·", style = style, color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(horizontal = Space.xs))
-}
-
-/**
- * Plan and shop, the two things people do with a recipe besides cooking it, right under its name:
- * two even buttons across the column, or plan alone across it where there is nothing to buy. They
- * take the muted accent, which sets them above the page's quiet controls and below cooking.
- */
-@Composable
-private fun RecipeQuickActions(
-    canShop: Boolean,
-    confirmed: QuickAction?,
-    onPlan: () -> Unit,
-    onShop: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Space.s)) {
-        SecondaryButton(
-            icon = R.drawable.ic_calendar_add,
-            text = stringResource(R.string.recipe_action_plan),
-            onClick = onPlan,
-            confirmed = confirmed == QuickAction.Plan,
-            accented = true,
-            modifier = Modifier.weight(1f),
+        RatingStars(rating, Modifier.clearAndSetSemantics {})
+        Text(
+            text = remember(rating, locale) { "%.1f".format(locale, rating) },
+            style = AromaTheme.type.meta,
+            modifier =
+                Modifier
+                    .padding(start = Space.s8)
+                    .clearAndSetSemantics {},
         )
-        if (canShop) {
-            SecondaryButton(
-                icon = R.drawable.ic_basket_add,
-                text = stringResource(R.string.recipe_action_shop),
-                onClick = onShop,
-                confirmed = confirmed == QuickAction.Shop,
-                accented = true,
-                modifier = Modifier.weight(1f),
-            )
-        }
     }
 }
 
-/** Prep, cook and total time on a soft card, each a value over its name. */
+/** One of the times in the box of figures: its glyph, the time and what it is. */
+private data class Fact(
+    @param:DrawableRes val icon: Int,
+    val value: String,
+    val label: String,
+)
+
+/** Preparation, cooking or baking, and the total, side by side in a box; what is not known is left out, and with it all, the box. */
 @Composable
-private fun Facts(recipe: Recipe) {
+private fun Facts(recipe: Recipe, modifier: Modifier = Modifier) {
+    val bakes = remember(recipe.name, recipe.categories, recipe.tags) { recipe.bakes() }
     val facts =
         listOfNotNull(
-            recipeTimeText(recipe.prepTime)?.let { stringResource(R.string.recipe_prep_time) to it },
-            recipeTimeText(recipe.cookTime)?.let { stringResource(R.string.recipe_cook_time) to it },
-            recipeTimeText(recipe.totalTime)?.let { stringResource(R.string.recipe_total_time) to it },
+            recipeTimeText(recipe.prepTime)?.let { Fact(R.drawable.ic_utensils, it, stringResource(R.string.recipe_prep_time)) },
+            recipeTimeText(recipe.cookTime)?.let {
+                Fact(R.drawable.ic_flame, it, stringResource(if (bakes) R.string.recipe_bake_time else R.string.recipe_cook_time))
+            },
+            recipeTimeText(totalTime(recipe.totalTime, recipe.prepTime, recipe.cookTime))?.let {
+                Fact(R.drawable.ic_clock, it, stringResource(R.string.recipe_total_time))
+            },
         )
     if (facts.isEmpty()) return
-    SoftCard(Modifier.padding(top = Space.l)) {
-        Row(Modifier.padding(horizontal = CardPadding, vertical = Space.s)) {
-            facts.forEach { (label, value) ->
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = value, style = AromaType.BodyStrong.tabular(), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        text = label,
-                        style = AromaType.Small,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+    TonalBox(modifier) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.s12)) {
+            facts.forEach { fact ->
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .semantics(mergeDescendants = true) {},
+                ) {
+                    Icon(
+                        painterResource(fact.icon),
+                        contentDescription = null,
+                        tint = AromaTheme.colors.inkSecondary,
+                        modifier = Modifier.size(Glyph.control),
                     )
+                    Text(fact.value, style = AromaTheme.type.label.tabular(), modifier = Modifier.padding(top = Space.s8))
+                    Text(fact.label, style = AromaTheme.type.meta)
                 }
             }
         }
     }
 }
 
+/**
+ * The ingredients: the title with the stepper on the right, counting what the recipe yields; under
+ * it the yield of its own, where there is one, and the measures to show; then the list.
+ */
 @Composable
-private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeActions) {
+private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeActions, modifier: Modifier = Modifier) {
     val locale = currentLocale()
     val rows =
         remember(recipe.ingredients, state.scale, state.measures, locale) {
-            recipe.ingredients.map {
-                IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale, state.measures))
-            }
+            recipe.ingredients.map { IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale, state.measures)) }
         }
-    Column {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = ScreenMargin, end = ScreenMargin, top = SectionSpace),
-            verticalAlignment = Alignment.CenterVertically,
+    val yields = remember(recipe.servings, recipe.yieldText) { RecipeYield(recipe.servings, recipe.yieldText) }
+    Column(modifier) {
+        // With large text the stepper moves under the title rather than squeezing it.
+        FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(Space.s8),
+            itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = stringResource(R.string.recipe_ingredients),
-                style = AromaType.SectionTitle,
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .semantics { heading() },
+                style = AromaTheme.type.section,
+                modifier = Modifier.semantics { heading() },
             )
             Stepper(
-                label = servingsLabel(recipe.servings, state.scale, locale),
+                label = servingsLabel(recipe.servings, state.scale, locale, yields.stepperUnit),
                 onDecrease = { actions.onScale(Servings.step(recipe.servings, state.scale, -1)) },
                 onIncrease = { actions.onScale(Servings.step(recipe.servings, state.scale, +1)) },
                 canDecrease = Servings.canDecrease(recipe.servings, state.scale),
             )
         }
-        MeasuresChip(state.measures, actions.onMeasures, Modifier.padding(start = ScreenMargin, top = Space.xs))
+        FlowRow(itemVerticalAlignment = Alignment.CenterVertically) {
+            yields.line(state.scale, locale)?.let { Text(it + SEPARATOR, style = AromaTheme.type.meta) }
+            MeasuresLink(state.measures, actions.onMeasures)
+        }
         IngredientList(
             rows = rows,
             checked = state.checkedIngredients,
             onToggle = actions.onToggleIngredient,
-            onCards = true,
-            modifier = Modifier.padding(top = Space.m),
+            modifier = Modifier.padding(top = SectionTitleGap),
         )
-        if (recipe.tools.isNotEmpty()) {
-            CardGroup(stringResource(R.string.recipe_tools), Modifier.padding(top = Space.l)) {
-                Text(
-                    text = recipe.tools.joinToString(", ") { it.name },
-                    style = AromaType.Body,
-                    modifier = Modifier.padding(horizontal = CardPadding, vertical = Space.s),
-                )
-            }
-        }
+        if (recipe.tools.isNotEmpty()) Tools(recipe.tools)
     }
 }
 
-/** Which measures the amounts show, as a chip that opens the three choices; sage while they are converted. */
+/** The tools the recipe needs, after the ingredients like a group of them. */
 @Composable
-private fun MeasuresChip(system: MeasureSystem, onSelect: (MeasureSystem) -> Unit, modifier: Modifier = Modifier) {
-    var open by remember { mutableStateOf(false) }
-    Box(modifier) {
-        MenuChip(
-            label = stringResource(system.labelRes()),
-            onClickLabel = stringResource(R.string.measures_change),
-            onClick = { open = true },
-            highlighted = system != MeasureSystem.AsWritten,
+private fun Tools(tools: List<Organizer>, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(
+            text = stringResource(R.string.recipe_tools),
+            style = AromaTheme.type.groupLabel,
+            modifier =
+                Modifier
+                    .padding(top = Space.s24, bottom = Space.s8)
+                    .semantics { heading() },
         )
-        AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        Text(text = tools.joinToString(", ") { it.name }, style = AromaTheme.type.body)
+    }
+}
+
+/** Which measures the amounts show, "Units: as written", as a link in the line that opens the three choices on a sheet. */
+@Composable
+private fun MeasuresLink(system: MeasureSystem, onSelect: (MeasureSystem) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    TextAction(
+        text = stringResource(R.string.measures_link, stringResource(system.shortLabelRes())),
+        onClick = { open = true },
+        inline = true,
+    )
+    if (open) MeasuresSheet(system, onSelect, onDismiss = { open = false })
+}
+
+/** The three choices of measures; choosing one applies it and lets the sheet slide away. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MeasuresSheet(current: MeasureSystem, onSelect: (MeasureSystem) -> Unit, onDismiss: () -> Unit) {
+    val sheetState = rememberFullSheetState()
+    val scope = rememberCoroutineScope()
+    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.measures_title), sheetState = sheetState) {
+        Column(
+            Modifier
+                .selectableGroup()
+                .padding(bottom = Space.s16),
+        ) {
             MeasureSystem.entries.forEach { option ->
-                AromaMenuItem(
-                    text = stringResource(option.labelRes()),
-                    icon = null,
-                    onClick = {
-                        open = false
-                        onSelect(option)
-                    },
-                    selected = option == system,
+                ChoiceRow(
+                    label = stringResource(option.labelRes()),
+                    chosen = option == current,
+                    modifier =
+                        Modifier.selectable(selected = option == current, role = Role.RadioButton) {
+                            onSelect(option)
+                            scope.hideThen(sheetState, onDismiss)
+                        },
                 )
             }
         }
     }
 }
 
-/** The name of a choice of measures, as the chip and the setting show it. */
+/** The choice of measures within a sentence: "as written", "metric", "US". */
+private fun MeasureSystem.shortLabelRes(): Int =
+    when (this) {
+        MeasureSystem.AsWritten -> R.string.measures_short_as_written
+        MeasureSystem.Metric -> R.string.measures_short_metric
+        MeasureSystem.US -> R.string.measures_short_us
+    }
+
+/** The name of a choice of measures, as the sheet and the setting show it. */
 fun MeasureSystem.labelRes(): Int =
     when (this) {
         MeasureSystem.AsWritten -> R.string.measures_as_written
@@ -785,9 +901,13 @@ fun MeasureSystem.labelRes(): Int =
         MeasureSystem.US -> R.string.measures_us
     }
 
+/**
+ * What the stepper shows: the servings scaled, "4 Portionen", or in the words of the recipe's yield
+ * where that counts them ([unit], "1 Blech"); without servings, the factor the amounts are scaled by.
+ */
 @Composable
 @ReadOnlyComposable
-fun servingsLabel(baseServings: Double, scale: Double, locale: Locale): String {
+fun servingsLabel(baseServings: Double, scale: Double, locale: Locale, unit: String? = null): String {
     if (baseServings <= 0) {
         val text = Quantities.display(scale, preferFraction = true, locale = locale)?.toPlainText() ?: "1"
         return stringResource(R.string.recipe_multiplier, text)
@@ -795,10 +915,10 @@ fun servingsLabel(baseServings: Double, scale: Double, locale: Locale): String {
     val target = baseServings * scale
     val count = Math.round(target).toInt()
     val text = Quantities.display(target, preferFraction = false, locale = locale)?.toPlainText() ?: count.toString()
-    return pluralStringResource(R.plurals.servings, count, text)
+    return if (unit != null) "$text$NARROW_NO_BREAK_SPACE$unit" else pluralStringResource(R.plurals.servings, count, text)
 }
 
-/** A step with its number in sage in the gutter, level with the first line. */
+/** A step with its number in the gutter, level with its first line, and what it uses under it. */
 @Composable
 private fun StepItem(
     index: Int,
@@ -808,15 +928,17 @@ private fun StepItem(
     uses: List<String>,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier.padding(horizontal = ScreenMargin)) {
+    val number = stringResource(R.string.editor_step, index + 1)
+    Row(modifier.padding(horizontal = PageMargin)) {
         Text(
             text = (index + 1).toString(),
-            style = AromaType.SectionTitle.tabular(),
-            color = MaterialTheme.colorScheme.primary,
+            style = AromaTheme.type.numeral,
+            color = AromaTheme.colors.inkSecondary,
             modifier =
                 Modifier
                     .width(StepNumberWidth)
-                    .alignByBaseline(),
+                    .alignByBaseline()
+                    .semantics { contentDescription = number },
         )
         Column(
             Modifier
@@ -824,17 +946,12 @@ private fun StepItem(
                 .alignByBaseline(),
         ) {
             if (!step.title.isNullOrBlank()) {
-                Text(step.title, style = AromaType.BodyStrong, modifier = Modifier.padding(bottom = Space.xxs))
+                Text(step.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = EyebrowGap))
             }
-            Text(text = rememberStepText(text, amounts), style = AromaType.Body)
-            // The ingredients the step uses, as the recipe's list shows them, so the step reads on its own.
+            Text(text = rememberStepText(text, amounts), style = AromaTheme.type.body)
+            // The ingredients the step uses, as the list shows them, so the step reads on its own.
             if (uses.isNotEmpty()) {
-                Text(
-                    text = uses.joinToString(" · "),
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = Space.xs),
-                )
+                Text(text = uses.joinToString(SEPARATOR), style = AromaTheme.type.meta, modifier = Modifier.padding(top = Space.s8))
             }
         }
     }
@@ -843,53 +960,53 @@ private fun StepItem(
 /** The gutter a step's number stands in, wide enough for two digits. */
 private val StepNumberWidth = 40.dp
 
+/** The recipe's notes, open on the page under a title of their own. */
 @Composable
-private fun Notes(notes: List<RecipeNote>) {
-    Column {
-        SectionHeader(stringResource(R.string.recipe_notes))
+private fun Notes(notes: List<RecipeNote>, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        SectionTitle(stringResource(R.string.recipe_notes), Modifier.padding(top = SectionGap, bottom = SectionTitleGap))
         notes.forEachIndexed { index, note ->
-            SoftCard(Modifier.padding(top = if (index == 0) Space.xs else Space.s)) {
-                Column(Modifier.padding(horizontal = CardPadding, vertical = Space.s)) {
-                    if (note.title.isNotBlank()) {
-                        Text(note.title, style = AromaType.BodyStrong, modifier = Modifier.padding(bottom = Space.xxs))
-                    }
-                    Text(text = rememberRichText(note.text), style = AromaType.Body)
+            Column(Modifier.padding(start = PageMargin, end = PageMargin, top = if (index == 0) 0.dp else Space.s24)) {
+                if (note.title.isNotBlank()) {
+                    Text(note.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = Space.s4))
                 }
+                Text(text = rememberRichText(note.text), style = AromaTheme.type.body)
             }
         }
     }
 }
 
+/** The nutrition facts as an open list: what, and how much, with the figures aligned. */
 @Composable
-private fun Nutrition(values: List<NutritionValue>) {
-    Column {
-        SectionHeader(stringResource(R.string.recipe_nutrition))
-        SoftCard(Modifier.padding(top = Space.xs)) {
-            values.forEachIndexed { index, value ->
-                if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = TouchTarget)
-                        .padding(horizontal = CardPadding),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = nutritionLabel(value.kind),
-                        style = AromaType.Body,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
-                    val amount = value.value.trim()
-                    Text(
-                        text = if (amount.toDoubleOrNull() != null) "$amount ${value.kind.defaultUnit}" else amount,
-                        style = AromaType.BodyStrong.tabular(),
-                    )
-                }
+private fun Nutrition(values: List<NutritionValue>, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        SectionTitle(stringResource(R.string.recipe_nutrition), Modifier.padding(top = SectionGap, bottom = SectionTitleGap))
+        values.forEach { value ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = NutritionRowHeight)
+                    .padding(horizontal = PageMargin),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = nutritionLabel(value.kind),
+                    style = AromaTheme.type.body,
+                    color = AromaTheme.colors.inkSecondary,
+                    modifier = Modifier.weight(1f),
+                )
+                val amount = value.value.trim()
+                Text(
+                    text = if (amount.toDoubleOrNull() != null) "$amount$NARROW_NO_BREAK_SPACE${value.kind.defaultUnit}" else amount,
+                    style = AromaTheme.type.label.tabular(),
+                )
             }
         }
     }
 }
+
+/** A line of the nutrition facts, as tall as a line of the ingredients. */
+private val NutritionRowHeight = 40.dp
 
 @Composable
 @ReadOnlyComposable
@@ -908,40 +1025,43 @@ private fun nutritionLabel(kind: NutritionKind): String =
         },
     )
 
-/** How the outline's lines measure: the title, the byline and an action. */
-private val TitleHeight = 32.dp
-private val BylineWidth = 140.dp
-private val ActionWidth = 96.dp
+/** How the outline's parts measure: the title's line, the box of figures. */
+private val TitleSkeletonHeight = 32.dp
+private val FactsSkeletonHeight = 96.dp
+private const val TITLE_SHARE = 0.8f
+private const val BYLINE_SHARE = 0.5f
 
-/** The page's outline while the recipe loads: photo, title, byline, actions and the description. */
+/** The page's outline while the recipe loads: photo, title, byline, the box of figures and the headnote. */
 @Composable
 private fun RecipeLoading() {
     Column {
-        Placeholder(
+        Skeleton(
             Modifier
                 .fillMaxWidth()
-                .aspectRatio(4f / 3f),
-            shape = RectangleShape,
+                .height(heroHeight()),
         )
-        Column(Modifier.padding(horizontal = ScreenMargin)) {
-            Placeholder(
+        Column(Modifier.padding(horizontal = PageMargin)) {
+            Skeleton(
                 Modifier
-                    .padding(top = Space.l)
-                    .fillMaxWidth(0.8f)
-                    .height(TitleHeight),
-                shape = MaterialTheme.shapes.extraSmall,
+                    .padding(top = Space.s24)
+                    .fillMaxWidth(TITLE_SHARE)
+                    .height(TitleSkeletonHeight),
+                shape = AromaTheme.shapes.round,
             )
-            PlaceholderLine(
+            SkeletonLine(
                 Modifier
-                    .padding(top = Space.m)
-                    .width(BylineWidth),
+                    .padding(top = Space.s12)
+                    .fillMaxWidth(BYLINE_SHARE),
             )
-            Row(Modifier.padding(top = Space.l), horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
-                repeat(2) { Placeholder(Modifier.size(ActionWidth, ChipHeight), shape = CircleShape) }
-            }
-            // The description: two full lines and a short one, on the body's line pitch.
-            Column(Modifier.padding(top = Space.l), verticalArrangement = Arrangement.spacedBy(Space.m)) {
-                listOf(1f, 1f, 0.6f).forEach { width -> PlaceholderLine(Modifier.fillMaxWidth(width)) }
+            Skeleton(
+                Modifier
+                    .padding(top = Space.s24)
+                    .fillMaxWidth()
+                    .height(FactsSkeletonHeight),
+                shape = AromaTheme.shapes.box,
+            )
+            Column(Modifier.padding(top = Space.s24), verticalArrangement = Arrangement.spacedBy(Space.s16)) {
+                listOf(1f, 1f, TITLE_SHARE).forEach { width -> SkeletonLine(Modifier.fillMaxWidth(width)) }
             }
         }
     }

@@ -2,7 +2,7 @@ package app.aroma.ui.navigation
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,47 +18,54 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.aroma.ui.components.QuietPress
-import app.aroma.ui.theme.AromaType
+import app.aroma.ui.components.Text
+import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Settle
-import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.barShadow
-import app.aroma.ui.theme.extras
-import app.aroma.ui.theme.isDarkScheme
+import app.aroma.ui.theme.layeredShadow
+
+/** The pill behind the chosen destination's glyph. */
+private val PillWidth = 56.dp
+private val PillHeight = 32.dp
+
+/** The line a destination's label takes. */
+private val LabelHeight = 16.dp
+
+/** The air above the pill, so the glyphs never sit pressed against the bar's top edge. */
+private val TopSpace = Space.s16
+
+/** The air under the label, above the system navigation, which adds its own below. */
+private val BottomSpace = Space.s12
+
+/** The height of the navigation bar above the system navigation, which it reaches down over. */
+internal val TabBarHeight = TopSpace + PillHeight + Space.s4 + LabelHeight + BottomSpace
 
 /**
- * Height of the bar above the system navigation: 20 dp of air above each glyph and below each label.
- * The space the bar takes is this plus the system navigation, which it reaches down over.
- */
-internal val TabBarHeight = 84.dp
-
-/**
- * The tab bar: a sheet of paper across the bottom edge, from side to side and down over the system
- * navigation, casting a soft shadow up onto the page that scrolls on below it. The tabs stand far
- * apart with air above and below; there is no pill behind the selected one, its icon turns into a
- * quiet sage duotone and its label into ink. On wide screens the tabs keep to the page's width.
- * [navigationInset] is the system navigation's height. [onReselect] fires when the current tab is
- * tapped again.
+ * The navigation bar: four destinations on the bars' paper across the bottom edge, down over the
+ * system navigation, with the soft shadow of what floats and no line. The chosen one stands on a
+ * soft sage pill, its glyph and label in ink; the pill glides to a destination as it is chosen. The
+ * others are in second ink. [navigationInset] is the system navigation's height; [onReselect] fires
+ * when the chosen destination is tapped again.
  */
 @Composable
 internal fun TabBar(
@@ -68,15 +75,14 @@ internal fun TabBar(
     modifier: Modifier = Modifier,
     onReselect: (Tab) -> Unit = {},
 ) {
-    val edge = extras.floatingEdge
-    // In the dark, a step below the sheets' paper, so the bar stays calm across the whole width.
-    val paper = if (isDarkScheme) MaterialTheme.colorScheme.surfaceContainerHigh else extras.raised
+    val colors = AromaTheme.colors
+    val index = Tab.entries.indexOf(selected)
+    val pillAt by animateFloatAsState(index.coerceAtLeast(0).toFloat(), Motion.state(), label = "navPill")
     Box(
         modifier
             .fillMaxWidth()
-            .barShadow()
-            .background(paper)
-            .drawBehind { drawLine(edge, Offset.Zero, Offset(size.width, 0f), Lines.hairline.toPx()) }
+            .layeredShadow(AromaTheme.shadows.bottomBar)
+            .background(colors.bar)
             .padding(bottom = navigationInset),
         contentAlignment = Alignment.TopCenter,
     ) {
@@ -85,8 +91,17 @@ internal fun TabBar(
                 .widthIn(max = ContentMaxWidth)
                 .fillMaxWidth()
                 .height(TabBarHeight)
-                .padding(horizontal = ScreenMargin)
-                .selectableGroup(),
+                .drawBehind {
+                    if (index < 0) return@drawBehind
+                    val slot = size.width / Tab.entries.size
+                    val pill = Size(PillWidth.toPx(), PillHeight.toPx())
+                    drawRoundRect(
+                        colors.accentSoft,
+                        Offset(slot * (pillAt + 0.5f) - pill.width / 2, TopSpace.toPx()),
+                        pill,
+                        CornerRadius(pill.height / 2),
+                    )
+                }.selectableGroup(),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             Tab.entries.forEach { tab -> BarItem(tab, tab == selected, onSelect, onReselect, Modifier.weight(1f)) }
@@ -102,46 +117,46 @@ private fun BarItem(
     onReselect: (Tab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = AromaTheme.colors
     val haptics = LocalHapticFeedback.current
-    val iconColor by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        tween(Motion.STATE, easing = Settle),
-        label = "tabIcon",
-    )
-    val labelColor by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-        tween(Motion.STATE, easing = Settle),
-        label = "tabLabel",
-    )
+    val ink by animateColorAsState(if (selected) colors.ink else colors.inkSecondary, Motion.state(), label = "navInk")
     Column(
         modifier
             .fillMaxHeight()
-            .selectable(selected = selected, interactionSource = null, indication = QuietPress, role = Role.Tab) {
+            .selectable(selected = selected, interactionSource = null, indication = null, role = Role.Tab) {
                 if (selected) {
                     onReselect(tab)
                 } else {
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                     onSelect(tab)
                 }
-            },
+            }.padding(top = TopSpace),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Crossfade(selected, animationSpec = tween(Motion.STATE), label = "tabGlyph") { on ->
-            Icon(
-                painterResource(if (on) tab.selectedIcon else tab.icon),
-                contentDescription = null,
-                tint = iconColor,
-                modifier = Modifier.size(Glyph.l),
+        Box(Modifier.size(PillWidth, PillHeight), contentAlignment = Alignment.Center) {
+            Crossfade(selected, animationSpec = Motion.state(), label = "navGlyph") { on ->
+                Icon(
+                    painterResource(if (on) tab.selectedIcon else tab.icon),
+                    contentDescription = null,
+                    tint = ink,
+                    modifier = Modifier.size(Glyph.nav),
+                )
+            }
+        }
+        Spacer(Modifier.height(Space.s4))
+        // The four names share the bar's width: they grow with the font up to 130 %, so none is cut.
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale.coerceAtMost(MAX_LABEL_SCALE))) {
+            Text(
+                text = stringResource(tab.label),
+                style = if (selected) AromaTheme.type.navSelected else AromaTheme.type.nav,
+                color = ink,
+                maxLines = 1,
+                softWrap = false,
             )
         }
-        Spacer(Modifier.height(Space.xxs))
-        Text(
-            text = stringResource(tab.label),
-            style = AromaType.Caption,
-            color = labelColor,
-            maxLines = 1,
-            softWrap = false,
-        )
     }
 }
+
+/** How far the tab names grow with the system's font size. */
+private const val MAX_LABEL_SCALE = 1.3f

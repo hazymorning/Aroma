@@ -13,7 +13,7 @@ import app.aroma.data.remote.MealieJson
 import app.aroma.data.remote.dto.IngredientDto
 import app.aroma.data.remote.toModel
 import app.aroma.data.repository.RecipeRepository
-import app.aroma.ui.components.formatDuration
+import app.aroma.ui.components.formatDurationPlain
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -193,7 +193,8 @@ class RecipeReworker(
         TIMES
             .mapNotNull { (label, key) ->
                 val time =
-                    recipe.number("${key}Seconds")?.takeIf { it > 0 }?.let { words.formatDuration(it.roundToInt()) } ?: recipe.text(key)
+                    recipe.number("${key}Seconds")?.takeIf { it > 0 }?.let { words.formatDurationPlain(it.roundToInt()) }
+                        ?: recipe.text(key)
                 time?.let { "${words.getString(label)}: $it" }
             }.joinToString(" · ")
 

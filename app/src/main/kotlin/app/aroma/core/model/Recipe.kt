@@ -1,8 +1,5 @@
 package app.aroma.core.model
 
-import java.time.Instant
-import java.time.LocalDate
-
 enum class ImageSize(val fileName: String) {
     Original("original.webp"),
     Medium("min-original.webp"),
@@ -66,6 +63,8 @@ data class Recipe(
     val steps: List<Step>,
     val notes: List<RecipeNote>,
     val nutrition: List<NutritionValue>,
+    /** The yield as Mealie writes it ("1 Blech", "ca. 24 Stück"), only for showing it. */
+    val yieldText: String? = null,
 )
 
 /**

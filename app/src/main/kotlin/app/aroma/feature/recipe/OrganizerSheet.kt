@@ -14,8 +14,8 @@ import app.aroma.core.model.Organizers
 import app.aroma.feature.editor.MealChips
 import app.aroma.feature.editor.OrganizerChips
 import app.aroma.ui.components.AromaBottomSheet
-import app.aroma.ui.components.GroupLabel
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.components.GroupHead
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 
 /**
@@ -36,18 +36,18 @@ fun OrganizerSheet(
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(top = Space.s, bottom = Space.l),
+                .padding(top = Space.s12, bottom = Space.s24),
         ) {
-            GroupLabel(stringResource(R.string.organizers_meal), start = ScreenMargin)
+            GroupHead(stringResource(R.string.organizers_meal), Modifier.padding(horizontal = PageMargin))
             MealChips(filing.meals, onToggle = { meal, label -> onFile(filing.toggle(meal, categories, label)) })
-            GroupLabel(stringResource(R.string.recipes_categories), Modifier.padding(top = Space.l), start = ScreenMargin)
+            GroupHead(stringResource(R.string.recipes_categories), Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s24))
             OrganizerChips(
                 options = categories,
                 selected = filing.categories,
                 onChange = { onFile(filing.copy(categories = it)) },
                 newLabel = stringResource(R.string.organizers_new_category),
             )
-            GroupLabel(stringResource(R.string.recipes_tags), Modifier.padding(top = Space.l), start = ScreenMargin)
+            GroupHead(stringResource(R.string.recipes_tags), Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s24))
             OrganizerChips(
                 options = organizers?.tags.orEmpty(),
                 selected = filing.tags,

@@ -19,11 +19,12 @@ data class IngredientLine(
 ) {
     val hasMeasure: Boolean get() = amount != null || !unit.isNullOrBlank()
 
-    fun measureText(): String =
+    /** "250 g", the amount and its unit; on screen they are held together by a narrow no-break space ([separator]). */
+    fun measureText(separator: String = " "): String =
         listOfNotNull(
             amount?.let { a -> amountUpper?.let { "${a.toPlainText()}–${it.toPlainText()}" } ?: a.toPlainText() },
             unit?.takeIf { it.isNotBlank() },
-        ).joinToString(" ")
+        ).joinToString(separator)
 
     fun toPlainText(): String =
         listOf(measureText(), text, note.orEmpty())

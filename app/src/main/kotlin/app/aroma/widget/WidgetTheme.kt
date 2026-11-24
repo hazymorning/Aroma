@@ -121,23 +121,11 @@ private fun aromaPalette(context: Context, dark: Boolean): WidgetPalette {
     )
 }
 
-/** The wallpaper's colours in the roles Theme.kt gives them on the app's screens. */
+/** Aroma's paper and ink with the wallpaper's accent, as Theme.kt takes it on the app's screens: the accent and the soft accent of a choice. */
 @RequiresApi(Build.VERSION_CODES.S)
 private fun wallpaperPalette(context: Context, dark: Boolean): WidgetPalette {
     val scheme = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    return WidgetPalette(
-        background = scheme.background,
-        card = scheme.surfaceContainer,
-        onSurface = scheme.onSurface,
-        onSurfaceVariant = scheme.onSurfaceVariant,
-        primary = scheme.primary,
-        onPrimary = scheme.onPrimary,
-        selected = scheme.secondaryContainer,
-        onSelected = scheme.onSecondaryContainer,
-        cta = if (dark) scheme.primaryContainer else scheme.primary,
-        onCta = if (dark) scheme.onPrimaryContainer else scheme.onPrimary,
-        outline = scheme.outline,
-    )
+    return aromaPalette(context, dark).copy(primary = scheme.primary, selected = scheme.secondaryContainer)
 }
 
 /** The roles of [WidgetPalette], read back from the slots of Glance's theme. */
@@ -180,7 +168,7 @@ internal object WidgetColors {
 /**
  * The app's type roles (Type.kt) on the app's scale. Launchers set a widget's words in the system's
  * fonts only: its serif stands in for Newsreader, a size smaller as it runs larger, and its
- * sans-serif for Figtree. Items take the scale's next size down, so they keep to one line in a
+ * sans-serif for Instrument Sans. Items take the scale's next size down, so they keep to one line in a
  * widget two cells wide, as they do on the app's page.
  */
 internal object WidgetType {

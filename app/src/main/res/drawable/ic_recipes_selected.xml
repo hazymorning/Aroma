@@ -21,7 +21,7 @@
         android:pathData="M12,6.75 C10.25,5.25 7.5,4.75 4.25,5.25 V18.25 C7.5,17.75 10.25,18.25 12,19.75 M12,6.75 C13.75,5.25 16.5,4.75 19.75,5.25 V18.25 C16.5,17.75 13.75,18.25 12,19.75 M12,6.75 V19.75 M15.75,5.2 V10.25 L16.9,9.3 L18.05,10.25 V5.15"
         android:fillColor="#00000000"
         android:strokeColor="@android:color/white"
-        android:strokeWidth="1.5"
+        android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 </vector>

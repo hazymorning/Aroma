@@ -19,7 +19,8 @@ spotless {
             "ktlint_class_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than" to "4",
             "ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than" to "5",
             // The floating bar's height and reselection for tab pages, and the theme's extra colours.
-            "compose_allowed_composition_locals" to "LocalBottomBarInset,LocalAromaExtras,LocalScrollToTop",
+            "compose_allowed_composition_locals" to
+                "LocalBottomBarInset,LocalScrollToTop,LocalAromaColors,LocalAromaTypography,LocalAromaShapes,LocalAromaShadows,LocalAromaSpace,LocalTonalFill",
         )
     kotlin {
         target("app/src/**/*.kt")

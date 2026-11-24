@@ -8,6 +8,7 @@ import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.data.attempt
 import app.aroma.data.network.ServerConnection
+import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
@@ -25,19 +26,32 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import java.time.Clock
+import java.time.LocalDate
 
 /** How long a checked row stays in place before it moves into or out of the basket. */
 private const val SETTLE_MILLIS = 450L
+
+/** The days ahead whose planned recipes fill an empty list. */
+private const val PLAN_DAYS = 7L
 
 sealed interface ShoppingEvent {
     /** [item] is gone from list [listId]; [ShoppingViewModel.undoDelete] puts it back. */
     data class Deleted(val listId: String, val item: JsonObject) : ShoppingEvent
 
+    /** The ingredients of [count] planned recipes went onto list [listName]. */
+    data class AddedFromPlan(val count: Int, val listName: String) : ShoppingEvent
+
     data class Failed(val error: AromaError) : ShoppingEvent
 }
 
-class ShoppingViewModel(private val shopping: ShoppingRepository, private val settings: SettingsRepository, connection: ServerConnection) :
-    ViewModel() {
+class ShoppingViewModel(
+    private val shopping: ShoppingRepository,
+    private val settings: SettingsRepository,
+    connection: ServerConnection,
+    private val mealPlans: MealPlanRepository? = null,
+    private val clock: Clock = Clock.systemDefaultZone(),
+) : ViewModel() {
     private val mutableState = MutableStateFlow(ShoppingUiState())
     val state: StateFlow<ShoppingUiState> = mutableState.asStateFlow()
 
@@ -189,6 +203,27 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
     fun clearChecked() {
         val listId = state.value.list?.id ?: return
         edit { shopping.clearChecked(listId) }
+    }
+
+    /** Puts the ingredients of every recipe planned for the coming week on the list shown. */
+    fun addFromPlan() {
+        val plans = mealPlans ?: return
+        val list = state.value.list ?: return
+        viewModelScope.launch {
+            attempt {
+                val recipes =
+                    plans
+                        .range(LocalDate.now(clock), PLAN_DAYS)
+                        .first { !it.isRefreshing }
+                        .data
+                        .mapNotNull { it.recipe }
+                        .distinctBy { it.id }
+                recipes.forEach { shopping.addRecipe(list.id, it.id, 1.0, ingredients = null) }
+                recipes.size
+            }.onSuccess { count ->
+                if (count > 0) outbox.send(ShoppingEvent.AddedFromPlan(count, list.name))
+            }.onFailure { error -> outbox.send(ShoppingEvent.Failed(error.toAromaError())) }
+        }
     }
 
     fun createList(name: String) =

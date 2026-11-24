@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
+import java.time.DayOfWeek
 import java.time.LocalDate
 
 /** Recipe search inside the "plan a meal" sheet. */
@@ -48,7 +49,7 @@ sealed interface MealPlanEvent {
     data class Failed(val error: AromaError) : MealPlanEvent
 }
 
-/** Shows a rolling week that starts today, which is what matters when planning ahead. */
+/** Shows a calendar week, Monday to Sunday, as a paper diary does; it opens on the week under way. */
 class MealPlanViewModel(
     private val mealPlans: MealPlanRepository,
     private val recipes: RecipeRepository,
@@ -59,7 +60,7 @@ class MealPlanViewModel(
 ) : ViewModel() {
     private val today get() = LocalDate.now(clock)
 
-    private val mutableState = MutableStateFlow(MealPlanUiState(today = today, weekStart = today))
+    private val mutableState = MutableStateFlow(MealPlanUiState(today = today, weekStart = mondayOf(today)))
     val state: StateFlow<MealPlanUiState> = mutableState.asStateFlow()
 
     private val mutableSearch = MutableStateFlow(PlanSearchState())
@@ -70,6 +71,7 @@ class MealPlanViewModel(
 
     private val searchQuery = MutableStateFlow("")
     private var loadJob: Job? = null
+    private var itemsJob: Job? = null
 
     /**
      * Entries removed here. The plan is read again once the server confirms a removal, and the copy
@@ -93,12 +95,27 @@ class MealPlanViewModel(
 
     fun nextWeek() = showWeek(state.value.weekStart.plusDays(7))
 
-    fun thisWeek() = showWeek(today)
+    fun thisWeek() = showWeek(mondayOf(today))
+
+    /** The week [date] falls into, unless it shows already. */
+    fun showWeekOf(date: LocalDate) {
+        val start = mondayOf(date)
+        if (start != state.value.weekStart) showWeek(start)
+    }
 
     fun refresh() = load(refreshing = true)
 
     private fun showWeek(start: LocalDate) {
-        mutableState.update { it.copy(weekStart = start, today = today, isLoading = true, days = emptyList(), error = null) }
+        mutableState.update {
+            it.copy(
+                weekStart = start,
+                today = today,
+                isLoading = true,
+                days = emptyList(),
+                weekItems = null,
+                error = null,
+            )
+        }
         load(refreshing = false)
     }
 
@@ -124,7 +141,42 @@ class MealPlanViewModel(
                                 error = loadable.error,
                             )
                         }
+                        countItems(week)
                     }
+            }
+    }
+
+    /**
+     * How many ingredients the week's recipes need, from each recipe's copy on the phone or from
+     * Mealie; shown only once every recipe has answered.
+     */
+    private fun countItems(week: List<MealPlanDay>) {
+        val slugs = week.flatMap { day -> day.entries.mapNotNull { it.recipe?.slug } }.distinct()
+        itemsJob?.cancel()
+        if (slugs.isEmpty()) {
+            mutableState.update { it.copy(weekItems = null) }
+            return
+        }
+        itemsJob =
+            viewModelScope.launch {
+                val counts =
+                    slugs.map { slug ->
+                        attempt {
+                            recipes
+                                .recipe(slug)
+                                .first()
+                                .data.ingredients.size
+                        }.getOrNull()
+                    }
+                mutableState.update {
+                    it.copy(
+                        weekItems =
+                            counts.takeIf { all -> all.none { count -> count == null } }?.sumOf { count ->
+                                count
+                                    ?: 0
+                            },
+                    )
+                }
             }
     }
 
@@ -223,3 +275,6 @@ class MealPlanViewModel(
             }
         }
 }
+
+/** The Monday of the week [date] falls into. */
+private fun mondayOf(date: LocalDate): LocalDate = date.with(DayOfWeek.MONDAY)

@@ -3,52 +3,82 @@ package app.aroma.ui.theme
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/** The spacing scale. Layouts use these steps only; component heights are the one exception. */
+/**
+ * The spacing scale: every distance between things is one of these and nothing else. Sizes of
+ * things, a button's height or a thumbnail's side, are not distances and live with their parts.
+ */
 object Space {
-    val xxs: Dp = 4.dp
-    val xs: Dp = 8.dp
-    val s: Dp = 12.dp
-    val m: Dp = 16.dp
-    val l: Dp = 24.dp
-    val xl: Dp = 32.dp
-    val xxl: Dp = 48.dp
+    val s4: Dp = 4.dp
+    val s8: Dp = 8.dp
+    val s12: Dp = 12.dp
+    val s16: Dp = 16.dp
+    val s20: Dp = 20.dp
+    val s24: Dp = 24.dp
+    val s32: Dp = 32.dp
+    val s40: Dp = 40.dp
+    val s48: Dp = 48.dp
+    val s64: Dp = 64.dp
 }
 
+/** The page's edge for text, lists and boxes; a box's edge stands on the same line as the text. */
+val PageMargin: Dp = Space.s24
+
+/** Content inside a box keeps this far from the box's edge. */
+val BoxPadding: Dp = Space.s16
+
+/** Between boxes standing one under the other. */
+val BoxGap: Dp = Space.s12
+
+/** Between sections. */
+val SectionGap: Dp = Space.s40
+
+/** From a section's title to its content. */
+val SectionTitleGap: Dp = Space.s12
+
+/** From the status bar to a page's title. */
+val HeaderTop: Dp = Space.s16
+
+/** From the row of a pushed page's back button to its title, so the circle never sits on the title. */
+val NavigationGap: Dp = Space.s16
+
+/** From a title to the line under it. */
+val SubtitleGap: Dp = Space.s4
+
+/** From a small line over a title, its eyebrow ("Heute Abend", "Wie hat es geschmeckt?"), to the title. */
+val EyebrowGap: Dp = Space.s8
+
+/** From a page's head to its content. */
+val HeaderGap: Dp = Space.s24
+
+/** How far a highlighted row's fill reaches beyond the column; its content stays on the column. */
+val HighlightReach: Dp = Space.s12
+
+/** Scrolling content ends this far above any bar. */
+val EndSpace: Dp = Space.s24
+
+/** Between the columns of the recipe grid. */
+val GridColumnGap: Dp = Space.s16
+
 /**
- * The page's one edge, left and right: Android's margin for phones. Titles, photos, fields,
- * buttons, chips and the edges of cards all stand on it.
+ * Between the rows of the recipe grid. The one distance off the scale, as the brief asks for it: a
+ * row of cards carries its title and meta under the photo, and needs a little more than 24 dp.
  */
-val ScreenMargin: Dp = 16.dp
+val GridRowGap: Dp = 28.dp
 
-/** How far the content of a card stands inside the card's edge. */
-val CardPadding: Dp = 16.dp
-
-/** The edge of text inside a card, on the page: where a group's label stands above its card. */
-val ContentEdge: Dp = ScreenMargin + CardPadding
-
-/** The space above a section's title, which sets sections apart. */
-val SectionSpace: Dp = 32.dp
-
-/** Content wider than this is centred, so lines stay readable on tablets. */
+/** Content wider than this is centred, so lines stay readable on large screens and on a phone held sideways. */
 val ContentMaxWidth: Dp = 600.dp
 
-/** Room below the last item of a scrolling page, so it never ends flush with an edge. */
-val PageEndSpace: Dp = 24.dp
-
-/** The least size of anything that takes a tap. */
+/** The least size of anything that takes a tap, however small it looks. */
 val TouchTarget: Dp = 48.dp
 
-/** The height of buttons and fields that span a column, and of a round button beside them. */
-val ControlHeight: Dp = 52.dp
-
-/** The height of chips and compact buttons; their touch area reaches 48 dp beyond it. */
-val ChipHeight: Dp = 36.dp
+/** A photo or a face at the start of a row. */
+val ThumbnailSize: Dp = 56.dp
 
 /** The least height of a row: of one line, and of two lines or a thumbnail. */
 object RowHeight {
@@ -56,45 +86,52 @@ object RowHeight {
     val twoLines: Dp = 72.dp
 }
 
-/** A photo or a face at the start of a row. */
-val ThumbnailSize: Dp = 56.dp
-
-/** Line glyphs: beside small text, in rows, fields and buttons, in bars, and standing alone. */
+/** Glyph sizes: beside meta text, in buttons, rows and icon buttons, and in the navigation. */
 object Glyph {
-    val s: Dp = 16.dp
-    val m: Dp = 20.dp
-    val l: Dp = 24.dp
-    val xl: Dp = 32.dp
+    val meta: Dp = 16.dp
+    val control: Dp = 20.dp
+    val nav: Dp = 24.dp
 }
 
-/** Durations in milliseconds, and the two curves of the app's motion. */
+/** Corner radii. Buttons, pills, the search field and the stepper are fully round. */
+object Radius {
+    val box: Dp = 20.dp
+    val cardImage: Dp = 14.dp
+    val thumbnail: Dp = 12.dp
+    val sheet: Dp = 28.dp
+
+    /** A shape inside another follows its corner: the outer radius less the room between them, at least 4 dp. */
+    fun inner(outer: Dp, inset: Dp): Dp = (outer - inset).coerceAtLeast(Space.s4)
+}
+
+/**
+ * Motion: 150 ms for edges and things that fade in, 250 ms for a change of state and the selection
+ * pill, 220 ms for a quiet change of page. Everything decelerates; springs never overshoot, and
+ * nothing zooms.
+ */
 object Motion {
-    const val PRESS = 120
-    const val STATE = 180
-    const val EXPAND = 240
+    const val EDGE = 150
+    const val STATE = 250
+    const val PAGE = 220
 
-    /** One breath of something that pulses while it waits: a placeholder, a finished timer. */
-    const val PULSE = 1000
+    /** A photo fading in over its placeholder. */
+    const val IMAGE = 200
 
-    /**
-     * Material's emphasized decelerate curve: most of the way in the first frames, then a long soft
-     * landing. For what arrives as it fades in, where that quick start is not seen.
-     */
-    val Settle = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+    /** One breath of a skeleton, from 60 % to full and back. */
+    const val PULSE = 1200
 
-    /** An easy start and a soft landing, so no frame jumps ahead: for what moves or changes size in sight. */
-    val Glide: Easing = FastOutSlowInEasing
+    /** How small a card or box gets while pressed. */
+    const val PRESSED_SCALE = 0.98f
 
-    /**
-     * For what a finger drags and lets go: a spring, unlike a tween, carries on at the finger's speed,
-     * and this one never bounces.
-     */
+    /** The standard deceleration curve: fast away, slow to rest. */
+    val Decelerate: Easing = CubicBezierEasing(0f, 0f, 0.2f, 1f)
+
+    /** A spring for what a finger drags and lets go: it carries on at the finger's speed and never overshoots. */
     val LetGo: AnimationSpec<Float> = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
-}
 
-/** Thin lines: between rows inside a card, the ring of an open check, the focus of a field. */
-object Lines {
-    val hairline: Dp = 0.5.dp
-    val checkRing: Dp = 1.25.dp
-    val focus: Dp = 1.5.dp
+    fun <T> edge() = tween<T>(EDGE, easing = Decelerate)
+
+    fun <T> state() = tween<T>(STATE, easing = Decelerate)
+
+    fun <T> page() = tween<T>(PAGE, easing = Decelerate)
 }

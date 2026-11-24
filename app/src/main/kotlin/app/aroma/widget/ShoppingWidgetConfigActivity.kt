@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,8 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -45,14 +44,14 @@ import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.session.SessionState
 import app.aroma.data.settings.ThemeMode
 import app.aroma.ui.components.DetailPage
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.Separator
+import app.aroma.ui.components.Text
+import app.aroma.ui.components.TonalBox
 import app.aroma.ui.theme.AromaTheme
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.RowHeight
-import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -138,18 +137,19 @@ private fun ListChoice(
     DetailPage(
         title = stringResource(R.string.widget_config_title),
         onBack = onBack,
-        modifier = modifier.background(MaterialTheme.colorScheme.background),
+        modifier = modifier.background(AromaTheme.colors.background),
     ) {
         Text(
             text = stringResource(if (signedIn) R.string.widget_config_hint else R.string.widget_config_signed_out),
-            style = AromaType.Body,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
+            style = AromaTheme.type.body,
+            color = AromaTheme.colors.inkSecondary,
+            modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s8),
         )
-        SoftCard(
+        TonalBox(
             Modifier
-                .padding(top = Space.l)
+                .padding(start = PageMargin, end = PageMargin, top = Space.s24)
                 .selectableGroup(),
+            contentPadding = PaddingValues(),
         ) {
             Choice(
                 name = stringResource(R.string.widget_config_follow),
@@ -158,7 +158,7 @@ private fun ListChoice(
                 onClick = { onChoose(null) },
             )
             lists.forEach { list ->
-                Hairline(Modifier.padding(horizontal = CardPadding))
+                Separator()
                 Choice(name = list.name, hint = null, selected = chosen == list.id, onClick = { onChoose(list.id) })
             }
         }
@@ -174,20 +174,20 @@ private fun Choice(name: String, hint: String?, selected: Boolean, onClick: () -
                 .fillMaxWidth()
                 .heightIn(min = if (hint == null) RowHeight.oneLine else RowHeight.twoLines)
                 .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-                .padding(horizontal = CardPadding, vertical = Space.s),
+                .padding(horizontal = BoxPadding, vertical = Space.s12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(name, style = AromaType.Body)
-            if (hint != null) Text(hint, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(name, style = AromaTheme.type.body)
+            if (hint != null) Text(hint, style = AromaTheme.type.bodySmall, color = AromaTheme.colors.inkSecondary)
         }
         if (selected) {
-            Spacer(Modifier.width(Space.m))
+            Spacer(Modifier.width(Space.s16))
             Icon(
                 painter = painterResource(R.drawable.ic_check),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(Glyph.m),
+                tint = AromaTheme.colors.accent,
+                modifier = Modifier.size(Glyph.control),
             )
         }
     }

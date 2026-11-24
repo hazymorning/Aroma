@@ -1,11 +1,9 @@
 package app.aroma.widget
 
 import android.content.Context
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import app.aroma.ui.theme.AromaTheme
-import app.aroma.ui.theme.extras
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -29,20 +27,20 @@ class WidgetPaletteTest {
         compose.setContent {
             looks.forEach { (dark, wallpaper) ->
                 AromaTheme(darkTheme = dark, dynamicColor = wallpaper) {
-                    val scheme = MaterialTheme.colorScheme
+                    val colors = AromaTheme.colors
                     app[dark to wallpaper] =
                         WidgetPalette(
-                            background = scheme.background,
-                            card = extras.card,
-                            onSurface = scheme.onSurface,
-                            onSurfaceVariant = scheme.onSurfaceVariant,
-                            primary = scheme.primary,
-                            onPrimary = scheme.onPrimary,
-                            selected = extras.selected,
-                            onSelected = extras.onSelected,
-                            cta = extras.cta,
-                            onCta = extras.onCta,
-                            outline = scheme.outline,
+                            background = colors.background,
+                            card = colors.surface,
+                            onSurface = colors.ink,
+                            onSurfaceVariant = colors.inkSecondary,
+                            primary = colors.accent,
+                            onPrimary = colors.onInk,
+                            selected = colors.accentSoft,
+                            onSelected = colors.ink,
+                            cta = colors.ink,
+                            onCta = colors.onInk,
+                            outline = colors.inkTertiary,
                         )
                 }
             }

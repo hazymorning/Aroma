@@ -96,8 +96,9 @@ class LiveHouseholdTest {
             assertTrue(anyRecipes.error == null && anyRecipes.data.isNotEmpty())
             val dinner = env.recipes.suggestions(listOf("Abendessen", "Dinner"), today).first { !it.isRefreshing }
             assertTrue(dinner.error == null)
-            val longAgo = env.recipes.cookedLongAgo(today.minusWeeks(4), today).first { !it.isRefreshing }
-            assertTrue(longAgo.error == null)
+            // The recipes tab's filter "Lange nicht gekocht".
+            val longAgo = env.recipes.page(RecipeQuery(cookedBefore = today.minusWeeks(4)), page = 1)
+            assertTrue(longAgo.items.size <= (longAgo.total ?: longAgo.items.size))
         }
 
     @Test

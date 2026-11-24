@@ -33,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,7 +42,6 @@ import app.aroma.R
 import app.aroma.core.model.Filing
 import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
-import app.aroma.core.model.OrganizerKind
 import app.aroma.feature.cook.CookActions
 import app.aroma.feature.cook.CookScreen
 import app.aroma.feature.cook.CookViewModel
@@ -59,6 +57,7 @@ import app.aroma.feature.editor.copiedText
 import app.aroma.feature.editor.readPickedPhoto
 import app.aroma.feature.editor.reworkReason
 import app.aroma.feature.home.HomeActions
+import app.aroma.feature.home.HomeEvent
 import app.aroma.feature.home.HomeScreen
 import app.aroma.feature.home.HomeViewModel
 import app.aroma.feature.login.LoginActions
@@ -97,7 +96,7 @@ import app.aroma.feature.shopping.ShoppingViewModel
 import app.aroma.ui.appContainer
 import app.aroma.ui.aromaViewModel
 import app.aroma.ui.components.currentLocale
-import app.aroma.ui.components.formatDuration
+import app.aroma.ui.components.formatDurationPlain
 import app.aroma.ui.components.titleRes
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -125,24 +124,36 @@ fun LoginDestination() {
 }
 
 @Composable
-fun HomeDestination(nav: NavController, snackbar: SnackbarHostState, onSearch: () -> Unit) {
-    val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, sessions, auth, ratingReminder, connection) }
+fun HomeDestination(nav: NavController, snackbar: SnackbarHostState, planFocus: PlanFocus, onSearch: () -> Unit) {
+    val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, shopping, settings, sessions, auth, ratingReminder, connection) }
     val state by vm.state.collectAsStateWithLifecycle()
     val menu = remember { RecipeMenuState() }
-    val favorites = stringResource(R.string.home_favorites)
+    val resources = LocalResources.current
+    LaunchedEffect(vm) {
+        vm.events.collect { event ->
+            when (event) {
+                is HomeEvent.Planned -> launch { snackbar.showSnackbar(resources.getString(R.string.home_planned_today)) }
+                is HomeEvent.Failed -> launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
+            }
+        }
+    }
     HomeScreen(
         state = state,
         actions =
             HomeActions(
                 onSearch = onSearch,
                 onOpenRecipe = { nav.navigate(RecipeRoute(it)) },
+                onCook = { nav.navigate(CookRoute(it, 1.0)) },
                 onRecipeMenu = menu::open,
                 onOpenSettings = { nav.navigate(SettingsRoute) },
                 onShowAllRecipes = { nav.navigateToTab(Tab.Recipes) },
-                onShowFavorites = { nav.navigate(CollectionRoute(CollectionKind.Favorites, favorites)) },
                 onShowMeal = { meal, title -> nav.navigate(CollectionRoute(CollectionKind.Meal, title, meal.name)) },
-                onShowQuick = { title -> nav.navigate(CollectionRoute(CollectionKind.Quick, title)) },
-                onOpenMealPlan = { nav.navigateToTab(Tab.MealPlan) },
+                onOpenPlan = { day ->
+                    planFocus.day = day ?: LocalDate.now()
+                    nav.navigateToTab(Tab.MealPlan)
+                },
+                onPlanToday = vm::planToday,
+                onOpenShopping = { nav.navigateToTab(Tab.Shopping) },
                 onRefresh = vm::refresh,
                 onRateCooked = vm::rateCooked,
                 onDismissReminder = vm::dismissReminder,
@@ -176,6 +187,7 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
                 onToggleMeal = vm::toggleMeal,
                 onToggleQuick = vm::toggleQuick,
                 onToggleFavorites = vm::toggleFavorites,
+                onToggleLongAgo = vm::toggleLongAgo,
                 onToggleOrganizer = vm::toggleOrganizer,
                 onSortChange = vm::setSort,
                 onClearFilters = vm::clearFilters,
@@ -346,6 +358,18 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
                     leave()
                 }
 
+                RecipeEvent.Unsaved -> {
+                    launch {
+                        val result =
+                            snackbar.showSnackbar(
+                                message = resources.getString(R.string.recipe_unsaved),
+                                actionLabel = resources.getString(R.string.action_undo),
+                                duration = SnackbarDuration.Long,
+                            )
+                        if (result == SnackbarResult.ActionPerformed) vm.toggleFavorite()
+                    }
+                }
+
                 is RecipeEvent.Failed -> {
                     launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
                 }
@@ -429,15 +453,6 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                             !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                     if (needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     vm.rework(translate)
-                },
-                onOpenOrganizer = { kind, organizer ->
-                    val collection =
-                        when (kind) {
-                            OrganizerKind.Category -> CollectionKind.Category
-                            OrganizerKind.Tag -> CollectionKind.Tag
-                            OrganizerKind.Tool -> CollectionKind.Tool
-                        }
-                    nav.navigate(CollectionRoute(collection, organizer.name, organizer.id))
                 },
                 onOrganize = {
                     // Filing is saved in Mealie as it is chosen, so it waits for Mealie to answer.
@@ -541,9 +556,12 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
 }
 
 @Composable
-fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
+fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState, focus: PlanFocus) {
     val vm = aromaViewModel { MealPlanViewModel(mealPlans, recipes, shopping, settings, connection) }
     val state by vm.state.collectAsStateWithLifecycle()
+    // A day asked for from elsewhere: its week first, then the day in view.
+    val focusDay = focus.day
+    LaunchedEffect(focusDay) { focusDay?.let(vm::showWeekOf) }
     val search by vm.search.collectAsStateWithLifecycle()
     val resources = LocalResources.current
     var addFor by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -602,6 +620,8 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
                 onMoveEntry = vm::move,
                 onRefresh = vm::refresh,
             ),
+        focus = focusDay,
+        onFocusConsume = { focus.day = null },
     )
     addFor?.let { day ->
         AddMealSheet(
@@ -620,7 +640,7 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
 /** The shopping tab; [request] asks once for a widget's list, and with its "+" for the field that adds to it. */
 @Composable
 fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -> Unit) {
-    val vm = aromaViewModel { ShoppingViewModel(shopping, settings, connection) }
+    val vm = aromaViewModel { ShoppingViewModel(shopping, settings, connection, mealPlans) }
     val state by vm.state.collectAsStateWithLifecycle()
     val resources = LocalResources.current
     val snackbar = remember { SnackbarHostState() }
@@ -654,6 +674,14 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
                 is ShoppingEvent.Failed -> {
                     launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
                 }
+
+                is ShoppingEvent.AddedFromPlan -> {
+                    launch {
+                        snackbar.showSnackbar(
+                            resources.getQuantityString(R.plurals.plan_week_added, event.count, event.count, event.listName),
+                        )
+                    }
+                }
             }
         }
     }
@@ -672,6 +700,7 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
                 onCreateList = { vm.createList(it) },
                 onRenameList = vm::renameList,
                 onDeleteList = vm::deleteList,
+                onAddFromPlan = vm::addFromPlan,
                 onRefresh = vm::refresh,
             ),
         focusAdd = focusAdd,
@@ -766,7 +795,7 @@ fun EditorDestination(slug: String, nav: NavController) {
         actions =
             EditorActions(
                 onBack = { nav.popBackStack() },
-                onSave = { vm.save { seconds -> resources.formatDuration(seconds) } },
+                onSave = { vm.save { seconds -> resources.formatDurationPlain(seconds) } },
                 onChange = vm::update,
                 onPickImage = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 onRetry = vm::load,
@@ -777,7 +806,7 @@ fun EditorDestination(slug: String, nav: NavController) {
 @Composable
 fun SettingsDestination(nav: NavController) {
     val context = LocalContext.current
-    val vm = aromaViewModel { SettingsViewModel(context.applicationContext, settings, sessions, recipes, updates, ::signOut) }
+    val vm = aromaViewModel { SettingsViewModel(context.applicationContext, settings, sessions, recipes, updates, ::signOut, connection) }
     val state by vm.state.collectAsStateWithLifecycle()
     SettingsScreen(
         state = state,

@@ -3,9 +3,9 @@ package app.aroma.feature.shopping
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,8 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,12 +27,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -48,7 +48,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
@@ -59,26 +58,26 @@ import app.aroma.core.format.IngredientLine
 import app.aroma.core.model.ShoppingItem
 import app.aroma.core.model.ShoppingLabel
 import app.aroma.core.model.ShoppingList
-import app.aroma.ui.components.CardPart
+import app.aroma.ui.components.BoxPart
 import app.aroma.ui.components.CheckCircle
-import app.aroma.ui.components.GroupLabel
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.MessageState
-import app.aroma.ui.components.QuietLink
-import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.CheckSize
+import app.aroma.ui.components.EmptyState
+import app.aroma.ui.components.GroupHead
+import app.aroma.ui.components.Separator
 import app.aroma.ui.components.SwipeToRemove
+import app.aroma.ui.components.Text
+import app.aroma.ui.components.TextAction
+import app.aroma.ui.components.TonalBoxPart
 import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.measureText
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
-import app.aroma.ui.theme.ContentEdge
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Glide
-import app.aroma.ui.theme.RowHeight
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.extras
+import app.aroma.ui.theme.TouchTarget
 import java.util.Locale
 
 /** Open items grouped by label, in the order chosen in Mealie; unlabeled items come last. */
@@ -102,76 +101,69 @@ fun ShoppingList.grouped(): ShoppingGroups {
     return ShoppingGroups(sections, checked)
 }
 
-// Figtree's own strikeout stroke, in ems: its top sits 0.3 above the baseline and it is 0.05 thick.
-private const val STRIKE_CENTER = 0.275f
-private const val STRIKE_THICKNESS = 0.05f
+// Instrument Sans's own strikeout stroke, in ems: its top sits 0.3 above the baseline and it is 0.04 thick.
+private const val STRIKE_CENTER = 0.28f
+private const val STRIKE_THICKNESS = 0.04f
 
-/** The check's size in the list, and in shopping mode. */
-internal val CheckSize = 24.dp
-private val LargeCheckSize = 30.dp
+/** Where an item's text starts in its box: after the tick and 12 dp. Separators start there too. */
+private val TextEdge: Dp = BoxPadding + CheckSize + Space.s12
 
-private fun checkSize(large: Boolean): Dp = if (large) LargeCheckSize else CheckSize
-
-/** Where an item's text starts in its card: 16 dp after the check, a little further in shopping mode. */
-private fun textKeyline(large: Boolean): Dp = CardPadding + checkSize(large) + if (large) Space.l else Space.m
-
-/** The open items on a card per category, then what is already in the basket. */
+/**
+ * The open items, a box per aisle under the aisle's name, then what is done, folded under "Done (n)"
+ * until it is opened. A list without items says so in one line, with the way to fill it.
+ */
 internal fun LazyListScope.shoppingSections(
     groups: ShoppingGroups,
     state: ShoppingUiState,
     actions: ShoppingActions,
     large: Boolean,
+    showDone: Boolean,
+    onShowDone: (Boolean) -> Unit,
     onEdit: (ShoppingItem) -> Unit,
 ) {
-    when {
-        groups.sections.isEmpty() && groups.checked.isEmpty() -> {
-            item(key = "empty") {
-                MessageState(
-                    icon = R.drawable.ic_basket,
-                    title = stringResource(R.string.shopping_empty_title),
-                    body = stringResource(R.string.shopping_empty_message),
+    if (groups.sections.isEmpty()) {
+        item(key = "empty") {
+            if (groups.checked.isEmpty()) {
+                EmptyState(
+                    text = stringResource(R.string.shopping_empty_title),
+                    actionLabel = stringResource(R.string.shopping_add_from_plan),
+                    onAction = actions.onAddFromPlan,
                     modifier = Modifier.animateRow(this),
                 )
-            }
-            return
-        }
-
-        groups.sections.isEmpty() -> {
-            item(key = "allDone") {
-                // The basket follows, so the message keeps its place under the head.
-                MessageState(
-                    icon = R.drawable.ic_done_all,
-                    title = stringResource(R.string.shopping_done_title),
-                    body = stringResource(R.string.shopping_done_message),
-                    modifier = Modifier.animateRow(this),
-                    standsAlone = false,
-                )
+            } else {
+                EmptyState(text = stringResource(R.string.shopping_done_title), modifier = Modifier.animateRow(this))
             }
         }
     }
-    groups.sections.forEach { section ->
+    groups.sections.forEachIndexed { index, section ->
         item(key = "label-${section.label?.id ?: "none"}", contentType = "label") {
-            GroupLabel(
+            GroupHead(
                 text = section.label?.name ?: stringResource(R.string.shopping_other),
                 modifier =
                     Modifier
                         .animateRow(this)
-                        .padding(top = Space.l),
+                        .padding(start = PageMargin, end = PageMargin, top = if (index == 0) 0.dp else Space.s24, bottom = Space.s12),
             )
         }
         itemRows(section.items, state, actions, large, onEdit)
     }
     if (groups.checked.isNotEmpty()) {
-        item(key = "basket", contentType = "basket") {
-            BasketHeader(count = groups.checked.size, onClear = actions.onClearChecked, modifier = Modifier.animateRow(this))
+        item(key = "done", contentType = "done") {
+            DoneHead(
+                count = groups.checked.size,
+                open = showDone,
+                onToggle = { onShowDone(!showDone) },
+                onClear = actions.onClearChecked,
+                modifier = Modifier.animateRow(this),
+            )
         }
-        itemRows(groups.checked, state, actions, large, onEdit)
+        if (showDone) itemRows(groups.checked, state, actions, large, onEdit)
     }
 }
 
 /**
- * A group of rows on one card, with hairlines between them inset to the text. A row keyed by where it
- * stands leaves its group and fades in at the new one when it is checked off or back, rather than
+ * The rows of one box, a separator between each two, inset to their text. A row keyed by where it
+ * stands leaves its group and fades in at the new one when it is ticked off or back, rather than
  * sliding across the list over the rows between.
  */
 private fun LazyListScope.itemRows(
@@ -183,11 +175,17 @@ private fun LazyListScope.itemRows(
 ) {
     itemsIndexed(
         items,
-        key = { _, item -> (if (item.checked) "basket-" else "open-") + item.id },
+        key = { _, item -> (if (item.checked) "done-" else "open-") + item.id },
         contentType = { _, _ -> "item" },
     ) { index, item ->
-        SoftCard(Modifier.animateRow(this), part = CardPart.of(index, items.size)) {
-            if (index > 0) Hairline(Modifier.padding(start = textKeyline(large), end = CardPadding))
+        TonalBoxPart(
+            part = BoxPart.of(index, items.size),
+            modifier =
+                Modifier
+                    .animateRow(this)
+                    .padding(horizontal = PageMargin),
+        ) {
+            if (index > 0) Separator(start = TextEdge)
             SwipeToRemove(onRemove = { actions.onDelete(item) }) {
                 ItemRow(
                     item = item,
@@ -202,32 +200,56 @@ private fun LazyListScope.itemRows(
     }
 }
 
-/** "In the basket · 3" over its card, with the link that clears the basket on the right margin. */
+/**
+ * "Done (3)": what is in the basket, folded away until a tap opens it; the way to clear it stands
+ * at its end.
+ */
 @Composable
-private fun BasketHeader(count: Int, onClear: () -> Unit, modifier: Modifier = Modifier) {
+private fun DoneHead(
+    count: Int,
+    open: Boolean,
+    onToggle: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val turn by animateFloatAsState(if (open) HALF_TURN else 0f, Motion.state(), label = "doneChevron")
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(start = ContentEdge, end = ScreenMargin, top = Space.s),
+                .padding(start = PageMargin, end = PageMargin, top = Space.s24, bottom = if (open) Space.s12 else 0.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = stringResource(R.string.shopping_in_cart, count),
-            style = AromaType.Label,
-            color = MaterialTheme.colorScheme.primary,
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .semantics { heading() },
-        )
-        QuietLink(stringResource(R.string.shopping_clear_checked), onClear)
+        Row(
+            Modifier
+                .weight(1f)
+                .heightIn(min = TouchTarget)
+                .clickable(role = Role.Button, onClick = onToggle)
+                .semantics { heading() },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.shopping_done_group, count), style = AromaTheme.type.label, color = AromaTheme.colors.inkSecondary)
+            Spacer(Modifier.width(Space.s4))
+            Icon(
+                painterResource(R.drawable.ic_expand_more),
+                contentDescription = null,
+                tint = AromaTheme.colors.inkSecondary,
+                modifier =
+                    Modifier
+                        .size(Glyph.control)
+                        .rotate(turn),
+            )
+        }
+        if (open) TextAction(stringResource(R.string.shopping_clear_checked), onClear)
     }
 }
 
+private const val HALF_TURN = 180f
+
 /**
- * One item: the check on the card's content edge, the text on the keyline after it. Checking draws the check,
- * fades the text and strikes it through; the row leaves for the basket a moment later.
+ * One item: the tick, then the amount in sage and the item in body text, and the recipes it is for
+ * under it. Ticking draws the tick, fades the line to tertiary ink and strikes it through; the row
+ * leaves for "Done" a moment later. A long press edits it, a swipe removes it.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -239,18 +261,14 @@ private fun ItemRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val colors = AromaTheme.colors
     val locale = currentLocale()
     val line = remember(item, locale) { itemLine(item, locale) }
-    // The amount in sage, as in a recipe's ingredients; in the basket it is muted with the rest of the line.
-    val amount by animateColorAsState(
-        if (checked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
-        tween(Motion.STATE),
-        label = "itemAmount",
-    )
+    val amount by animateColorAsState(if (checked) colors.inkTertiary else colors.accent, Motion.state(), label = "itemAmount")
+    val ink by animateColorAsState(if (checked) colors.inkTertiary else colors.ink, Motion.state(), label = "itemInk")
     val text = remember(line, amount) { itemText(line, amount) }
-    val fade = animateFloatAsState(if (checked) 0.45f else 1f, tween(Motion.STATE), label = "itemFade")
     val strike = remember { Animatable(if (checked) 1f else 0f) }
-    LaunchedEffect(checked) { strike.animateTo(if (checked) 1f else 0f, tween(Motion.STATE, easing = Glide)) }
+    LaunchedEffect(checked) { strike.animateTo(if (checked) 1f else 0f, Motion.state()) }
     val haptics = LocalHapticFeedback.current
     val stateLabel = stringResource(if (checked) R.string.shopping_checked else R.string.shopping_unchecked)
     val deleteLabel = stringResource(R.string.action_delete)
@@ -258,7 +276,8 @@ private fun ItemRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(extras.card)
+                // Opaque, so the swipe's field only shows where the row has moved away.
+                .background(AromaTheme.colors.surface)
                 .combinedClickable(
                     role = Role.Checkbox,
                     onLongClickLabel = stringResource(R.string.shopping_edit_item),
@@ -277,47 +296,46 @@ private fun ItemRow(
                                 true
                             },
                         )
-                }.heightIn(min = if (large || item.recipeNames.isNotEmpty()) RowHeight.twoLines else RowHeight.oneLine)
-                .padding(horizontal = CardPadding, vertical = Space.s),
+                }.heightIn(min = RowMin)
+                .padding(horizontal = BoxPadding, vertical = Space.s12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CheckCircle(checked, size = checkSize(large))
-        Spacer(Modifier.width(textKeyline(large) - CardPadding - checkSize(large)))
-        Column(
-            Modifier
-                .weight(1f)
-                .graphicsLayer { alpha = fade.value },
-        ) {
+        CheckCircle(checked)
+        Spacer(Modifier.width(Space.s12))
+        Column(Modifier.weight(1f)) {
             StruckText(
                 text = text,
-                style = if (large) AromaType.Large else AromaType.Body,
+                style = if (large) AromaTheme.type.cookStep else AromaTheme.type.body,
+                color = ink,
                 progress = { strike.value },
             )
             if (item.recipeNames.isNotEmpty()) {
                 Text(
                     text = stringResource(R.string.shopping_for_recipe, item.recipeNames.joinToString(", ")),
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = AromaTheme.type.bodySmall,
+                    color = if (checked) colors.inkTertiary else colors.inkSecondary,
                 )
             }
         }
     }
 }
 
+/** A row's least height: as tall as a target. */
+private val RowMin = 56.dp
+
 /** Text with a strikethrough drawn from the start of its first line, [progress] of the way to the end of its last. */
 @Composable
-private fun StruckText(text: AnnotatedString, style: TextStyle, progress: () -> Float) {
+private fun StruckText(text: AnnotatedString, style: TextStyle, color: Color, progress: () -> Float) {
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val ink = MaterialTheme.colorScheme.onSurface
     Text(
         text = text,
         style = style,
-        color = ink,
+        color = color,
         onTextLayout = { layout = it },
         modifier =
             Modifier.drawWithContent {
                 drawContent()
-                layout?.let { drawStrike(it, progress(), ink) }
+                layout?.let { drawStrike(it, progress(), color) }
             },
     )
 }
@@ -350,10 +368,11 @@ internal fun itemLine(item: ShoppingItem, locale: Locale): IngredientLine =
         IngredientFormatter.freeText(item.note, if (item.quantity > 1) item.quantity else 0.0, 1.0, locale)
     }
 
+/** "300 ml milk": the amount in sage with tabular figures, then the item. */
 private fun itemText(line: IngredientLine, amountColor: Color): AnnotatedString =
     buildAnnotatedString {
         if (line.hasMeasure) {
-            withStyle(SpanStyle(fontWeight = FontWeight.Medium, color = amountColor)) { append(measureText(line)) }
+            withStyle(SpanStyle(color = amountColor, fontFeatureSettings = "tnum")) { append(measureText(line)) }
             append(' ')
         }
         append(line.text)

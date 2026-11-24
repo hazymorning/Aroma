@@ -1,169 +1,282 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.aroma.R
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.ThumbnailSize
-import app.aroma.ui.theme.tabular
 
-/** A recipe as a [PhotoCard], with its time and rating under the title. */
+/** A recipe card's photo is a little taller than wide, as a page of a cookbook is. */
+private const val CARD_PHOTO = 4f / 5f
+
+/** A card's name keeps room for this many lines, and runs to at most [MAX_TITLE_LINES]. */
+const val MIN_TITLE_LINES = 2
+private const val MAX_TITLE_LINES = 3
+
+/**
+ * A recipe as a card: its photo, 4:5 with 14 dp corners, its name under it and a meta line, all
+ * flush with the photo's edge. A saved recipe wears the bookmark ribbon on its photo. The name keeps
+ * room for [titleLines] lines, so the meta lines of cards side by side stand on one line (see
+ * [rememberTitleLines]). Pressing shrinks the card a little and tints its photo.
+ */
 @Composable
 fun RecipeCard(
     recipe: RecipeSummary,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
-    imageAspectRatio: Float = 1f,
-) {
-    PhotoCard(recipe.image, recipe.name, onClick, modifier, onLongClick, imageAspectRatio) { RecipeMeta(recipe) }
-}
-
-/**
- * A photo with its title set underneath, flush with the photo's edge, and a quiet line below.
- * Pressing dims the photo a little instead of drawing a ripple box around the whole card.
- */
-@Composable
-fun PhotoCard(
-    image: RecipeImage?,
-    title: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    onLongClick: (() -> Unit)? = null,
-    imageAspectRatio: Float = 1f,
-    @DrawableRes fallbackIcon: Int = R.drawable.ic_plate,
-    meta: @Composable () -> Unit,
+    saved: Boolean = false,
+    titleLines: Int = MIN_TITLE_LINES,
 ) {
     val interaction = remember { MutableInteractionSource() }
     Column(
         modifier =
-            modifier.combinedClickable(
+            modifier
+                .pressScale(interaction)
+                .combinedClickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    role = Role.Button,
+                    onLongClickLabel = onLongClick?.let { stringResource(R.string.action_more) },
+                    onLongClick = onLongClick,
+                    onClick = onClick,
+                ),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(CARD_PHOTO),
+        ) {
+            RecipeImage(
+                image = recipe.image,
+                size = ImageSize.Medium,
+                shape = AromaTheme.shapes.cardImage,
+                modifier =
+                    Modifier
+                        .matchParentSize()
+                        .indication(interaction, PressTint),
+            )
+            Ribbon(saved, Modifier.align(Alignment.TopEnd).padding(end = Space.s12))
+        }
+        Spacer(Modifier.height(Space.s8))
+        Text(
+            text = recipe.name,
+            style = AromaTheme.type.cardTitle,
+            minLines = titleLines.coerceIn(MIN_TITLE_LINES, MAX_TITLE_LINES),
+            maxLines = MAX_TITLE_LINES,
+            overflow = TextOverflow.Ellipsis,
+        )
+        RecipeMetaLine(recipe, Modifier.padding(top = Space.s4))
+    }
+}
+
+/**
+ * How many lines the longest of [names] takes on a card [width] wide, at least two and at most
+ * three: cards side by side keep this many for their names, so their meta lines stand on one line.
+ */
+@Composable
+fun rememberTitleLines(names: List<String>, width: Dp): Int {
+    val measurer = rememberTextMeasurer()
+    val style = AromaTheme.type.cardTitle
+    val widthPx = with(LocalDensity.current) { width.roundToPx() }
+    return remember(names, widthPx, style) {
+        if (widthPx <= 0) return@remember MIN_TITLE_LINES
+        val widest = Constraints(maxWidth = widthPx)
+        names
+            .maxOfOrNull { name ->
+                measurer.measure(name.breakable(), style, maxLines = MAX_TITLE_LINES, constraints = widest).lineCount
+            }?.coerceIn(MIN_TITLE_LINES, MAX_TITLE_LINES) ?: MIN_TITLE_LINES
+    }
+}
+
+/**
+ * A recipe as a row: a 56 dp thumbnail with 12 dp corners, the name beside it in at most two lines
+ * and a meta line under it. Rows stand 12 dp apart. A [dimmed] row is past: its words in tertiary
+ * ink and its photo faded. A [trailing] action stands on the right; on a narrow phone or with large
+ * text it moves under the meta line, so the name keeps its width instead of a narrow column.
+ */
+@Composable
+fun RecipeRow(
+    title: String,
+    image: RecipeImage?,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    meta: List<String> = emptyList(),
+    @DrawableRes metaIcon: Int? = null,
+    onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
+    dimmed: Boolean = false,
+    @DrawableRes fallbackIcon: Int = R.drawable.ic_plate,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    val colors = AromaTheme.colors
+    val interaction = remember { MutableInteractionSource() }
+    val tap =
+        if (onClick != null) {
+            Modifier.combinedClickable(
                 interactionSource = interaction,
                 indication = null,
                 role = Role.Button,
-                onLongClickLabel = onLongClick?.let { stringResource(R.string.action_more) },
+                onLongClickLabel = onLongClickLabel ?: onLongClick?.let { stringResource(R.string.action_more) },
                 onLongClick = onLongClick,
                 onClick = onClick,
+            )
+        } else {
+            Modifier
+        }
+    val fontScale = LocalDensity.current.fontScale
+    Layout(
+        contents =
+            listOf(
+                {
+                    RecipeImage(
+                        image = image,
+                        size = ImageSize.Thumbnail,
+                        shape = AromaTheme.shapes.thumbnail,
+                        fallbackIcon = fallbackIcon,
+                        fallbackIconSize = FallbackGlyph,
+                        modifier =
+                            Modifier
+                                .size(ThumbnailSize)
+                                .alpha(if (dimmed) DIMMED_PHOTO else 1f)
+                                .indication(interaction, PressTint),
+                    )
+                },
+                {
+                    Column {
+                        Text(
+                            text = title,
+                            style = AromaTheme.type.cardTitle,
+                            color = if (dimmed) colors.inkTertiary else colors.ink,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        // A row's meta line may take a second line with large text, so nothing of it is lost.
+                        MetaLine(
+                            items = meta,
+                            icon = metaIcon,
+                            color = if (dimmed) colors.inkTertiary else colors.inkSecondary,
+                            maxLines = ROW_META_LINES,
+                            modifier = Modifier.padding(top = Space.s4),
+                        )
+                    }
+                },
+                { trailing?.invoke() },
             ),
-    ) {
-        RecipeImage(
-            image = image,
-            size = ImageSize.Medium,
-            shape = MaterialTheme.shapes.medium,
-            fallbackIcon = fallbackIcon,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(imageAspectRatio)
-                    .indication(interaction, PhotoPress),
-        )
-        Spacer(Modifier.height(Space.xs))
-        Text(text = title, style = AromaType.Name, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Box(Modifier.padding(top = Space.xxs)) { meta() }
-    }
-}
-
-/** A row with a small photo, for search results and pickers. */
-@Composable
-fun RecipeListItem(recipe: RecipeSummary, onClick: () -> Unit, modifier: Modifier = Modifier, trailing: @Composable (() -> Unit)? = null) {
-    Row(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clickable(role = Role.Button, onClick = onClick)
-                .padding(horizontal = ScreenMargin, vertical = Space.s),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.m),
-    ) {
-        RecipeImage(
-            image = recipe.image,
-            size = ImageSize.Thumbnail,
-            shape = MaterialTheme.shapes.small,
-            fallbackIconSize = Glyph.m,
-            modifier = Modifier.size(ThumbnailSize),
-        )
-        Column(Modifier.weight(1f)) {
-            Text(text = recipe.name, style = AromaType.Name, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            RecipeMeta(recipe, Modifier.padding(top = Space.xxs))
-        }
-        trailing?.invoke()
-    }
-}
-
-/** Time and rating as one quiet line, "25 Min. · ★ 4,5"; keeps its height when there is nothing to say. */
-@Composable
-fun RecipeMeta(recipe: RecipeSummary, modifier: Modifier = Modifier) {
-    val time = recipeTimeText(recipe.totalTime) ?: recipeTimeText(recipe.cookTime) ?: recipeTimeText(recipe.prepTime)
-    val rating = recipe.rating?.takeIf { it > 0 }
-    val style = AromaType.Small.tabular()
-    if (time == null && rating == null) {
-        Spacer(modifier.height(with(androidx.compose.ui.platform.LocalDensity.current) { style.lineHeight.toDp() }))
-        return
-    }
-    val locale = currentLocale()
-    val text =
-        buildAnnotatedString {
-            if (time != null) append(time)
-            if (time != null && rating != null) append("  ·  ")
-            if (rating != null) {
-                appendInlineContent(STAR, "★")
-                append(" ")
-                append(String.format(locale, "%.1f", rating))
+                .heightIn(min = ThumbnailSize)
+                .then(tap),
+    ) { (photo, words, action), constraints ->
+        val gap = Space.s16.roundToPx()
+        val thumbnail = photo.first().measure(Constraints())
+        val width = constraints.maxWidth
+        val wordsWidth = (width - thumbnail.width - gap).coerceAtLeast(0)
+        val end = action.firstOrNull()?.measure(Constraints(maxWidth = wordsWidth))
+        // The action stands beside the name while the name keeps a fair column, else under the meta line.
+        val besideWidth = wordsWidth - (end?.let { it.width + gap } ?: 0)
+        val below = end != null && besideWidth < (NameColumn * fontScale).roundToPx()
+        val text = words.first().measure(Constraints(maxWidth = if (end == null || below) wordsWidth else besideWidth))
+        val height =
+            maxOf(thumbnail.height, if (below) text.height + end.height else maxOf(text.height, end?.height ?: 0))
+                .coerceAtLeast(constraints.minHeight)
+        layout(width, height) {
+            val x = thumbnail.width + gap
+            if (below) {
+                thumbnail.place(0, 0)
+                text.place(x, 0)
+                end?.place(x, text.height)
+            } else {
+                thumbnail.place(0, (height - thumbnail.height) / 2)
+                text.place(x, (height - text.height) / 2)
+                end?.place(width - end.width, (height - end.height) / 2)
             }
         }
-    val star =
-        mapOf(
-            STAR to
-                InlineTextContent(Placeholder(StarSize, StarSize, PlaceholderVerticalAlign.TextCenter)) {
-                    Icon(
-                        painterResource(R.drawable.ic_star_filled),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-        )
-    Text(text, style = style, color = MaterialTheme.colorScheme.onSurfaceVariant, inlineContent = star, maxLines = 1, modifier = modifier)
+    }
 }
 
-private const val STAR = "star"
+/** A recipe of the library as a [RecipeRow], with its time or its category under its name. */
+@Composable
+fun RecipeRow(
+    recipe: RecipeSummary,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    val time = recipeTime(recipe)
+    RecipeRow(
+        title = recipe.name,
+        image = recipe.image,
+        onClick = onClick,
+        meta = listOfNotNull(time ?: recipe.categories.firstOrNull()?.name),
+        metaIcon = if (time != null) R.drawable.ic_clock else null,
+        onLongClick = onLongClick,
+        modifier = modifier,
+        trailing = trailing,
+    )
+}
 
-/** The star in a meta line, a little smaller than its figures. */
-private val StarSize = 12.sp
+/** How long a recipe takes, "25 Min.", or else what kind of dish it is; left out where there is neither. */
+@Composable
+fun RecipeMetaLine(recipe: RecipeSummary, modifier: Modifier = Modifier) {
+    val time = recipeTime(recipe)
+    MetaLine(
+        items = listOfNotNull(time ?: recipe.categories.firstOrNull()?.name),
+        icon = if (time != null) R.drawable.ic_clock else null,
+        modifier = modifier,
+    )
+}
+
+/** A recipe's time as cards and rows show it: the total, or prep and cook added up, or either alone. */
+@Composable
+fun recipeTime(recipe: RecipeSummary): String? {
+    val resources = LocalResources.current
+    return remember(recipe, resources) {
+        resources.recipeTimeText(totalTime(recipe.totalTime, recipe.prepTime, recipe.cookTime))
+            ?: resources.recipeTimeText(recipe.cookTime)
+            ?: resources.recipeTimeText(recipe.prepTime)
+    }
+}
+
+private val FallbackGlyph = 20.dp
+
+/** How much of a past day's photos still shows. */
+private const val DIMMED_PHOTO = 0.6f
+
+/** How many lines a row's meta line may take. */
+private const val ROW_META_LINES = 2
+
+/** The narrowest column a row's name keeps beside its action, at the normal font size; else the action moves under it. */
+private val NameColumn = 136.dp

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,9 +30,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.PageMargin
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 
@@ -67,17 +67,17 @@ fun SwipeToRemove(onRemove: () -> Unit, modifier: Modifier = Modifier, content: 
         Box(
             Modifier
                 .matchParentSize()
-                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.08f))
-                .padding(end = ScreenMargin),
+                .background(AromaTheme.colors.error.copy(alpha = 0.08f))
+                .padding(end = PageMargin),
             contentAlignment = Alignment.CenterEnd,
         ) {
             Icon(
                 painterResource(R.drawable.ic_delete),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
+                tint = AromaTheme.colors.error,
                 modifier =
                     Modifier
-                        .size(Glyph.m)
+                        .size(Glyph.control)
                         .graphicsLayer { alpha = glyph },
             )
         }
