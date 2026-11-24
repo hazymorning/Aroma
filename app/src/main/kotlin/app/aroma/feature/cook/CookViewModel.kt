@@ -54,6 +54,7 @@ class CookViewModel(
                 exactAlarmHint = ownTimers.any { it.isRunning } && !timers.canUseExactAlarms,
                 ingredientsInSteps = prefs.ingredientsInSteps,
                 amountsInSteps = prefs.amountsInSteps,
+                showNextStep = prefs.showNextStep,
                 measures = prefs.measureSystem,
                 checkedIngredients = checked.toSet(),
             )

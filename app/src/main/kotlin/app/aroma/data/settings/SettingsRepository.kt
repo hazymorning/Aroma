@@ -27,6 +27,8 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.System,
     val dynamicColor: Boolean = false,
     val keepScreenOn: Boolean = true,
+    /** Whether cooking mode shows the next step under the current one. */
+    val showNextStep: Boolean = true,
     val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
     val amountsInSteps: Boolean = false,
     val offlineRecipes: Boolean = false,
@@ -58,6 +60,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val theme = stringPreferencesKey("theme")
         val dynamicColor = booleanPreferencesKey("dynamic_color")
         val keepScreenOn = booleanPreferencesKey("keep_screen_on")
+        val showNextStep = booleanPreferencesKey("show_next_step")
         val ingredientsInSteps = stringPreferencesKey("ingredients_in_steps_shown")
 
         /** The switch that showed all ingredients under every step, before there was a choice. */
@@ -78,6 +81,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 themeMode = prefs[Keys.theme]?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } } ?: ThemeMode.System,
                 dynamicColor = prefs[Keys.dynamicColor] ?: false,
                 keepScreenOn = prefs[Keys.keepScreenOn] ?: true,
+                showNextStep = prefs[Keys.showNextStep] ?: true,
                 ingredientsInSteps =
                     IngredientsInSteps.entries.firstOrNull { it.name == prefs[Keys.ingredientsInSteps] }
                         ?: if (prefs[Keys.allIngredientsInSteps] == true) IngredientsInSteps.All else IngredientsInSteps.Used,
@@ -97,6 +101,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setDynamicColor(enabled: Boolean) = dataStore.edit { it[Keys.dynamicColor] = enabled }
 
     suspend fun setKeepScreenOn(enabled: Boolean) = dataStore.edit { it[Keys.keepScreenOn] = enabled }
+
+    suspend fun setShowNextStep(shown: Boolean) = dataStore.edit { it[Keys.showNextStep] = shown }
 
     suspend fun setIngredientsInSteps(shown: IngredientsInSteps) = dataStore.edit { it[Keys.ingredientsInSteps] = shown.name }
 

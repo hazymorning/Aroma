@@ -807,6 +807,7 @@ fun SettingsDestination(nav: NavController) {
                 onHomeSection = { section, shown -> vm.setHomeSection(section, shown) },
                 onLanguage = vm::setLanguage,
                 onKeepScreenOn = { vm.setKeepScreenOn(it) },
+                onShowNextStep = { vm.setShowNextStep(it) },
                 onIngredientsInSteps = { vm.setIngredientsInSteps(it) },
                 onAmountsInSteps = { vm.setAmountsInSteps(it) },
                 onMeasures = { vm.setMeasures(it) },

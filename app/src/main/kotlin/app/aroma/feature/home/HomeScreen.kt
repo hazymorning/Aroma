@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -372,43 +373,20 @@ private const val QUICK_ROWS = 3
 private const val SECTION_LEAST = 3
 
 /**
- * "Guten Abend, Mara" and today's date, with the search and the profile as icon buttons. The
- * greeting names the user where Mealie knows a first name.
+ * "Guten Abend, Küchengenie" and today's date, with the search and the profile as icon buttons. The
+ * greeting calls the user by a kitchen nickname of the day, one for everyone whoever they are, each
+ * long enough to balance the greeting on its own line; it changes from day to day, not within one.
  */
 @Composable
 private fun HomeHeader(state: HomeUiState, actions: HomeActions, modifier: Modifier = Modifier) {
     val name = state.firstName?.takeIf { it.isNotBlank() }
+    val nicknames = stringArrayResource(R.array.greeting_nicknames)
+    val nickname = nicknames[Math.floorMod(state.date.toEpochDay(), nicknames.size.toLong()).toInt()]
     val greeting =
         when (state.greeting) {
-            Greeting.Morning -> {
-                if (name !=
-                    null
-                ) {
-                    stringResource(R.string.greeting_morning_name, name)
-                } else {
-                    stringResource(R.string.greeting_morning)
-                }
-            }
-
-            Greeting.Afternoon -> {
-                if (name !=
-                    null
-                ) {
-                    stringResource(R.string.greeting_afternoon_name, name)
-                } else {
-                    stringResource(R.string.greeting_afternoon)
-                }
-            }
-
-            Greeting.Evening -> {
-                if (name !=
-                    null
-                ) {
-                    stringResource(R.string.greeting_evening_name, name)
-                } else {
-                    stringResource(R.string.greeting_evening)
-                }
-            }
+            Greeting.Morning -> stringResource(R.string.greeting_morning_name, nickname)
+            Greeting.Afternoon -> stringResource(R.string.greeting_afternoon_name, nickname)
+            Greeting.Evening -> stringResource(R.string.greeting_evening_name, nickname)
         }
     val locale = currentLocale()
     val date = remember(state.date, locale) { longDate(state.date, locale) }

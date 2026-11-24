@@ -53,6 +53,16 @@ class StepMentionsTest {
     }
 
     @Test
+    fun `a word that names one ingredient in full ticks that one off`() {
+        val recipe =
+            recipe(
+                listOf(line("250 g Butter oder Margarine"), line("180 g Zucker"), line("1 Pck. Vanille-Zucker"), line("1 Prise Salz")),
+                "Die zimmerwarme Butter, Zucker, Vanillezucker und die Prise Salz cremig schlagen.",
+            )
+        assertEquals(listOf("Butter" to 0, "Zucker" to 1, "Vanillezucker" to 2, "Salz" to 3), recipe.words())
+    }
+
+    @Test
     fun `the ingredient Mealie links to the step settles which one`() {
         val recipe =
             recipe(listOf(line("80 g Zucker", "a"), line("150 g Zucker", "b")), "Zucker einrieseln lassen.", references = listOf("b"))

@@ -120,8 +120,8 @@ fun rememberTitleLines(names: List<String>, width: Dp): Int {
 }
 
 /**
- * A recipe as a row: a 56 dp thumbnail with 12 dp corners, the name beside it in at most two lines
- * and a meta line under it. Rows stand 12 dp apart. A [dimmed] row is past: its words in tertiary
+ * A recipe as a row: a thumbnail with 12 dp corners, 56 dp unless [thumbnail] says otherwise, the
+ * name beside it in at most two lines and a meta line under it. Rows stand 12 dp apart. A [dimmed] row is past: its words in tertiary
  * ink and its photo faded. A [trailing] action stands on the right; on a narrow phone or with large
  * text it moves under the meta line, so the name keeps its width instead of a narrow column.
  */
@@ -136,6 +136,7 @@ fun RecipeRow(
     onLongClick: (() -> Unit)? = null,
     onLongClickLabel: String? = null,
     dimmed: Boolean = false,
+    thumbnail: Dp = ThumbnailSize,
     @DrawableRes fallbackIcon: Int = R.drawable.ic_plate,
     trailing: (@Composable () -> Unit)? = null,
 ) {
@@ -167,7 +168,7 @@ fun RecipeRow(
                         fallbackIconSize = FallbackGlyph,
                         modifier =
                             Modifier
-                                .size(ThumbnailSize)
+                                .size(thumbnail)
                                 .alpha(if (dimmed) DIMMED_PHOTO else 1f)
                                 .indication(interaction, PressTint),
                     )
@@ -196,29 +197,29 @@ fun RecipeRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .heightIn(min = ThumbnailSize)
+                .heightIn(min = thumbnail)
                 .then(tap),
     ) { (photo, words, action), constraints ->
         val gap = Space.s16.roundToPx()
-        val thumbnail = photo.first().measure(Constraints())
+        val picture = photo.first().measure(Constraints())
         val width = constraints.maxWidth
-        val wordsWidth = (width - thumbnail.width - gap).coerceAtLeast(0)
+        val wordsWidth = (width - picture.width - gap).coerceAtLeast(0)
         val end = action.firstOrNull()?.measure(Constraints(maxWidth = wordsWidth))
         // The action stands beside the name while the name keeps a fair column, else under the meta line.
         val besideWidth = wordsWidth - (end?.let { it.width + gap } ?: 0)
         val below = end != null && besideWidth < (NameColumn * fontScale).roundToPx()
         val text = words.first().measure(Constraints(maxWidth = if (end == null || below) wordsWidth else besideWidth))
         val height =
-            maxOf(thumbnail.height, if (below) text.height + end.height else maxOf(text.height, end?.height ?: 0))
+            maxOf(picture.height, if (below) text.height + end.height else maxOf(text.height, end?.height ?: 0))
                 .coerceAtLeast(constraints.minHeight)
         layout(width, height) {
-            val x = thumbnail.width + gap
+            val x = picture.width + gap
             if (below) {
-                thumbnail.place(0, 0)
+                picture.place(0, 0)
                 text.place(x, 0)
                 end?.place(x, text.height)
             } else {
-                thumbnail.place(0, (height - thumbnail.height) / 2)
+                picture.place(0, (height - picture.height) / 2)
                 text.place(x, (height - text.height) / 2)
                 end?.place(width - end.width, (height - end.height) / 2)
             }
