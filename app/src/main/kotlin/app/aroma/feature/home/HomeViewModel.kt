@@ -142,7 +142,7 @@ class HomeViewModel(
         }
         // The page shows as soon as every section has something to show, from the phone's copy or from
         // Mealie; a pull to refresh ends once every section has heard from Mealie or found it out of reach.
-        val sections = Sections(count = 5)
+        val sections = Sections(count = 6)
         val meal = Meal.at(LocalTime.now(clock))
         loads =
             listOf(
@@ -151,6 +151,7 @@ class HomeViewModel(
                 collect(suggestions(meal, today), sections) { (forMeal, list) ->
                     copy(meal = meal, suggestionsForMeal = forMeal, suggestions = list)
                 },
+                collect(recipes.quick(today), sections) { copy(quick = it) },
                 collect(recipes.cookedLongAgo(since = today.minusWeeks(4), day = today), sections) { copy(cookedLongAgo = it) },
                 collect(recipes.recent(), sections) { copy(recent = it) },
                 collect(recipes.favorites(fresh = refreshing), sections) { copy(favorites = it) },

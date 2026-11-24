@@ -110,12 +110,10 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
             )
     }
 
+    /** A pull to refresh: the lists anew, so one made elsewhere shows up, and the list shown with its items. */
     fun refresh() {
-        val id = state.value.list?.id
-        if (id == null) {
-            loadLists()
-            return
-        }
+        loadLists()
+        val id = state.value.list?.id ?: return
         viewModelScope.launch {
             mutableState.update { it.copy(isRefreshing = true) }
             refreshList(id)

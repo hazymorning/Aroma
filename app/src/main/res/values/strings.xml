@@ -83,6 +83,7 @@
     <string name="home_for_snack">For in between</string>
     <string name="home_for_dinner">For tonight</string>
     <string name="home_ideas">Ideas for today</string>
+    <string name="home_quick">Ready in 30 minutes</string>
     <string name="home_cooked_long_ago">Not cooked in a while</string>
     <string name="search_recipes_hint">Search recipes</string>
     <string name="home_rate_open">Open recipe</string>
@@ -177,18 +178,19 @@
     <string name="login_http_hint">If your server has no https, enter its address with http:// in front.</string>
 
     <!-- Recipe library -->
-    <string name="recipes_all">All</string>
+    <string name="recipes_all">All recipes</string>
     <string name="recipes_cookbooks">Cookbooks</string>
-    <string name="recipes_timeline">Timeline</string>
     <string name="recipes_add">Add recipe</string>
+    <string name="recipes_quick">Quick</string>
     <string name="recipes_categories">Categories</string>
     <string name="recipes_tags">Tags</string>
-    <string name="recipes_tools">Tools</string>
     <string name="recipes_clear_filters">Clear filters</string>
     <string name="recipes_empty_title">No recipes yet</string>
     <string name="recipes_empty_message">Import your first recipe from a website or write one yourself.</string>
     <string name="recipes_no_results_title">Nothing found</string>
     <string name="recipes_no_results_message">Try a different search or remove some filters.</string>
+    <string name="recipes_meal_empty_title">No recipes for this meal yet</string>
+    <string name="recipes_meal_empty_message">Choose the meal when you edit a recipe, and it shows up here.</string>
     <plurals name="recipe_count">
         <item quantity="one">%1$d recipe</item>
         <item quantity="other">%1$d recipes</item>
@@ -308,8 +310,6 @@
     </plurals>
 
     <!-- Cookbooks -->
-    <string name="cookbooks_empty_title">No cookbooks yet</string>
-    <string name="cookbooks_empty_message">Cookbooks you create in Mealie show up here.</string>
     <string name="collection_cookbook">Cookbook</string>
     <string name="collection_category">Category</string>
     <string name="collection_tag">Tag</string>
@@ -319,8 +319,6 @@
 
     <!-- Timeline -->
     <string name="timeline_made_this">%1$s made this</string>
-    <string name="timeline_empty_title">Nothing yet</string>
-    <string name="timeline_empty_message">What your household cooks and adds shows up here.</string>
 
     <!-- Add and edit -->
     <string name="add_input_label">Link or recipe text</string>

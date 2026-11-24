@@ -5,12 +5,14 @@ import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.OrganizerKind
-import app.aroma.core.model.Organizers
+import app.aroma.core.model.QUICK_MINUTES
 import app.aroma.core.model.RecipeQuery
 import app.aroma.core.model.RecipeSort
+import app.aroma.data.attempt
 import app.aroma.data.network.ServerConnection
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.toAromaError
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,30 +26,43 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-/** Search and filters for the recipe library. [initial] lets other screens open it pre-filtered. */
+/**
+ * Search and filters for the recipe library. [initial] lets other screens open it pre-filtered; with
+ * [withCookbooks], as on the Recipes tab, the household's cookbooks come along.
+ */
 class RecipesViewModel(
     private val recipes: RecipeRepository,
     private val connection: ServerConnection,
     initial: RecipeFilter = RecipeFilter(),
     private val cookbook: String? = null,
+    private val withCookbooks: Boolean = false,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(RecipesUiState(filter = initial))
     val state: StateFlow<RecipesUiState> = mutableState.asStateFlow()
 
     private val query = MutableStateFlow(initial.query)
     private var loadJob: Job? = null
+    private var organizersJob: Job? = null
+    private var cookbooksJob: Job? = null
     private var nextPage = 1
     private var randomSeed = UUID.randomUUID().toString()
 
+    /** Done once the categories and tags are known, from the phone's copy or from Mealie, or could not be. */
+    private val organizersKnown = CompletableDeferred<Unit>()
+
+    /** The names the shown meal was looked up by, to look again when Mealie knows other ones. */
+    private var mealNames: List<String>? = null
+
     init {
-        reload()
         loadOrganizers()
+        if (withCookbooks) loadCookbooks()
+        reload()
         observeQuery()
         viewModelScope.launch { recipes.changes.collect { reload() } }
         viewModelScope.launch {
             // Mealie answers again: load anew. Out of reach: what shows is the phone's copy.
             connection.isReachable.drop(1).collect { reachable ->
-                if (reachable) reload() else mutableState.update { it.copy(isOffline = true) }
+                if (reachable) loadAll() else mutableState.update { it.copy(isOffline = true) }
             }
         }
     }
@@ -62,16 +77,47 @@ class RecipesViewModel(
                 .collect { reload() }
         }
 
-    private fun loadOrganizers() =
-        viewModelScope.launch {
-            recipes
-                .organizers()
-                .catch { }
-                .collect { loadable ->
-                    val data = loadable.data
-                    mutableState.update { it.copy(categories = data.categories, tags = data.tags, tools = data.tools) }
-                }
-        }
+    private fun loadOrganizers() {
+        organizersJob?.cancel()
+        organizersJob =
+            viewModelScope.launch {
+                recipes
+                    .organizers()
+                    .catch { }
+                    .collect { loadable ->
+                        val data = loadable.data
+                        mutableState.update { it.copy(categories = data.categories, tags = data.tags) }
+                        organizersKnown.complete(Unit)
+                        // A meal filed under a category Mealie has only now: look again.
+                        val looked = mealNames
+                        if (looked != null && looked != state.value.mealNames()) reload()
+                    }
+                organizersKnown.complete(Unit)
+            }
+    }
+
+    private fun loadCookbooks() {
+        cookbooksJob?.cancel()
+        cookbooksJob =
+            viewModelScope.launch {
+                recipes
+                    .cookbooks()
+                    .catch { }
+                    .collect { loadable -> mutableState.update { it.copy(cookbooks = loadable.data) } }
+            }
+    }
+
+    private fun loadAll(freshRatings: Boolean = false) {
+        loadOrganizers()
+        if (withCookbooks) loadCookbooks()
+        reload(freshRatings)
+    }
+
+    /** A pull to refresh: all of it anew from Mealie; the indicator shows until the recipes are back. */
+    fun refresh() {
+        mutableState.update { it.copy(isRefreshing = true) }
+        loadAll(freshRatings = true)
+    }
 
     fun onQueryChange(text: String) {
         mutableState.update { it.copy(filter = it.filter.copy(query = text)) }
@@ -79,6 +125,8 @@ class RecipesViewModel(
     }
 
     fun toggleFavorites() = changeFilter { it.copy(favoritesOnly = !it.favoritesOnly) }
+
+    fun toggleQuick() = changeFilter { it.copy(quick = !it.quick) }
 
     /** One meal at a time: choosing another replaces it, choosing it again clears it. */
     fun toggleMeal(meal: Meal) = changeFilter { it.copy(meal = meal.takeIf { _ -> it.meal != meal }) }
@@ -108,11 +156,18 @@ class RecipesViewModel(
         reload()
     }
 
-    fun reload() {
+    fun reload() = reload(freshRatings = false)
+
+    private fun reload(freshRatings: Boolean) {
         loadJob?.cancel()
         nextPage = 1
         mutableState.update { it.copy(isLoading = it.recipes.isEmpty(), error = null) }
-        loadJob = viewModelScope.launch { loadPage(replace = true) }
+        loadJob =
+            viewModelScope.launch {
+                // Favourites may have changed on another device.
+                if (freshRatings && state.value.filter.favoritesOnly) attempt { recipes.loadRatings(fresh = true) }
+                loadPage(replace = true)
+            }
     }
 
     fun loadMore() {
@@ -123,8 +178,25 @@ class RecipesViewModel(
     }
 
     private suspend fun loadPage(replace: Boolean) {
-        val state = mutableState.value
-        val filter = state.filter
+        val filter = mutableState.value.filter
+        // A meal is found by the names of its categories and tags, which the first page waits for.
+        if (filter.meal != null) organizersKnown.await()
+        val names = mutableState.value.mealNames()
+        mealNames = names
+        if (names != null && names.isEmpty()) {
+            // Nothing is filed under this meal yet, so nothing can match; the page says how to file it.
+            mutableState.update {
+                it.copy(
+                    recipes = emptyList(),
+                    total = 0,
+                    canLoadMore = false,
+                    isLoading = false,
+                    isLoadingMore = false,
+                    isRefreshing = false,
+                )
+            }
+            return
+        }
         val query =
             RecipeQuery(
                 search = filter.query,
@@ -133,7 +205,8 @@ class RecipesViewModel(
                 tags = filter.tags.map { it.id },
                 tools = filter.tools.map { it.id },
                 cookbook = cookbook,
-                mealNames = filter.meal?.namesIn(Organizers(state.categories, state.tags, state.tools)).orEmpty(),
+                mealNames = names.orEmpty(),
+                readyWithin = QUICK_MINUTES.takeIf { filter.quick },
                 sort = filter.sort,
                 seed = randomSeed,
             )
@@ -148,6 +221,7 @@ class RecipesViewModel(
                     isOffline = page.isOffline,
                     isLoading = false,
                     isLoadingMore = false,
+                    isRefreshing = false,
                     error = null,
                 )
             }
@@ -157,6 +231,7 @@ class RecipesViewModel(
                 it.copy(
                     isLoading = false,
                     isLoadingMore = false,
+                    isRefreshing = false,
                     error = failure,
                     recipes = if (replace) emptyList() else it.recipes,
                     canLoadMore = false,

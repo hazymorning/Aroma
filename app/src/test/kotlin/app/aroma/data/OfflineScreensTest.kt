@@ -2,6 +2,7 @@ package app.aroma.data
 
 import android.os.Looper
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import app.aroma.core.model.Meal
 import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.session.Session
 import app.aroma.data.settings.SettingsRepository
@@ -122,6 +123,31 @@ class OfflineScreensTest {
     }
 
     @Test
+    fun `without a network, the quick recipes and a meal are picked from the downloaded ones without asking Mealie`() {
+        goOffline()
+        val library = RecipesViewModel(env.recipes, env.connection)
+        until {
+            library.state.value.recipes
+                .isNotEmpty()
+        }
+
+        library.toggleQuick()
+        until {
+            library.state.value.recipes
+                .map { it.name } == listOf("Gnocchi")
+        }
+
+        // Nothing is filed under dinner on this server, so nothing can match and the page says how to file it.
+        library.toggleQuick()
+        library.toggleMeal(Meal.Dinner)
+        until {
+            library.state.value.recipes
+                .isEmpty() && library.state.value.mealNames() == emptyList<String>()
+        }
+        assertEquals("Mealie was not asked", 0, requests.size)
+    }
+
+    @Test
     fun `without a network, home shows its stored sections at once and says it is offline`() {
         goOffline()
         val home = HomeViewModel(env.recipes, env.mealPlans, env.sessions, env.auth, reminder(), env.connection)
@@ -175,7 +201,7 @@ class OfflineScreensTest {
 
     private fun listing() =
         NAMES.joinToString(prefix = """{"page":1,"per_page":-1,"total":${NAMES.size},"total_pages":1,"items":[""", postfix = "]}") {
-            """{"id":"id-$it","slug":"${it.lowercase()}","name":"$it","updatedAt":"2026-11-01T10:00:00"}"""
+            """{"id":"id-$it","slug":"${it.lowercase()}","name":"$it","totalTime":"${TIMES[it]}","updatedAt":"2026-11-01T10:00:00"}"""
         }
 
     private fun recipe(slug: String): MockResponse {
@@ -193,6 +219,9 @@ class OfflineScreensTest {
     private companion object {
         const val LIST = "list-1"
         val NAMES = listOf("Gnocchi", "Linsensuppe", "Ofenkuerbis")
+
+        /** As Mealie keeps them, as text; only the gnocchi are quick. */
+        val TIMES = mapOf("Gnocchi" to "20 Minuten", "Linsensuppe" to "1 Stunde", "Ofenkuerbis" to "")
 
         /** Well under a second: no request is waited for. */
         const val AT_ONCE = 1_500L

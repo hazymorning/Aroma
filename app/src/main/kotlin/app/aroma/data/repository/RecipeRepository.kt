@@ -1,10 +1,12 @@
 package app.aroma.data.repository
 
+import app.aroma.core.format.isReadyWithin
 import app.aroma.core.model.CookbookCover
 import app.aroma.core.model.Filing
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.OrganizerKind
 import app.aroma.core.model.Organizers
+import app.aroma.core.model.QUICK_MINUTES
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.RecipePage
 import app.aroma.core.model.RecipeQuery
@@ -113,7 +115,10 @@ class RecipeRepository(
     suspend fun page(query: RecipeQuery, page: Int, perPage: Int = PAGE_SIZE): RecipePage {
         val server = sessions.requireServerUrl()
         return try {
-            connection.whileReachable { serverPage(query, page, perPage, server) }
+            connection.whileReachable {
+                val minutes = query.readyWithin
+                if (minutes == null) serverPage(query, page, perPage, server) else readyPage(query, minutes, page, perPage, server)
+            }
         } catch (error: Throwable) {
             val failure = error.toAromaError()
             if (!failure.isConnectivity || page > 1) throw failure
@@ -169,6 +174,29 @@ class RecipeRepository(
     }
 
     /**
+     * Mealie keeps a recipe's times as text it cannot compare, so the phone picks the recipes ready in
+     * [minutes] from larger pages, one after another, until it has a page's worth or Mealie has no
+     * more. The page it returns is the last one it read, for the next call to go on from.
+     */
+    private suspend fun readyPage(
+        query: RecipeQuery,
+        minutes: Int,
+        page: Int,
+        perPage: Int,
+        server: String,
+    ): RecipePage {
+        var next = page
+        val found = mutableListOf<RecipeSummary>()
+        while (true) {
+            val read = serverPage(query, next, READY_SCAN, server)
+            // Reading the times as text is not for the main thread, which screens ask from.
+            found += withContext(Dispatchers.Default) { read.items.filter { it.isReadyWithin(minutes) } }
+            if (found.size >= perPage || !read.hasMore) return read.copy(items = found, total = null)
+            next++
+        }
+    }
+
+    /**
      * All the stored recipes [query] asks for, filtered and sorted on the phone as Mealie would, or
      * null for a cookbook the phone does not know the recipes of. It never waits for Mealie.
      */
@@ -195,6 +223,7 @@ class RecipeRepository(
                             query.tools.all { wanted -> recipe.tools.any { it.slug == wanted || it.id == wanted } }
                     }.sortedFor(query)
                     .map { it.toModel(server) }
+                    .filter { recipe -> query.readyWithin?.let { recipe.isReadyWithin(it) } ?: true }
             }
         return RecipePage(items, items.size, 1, hasMore = false, isOffline = true)
     }
@@ -211,7 +240,9 @@ class RecipeRepository(
 
     /** Whether [this] asks for a whole cookbook, not for some of its recipes. */
     private val RecipeQuery.isWholeCollection: Boolean
-        get() = search.isBlank() && !favoritesOnly && categories.isEmpty() && tags.isEmpty() && tools.isEmpty() && mealNames.isEmpty()
+        get() =
+            search.isBlank() && !favoritesOnly && categories.isEmpty() && tags.isEmpty() && tools.isEmpty() && mealNames.isEmpty() &&
+                readyWithin == null
 
     /**
      * Notes which recipes a cookbook holds, for the stored copy to show it offline. A page of a
@@ -260,6 +291,27 @@ class RecipeRepository(
                     paginationSeed = day.toString(),
                 ).items
         }
+
+    /**
+     * A choice of recipes ready in [minutes] or less, new each [day]. Mealie cannot compare its times,
+     * so the phone picks them from a larger choice, in an order of the day of their own.
+     */
+    fun quick(day: LocalDate, minutes: Int = QUICK_MINUTES, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> {
+        val server = sessions.requireServerUrl()
+        return summaries("home:quick") {
+            sessions
+                .api()
+                .recipes(
+                    page = 1,
+                    perPage = READY_SCAN,
+                    orderBy = "random",
+                    orderDirection = "asc",
+                    paginationSeed = "$day-quick",
+                ).items
+                .filter { it.toModel(server).isReadyWithin(minutes) }
+                .take(limit)
+        }
+    }
 
     /** A choice of recipes cooked before, but not since [since]; new each [day]. */
     fun cookedLongAgo(since: LocalDate, day: LocalDate, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
@@ -743,6 +795,9 @@ class RecipeRepository(
 
     companion object {
         const val PAGE_SIZE = 30
+
+        /** How many recipes the phone reads at a time to pick the quick ones. */
+        private const val READY_SCAN = 100
 
         /** More recipes than a household keeps, so the stored copy shows them all. */
         private const val STORED_LIMIT = 10_000

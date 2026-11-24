@@ -18,7 +18,7 @@ pieces in `ui/components`. Screens under `feature/` are built from those two onl
    to their text. Nothing is outlined, and a card never holds another card.
 3. **One accent.** Sage marks the one filled action of a screen, what is chosen (a chip, a tab,
    a check, a switch, today), links (every link is sage), group labels and step numbers, amounts in
-   ingredient and shopping lists and those written into steps, and the brand: the wordmark and the name in the greeting. It is
+   ingredient and shopping lists and those written into steps, and the brand: the wordmark. It is
    never decoration. A muted sage, soft fill and dark sage words, lifts the few actions that come
    right after the main one: plan and shop on a recipe, and nothing else yet. It stays that rare, or
    it stops lifting anything.
@@ -87,9 +87,10 @@ least 4.5:1 *(checked)*. With "Colors from your wallpaper", the same roles come 
 ## Shape and depth
 
 Photos and cards 16 dp, thumbnails 12 dp, sheets and dialogs 28 dp, controls fully round; shapes come
-from the theme *(checked)*. The page is flat. Only what lies over it casts the one soft shadow: the
-tab bar, the cook button, buttons on a photo, menus, sheets and the snackbar. Nothing on the page is
-outlined *(checked)*; a field shows a sage ring only while it has the cursor.
+from the theme *(checked)*. The page is flat. Only what floats over it casts the one soft shadow: the
+tab bar, the floating actions (cook, add a recipe), buttons on a photo, menus, sheets and the
+snackbar. Nothing on the page is outlined *(checked)*; a field shows a sage ring only while it has the
+cursor.
 
 The tab bar is a sheet of paper across the bottom edge, not a floating pill: it runs from side to
 side and down over the system navigation, and its shadow falls up onto the page scrolling below it.
@@ -106,7 +107,7 @@ Its four tabs stand far apart, with 20 dp of air above the glyphs and below the 
 | Views of a page | `PageTabs` |
 | Filters | `AromaFilterChip` |
 | A choice of two or three in a form | `SegmentedControl` |
-| Actions | `PrimaryButton` (one per screen), `FloatingAction` (that one action over a long page), `SecondaryButton`, `QuietLink`, `IconAction`, `HeaderAction`, `TonalIconButton`, `OnPhotoButton` |
+| Actions | `PrimaryButton` (one per screen), `FloatingAction` (that one action over a long page: cooking a recipe, adding one to the library), `SecondaryButton`, `QuietLink`, `IconAction`, `HeaderAction`, `TonalIconButton`, `OnPhotoButton` |
 | Values | `Stepper`, `SwitchRow`, `RatingStars`, `CheckCircle` |
 | Input | `LabeledTextField`, `LabeledSecureTextField`, `PillTextField`, `SearchPill` |
 | Layers | `AromaBottomSheet`, `SheetAction`, `SheetFooter`, `AromaDropdownMenu`, `AromaAlertDialog` |

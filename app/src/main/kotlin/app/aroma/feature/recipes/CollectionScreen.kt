@@ -26,6 +26,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import app.aroma.R
 import app.aroma.core.model.RecipeSummary
+import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
@@ -43,19 +44,21 @@ import app.aroma.ui.theme.Space
 
 /** What a collection page holds; [app.aroma.ui.navigation.CollectionRoute] names one of these. */
 @Keep
-enum class CollectionKind { Cookbook, Favorites, Category, Tag, Tool }
+enum class CollectionKind { Cookbook, Favorites, Category, Tag, Tool, Meal, Quick }
 
 data class CollectionActions(
     val onBack: () -> Unit = {},
     val onOpenRecipe: (RecipeSummary) -> Unit = {},
     val onRecipeMenu: (RecipeSummary) -> Unit = {},
     val onLoadMore: () -> Unit = {},
+    val onRefresh: () -> Unit = {},
     val onRetry: () -> Unit = {},
 )
 
 /**
- * Recipes that belong together, on a page of their own: a cookbook, the favourites, or one category,
- * tag or tool. The name is the large title, under what kind of collection it is.
+ * Recipes that belong together, on a page of their own: a cookbook, the favourites, one meal, the
+ * quick ones, or one category, tag or tool. The name is the large title, under what kind of
+ * collection it is.
  */
 @Composable
 fun CollectionScreen(
@@ -69,7 +72,8 @@ fun CollectionScreen(
     val grid = rememberLazyGridState()
     var titleEnd by remember { mutableIntStateOf(Int.MAX_VALUE) }
     val collapsed by remember { derivedStateOf { grid.firstVisibleItemIndex > 0 || grid.firstVisibleItemScrollOffset > titleEnd / 2 } }
-    Box(modifier.fillMaxSize()) {
+    // The indicator comes down over the bar, so it shows while the page refreshes.
+    AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = modifier.fillMaxSize()) {
         RecipeGrid(
             recipes = state.recipes,
             onOpen = actions.onOpenRecipe,
@@ -116,29 +120,8 @@ fun CollectionScreen(
 
                     state.recipes.isEmpty() -> {
                         pageItem("empty") {
-                            MessageState(
-                                icon = R.drawable.ic_recipes,
-                                title =
-                                    stringResource(
-                                        if (kind ==
-                                            CollectionKind.Cookbook
-                                        ) {
-                                            R.string.cookbook_empty_title
-                                        } else {
-                                            R.string.recipes_no_results_title
-                                        },
-                                    ),
-                                body =
-                                    stringResource(
-                                        if (kind ==
-                                            CollectionKind.Cookbook
-                                        ) {
-                                            R.string.cookbook_empty_message
-                                        } else {
-                                            R.string.recipes_no_results_message
-                                        },
-                                    ),
-                            )
+                            val (title, body) = kind.emptyRes()
+                            MessageState(icon = R.drawable.ic_recipes, title = stringResource(title), body = stringResource(body))
                         }
                     }
                 }
@@ -204,4 +187,13 @@ private fun CollectionKind.labelRes(): Int? =
         CollectionKind.Category -> R.string.collection_category
         CollectionKind.Tag -> R.string.collection_tag
         CollectionKind.Tool -> R.string.collection_tool
+        CollectionKind.Meal, CollectionKind.Quick -> null
+    }
+
+/** What an empty collection says: the title and the line under it. */
+private fun CollectionKind.emptyRes(): Pair<Int, Int> =
+    when (this) {
+        CollectionKind.Cookbook -> R.string.cookbook_empty_title to R.string.cookbook_empty_message
+        CollectionKind.Meal -> R.string.recipes_meal_empty_title to R.string.recipes_meal_empty_message
+        else -> R.string.recipes_no_results_title to R.string.recipes_no_results_message
     }

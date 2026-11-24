@@ -81,6 +81,7 @@ import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.StatusBarScrim
 import app.aroma.ui.components.animateRow
+import app.aroma.ui.components.mealLabel
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingInkBelow
 import app.aroma.ui.components.ratingInkStart
@@ -110,12 +111,15 @@ data class RateReminder(
 
 data class HomeUiState(
     val greeting: Greeting = Greeting.Afternoon,
+    /** For the initial on the profile button; the greeting itself names no one. */
     val firstName: String? = null,
     val today: List<MealPlanEntry> = emptyList(),
     val meal: Meal = Meal.Dinner,
     /** Recipes for [meal], or any recipes where the household has no category or tag for it. */
     val suggestions: List<RecipeSummary> = emptyList(),
     val suggestionsForMeal: Boolean = false,
+    /** Recipes ready in half an hour, all in, which work without any categories. */
+    val quick: List<RecipeSummary> = emptyList(),
     val cookedLongAgo: List<RecipeSummary> = emptyList(),
     val recent: List<RecipeSummary> = emptyList(),
     val favorites: List<RecipeSummary> = emptyList(),
@@ -133,6 +137,10 @@ data class HomeActions(
     val onOpenSettings: () -> Unit = {},
     val onShowAllRecipes: () -> Unit = {},
     val onShowFavorites: () -> Unit = {},
+    /** All recipes for a meal, on a page under the given title. */
+    val onShowMeal: (Meal, String) -> Unit = { _, _ -> },
+    /** All the quick recipes, on a page under the given title. */
+    val onShowQuick: (String) -> Unit = {},
     val onOpenMealPlan: () -> Unit = {},
     val onRefresh: () -> Unit = {},
     val onRateCooked: (Int) -> Unit = {},
@@ -182,12 +190,27 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                     item(key = "today") {
                         TodaySection(state.today, actions, Modifier.animateRow(this))
                     }
+                    // From what suits the hour to what is worth remembering; each only once it has something to show.
                     if (state.suggestions.isNotEmpty()) {
                         item(key = "suggestions") {
+                            val mealName = mealLabel(state.meal)
                             RecipeCarousel(
-                                title = stringResource(if (state.suggestionsForMeal) state.meal.titleRes() else R.string.home_ideas),
+                                title = if (state.suggestionsForMeal) mealTitle(state.meal) else stringResource(R.string.home_ideas),
                                 recipes = state.suggestions,
                                 actions = actions,
+                                onShowAll = { actions.onShowMeal(state.meal, mealName) }.takeIf { state.suggestionsForMeal },
+                                modifier = Modifier.animateRow(this),
+                            )
+                        }
+                    }
+                    if (state.quick.isNotEmpty()) {
+                        item(key = "quick") {
+                            val title = stringResource(R.string.home_quick)
+                            RecipeCarousel(
+                                title = title,
+                                recipes = state.quick,
+                                actions = actions,
+                                onShowAll = { actions.onShowQuick(title) },
                                 modifier = Modifier.animateRow(this),
                             )
                         }
@@ -231,7 +254,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
     }
 }
 
-/** The greeting with the user's initial beside it, and the search that opens on the Recipes tab. */
+/** The greeting, which names no one, with the user's initial beside it, and the search that opens on the Recipes tab. */
 @Composable
 private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
     val greeting =
@@ -244,7 +267,7 @@ private fun HomeHeader(state: HomeUiState, actions: HomeActions) {
         )
     val name = state.firstName?.takeIf { it.isNotBlank() }
     Column {
-        PageHeader(title = if (name == null) greeting else "$greeting,", accent = name) { tall ->
+        PageHeader(title = greeting) { tall ->
             ProfileButton(name, large = tall, onClick = actions.onOpenSettings)
         }
         SearchPill(
@@ -575,16 +598,14 @@ private fun SectionTitlePlaceholder() {
     ) { PlaceholderLine(Modifier.width(SectionTitleWidth)) }
 }
 
-private fun Meal.titleRes(): Int =
-    when (this) {
-        Meal.Breakfast -> R.string.home_for_breakfast
+/** The suggestions' titles for the meals that have one of their own; any other meal goes by its name. */
+private val MealTitles =
+    mapOf(
+        Meal.Breakfast to R.string.home_for_breakfast,
+        Meal.Lunch to R.string.home_for_lunch,
+        Meal.Snack to R.string.home_for_snack,
+        Meal.Dinner to R.string.home_for_dinner,
+    )
 
-        Meal.Lunch -> R.string.home_for_lunch
-
-        Meal.Snack -> R.string.home_for_snack
-
-        Meal.Dinner -> R.string.home_for_dinner
-
-        // No time of day calls for these (see Meal.at).
-        Meal.Dessert, Meal.Side, Meal.Drink -> R.string.home_ideas
-    }
+@Composable
+private fun mealTitle(meal: Meal): String = MealTitles[meal]?.let { stringResource(it) } ?: mealLabel(meal)

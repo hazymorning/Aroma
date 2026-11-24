@@ -41,6 +41,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import app.aroma.R
 import app.aroma.core.model.Filing
+import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.OrganizerKind
 import app.aroma.feature.cook.CookActions
@@ -81,16 +82,10 @@ import app.aroma.feature.recipe.RecipeViewModel
 import app.aroma.feature.recipes.CollectionActions
 import app.aroma.feature.recipes.CollectionKind
 import app.aroma.feature.recipes.CollectionScreen
-import app.aroma.feature.recipes.CookbookShelf
-import app.aroma.feature.recipes.CookbookShelfViewModel
 import app.aroma.feature.recipes.RecipeFilter
 import app.aroma.feature.recipes.RecipesActions
-import app.aroma.feature.recipes.RecipesHeader
 import app.aroma.feature.recipes.RecipesScreen
-import app.aroma.feature.recipes.RecipesSection
 import app.aroma.feature.recipes.RecipesViewModel
-import app.aroma.feature.recipes.Timeline
-import app.aroma.feature.recipes.TimelineViewModel
 import app.aroma.feature.settings.LicensesScreen
 import app.aroma.feature.settings.SettingsActions
 import app.aroma.feature.settings.SettingsScreen
@@ -145,6 +140,8 @@ fun HomeDestination(nav: NavController, snackbar: SnackbarHostState, onSearch: (
                 onOpenSettings = { nav.navigate(SettingsRoute) },
                 onShowAllRecipes = { nav.navigateToTab(Tab.Recipes) },
                 onShowFavorites = { nav.navigate(CollectionRoute(CollectionKind.Favorites, favorites)) },
+                onShowMeal = { meal, title -> nav.navigate(CollectionRoute(CollectionKind.Meal, title, meal.name)) },
+                onShowQuick = { title -> nav.navigate(CollectionRoute(CollectionKind.Quick, title)) },
                 onOpenMealPlan = { nav.navigateToTab(Tab.MealPlan) },
                 onRefresh = vm::refresh,
                 onRateCooked = vm::rateCooked,
@@ -154,72 +151,43 @@ fun HomeDestination(nav: NavController, snackbar: SnackbarHostState, onSearch: (
     RecipeMenu(menu, nav, snackbar)
 }
 
-/** The recipe tab: the library, the cookbooks or the timeline; [focusSearch] asks once for the search field. */
+/** The recipe tab: the library with its cookbooks; [focusSearch] asks once for the search field. */
 @Composable
 fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSearch: Boolean, onFocusSearchConsume: () -> Unit) {
-    var section by rememberSaveable { mutableStateOf(RecipesSection.All) }
     val menu = remember { RecipeMenuState() }
-    val addRecipe = { nav.navigate(AddRecipeRoute()) }
-    val header: @Composable () -> Unit = { RecipesHeader(section, onSection = { section = it }, onAddRecipe = addRecipe) }
-    if (focusSearch) section = RecipesSection.All
-    when (section) {
-        RecipesSection.All -> {
-            val vm = aromaViewModel { RecipesViewModel(recipes, connection) }
-            val state by vm.state.collectAsStateWithLifecycle()
-            val focus = remember { FocusRequester() }
-            val consumeFocusSearch by rememberUpdatedState(onFocusSearchConsume)
-            LaunchedEffect(focusSearch) {
-                if (focusSearch) {
-                    consumeFocusSearch()
-                    // The search field is part of the grid's first item, laid out a frame after this effect starts.
-                    withFrameNanos {}
-                    runCatching { focus.requestFocus() }
-                }
-            }
-            RecipesScreen(
-                state = state,
-                searchFocus = focus,
-                actions =
-                    RecipesActions(
-                        onSection = { section = it },
-                        onQueryChange = vm::onQueryChange,
-                        onToggleFavorites = vm::toggleFavorites,
-                        onToggleMeal = vm::toggleMeal,
-                        onToggleOrganizer = vm::toggleOrganizer,
-                        onSortChange = vm::setSort,
-                        onClearFilters = vm::clearFilters,
-                        onOpenRecipe = { nav.navigate(RecipeRoute(it.slug)) },
-                        onRecipeMenu = menu::open,
-                        onLoadMore = vm::loadMore,
-                        onAddRecipe = addRecipe,
-                        onRetry = vm::reload,
-                    ),
-            )
-        }
-
-        RecipesSection.Cookbooks -> {
-            val vm = aromaViewModel { CookbookShelfViewModel(recipes, connection) }
-            val state by vm.state.collectAsStateWithLifecycle()
-            CookbookShelf(
-                state = state,
-                header = header,
-                onOpen = { nav.navigate(CollectionRoute(CollectionKind.Cookbook, it.name, it.id, it.description)) },
-                onRetry = vm::reload,
-            )
-        }
-
-        RecipesSection.Timeline -> {
-            val vm = aromaViewModel { TimelineViewModel(timeline, connection) }
-            val state by vm.state.collectAsStateWithLifecycle()
-            Timeline(
-                state = state,
-                header = header,
-                onOpenRecipe = { nav.navigate(RecipeRoute(it.slug)) },
-                onLoadMore = vm::loadMore,
-                onRetry = vm::reload,
-            )
+    val vm = aromaViewModel { RecipesViewModel(recipes, connection, withCookbooks = true) }
+    val state by vm.state.collectAsStateWithLifecycle()
+    val focus = remember { FocusRequester() }
+    val consumeFocusSearch by rememberUpdatedState(onFocusSearchConsume)
+    LaunchedEffect(focusSearch) {
+        if (focusSearch) {
+            consumeFocusSearch()
+            // The search field is part of the grid's first item, laid out a frame after this effect starts.
+            withFrameNanos {}
+            runCatching { focus.requestFocus() }
         }
     }
+    RecipesScreen(
+        state = state,
+        searchFocus = focus,
+        actions =
+            RecipesActions(
+                onQueryChange = vm::onQueryChange,
+                onToggleMeal = vm::toggleMeal,
+                onToggleQuick = vm::toggleQuick,
+                onToggleFavorites = vm::toggleFavorites,
+                onToggleOrganizer = vm::toggleOrganizer,
+                onSortChange = vm::setSort,
+                onClearFilters = vm::clearFilters,
+                onOpenRecipe = { nav.navigate(RecipeRoute(it.slug)) },
+                onRecipeMenu = menu::open,
+                onOpenCookbook = { nav.navigate(CollectionRoute(CollectionKind.Cookbook, it.name, it.id, it.description)) },
+                onLoadMore = vm::loadMore,
+                onAddRecipe = { nav.navigate(AddRecipeRoute()) },
+                onRefresh = vm::refresh,
+                onRetry = vm::reload,
+            ),
+    )
     RecipeMenu(menu, nav, snackbar)
 }
 
@@ -229,11 +197,43 @@ fun CollectionDestination(route: CollectionRoute, nav: NavController, snackbar: 
         aromaViewModel {
             val organizer = setOf(Organizer(route.id, route.name, ""))
             when (route.kind) {
-                CollectionKind.Cookbook -> RecipesViewModel(recipes, connection, cookbook = route.id)
-                CollectionKind.Favorites -> RecipesViewModel(recipes, connection, RecipeFilter(favoritesOnly = true))
-                CollectionKind.Category -> RecipesViewModel(recipes, connection, RecipeFilter(categories = organizer))
-                CollectionKind.Tag -> RecipesViewModel(recipes, connection, RecipeFilter(tags = organizer))
-                CollectionKind.Tool -> RecipesViewModel(recipes, connection, RecipeFilter(tools = organizer))
+                CollectionKind.Cookbook -> {
+                    RecipesViewModel(recipes, connection, cookbook = route.id)
+                }
+
+                CollectionKind.Favorites -> {
+                    RecipesViewModel(recipes, connection, RecipeFilter(favoritesOnly = true))
+                }
+
+                CollectionKind.Category -> {
+                    RecipesViewModel(recipes, connection, RecipeFilter(categories = organizer))
+                }
+
+                CollectionKind.Tag -> {
+                    RecipesViewModel(recipes, connection, RecipeFilter(tags = organizer))
+                }
+
+                CollectionKind.Tool -> {
+                    RecipesViewModel(recipes, connection, RecipeFilter(tools = organizer))
+                }
+
+                CollectionKind.Meal -> {
+                    RecipesViewModel(
+                        recipes,
+                        connection,
+                        RecipeFilter(
+                            meal =
+                                Meal.entries.firstOrNull {
+                                    it.name ==
+                                        route.id
+                                },
+                        ),
+                    )
+                }
+
+                CollectionKind.Quick -> {
+                    RecipesViewModel(recipes, connection, RecipeFilter(quick = true))
+                }
             }
         }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -249,6 +249,7 @@ fun CollectionDestination(route: CollectionRoute, nav: NavController, snackbar: 
                 onOpenRecipe = { nav.navigate(RecipeRoute(it.slug)) },
                 onRecipeMenu = menu::open,
                 onLoadMore = vm::loadMore,
+                onRefresh = vm::refresh,
                 onRetry = vm::reload,
             ),
     )
