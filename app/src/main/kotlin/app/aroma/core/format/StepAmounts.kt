@@ -5,8 +5,9 @@ import app.aroma.core.model.Recipe
 import java.util.Locale
 
 /**
- * An amount to write into a step: the step's text from [start] to [end] gives way to the amount and unit of
- * [line], ingredient [ingredient] as the list shows it, followed by [then].
+ * An amount to write into a step: the step's text from [start] to [end] gives way to [before], the amount and
+ * unit of [line], ingredient [ingredient] as the list shows it, and [then]. An amount that follows its noun in
+ * brackets starts and ends right after the noun: [before] opens the bracket and [then] closes it.
  */
 data class StepAmount(
     val start: Int,
@@ -14,6 +15,7 @@ data class StepAmount(
     val ingredient: Int,
     val line: IngredientLine,
     val then: String = " ",
+    val before: String = "",
 )
 
 /** The amounts to write into the recipe's steps, given the text of its [steps] as the page shows them; see [StepAmounts]. */
@@ -22,22 +24,27 @@ fun Recipe.stepAmounts(steps: List<String>, scale: Double, locale: Locale, syste
 
 /**
  * Writes the amounts of the ingredient list into the steps, so that "Couscous kochen" reads "75 g Couscous
- * kochen". A step names an ingredient where [StepLinks] finds it, and an amount goes only where it is surely
- * all of the ingredient, because a wrong amount is worse than none:
+ * kochen". A step names an ingredient where [StepLinks] finds it, and its amount goes where the recipe names it
+ * first, in whichever step that is, unless the recipe tells that it is not all of it there, because a wrong
+ * amount is worse than none:
  *
- * - At the first place the recipe names the ingredient, and only if no other step names it again, since its
- *   amount may then be split between them. A later name for what the first step made of it does not count:
- *   "Paneerwürfel" after "Paneer in Würfel schneiden".
- * - Nowhere if the recipe gives an amount or a share of the ingredient itself: "200 g Mehl", "2 EL Öl",
- *   "etwas Butter", "die Hälfte der Butter", "the remaining butter".
- * - Only where an amount reads as part of the sentence: at its start, after a comma, "und", "mit" and the
- *   like, or in place of "the" or a German "den", "die", "das", "dem" or "der" right before the noun. After
- *   another word, which may be an adjective, a measure or a number, it would not, and a German adjective
- *   after an article would keep an ending that no longer fits: "die Zwiebel" reads "1 Zwiebel", while "die
- *   gehackten Walnüsse" stays.
+ * - Not where the step gives an amount or a share of its own: "200 g Mehl", "2 EL Öl", "etwas Butter", "die
+ *   Hälfte der Butter", "the remaining butter". Nowhere if a later place gives an amount or a part of it, which
+ *   tells that the first used only part: "2 EL Öl", "etwas Öl", "die restliche Butter". Naming it again, as the
+ *   same food or as what the first step made of it ("Paneerwürfel"), or a later share of the whole, "die Hälfte
+ *   der Butter", or of none, "kein zusätzliches Mehl", leaves the first place as it is.
+ * - Before the noun where it reads as part of the sentence: at its start, after a comma, "und", "mit" and the
+ *   like, or in place of "the" or a German "den", "die", "das", "dem" or "der" right before the noun. After any
+ *   other word, which may be an adjective, it follows the noun in brackets, since a German adjective after an
+ *   article would keep an ending that no longer fits: "die Zwiebel" reads "1 Zwiebel", "die gehackten
+ *   Walnüsse" reads "die gehackten Walnüsse (50 g)".
  * - Only where the step names the food the amount measures: all of "olive oil", not the "lemon" of "lemon
- *   juice"; and a count only its own noun, in the same number, so "2 Eier" fits "Eier" but not "Ei", and "2
- *   Knoblauchzehen" not "Knoblauch".
+ *   juice"; and before a count only its own noun, in the same number, so "2 Eier" fits "Eier" but not "Ei".
+ *   Where the step names the food more broadly than the count, the list's own words follow in brackets:
+ *   "Knoblauch (2 Knoblauchzehen)", "garlic (2 garlic cloves)".
+ * - A line of two foods with an amount each gives each its own: "2 Knoblauchzehen und 2 cm Ingwer" makes
+ *   "Ingwer" read "2 cm Ingwer". Where the step's word names two of them, as "Tomaten" names both in "2 Tomaten
+ *   oder 100 g passierte Tomaten", the list's words for both follow in brackets.
  *
  * German capitalises its nouns, which tells a German recipe from an English one and, within German, a noun
  * from the adjectives and verbs around it; English steps lean on a few small words instead.
@@ -63,7 +70,8 @@ object StepAmounts {
             texts.flatMapIndexed { step, text ->
                 text.namings(step, foods, names, uses?.let { it.getOrNull(step).orEmpty() }, german)
             }
-        val amounts = namings.groupBy { it.ingredient }.values.mapNotNull { amount(it, texts) }
+        // Each food of a line counts on its own, so "Ingwer" of "2 Knoblauchzehen und 2 cm Ingwer" has its first naming too.
+        val amounts = namings.groupBy { it.ingredient to it.part }.values.flatMap(::amounts)
         return steps.indices.map { step -> amounts.filter { it.first == step }.map { it.second }.sortedBy { it.start } }
     }
 
@@ -72,21 +80,21 @@ object StepAmounts {
         buildString {
             var position = 0
             amounts.sortedBy { it.start }.forEach {
-                append(text, position, it.start).append(it.line.measureText()).append(it.then)
+                append(text, position, it.start).append(it.before).append(it.line.measureText()).append(it.then)
                 position = it.end
             }
             append(text, position, text.length)
         }
 
-    /** The step that first names an ingredient, with the amount to write there, if that is surely all of it. */
-    private fun amount(namings: List<Naming>, texts: List<StepText>): Pair<Int, StepAmount>? {
+    /**
+     * The amounts to write where the recipe first names a food, with the step they go into: none where that
+     * place gives an amount or a share of its own, or where a later place gives an amount or a part of it.
+     */
+    private fun amounts(namings: List<Naming>): List<Pair<Int, StepAmount>> {
         val ordered = namings.sortedWith(compareBy({ it.step }, { it.start }))
         val first = ordered.first()
-        if (!first.plain || ordered.any { it.share }) return null
-        // Named again in the same step, it is the same; in another, only as what the first step made of it.
-        val made = texts[first.step].stems
-        val once = ordered.drop(1).all { later -> later.step == first.step || (!later.plain && later.others.any { it in made }) }
-        return if (once) first.amount?.let { first.step to it } else null
+        if (first.share != null || ordered.drop(1).any { it.share == Share.Part }) return emptyList()
+        return first.amounts.map { first.step to it }
     }
 
     /**
@@ -102,20 +110,29 @@ object StepAmounts {
 }
 
 /**
- * A place where a step names an ingredient, from [start] to [end]. A [plain] naming names the food itself, any
- * other something made of it, by a name whose other parts' stems are [others]. [share] tells that the step gives
- * an amount or a share of the ingredient there, and [amount] is the amount that fits there, if one does.
+ * A place where a step names an ingredient, from [start] to [end]: the food of the line's [part]th part, see
+ * [Food.parts]. [share] tells that the step gives an amount or a share of it there, and [amounts] are what to
+ * write there if this is its first naming. A word built on the food's name, as "Paneerwürfel", names something
+ * made of it and takes none.
  */
 private class Naming(
     val ingredient: Int,
     val step: Int,
     val start: Int,
     val end: Int,
-    val plain: Boolean,
-    val others: Set<String> = emptySet(),
-    val share: Boolean = false,
-    val amount: StepAmount? = null,
+    val part: Int = 0,
+    val share: Share? = null,
+    val amounts: List<StepAmount> = emptyList(),
 )
+
+/** What an amount or a share that a step gives of an ingredient says of the ingredient's other places. */
+private enum class Share {
+    /** Half of all of it, all of it or none: "die Hälfte der Butter", "all the butter", "kein zusätzliches Mehl". */
+    Whole,
+
+    /** An amount or a part, which tells that the recipe uses the ingredient in parts: "2 EL Öl", "etwas Öl", "the remaining butter". */
+    Part,
+}
 
 /** What stands before a naming, and whether an amount may go there. */
 private sealed interface Lead {
@@ -126,9 +143,9 @@ private sealed interface Lead {
     data class Article(val start: Int) : Lead
 
     /** The step gives an amount or a share of the ingredient. */
-    data object Share : Lead
+    data class Gives(val share: Share) : Lead
 
-    /** An amount would not read as part of the sentence. */
+    /** An amount would not read as part of the sentence there; it follows the naming in brackets. */
     data object Closed : Lead
 }
 
@@ -138,7 +155,7 @@ private sealed interface Follow {
     data object Open : Follow
 
     /** The step gives an amount right after: "Mehl (200 g)". */
-    data object Share : Follow
+    data object Gives : Follow
 
     /** The naming is part of a longer name ending in [word]: "Gurken-Slaw", "lemon juice". */
     data class Longer(val word: String) : Follow
@@ -162,6 +179,17 @@ private sealed interface Side {
     class Word(val word: MatchResult) : Side
 }
 
+/** How the amount of a [part] goes into a step that names it. */
+private sealed interface Fit {
+    val part: Part
+
+    /** Before the naming, as in "75 g Couscous". */
+    class Before(override val part: Part) : Fit
+
+    /** After the naming in brackets: the amount alone, "(50 g)", or with the list's own words, "(2 Knoblauchzehen)". */
+    class After(override val part: Part, val own: Boolean) : Fit
+}
+
 /** An ingredient as the list shows it, read for where its amount may go. */
 private class Food(
     ingredient: Ingredient,
@@ -169,38 +197,31 @@ private class Food(
     locale: Locale,
     system: MeasureSystem,
 ) {
-    val line = IngredientFormatter.format(ingredient, scale, locale, system)
+    private val line = IngredientFormatter.format(ingredient, scale, locale, system)
 
-    /** The line's name, before a comma or a bracket: "frische Hefe" of "frische Hefe (= ca. 21 g)". */
-    private val part =
-        line.text
-            .withoutPictographs()
-            .substringBefore(',')
-            .substringBefore('(')
-    private val words: List<MatchResult> = StepLinks.Word.findAll(part).toList()
-    private val keys: List<String> = words.map { it.value.lowercase(Locale.ROOT) }
-    private val nameAt: List<Int> = keys.indices.filter { index -> StepLinks.names(keys[index]) }
-
-    /** The words that name the food, as [StepLinks] reads them. */
-    val names: List<String> = nameAt.map { index -> keys[index] }
-
-    /** The first name words in a row, which name what the amount measures: "olive oil", "Lemon Curd", "stückige Tomaten". */
-    private val run: IntRange? =
-        nameAt.firstOrNull()?.let { first ->
-            var last = first
-            while (last + 1 in nameAt &&
-                part.substring(words[last].range.last + 1, words[last + 1].range.first).all { it in JOINING }
-            ) {
-                last++
+    /**
+     * The foods the line names, each with its own amount: one for most lines, two for "2 Knoblauchzehen und 2 cm
+     * Ingwer" or "2 Tomaten oder 100 g passierte Tomaten". A food without an amount of its own, as the "Öl" of
+     * "3 EL Ghee oder Öl", stays with the one before it and takes no amount.
+     */
+    val parts: List<Part> =
+        run {
+            val name = name(line.text)
+            val joins =
+                if (ingredient.isParsed) emptyList() else Joins.findAll(name).filter { owns(name.substring(it.range.last + 1)) }.toList()
+            val first = name.substring(0, joins.firstOrNull()?.range?.first ?: name.length)
+            val parts = mutableListOf(Part(line.copy(text = first.trim()), written(ingredient), scale, offset = 0))
+            joins.forEachIndexed { index, join ->
+                parts[index].joiner = " ${join.groupValues[1]} "
+                val text = name.substring(join.range.last + 1, joins.getOrNull(index + 1)?.range?.first ?: name.length).trim()
+                val own = IngredientFormatter.freeText(text, 0.0, scale, locale, system)
+                parts += Part(own, LeadingQuantityParser.parse(text)?.value ?: 0.0, scale, offset = parts.sumOf { it.names.size })
             }
-            first..last
+            parts
         }
 
-    /** Whether the amount counts the food, as in "2 Eier", rather than measuring it in a unit. */
-    private val counts = line.unit.isNullOrBlank()
-
-    /** Whether a count stays one or more than one as scaled: "1 Zwiebel" made two would read "2 Zwiebel". */
-    private val keepsNumber = written(ingredient).let { (it > 1) == (it * scale > 1) }
+    /** The words that name the food, as [StepLinks] reads them, of all its parts in turn. */
+    val names: List<String> = parts.flatMap { it.names }
 
     /** Whether the line writes a word capitalised, by the word's stem. */
     private val capitals: Map<String, Boolean> =
@@ -219,24 +240,18 @@ private class Food(
         return key.length >= MIN_WORD && capitalised(key) != null && !isUnit(key) && key !in ARTICLES && key !in JOINERS && !gives(key)
     }
 
-    /**
-     * Whether the step's words [named], each with what it names, name all that the amount measures. A count needs
-     * its noun, in the same number, and nothing after it in the line: "2 Eier" fits "Eier" and "Eiern", not "Ei".
-     */
-    fun fits(named: List<Pair<String, StepLinks.Mention>>): Boolean {
-        val run = run ?: return false
-        if (line.amount == null || part.substring(0, words[run.first].range.first).any(::isNumber)) return false
-        val covered = named.map { nameAt[it.second.name] }.toSet()
-        if (!counts) return run.last in covered
-        val noun = keys[run.last]
-        return keepsNumber &&
-            run.all { it in covered } &&
-            (run.last + 1 until words.size).none { StepLinks.names(keys[it]) || isUnit(keys[it]) } &&
-            part.substring(words[run.last].range.last + 1).none(::isNumber) &&
-            named.any { (word, mention) ->
-                nameAt[mention.name] == run.last && (mention.match == StepLinks.Match.Broader || word == noun || word == noun + "n")
-            }
-    }
+    /** The index into [parts] of the part whose name words hold the [name]th of [names]. */
+    fun partOf(name: Int): Int = parts.indexOfLast { it.offset <= name }
+
+    /** How the amounts of the parts that the step's words [named], each with what it names, go into the step. */
+    fun fits(named: List<Pair<String, StepLinks.Mention>>): List<Fit> =
+        parts.mapIndexedNotNull { index, part ->
+            part.fit(
+                named.filter { partOf(it.second.name) == index }.map { (word, mention) ->
+                    Triple(word, mention.name - part.offset, mention.match)
+                },
+            )
+        }
 
     /** The amount as the recipe gives it, before scaling. */
     private fun written(ingredient: Ingredient): Double =
@@ -252,6 +267,107 @@ private class Food(
                 )?.value
                 ?: ingredient.quantity
         }
+
+    private companion object {
+        /** The words that join two foods of a line: "und", "oder", "and", "or". */
+        val Joins = Regex("""\s+(und|oder|bzw\.|and|or|&)\s+""", RegexOption.IGNORE_CASE)
+
+        /** The line's name, before a comma or a bracket: "frische Hefe" of "frische Hefe (= ca. 21 g)". */
+        fun name(text: String) =
+            text
+                .withoutPictographs()
+                .substringBefore(',')
+                .substringBefore('(')
+
+        /** Whether [text] starts with an amount of its own, as "2 cm Ingwer" does. */
+        fun owns(text: String) = LeadingQuantityParser.parse(text.trim()) != null
+    }
+}
+
+/**
+ * One food of an ingredient line, as [line] shows it, whose name words start at the [offset]th of the line's.
+ * [written] is its amount as the recipe gives it, before scaling by [scale].
+ */
+private class Part(
+    val line: IngredientLine,
+    written: Double,
+    scale: Double,
+    val offset: Int,
+) {
+    /** What joins it to the next part of the line, as " oder ". */
+    var joiner: String = ""
+
+    /** Its name: the line's words after the amount, such as "Knoblauchzehen" or "passierte Tomaten". */
+    val text: String = line.text
+    private val words: List<MatchResult> = StepLinks.Word.findAll(text).toList()
+    private val keys: List<String> = words.map { it.value.lowercase(Locale.ROOT) }
+    private val nameAt: List<Int> = keys.indices.filter { index -> StepLinks.names(keys[index]) }
+
+    /** The words that name the food, as [StepLinks] reads them. */
+    val names: List<String> = nameAt.map { index -> keys[index] }
+
+    /** The first name words in a row, which name what the amount measures: "olive oil", "Lemon Curd", "stückige Tomaten". */
+    private val run: IntRange? =
+        nameAt.firstOrNull()?.let { first ->
+            var last = first
+            while (last + 1 in nameAt &&
+                text.substring(words[last].range.last + 1, words[last + 1].range.first).all { it in JOINING }
+            ) {
+                last++
+            }
+            first..last
+        }
+
+    /** Whether the amount counts the food, as in "2 Eier", rather than measuring it in a unit. */
+    private val counts = line.unit.isNullOrBlank()
+
+    /** Whether a count stays one or more than one as scaled: "1 Zwiebel" made two would read "2 Zwiebel". */
+    private val keepsNumber = (written > 1) == (written * scale > 1)
+
+    /**
+     * How the amount goes into a step whose words [named] its name words, each with the index of the name word
+     * and how it names it; null where it does not fit. A count goes before its own noun in the same number, with
+     * nothing after it in the line: "2 Eier" fits "Eier" and "Eiern". The same noun in another number takes the
+     * count in brackets, "Zwiebel (2)"; where the step names the counted food otherwise, as "garlic" does "2 garlic
+     * cloves" and "Knoblauch" does "2 Knoblauchzehen", or the line goes on after it, the list's own words follow in
+     * brackets.
+     */
+    fun fit(named: List<Triple<String, Int, StepLinks.Match>>): Fit? {
+        val run = run ?: return null
+        if (named.isEmpty() || line.amount == null || text.substring(0, words[run.first].range.first).any(::isNumber)) return null
+        val covered = named.map { nameAt[it.second] }.toSet()
+        if (!counts) return if (run.last in covered) Fit.Before(this) else null
+        val alone =
+            (run.last + 1 until words.size).none { StepLinks.names(keys[it]) || isUnit(keys[it]) } &&
+                text.substring(words[run.last].range.last + 1).none(::isNumber)
+        val noun = keys[run.last]
+        val atNoun = named.filter { nameAt[it.second] == run.last }
+        return when {
+            !run.all { it in covered } -> {
+                if (covered.any { it in run }) Fit.After(this, own = true) else null
+            }
+
+            // The line goes on, "2 garlic cloves", "2 Eier und Mehl zum Wenden": the amount alone would say too little.
+            !alone -> {
+                Fit.After(this, own = true)
+            }
+
+            atNoun.any { (word, _, match) -> match == StepLinks.Match.Broader || word == noun || word == noun + "n" } -> {
+                if (keepsNumber) Fit.Before(this) else Fit.After(this, own = false)
+            }
+
+            // The same noun in another number: "Zwiebel (2)" for "2 Zwiebeln".
+            atNoun.any { (word, _, match) ->
+                match == StepLinks.Match.Same && StepLinks.stem(word) == StepLinks.stem(noun)
+            } -> {
+                Fit.After(this, own = false)
+            }
+
+            else -> {
+                Fit.After(this, own = true)
+            }
+        }
+    }
 }
 
 /** A step's text, read word by word. */
@@ -287,7 +403,9 @@ private class StepText(val text: String) {
             val word = words[index]
             if (ingredients.size > 1) {
                 // A word that may name either of two ingredients names neither for sure: no amount, but a use of both.
-                ingredients.forEach { namings += Naming(it, step, word.range.first, word.range.last + 1, plain = true) }
+                mentions.distinctBy { it.ingredient }.forEach {
+                    namings += Naming(it.ingredient, step, word.range.first, word.range.last + 1, foods[it.ingredient].partOf(it.name))
+                }
             } else {
                 own.getOrPut(ingredients.single()) { mutableListOf() } += index
             }
@@ -309,9 +427,7 @@ private class StepText(val text: String) {
         val built =
             (indexes - plain.toSet()).map { index ->
                 val word = words[index]
-                val key = word.value.lowercase(Locale.ROOT)
-                val others = byWord.getValue(index).flatMap { rest(key, food.names[it.name]) }.toSet()
-                Naming(ingredient, step, word.range.first, word.range.last + 1, plain = false, others = others)
+                Naming(ingredient, step, word.range.first, word.range.last + 1, food.partOf(byWord.getValue(index).first().name))
             }
         // The words of a name in a row are one naming: "olive oil", "Lemon Curd".
         val runs = mutableListOf<IntRange>()
@@ -342,65 +458,78 @@ private class StepText(val text: String) {
         while (first > 0 && first - 1 !in byWord && spaced(first - 1) && food.describes(words[first - 1].value)) first--
         val start = words[first].range.first
         val end = words[run.last].range.last + 1
-        val before = before(start)
-        val follow = follow(end, german)
-        if (before is Side.Joined || follow is Follow.Longer) {
-            val others = listOfNotNull((before as? Side.Joined)?.word?.value, (follow as? Follow.Longer)?.word)
-            return Naming(
-                ingredient,
-                step,
-                start,
-                end,
-                plain = false,
-                others = others.map { StepLinks.stem(it.lowercase(Locale.ROOT)) }.toSet(),
-            )
-        }
-        val lead = lead(before, words[first], german)
-        val share = lead == Lead.Share || follow == Follow.Share
-        val head = words[run.last].value
-        // German capitalises its nouns: "salzen" is a verb, not the "Salz" of the list.
-        val verb = german && head.first().isLowerCase() && food.capitalised(head) == true
         val named =
             run.flatMap { index ->
                 byWord.getValue(index).filter { it.match != StepLinks.Match.Built }.map { words[index].value.lowercase(Locale.ROOT) to it }
             }
-        val amount =
-            if (share || verb || follow != Follow.Open ||
-                !food.fits(named)
-            ) {
-                null
-            } else {
-                amountAt(lead, start, words[first], ingredient, food)
-            }
-        return Naming(ingredient, step, start, end, plain = true, share = share, amount = amount)
+        val fits = food.fits(named)
+        val part = fits.firstOrNull()?.let { food.parts.indexOf(it.part) } ?: food.partOf(named.first().second.name)
+        val before = before(start)
+        val follow = follow(end, german)
+        // Part of a longer name, it names something made of the food: "Gurken-Slaw", "lemon juice".
+        if (before is Side.Joined || follow is Follow.Longer) return Naming(ingredient, step, start, end, part)
+        val lead = lead(before, words[first], german)
+        val share = (lead as? Lead.Gives)?.share ?: Share.Part.takeIf { follow == Follow.Gives }
+        val head = words[run.last].value
+        // German capitalises its nouns: "salzen" is a verb, not the "Salz" of the list.
+        val verb = german && head.first().isLowerCase() && food.capitalised(head) == true
+        val amounts = if (share != null || verb) emptyList() else amountsAt(lead, start, end, words[first], ingredient, food, fits)
+        return Naming(ingredient, step, start, end, part, share, amounts)
     }
 
-    private fun amountAt(
+    /** The amounts to write for a naming from [start] to [end], whose first word is [first], as its parts [fits]. */
+    private fun amountsAt(
         lead: Lead,
         start: Int,
+        end: Int,
         first: MatchResult,
         ingredient: Int,
         food: Food,
-    ): StepAmount? =
-        when (lead) {
-            is Lead.Article -> {
-                StepAmount(lead.start, start, ingredient, food.line)
-            }
+        fits: List<Fit>,
+    ): List<StepAmount> {
+        val fit = fits.singleOrNull() ?: return alternatives(end, ingredient, food, fits)
+        val line = fit.part.line
+        val amount =
+            when {
+                fit is Fit.After -> {
+                    StepAmount(end, end, ingredient, line, then = (if (fit.own) " " + fit.part.text else "") + ")", before = " (")
+                }
 
-            Lead.Open -> {
-                // A word capitalised only for starting the sentence, as "Weiße" of "Weiße Schokolade", takes the line's spelling.
-                val initial = first.value.first()
-                if (initial.isUpperCase() && food.capitalised(first.value) == false && opensSentence(first)) {
-                    StepAmount(start, start + 1, ingredient, food.line, " " + initial.lowercase())
-                } else {
-                    StepAmount(start, start, ingredient, food.line)
+                lead is Lead.Article -> {
+                    StepAmount(lead.start, start, ingredient, line)
+                }
+
+                lead == Lead.Open -> {
+                    // A word capitalised only for starting the sentence, as "Weiße" of "Weiße Schokolade", takes the line's spelling.
+                    val initial = first.value.first()
+                    if (initial.isUpperCase() && food.capitalised(first.value) == false && opensSentence(first)) {
+                        StepAmount(start, start + 1, ingredient, line, " " + initial.lowercase())
+                    } else {
+                        StepAmount(start, start, ingredient, line)
+                    }
+                }
+
+                // After an adjective or a verb, the amount follows the noun: "die gehackten Walnüsse (50 g)".
+                else -> {
+                    StepAmount(end, end, ingredient, line, then = ")", before = " (")
                 }
             }
+        return listOf(amount)
+    }
 
-            else -> {
-                null
-            }
+    /**
+     * Where a naming that ends at [end] names two foods of one line, as "Tomaten" names both of "2 Tomaten oder 100 g
+     * passierte Tomaten": the list's words for both, which follow in brackets with each amount in its place.
+     */
+    private fun alternatives(end: Int, ingredient: Int, food: Food, fits: List<Fit>): List<StepAmount> {
+        val at = fits.map { food.parts.indexOf(it.part) }
+        if (at.isEmpty() || at.zipWithNext().any { (one, next) -> next != one + 1 }) return emptyList()
+        return fits.mapIndexed { index, fit ->
+            val last = index == fits.lastIndex
+            val then = " " + fit.part.text + if (last) ")" else fit.part.joiner
+            StepAmount(end, end, ingredient, fit.part.line, then = then, before = if (index == 0) " (" else "")
         }
+    }
 
     /** What [before] a naming that starts with the word [first] says about writing an amount there. */
     private fun lead(before: Side, first: MatchResult, german: Boolean): Lead =
@@ -410,7 +539,7 @@ private class StepText(val text: String) {
             }
 
             Side.Number -> {
-                Lead.Share
+                Lead.Gives(Share.Part)
             }
 
             is Side.Joined -> {
@@ -432,13 +561,15 @@ private class StepText(val text: String) {
     private fun afterWord(word: MatchResult, german: Boolean, open: Lead): Lead {
         val key = word.value.lowercase(Locale.ROOT)
         return when {
-            gives(key) || isUnit(key) || text.getOrNull(word.range.first - 1)?.isDigit() == true -> Lead.Share
+            isUnit(key) || text.getOrNull(word.range.first - 1)?.isDigit() == true -> Lead.Gives(Share.Part)
+
+            gives(key) -> Lead.Gives(share(word))
 
             key in JOINERS || durations.any { it.end == word.range.last + 1 } -> open
 
             // Within a German sentence, a capital marks a noun: a measure, as in "einen Schuss Milch", or the
             // "Hälfte" of "die Hälfte der Butter", unless it ends a place, as in "In einer Schüssel Mehl mischen".
-            german && word.value.first().isUpperCase() && !opensSentence(word) -> if (endsPlace(word)) open else Lead.Share
+            german && word.value.first().isUpperCase() && !opensSentence(word) -> if (endsPlace(word)) open else Lead.Gives(share(word))
 
             german -> if (inflected(key)) Lead.Closed else open
 
@@ -453,15 +584,15 @@ private class StepText(val text: String) {
     private fun article(article: MatchResult, first: MatchResult, german: Boolean): Lead {
         val english = article.value.equals("the", ignoreCase = true)
         // A German adjective after an article ends to fit it: "die gehackten Walnüsse" would not read "50 g gehackten Walnüsse".
-        if (english == german || (german && first.value.first().isLowerCase())) return Lead.Closed
-        val replace = Lead.Article(article.range.first)
+        val fits = english != german && !(german && first.value.first().isLowerCase())
+        val replace = if (fits) Lead.Article(article.range.first) else Lead.Closed
         return when (val before = before(article.range.first)) {
             Side.Edge, Side.Mark -> {
                 replace
             }
 
             Side.Number -> {
-                Lead.Share
+                Lead.Gives(Share.Part)
             }
 
             is Side.Joined -> {
@@ -472,7 +603,8 @@ private class StepText(val text: String) {
                 val key = before.word.value.lowercase(Locale.ROOT)
                 when {
                     !english -> afterWord(before.word, german = true, replace)
-                    gives(key) || isUnit(key) -> Lead.Share
+                    isUnit(key) -> Lead.Gives(Share.Part)
+                    gives(key) -> Lead.Gives(share(before.word))
                     else -> replace
                 }
             }
@@ -483,7 +615,7 @@ private class StepText(val text: String) {
     private fun follow(end: Int, german: Boolean): Follow =
         when (val after = after(end)) {
             Side.Number -> {
-                Follow.Share
+                Follow.Gives
             }
 
             is Side.Joined -> {
@@ -533,6 +665,21 @@ private class StepText(val text: String) {
             }
         }
         return false
+    }
+
+    /**
+     * What the amount or share a step gives at [word], right before a naming, says of the ingredient's other
+     * places: half, all or none of it leaves them whole, as in "die Hälfte der Butter" and "kein zusätzliches
+     * Mehl"; anything else tells that the recipe uses it in parts, as "etwas Öl" and "die restliche Butter" do.
+     */
+    private fun share(word: MatchResult): Share {
+        var index = startingAt.getValue(word.range.first)
+        repeat(SHARE_WORDS) {
+            if (StepLinks.stem(words[index].value.lowercase(Locale.ROOT)) in WHOLE) return Share.Whole
+            if (index == 0 || !spaced(index - 1)) return Share.Part
+            index--
+        }
+        return Share.Part
     }
 
     /** Whether [word] starts a sentence. */
@@ -592,14 +739,6 @@ private class StepText(val text: String) {
     }
 }
 
-/** What a word built on the name word [name] adds to it, as stems: "würfel" of "paneerwürfel", "hefe" of "hefewasser". */
-private fun rest(word: String, name: String): List<String> {
-    val rest = if (word.startsWith(name)) word.removePrefix(name) else word.removeSuffix(name)
-    // German may join the parts with an "s" or an "n": "Tomatenwürfel" built on "Tomate".
-    val joined = rest.drop(1).takeIf { rest.firstOrNull()?.let { it == 's' || it == 'n' } == true }
-    return listOfNotNull(rest, joined).filter { it.isNotEmpty() }.map(StepLinks::stem)
-}
-
 /** Whether [key] gives an amount, a share or none of an ingredient: a number, "etwas", "the remaining", "ohne". */
 private fun gives(key: String) = key in DurationDetector.numberWords || StepLinks.stem(key) in GIVES
 
@@ -616,6 +755,9 @@ private fun isNumber(char: Char) = char.isDigit() || char in GLYPH_VALUES
 private fun Char?.isAny(chars: Set<Char>) = this != null && this in chars
 
 private const val MIN_WORD = 3
+
+/** How many words, back from the one right before a naming, may tell what a share leaves whole: "kein zusätzliches Mehl". */
+private const val SHARE_WORDS = 3
 
 /** Past "Bring" and "Shred": longer words ending in "-ed" or "-ing" describe, as "melted" and "boiling" do. */
 private const val LONG_WORD = 5
@@ -709,4 +851,28 @@ private val GIVES =
         "all",
         "any",
         "of",
+    ).map(StepLinks::stem).toSet()
+
+/** Words that give a share of all of an ingredient, or none of it, by their stems: "die Hälfte", "kein", "all the". */
+private val WHOLE =
+    listOf(
+        "kein",
+        "keine",
+        "keinen",
+        "ohne",
+        "hälfte",
+        "drittel",
+        "viertel",
+        "alle",
+        "ganze",
+        "gesamte",
+        "no",
+        "none",
+        "without",
+        "half",
+        "third",
+        "quarter",
+        "all",
+        "whole",
+        "entire",
     ).map(StepLinks::stem).toSet()

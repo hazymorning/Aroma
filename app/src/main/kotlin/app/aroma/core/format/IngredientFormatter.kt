@@ -165,6 +165,7 @@ object IngredientFormatter {
             "glas",
             "gläser",
             "handvoll",
+            "cm",
             "stange",
             "stangen",
             "zweig",

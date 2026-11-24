@@ -26,6 +26,9 @@ object StepLinks {
 
         /** A word built on the ingredient's, for a part of it, something made of it or a kind of it: "Knoblauchzehen", "Hefewasser". */
         Built,
+
+        /** The whole food, of which the ingredient counts pieces: "Knoblauch" for "Knoblauchzehen", "Chili" for "Chilischote". */
+        Whole,
     }
 
     /** A word of a step, at [range], that names the [name]th name word of ingredient [ingredient]. */
@@ -49,6 +52,8 @@ object StepLinks {
                         val match =
                             when {
                                 stem(name) == stem -> Match.Same
+
+                                piece(name, word) -> Match.Whole
 
                                 // A word that names an ingredient exactly is not read as part of another one's compound.
                                 stem in known -> null
@@ -83,11 +88,27 @@ object StepLinks {
      */
     private fun compound(word: String, name: String): Match? =
         when {
-            word == name || minOf(word.length, name.length) < MIN_COMPOUND -> null
-            name.endsWith(word) -> Match.Broader
+            word == name -> null
+
+            // The last part of a German word names the food: even a short one, as "Mehl" of "Weizenmehl", says what it is.
+            word.length >= MIN_HEAD && name.length >= MIN_COMPOUND && name.endsWith(word) -> Match.Broader
+
+            minOf(word.length, name.length) < MIN_COMPOUND -> null
+
             word.startsWith(name) || word.endsWith(name) -> Match.Built
+
             else -> null
         }
+
+    /**
+     * Whether the ingredient's word [name] counts pieces of the food that [word] names, as German builds them:
+     * "knoblauchzehen" of "knoblauch", "tomatenscheiben" of "tomaten", "chilischote" of "chili". Only pieces count;
+     * "Salatgurke" or "Tomatenmark" is another food.
+     */
+    private fun piece(name: String, word: String): Boolean {
+        val whole = listOf(word, stem(word)).firstOrNull { it.length > MIN_WORD && name.length > it.length && name.startsWith(it) }
+        return whole != null && stem(name.substring(whole.length)).let { rest -> Pieces.any { rest.endsWith(it) } }
+    }
 
     private fun words(text: String): List<String> = Word.findAll(text).map { it.value.lowercase(Locale.ROOT) }.toList()
 
@@ -116,6 +137,35 @@ object StepLinks {
 
     /** The least length of both words where one is read as part of the other. */
     private const val MIN_COMPOUND = 5
+
+    /** The least length of a word read as the last part of an ingredient's, which names its food: "Mehl", "Reis". */
+    private const val MIN_HEAD = 4
+
+    /** What German counts a food in, as parts of a word: "Knoblauchzehen", "Vanilleschote", "Hähnchenbrustfilets". */
+    private val Pieces =
+        listOf(
+            "zehe",
+            "schote",
+            "stange",
+            "stängel",
+            "zweig",
+            "blatt",
+            "blätter",
+            "scheibe",
+            "würfel",
+            "ring",
+            "filet",
+            "stück",
+            "knolle",
+            "kolben",
+            "staude",
+            "keule",
+            "schenkel",
+            "brust",
+            "brüste",
+            "kopf",
+            "köpfe",
+        ).map(::stem)
 
     /** Words that describe an ingredient rather than name it, in English and German, compared by their stems. */
     private val Fillers =
