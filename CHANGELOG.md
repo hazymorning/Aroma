@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 – 2026-11-24
+
+**New**
+- Amounts in the steps: turn it on in the settings to read "75 g couscous" right in the step.
+- The meal plan widget leads with the photo: just the photo at 1×1, the photo behind the name at 2×1 and 2×2.
+
+**Better**
+- Offline, your saved recipes show at once, and Aroma reconnects by itself when the server is back.
+- Plan and shop are two large buttons, and the greeting stays on one line where it fits.
+- In cooking mode, a swipe on the ingredient panel turns the step too.
+
 ## 0.4.2 – 2026-11-23
 
 **New**
