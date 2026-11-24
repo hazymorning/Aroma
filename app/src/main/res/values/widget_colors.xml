@@ -4,23 +4,23 @@
     layouts, their loading and error layouts and their previews. WidgetPaletteTest keeps them in step.
 -->
 <resources>
-    <color name="widget_background">#FFF8F8F3</color>
-    <color name="widget_card">#FFEEEFE7</color>
-    <color name="widget_on_surface">#FF1A1C18</color>
-    <color name="widget_on_surface_variant">#FF585D53</color>
-    <color name="widget_primary">#FF486447</color>
-    <color name="widget_on_primary">#FFFFFFFF</color>
-    <color name="widget_selected">#FFDCE7D4</color>
-    <color name="widget_on_selected">#FF1C3319</color>
-    <color name="widget_cta">#FF486447</color>
-    <color name="widget_on_cta">#FFFFFFFF</color>
-    <color name="widget_outline">#FF8B9086</color>
+    <color name="widget_background">#FFFBF9F7</color>
+    <color name="widget_card">#FFF0EDE6</color>
+    <color name="widget_on_surface">#FF1F1D1A</color>
+    <color name="widget_on_surface_variant">#FF6B675F</color>
+    <color name="widget_primary">#FF536258</color>
+    <color name="widget_on_primary">#FFFBF9F7</color>
+    <color name="widget_selected">#FFD6E1D7</color>
+    <color name="widget_on_selected">#FF1F1D1A</color>
+    <color name="widget_cta">#FF1F1D1A</color>
+    <color name="widget_on_cta">#FFFBF9F7</color>
+    <color name="widget_outline">#FF837E76</color>
 
     <!--
         Words set on a photo, and the scrim behind them: the same in light and dark, as the photo is.
         Over the scrim even a white photo keeps the name at 5.4:1 and the line above it at 4.7:1.
     -->
-    <color name="widget_on_photo">#FFF8F8F3</color>
-    <color name="widget_on_photo_variant">#FFE8E8E3</color>
+    <color name="widget_on_photo">#FFFBF9F7</color>
+    <color name="widget_on_photo_variant">#FFEDE9E2</color>
     <color name="widget_scrim">#99000000</color>
 </resources>

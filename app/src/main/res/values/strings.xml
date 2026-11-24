@@ -18,12 +18,13 @@
     <string name="action_back">Back</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_close">Close</string>
+    <string name="sheet_handle">Drag handle</string>
     <string name="action_continue">Continue</string>
     <string name="action_decrease">Less</string>
     <string name="action_delete">Delete</string>
     <string name="action_done">Done</string>
     <string name="action_edit">Edit</string>
-    <string name="action_favorite">Add to favorites</string>
+    <string name="action_favorite">Save</string>
     <string name="action_increase">More</string>
     <string name="action_more">More options</string>
     <string name="action_plan">Plan</string>
@@ -31,13 +32,15 @@
     <string name="action_save">Save</string>
     <string name="action_share">Share</string>
     <string name="action_show_all">Show all</string>
-    <string name="action_unfavorite">Remove from favorites</string>
+    <string name="action_unfavorite">Remove from saved</string>
 
     <!-- Durations -->
-    <string name="duration_seconds">%1$d s</string>
-    <string name="duration_minutes">%1$d min</string>
-    <string name="duration_hours">%1$d h</string>
-    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_seconds">%1$d\u202Fs</string>
+    <string name="duration_minutes">%1$d\u202Fmin</string>
+    <string name="duration_hours">%1$d\u202Fh</string>
+    <string name="duration_hours_minutes">%1$d\u202Fh %2$d\u202Fmin</string>
+    <string name="duration_minutes_span">%1$d–%2$d\u202Fmin</string>
+    <string name="duration_hours_span">%1$d–%2$d\u202Fh</string>
 
     <!-- Errors -->
     <string name="error_offline_title">No connection</string>
@@ -71,22 +74,32 @@
     <string name="greeting_morning">Good morning</string>
     <string name="greeting_afternoon">Good afternoon</string>
     <string name="greeting_evening">Good evening</string>
+    <string name="greeting_morning_name">Good morning,\n%1$s</string>
+    <string name="greeting_afternoon_name">Good afternoon,\n%1$s</string>
+    <string name="greeting_evening_name">Good evening,\n%1$s</string>
     <string name="home_open_profile">Profile and settings</string>
     <string name="home_today">Today</string>
-    <string name="home_open_plan">Meal plan</string>
-    <string name="home_today_empty">Nothing planned for today</string>
+    <string name="home_today_breakfast">This morning</string>
+    <string name="home_today_lunch">Lunch today</string>
+    <string name="home_today_dinner">Tonight</string>
+    <string name="home_today_other">Today\u00A0· %1$s</string>
+    <string name="home_recipe">Recipe</string>
+    <string name="home_open_recipe">Open recipe</string>
+    <string name="home_this_week">This week</string>
+    <plurals name="home_week_planned">
+        <item quantity="one">%1$d of %2$d planned</item>
+        <item quantity="other">%1$d of %2$d planned</item>
+    </plurals>
+    <string name="home_week_day_planned">%1$s %2$d, planned</string>
+    <string name="home_week_day_free">%1$s %2$d</string>
+    <string name="home_shopping_list">Shopping list</string>
+    <string name="home_today_empty">Nothing planned for today yet</string>
     <string name="home_today_plan">Plan a meal</string>
-    <string name="home_recent">Recently added</string>
-    <string name="home_favorites">Favorites</string>
-    <string name="home_for_breakfast">For breakfast</string>
-    <string name="home_for_lunch">For lunch</string>
-    <string name="home_for_snack">For in between</string>
-    <string name="home_for_dinner">For tonight</string>
     <string name="home_ideas">Ideas for today</string>
-    <string name="home_quick">Ready in 30 minutes</string>
-    <string name="home_cooked_long_ago">Not cooked in a while</string>
+    <string name="home_quick">Quick to make</string>
+    <string name="home_newest">New in your collection</string>
+    <string name="home_planned_today">Planned for today</string>
     <string name="search_recipes_hint">Search recipes</string>
-    <string name="home_rate_open">Open recipe</string>
     <string name="home_rate_dismiss">Dismiss</string>
 
     <!-- Meal types -->
@@ -118,7 +131,8 @@
     <string name="recipe_notes">Notes</string>
     <string name="recipe_nutrition">Nutrition</string>
     <string name="recipe_prep_time">Prep</string>
-    <string name="recipe_cook_time">Cook</string>
+    <string name="recipe_cook_time">Cooking</string>
+    <string name="recipe_bake_time">Baking</string>
     <string name="recipe_total_time">Total</string>
     <string name="recipe_add_to_list">Add to shopping list</string>
     <string name="recipe_tools">Equipment</string>
@@ -151,6 +165,7 @@
 
     <string name="action_clear">Clear</string>
     <string name="action_undo">Undo</string>
+    <string name="recipe_unsaved">Removed from saved</string>
     <string name="select_all">Select all</string>
     <string name="select_none">Select none</string>
     <string name="share_import_label">Add to Aroma</string>
@@ -178,19 +193,20 @@
     <string name="login_http_hint">If your server has no https, enter its address with http:// in front.</string>
 
     <!-- Recipe library -->
-    <string name="recipes_all">All recipes</string>
     <string name="recipes_cookbooks">Cookbooks</string>
     <string name="recipes_add">Add recipe</string>
+    <string name="recipes_filter">Filter</string>
+    <string name="recipes_all_kinds">All</string>
+    <string name="recipes_narrow">Show</string>
+    <string name="recipes_saved">Saved</string>
+    <string name="recipes_long_ago">Not cooked in a while</string>
     <string name="recipes_quick">Quick</string>
     <string name="recipes_categories">Categories</string>
     <string name="recipes_tags">Tags</string>
     <string name="recipes_clear_filters">Clear filters</string>
     <string name="recipes_empty_title">No recipes yet</string>
-    <string name="recipes_empty_message">Import your first recipe from a website or write one yourself.</string>
     <string name="recipes_no_results_title">Nothing found</string>
-    <string name="recipes_no_results_message">Try a different search or remove some filters.</string>
     <string name="recipes_meal_empty_title">No recipes for this meal yet</string>
-    <string name="recipes_meal_empty_message">Choose the meal when you edit a recipe, and it shows up here.</string>
     <plurals name="recipe_count">
         <item quantity="one">%1$d recipe</item>
         <item quantity="other">%1$d recipes</item>
@@ -213,21 +229,11 @@
     <!-- Cooking mode -->
     <string name="cook_close">Leave cooking mode</string>
     <string name="cook_step_of">Step %1$d of %2$d</string>
-    <plurals name="cook_step_ingredient_count">
-        <item quantity="one">%1$d ingredient for this step</item>
-        <item quantity="other">%1$d ingredients for this step</item>
-    </plurals>
-    <plurals name="cook_all_ingredient_count">
-        <item quantity="one">%1$d ingredient</item>
-        <item quantity="other">All %1$d ingredients</item>
-    </plurals>
-    <string name="cook_step_no_ingredients">No ingredients in this step</string>
-    <plurals name="cook_ingredients_used">
-        <item quantity="one">%1$d of %2$d used</item>
-        <item quantity="other">%1$d of %2$d used</item>
-    </plurals>
-    <string name="cook_ingredients_expand">Expand</string>
-    <string name="cook_ingredients_collapse">Collapse</string>
+    <string name="cook_of_count">of %1$d</string>
+    <string name="cook_next_step">Up next</string>
+    <string name="cook_for_this_step">For this step</string>
+    <string name="cook_all_ingredients">All ingredients</string>
+    <string name="cook_ticked_of">%1$d of %2$d</string>
     <string name="cook_start_timer">Timer %1$s</string>
     <string name="cook_previous">Back</string>
     <string name="cook_next">Next</string>
@@ -249,14 +255,16 @@
     <!-- Meal plan -->
     <string name="plan_previous_week">Previous week</string>
     <string name="plan_next_week">Next week</string>
-    <string name="plan_this_week">This week</string>
+    <string name="plan_this_week">Back to this week</string>
     <string name="plan_week_number">Week %1$d</string>
     <string name="plan_week_numbers">Weeks %1$d–%2$d</string>
     <string name="plan_add_for">Plan a meal for %1$s</string>
-    <string name="plan_day_empty">Nothing planned</string>
+    <string name="plan_dish">Plan a dish</string>
+    <string name="plan_show_past">Show past days</string>
     <string name="plan_remove">Remove from plan</string>
     <string name="plan_removed">Removed from the plan</string>
-    <string name="plan_shop_week">Shop for the week</string>
+    <string name="plan_week_ingredients">This week’s ingredients</string>
+    <string name="plan_to_list">Add to list</string>
     <string name="plan_move">Move</string>
     <string name="plan_shop_week_confirm">Add</string>
     <plurals name="plan_shop_week_message">
@@ -284,6 +292,10 @@
     <string name="shopping_mode_hint">Large text, and the screen stays on.</string>
     <string name="shopping_add_hint">Add an item</string>
     <string name="shopping_add">Add</string>
+    <plurals name="shopping_open">
+        <item quantity="one">%1$d open</item>
+        <item quantity="other">%1$d open</item>
+    </plurals>
     <string name="shopping_create_list">New list</string>
     <string name="shopping_switch_list">Switch list</string>
     <string name="shopping_rename_list">Rename list</string>
@@ -293,15 +305,15 @@
     <string name="shopping_edit_item">Edit item</string>
     <string name="shopping_item_deleted">Item removed</string>
     <string name="shopping_other">Other</string>
-    <string name="shopping_in_cart">In the basket · %1$d</string>
     <string name="shopping_clear_checked">Clear</string>
+    <string name="shopping_done_group">Done (%1$d)</string>
+    <string name="shopping_clear_done">Remove what is done</string>
     <string name="shopping_for_recipe">for %1$s</string>
     <string name="shopping_checked">Checked off</string>
     <string name="shopping_unchecked">Not checked off</string>
     <string name="shopping_empty_title">The list is empty</string>
-    <string name="shopping_empty_message">Add items above or put a recipe’s ingredients on the list.</string>
+    <string name="shopping_add_from_plan">Add ingredients from the meal plan</string>
     <string name="shopping_done_title">All done</string>
-    <string name="shopping_done_message">Everything on the list is in your basket.</string>
     <string name="shopping_no_lists_title">No shopping list yet</string>
     <string name="shopping_no_lists_message">Create a list to start adding items.</string>
     <plurals name="shopping_pending">
@@ -315,7 +327,6 @@
     <string name="collection_tag">Tag</string>
     <string name="collection_tool">Tool</string>
     <string name="cookbook_empty_title">This cookbook is empty</string>
-    <string name="cookbook_empty_message">Recipes appear here once they match the cookbook’s filters in Mealie.</string>
 
     <!-- Timeline -->
     <string name="timeline_made_this">%1$s made this</string>
@@ -357,6 +368,7 @@
     <string name="add_manual">Write it yourself</string>
     <string name="add_manual_hint">Start with a name</string>
     <string name="add_create">Create recipe</string>
+    <string name="add_creating">Creating the recipe …</string>
     <string name="editor_title">Edit recipe</string>
     <string name="editor_name">Name</string>
     <string name="editor_description">Description</string>
@@ -377,8 +389,6 @@
     <string name="organizers_meal">Type of dish</string>
     <string name="organizers_meal_hint">Mealie keeps it as a category. That’s how Home knows what suits the time of day.</string>
     <string name="organizers_title">Categories and tags</string>
-    <string name="organizers_choose_meal">Choose type of dish</string>
-    <string name="organizers_change">Change categories and tags</string>
     <string name="organizers_new_category">New category</string>
     <string name="organizers_new_tag">New tag</string>
     <string name="organizers_add">Add %1$s</string>
@@ -386,14 +396,15 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
-    <string name="settings_server_line">%1$s · Mealie %2$s</string>
+    <string name="settings_server_connected">Connected\u00A0· Mealie %1$s</string>
+    <string name="settings_server_offline">Not connected\u00A0· Mealie %1$s</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_dynamic_color">Colors from your wallpaper</string>
-    <string name="settings_dynamic_color_hint">Uses Material You instead of Aroma’s sage tones.</string>
+    <string name="settings_dynamic_color_hint">Tints the accents to match your wallpaper.</string>
     <string name="settings_language">Language</string>
     <string name="settings_app_language">App language</string>
     <string name="settings_language_system">System</string>
@@ -437,8 +448,11 @@
     <string name="update_not_downloaded">Aroma %1$s could not be downloaded</string>
     <string name="update_not_aroma">The download is not Aroma, so it was not installed</string>
     <string name="update_no_installer">No installer found on this device</string>
-    <string name="measures_change">Change measures</string>
     <string name="measures_title">Measures</string>
+    <string name="measures_link">Units: %1$s</string>
+    <string name="measures_short_as_written">as written</string>
+    <string name="measures_short_metric">metric</string>
+    <string name="measures_short_us">US</string>
     <string name="measures_as_written">As written</string>
     <string name="measures_metric">Metric (g, ml)</string>
     <string name="measures_us">US (cups, oz)</string>
@@ -452,7 +466,7 @@
     <string name="widget_meal_plan">Meal plan</string>
     <string name="widget_today">Today</string>
     <string name="widget_tomorrow">Tomorrow</string>
-    <string name="widget_tomorrow_meal">Tomorrow · %1$s</string>
+    <string name="widget_tomorrow_meal">Tomorrow\u00A0· %1$s</string>
     <string name="widget_today_empty">Nothing planned for today</string>
     <string name="widget_tomorrow_empty">Nothing planned for tomorrow</string>
     <string name="widget_day_empty">Nothing planned</string>
@@ -500,4 +514,20 @@
     <string name="widget_preview_milk">Milk</string>
     <string name="widget_preview_butter">Butter</string>
     <string name="widget_preview_flour">Flour</string>
+    <plurals name="home_shopping_open">
+        <item quantity="one">%1$d\u00A0item to buy</item>
+        <item quantity="other">%1$d\u00A0items to buy</item>
+    </plurals>
+    <plurals name="plan_week_from">
+        <item quantity="one">from %1$d\u00A0dish</item>
+        <item quantity="other">from %1$d\u00A0dishes</item>
+    </plurals>
+    <plurals name="plan_week_items">
+        <item quantity="one">%1$d\u00A0item</item>
+        <item quantity="other">%1$d\u00A0items</item>
+    </plurals>
+    <plurals name="plan_past_dishes">
+        <item quantity="one">%1$d\u00A0dish</item>
+        <item quantity="other">%1$d\u00A0dishes</item>
+    </plurals>
 </resources>

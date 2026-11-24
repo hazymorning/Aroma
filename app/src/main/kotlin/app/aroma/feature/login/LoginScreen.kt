@@ -26,8 +26,6 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,10 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -55,21 +51,20 @@ import app.aroma.R
 import app.aroma.core.model.ServerInfo
 import app.aroma.data.AromaError
 import app.aroma.data.remote.ServerAddress
-import app.aroma.ui.components.IconAction
+import app.aroma.ui.components.ErrorNote
+import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.LabeledSecureTextField
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.PrimaryButton
-import app.aroma.ui.components.QuietLink
-import app.aroma.ui.components.SoftCard
-import app.aroma.ui.components.fullBleed
-import app.aroma.ui.components.messageRes
+import app.aroma.ui.components.Text
+import app.aroma.ui.components.TextAction
+import app.aroma.ui.components.TonalBox
 import app.aroma.ui.components.rememberSyncedTextFieldState
-import app.aroma.ui.components.titleRes
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Settle
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Motion.Decelerate
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 
 enum class LoginStep { Server, Credentials }
@@ -121,7 +116,7 @@ fun LoginScreen(state: LoginUiState, actions: LoginActions, modifier: Modifier =
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(start = ScreenMargin, end = ScreenMargin, top = topSpace, bottom = Space.l),
+                .padding(start = PageMargin, end = PageMargin, top = topSpace, bottom = Space.s24),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
@@ -137,24 +132,23 @@ fun LoginScreen(state: LoginUiState, actions: LoginActions, modifier: Modifier =
                             .offset(x = -LogoInset)
                             .size(LogoSize),
                 )
-                Spacer(Modifier.height(Space.m))
+                Spacer(Modifier.height(Space.s16))
                 Text(
                     text = stringResource(R.string.app_name),
-                    style = AromaType.PageTitle,
-                    color = MaterialTheme.colorScheme.primary,
+                    style = AromaTheme.type.display,
                     modifier = Modifier.semantics { heading() },
                 )
-                Spacer(Modifier.height(Space.s))
+                Spacer(Modifier.height(Space.s12))
                 Text(
                     text = stringResource(R.string.login_tagline),
-                    style = AromaType.Body,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = AromaTheme.type.body,
+                    color = AromaTheme.colors.inkSecondary,
                     modifier = Modifier.widthIn(max = TaglineWidth),
                 )
-                Spacer(Modifier.height(Space.xxl))
+                Spacer(Modifier.height(Space.s48))
                 AnimatedContent(
                     targetState = state.step,
-                    transitionSpec = { fadeIn(tween(Motion.EXPAND, easing = Settle)) togetherWith fadeOut(tween(Motion.STATE)) },
+                    transitionSpec = { fadeIn(tween(Motion.STATE, easing = Motion.Decelerate)) togetherWith fadeOut(tween(Motion.STATE)) },
                     label = "loginStep",
                 ) { step ->
                     when (step) {
@@ -187,8 +181,10 @@ private fun ServerStep(state: LoginUiState, actions: LoginActions) {
             state.error.let { it is AromaError.Certificate || it is AromaError.Offline } &&
                 onlyHttpsTried &&
                 !state.serverInput.startsWith("https", ignoreCase = true)
-        ErrorNote(state.error, hint = if (httpHint) stringResource(R.string.login_http_hint) else null)
-        Spacer(Modifier.height(Space.l))
+        state.error?.let {
+            ErrorNote(it, Modifier.padding(top = Space.s16), hint = if (httpHint) stringResource(R.string.login_http_hint) else null)
+        }
+        Spacer(Modifier.height(Space.s24))
         PrimaryButton(
             text = stringResource(R.string.action_continue),
             onClick = actions.onConnect,
@@ -206,7 +202,7 @@ private fun CredentialsStep(state: LoginUiState, actions: LoginActions) {
     Column {
         state.server?.let { server ->
             ServerCard(server, actions.onChangeServer)
-            Spacer(Modifier.height(Space.l))
+            Spacer(Modifier.height(Space.s24))
         }
         if (state.useToken) {
             LabeledSecureTextField(
@@ -236,7 +232,7 @@ private fun CredentialsStep(state: LoginUiState, actions: LoginActions) {
                     ),
                 fieldModifier = Modifier.semantics { contentType = ContentType.Username + ContentType.EmailAddress },
             )
-            Spacer(Modifier.height(Space.m))
+            Spacer(Modifier.height(Space.s16))
             LabeledSecureTextField(
                 state = rememberSecretState(state.password, actions.onPasswordChange),
                 label = stringResource(R.string.login_password_label),
@@ -247,8 +243,8 @@ private fun CredentialsStep(state: LoginUiState, actions: LoginActions) {
                 fieldModifier = Modifier.semantics { contentType = ContentType.Password },
             )
         }
-        ErrorNote(state.error)
-        Spacer(Modifier.height(Space.l))
+        state.error?.let { ErrorNote(it, Modifier.padding(top = Space.s16)) }
+        Spacer(Modifier.height(Space.s24))
         val canSubmit = if (state.useToken) state.token.isNotBlank() else state.username.isNotBlank() && state.password.isNotEmpty()
         PrimaryButton(
             text = stringResource(R.string.login_sign_in),
@@ -258,17 +254,17 @@ private fun CredentialsStep(state: LoginUiState, actions: LoginActions) {
             modifier = Modifier.fillMaxWidth(),
         )
         if (state.server?.allowPasswordLogin != false) {
-            Spacer(Modifier.height(Space.xxs))
-            QuietLink(
+            Spacer(Modifier.height(Space.s4))
+            TextAction(
                 text = stringResource(if (state.useToken) R.string.login_use_password else R.string.login_use_token),
                 onClick = actions.onToggleTokenMode,
             )
         } else {
             Text(
                 text = stringResource(R.string.login_password_disabled),
-                style = AromaType.Small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = Space.m),
+                style = AromaTheme.type.bodySmall,
+                color = AromaTheme.colors.inkSecondary,
+                modifier = Modifier.padding(top = Space.s16),
             )
         }
     }
@@ -293,40 +289,39 @@ private fun rememberSecretState(value: String, onValueChange: (String) -> Unit):
 /** The server that answered, on a card with a quiet way back to change it. */
 @Composable
 private fun ServerCard(server: ServerInfo, onChange: () -> Unit) {
-    // A card keeps the page's margins itself, as this form does, so it reaches out by them to stand on the fields' edge.
-    SoftCard(Modifier.fullBleed(ScreenMargin)) {
-        Column(Modifier.padding(CardPadding)) {
+    TonalBox {
+        Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     painterResource(R.drawable.ic_check),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(MarkSize),
+                    tint = AromaTheme.colors.accent,
+                    modifier = Modifier.size(Glyph.control),
                 )
-                Spacer(Modifier.width(Space.m))
+                Spacer(Modifier.width(Space.s16))
                 Column(
                     Modifier
                         .weight(1f)
                         .semantics(mergeDescendants = true) {},
                 ) {
-                    Text(stringResource(R.string.login_server_found, server.version), style = AromaType.BodyStrong)
+                    Text(stringResource(R.string.login_server_found, server.version), style = AromaTheme.type.label)
                     Text(
                         text = server.url.removePrefix("https://").removePrefix("http://"),
-                        style = AromaType.Small,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = AromaTheme.type.bodySmall,
+                        color = AromaTheme.colors.inkSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(Modifier.width(Space.m))
-                QuietLink(stringResource(R.string.login_change_server), onChange)
+                Spacer(Modifier.width(Space.s16))
+                TextAction(stringResource(R.string.login_change_server), onChange)
             }
             if (server.url.startsWith("http://")) {
                 Text(
                     text = stringResource(R.string.login_unencrypted),
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = MarkSize + Space.m, top = Space.xxs),
+                    style = AromaTheme.type.bodySmall,
+                    color = AromaTheme.colors.inkSecondary,
+                    modifier = Modifier.padding(start = Glyph.control + Space.s16, top = Space.s4),
                 )
             }
         }
@@ -335,53 +330,9 @@ private fun ServerCard(server: ServerInfo, onChange: () -> Unit) {
 
 @Composable
 private fun VisibilityToggle(visible: Boolean, onToggle: () -> Unit) {
-    IconAction(
+    IconButton(
         if (visible) R.drawable.ic_visibility_off else R.drawable.ic_visibility,
         stringResource(if (visible) R.string.login_hide_secret else R.string.login_show_secret),
         onToggle,
     )
 }
-
-/** What went wrong, set as text under the field: a small red mark and title, then the explanation in soft ink. */
-@Composable
-private fun ErrorNote(error: AromaError?, hint: String? = null) {
-    if (error == null) return
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(top = Space.m)
-            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painterResource(R.drawable.ic_error),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(ErrorMarkSize),
-            )
-            Spacer(Modifier.width(Space.xs))
-            Text(stringResource(error.titleRes()), style = AromaType.Label, color = MaterialTheme.colorScheme.error)
-        }
-        Column(Modifier.padding(start = ErrorMarkSize + Space.xs, top = Space.xxs)) {
-            Text(
-                text = stringResource(error.messageRes()),
-                style = AromaType.Small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (hint != null) {
-                Text(
-                    text = hint,
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = Space.xs),
-                )
-            }
-        }
-    }
-}
-
-/** The check beside the server; its text column starts after it and a 16 dp gap. */
-private val MarkSize = 20.dp
-
-/** The error glyph; the explanation hangs under the title, after the glyph and an 8 dp gap. */
-private val ErrorMarkSize = 16.dp

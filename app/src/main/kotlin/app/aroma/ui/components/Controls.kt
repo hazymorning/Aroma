@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -14,44 +13,43 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
@@ -60,73 +58,36 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.aroma.R
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
-import app.aroma.ui.theme.ChipHeight
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Glide
-import app.aroma.ui.theme.RowHeight
-import app.aroma.ui.theme.ScreenMargin
-import app.aroma.ui.theme.SectionSpace
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
-import app.aroma.ui.theme.extras
-import app.aroma.ui.theme.isDarkScheme
 import app.aroma.ui.theme.tabular
+import kotlinx.coroutines.launch
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
-/** A 0.5 dp line between rows of a card, inset to their text. */
-@Composable
-fun Hairline(modifier: Modifier = Modifier) {
-    HorizontalDivider(modifier, thickness = Lines.hairline, color = MaterialTheme.colorScheme.outlineVariant)
-}
-
 /**
- * A section's serif title on the margin, [SectionSpace] below what comes before, with an optional
- * link to more at its end. Its content follows [Space.xs] below.
+ * Minus, the value and plus on one 40 dp pill of the tonal fill where it stands; each sign takes a
+ * 48 dp target. For servings.
  */
-@Composable
-fun SectionHeader(title: String, modifier: Modifier = Modifier, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(top = SectionSpace)
-                // The same height with or without a link, so sections keep one rhythm on every screen.
-                .heightIn(min = TouchTarget)
-                .padding(horizontal = ScreenMargin),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            title,
-            style = AromaType.SectionTitle,
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .semantics { heading() },
-        )
-        if (actionLabel != null && onAction != null) QuietLink(actionLabel, onAction, chevron = true)
-    }
-}
-
-/** Minus, the value and plus on one soft pill; used for servings. */
 @Composable
 fun Stepper(
     label: String,
@@ -134,55 +95,357 @@ fun Stepper(
     onIncrease: () -> Unit,
     modifier: Modifier = Modifier,
     canDecrease: Boolean = true,
+    canIncrease: Boolean = true,
 ) {
+    val fill = AromaTheme.tonalFill
     Row(
         modifier =
             modifier
                 .height(TouchTarget)
-                .clip(CircleShape)
-                .background(extras.card),
+                .drawBehind {
+                    val height = StepperHeight.toPx()
+                    drawRoundRect(fill, Offset(0f, (size.height - height) / 2), Size(size.width, height), CornerRadius(height / 2))
+                },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconAction(
-            R.drawable.ic_remove,
-            stringResource(R.string.action_decrease),
-            onDecrease,
-            tint = MaterialTheme.colorScheme.onSurface,
-            enabled = canDecrease,
-        )
+        StepperSign(R.drawable.ic_remove, stringResource(R.string.action_decrease), onDecrease, canDecrease)
         AnimatedContent(
             targetState = label,
             transitionSpec = {
-                fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) using
-                    SizeTransform { _, _ -> tween(Motion.EXPAND, easing = Glide) }
+                fadeIn(Motion.edge()) togetherWith fadeOut(Motion.edge()) using SizeTransform { _, _ -> Motion.state() }
             },
             label = "stepperValue",
         ) { value ->
             Text(
                 text = value,
-                style = AromaType.Label.tabular(),
+                style = AromaTheme.type.label.tabular(),
                 textAlign = TextAlign.Center,
+                maxLines = 1,
                 modifier = Modifier.widthIn(min = StepperValueWidth),
             )
         }
-        IconAction(R.drawable.ic_add, stringResource(R.string.action_increase), onIncrease, tint = MaterialTheme.colorScheme.onSurface)
+        StepperSign(R.drawable.ic_add, stringResource(R.string.action_increase), onIncrease, canIncrease)
     }
 }
 
-/** Room for "12 servings" between the stepper's buttons, so the pill keeps its width as the value changes. */
-private val StepperValueWidth = 80.dp
+@Composable
+private fun StepperSign(
+    @DrawableRes icon: Int,
+    description: String,
+    onClick: () -> Unit,
+    enabled: Boolean,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        Modifier
+            .size(TouchTarget)
+            .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .size(StepperHeight)
+                .clip(CircleShape)
+                .indication(interaction, PressTint),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(icon),
+                contentDescription = description,
+                tint = AromaTheme.colors.ink.copy(alpha = if (enabled) 1f else 0.38f),
+                modifier = Modifier.size(Glyph.control),
+            )
+        }
+    }
+}
+
+private val StepperHeight = 40.dp
+
+/** Room for "12 Portionen" between the signs, so the pill keeps its width as the value changes. */
+private val StepperValueWidth = 64.dp
 
 /**
- * Five stars. Without [onRate] they show a rating in ink; with it they are 48 dp targets that
- * fill in sage up to the tapped star, one after another. Where five targets do not fit, they
- * share the width, so the fifth star never falls off the edge. Where [clearable], a tap on the
- * star already chosen takes the rating back, and [onRate] hears 0.
+ * A row of choices set as words, of which one is chosen: the chosen one on a soft sage pill, which
+ * glides to the next choice, the others in second ink. It scrolls sideways, its first pill starting
+ * on the page's edge, flush with the search field and the boxes above and below it.
+ */
+@Composable
+fun SelectionRow(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: Dp = PageMargin,
+) {
+    val haptics = LocalHapticFeedback.current
+    val positions = remember { mutableStateMapOf<Int, Pair<Float, Float>>() }
+    val chosen = positions[selectedIndex]
+    val left = remember { Animatable(0f) }
+    val width = remember { Animatable(0f) }
+    LaunchedEffect(chosen) {
+        val (x, w) = chosen ?: return@LaunchedEffect
+        if (width.value == 0f) {
+            left.snapTo(x)
+            width.snapTo(w)
+        } else {
+            launch { left.animateTo(x, Motion.state()) }
+            width.animateTo(w, Motion.state())
+        }
+    }
+    val pill = AromaTheme.colors.accentSoft
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = contentPadding)
+                .drawBehind {
+                    if (chosen != null && width.value > 0f) {
+                        val height = SegmentHeight.toPx()
+                        drawRoundRect(
+                            pill,
+                            Offset(left.value, (size.height - height) / 2),
+                            Size(width.value, height),
+                            CornerRadius(height / 2),
+                        )
+                    }
+                }.selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(SegmentGap),
+    ) {
+        options.forEachIndexed { index, option ->
+            SegmentWord(
+                text = option,
+                selected = index == selectedIndex,
+                onClick = {
+                    if (index != selectedIndex) {
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        onSelect(index)
+                    }
+                },
+                modifier = Modifier.onPlaced { positions[index] = it.positionInParent().x to it.size.width.toFloat() },
+            )
+        }
+    }
+}
+
+/**
+ * One choice among others that may be chosen together, on its own soft sage pill while chosen:
+ * kinds of dish, categories, tags, days.
+ */
+@Composable
+fun Segment(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val pill by animateColorAsState(if (selected) AromaTheme.colors.accentSoft else Color.Transparent, Motion.state(), label = "segment")
+    SegmentWord(text, selected, onClick, modifier, pill)
+}
+
+@Composable
+private fun SegmentWord(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    pill: Color = Color.Transparent,
+) {
+    val colors = AromaTheme.colors
+    val color by animateColorAsState(if (selected) colors.ink else colors.inkSecondary, Motion.state(), label = "segmentText")
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier =
+            modifier
+                .height(TouchTarget)
+                .selectable(selected = selected, interactionSource = interaction, indication = null, role = Role.Tab, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .height(SegmentHeight)
+                .clip(CircleShape)
+                .background(pill)
+                .indication(interaction, PressTint)
+                .padding(horizontal = SegmentPadding),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text, style = AromaTheme.type.label, color = color, maxLines = 1)
+        }
+    }
+}
+
+/** The pill of a chosen word, and the room inside it on either side of the word. */
+private val SegmentHeight = 36.dp
+private val SegmentPadding = Space.s12
+
+/** The air between two segments, so two chosen pills side by side never touch. */
+val SegmentGap: Dp = Space.s4
+
+/**
+ * The tick of a list to tick off: a ring on the tonal fill that fills with sage and draws its check
+ * in paper. The row it sits in is the target, and gives the haptic tick.
+ */
+@Composable
+fun CheckCircle(checked: Boolean, modifier: Modifier = Modifier, size: Dp = CheckSize) {
+    val fill by animateFloatAsState(if (checked) 1f else 0f, Motion.edge(), label = "checkFill")
+    val draw = remember { Animatable(if (checked) 1f else 0f) }
+    LaunchedEffect(checked) {
+        if (checked) draw.animateTo(1f, tween(Motion.STATE, delayMillis = Motion.EDGE, easing = Motion.Decelerate)) else draw.snapTo(0f)
+    }
+    val colors = AromaTheme.colors
+    val ground = AromaTheme.tonalFill
+    Canvas(modifier.size(size)) {
+        val radius = this.size.minDimension / 2
+        val ring = CheckRing.toPx()
+        if (fill < 1f) {
+            drawCircle(ground, radius = radius)
+            drawCircle(colors.inkTertiary.copy(alpha = 1f - fill), radius = radius - ring / 2, style = Stroke(ring))
+        }
+        if (fill > 0f) drawCircle(colors.accent.copy(alpha = fill), radius = radius)
+        if (draw.value > 0f) {
+            val w = this.size.width
+            val h = this.size.height
+            val path =
+                Path().apply {
+                    moveTo(0.29f * w, 0.52f * h)
+                    lineTo(0.44f * w, 0.66f * h)
+                    lineTo(0.71f * w, 0.37f * h)
+                }
+            val measure = PathMeasure().apply { setPath(path, false) }
+            val partial = Path()
+            measure.getSegment(0f, measure.length * draw.value, partial, true)
+            drawPath(partial, colors.onInk, style = Stroke(width = CheckStroke.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
+    }
+}
+
+/** The tick's size, its ring and the stroke of its check. */
+val CheckSize: Dp = 24.dp
+private val CheckRing = 1.5.dp
+private val CheckStroke = 1.75.dp
+
+/** A switch: on, a sage track with a paper knob; off, a pressed-paper track with a tertiary knob; no edge. */
+@Composable
+private fun AromaSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier) {
+    val colors = AromaTheme.colors
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        // Thumb content with a real size keeps the knob as large off as on.
+        thumbContent = { Spacer(Modifier.size(SwitchDefaults.IconSize)) },
+        colors =
+            SwitchDefaults.colors(
+                checkedTrackColor = colors.accent,
+                checkedThumbColor = colors.onInk,
+                checkedBorderColor = Color.Transparent,
+                checkedIconColor = Color.Transparent,
+                uncheckedTrackColor = colors.surfacePressed,
+                uncheckedThumbColor = colors.inkTertiary,
+                uncheckedBorderColor = Color.Transparent,
+                uncheckedIconColor = Color.Transparent,
+            ),
+        modifier = modifier,
+    )
+}
+
+/**
+ * A row of settings in a box: a 20 dp glyph in second ink, the title, and a [description] under
+ * it; on the right of the title the current [value] with a chevron, or a switch where [checked] is
+ * set. The description runs on under the value or the switch, so a long one keeps the box's width
+ * instead of a narrow column. A [trailing] control stands beside the whole row. The whole row takes
+ * the tap. Rows of one group stand in one box, a separator between each two.
+ */
+@Composable
+fun SettingsRow(
+    title: String,
+    modifier: Modifier = Modifier,
+    @DrawableRes icon: Int? = null,
+    description: String? = null,
+    value: String? = null,
+    checked: Boolean? = null,
+    onClick: (() -> Unit)? = null,
+    chevron: Boolean = onClick != null && checked == null,
+    titleColor: Color = AromaTheme.colors.ink,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    val colors = AromaTheme.colors
+    val tap =
+        when {
+            checked != null && onClick != null -> Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = { onClick() })
+            onClick != null -> Modifier.clickable(role = Role.Button, onClick = onClick)
+            else -> Modifier
+        }
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .heightIn(min = SettingsRowHeight)
+                .then(tap)
+                .padding(horizontal = BoxPadding, vertical = Space.s12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Row(Modifier.heightIn(min = TitleLine), verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) {
+                    Icon(
+                        painterResource(icon),
+                        contentDescription = null,
+                        tint = if (titleColor == colors.error) colors.error else colors.inkSecondary,
+                        modifier = Modifier.size(Glyph.control),
+                    )
+                    Spacer(Modifier.width(Space.s16))
+                }
+                Text(title, style = AromaTheme.type.body, color = titleColor, modifier = Modifier.weight(1f))
+                if (value != null) {
+                    Spacer(Modifier.width(Space.s16))
+                    Text(value, style = AromaTheme.type.meta, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End)
+                }
+                when {
+                    checked != null -> {
+                        Spacer(Modifier.width(Space.s16))
+                        AromaSwitch(checked = checked, onCheckedChange = null)
+                    }
+
+                    chevron && trailing == null -> {
+                        Spacer(Modifier.width(Space.s4))
+                        Icon(
+                            painterResource(R.drawable.ic_chevron_right),
+                            contentDescription = null,
+                            tint = colors.inkSecondary,
+                            modifier = Modifier.size(Glyph.control),
+                        )
+                    }
+                }
+            }
+            if (description != null) {
+                Text(
+                    description,
+                    style = AromaTheme.type.bodySmall,
+                    modifier = Modifier.padding(start = if (icon != null) Glyph.control + Space.s16 else 0.dp),
+                )
+            }
+        }
+        if (trailing != null && checked == null) {
+            Spacer(Modifier.width(Space.s16))
+            trailing()
+        }
+    }
+}
+
+/** Where a settings row's text starts, after its glyph: the separators between rows start there. */
+val SettingsTextEdge: Dp = BoxPadding + Glyph.control + Space.s16
+
+private val SettingsRowHeight = 56.dp
+
+/** The title's line in a settings row, as tall as a switch, so every row's description starts alike. */
+private val TitleLine = 32.dp
+
+/**
+ * Five stars. Without [onRate] they show a rating in sage, small, where there is one. With it they
+ * are 48 dp targets that fill in sage up to the tapped star, one after another; where [clearable],
+ * a tap on the star already chosen takes the rating back, and [onRate] hears 0.
  */
 @Composable
 fun RatingStars(
     rating: Double?,
     modifier: Modifier = Modifier,
-    starSize: Int = 14,
+    starSize: Dp = StarSize,
     onRate: ((Int) -> Unit)? = null,
     clearable: Boolean = false,
 ) {
@@ -191,7 +454,7 @@ fun RatingStars(
         return
     }
     BoxWithConstraints(modifier) {
-        val target = if (constraints.hasBoundedWidth) minOf(TouchTarget, maxWidth / 5).coerceAtLeast(starSize.dp) else TouchTarget
+        val target = if (constraints.hasBoundedWidth) minOf(TouchTarget, maxWidth / 5).coerceAtLeast(starSize) else TouchTarget
         Stars(rating, starSize, onRate, target, clearable)
     }
 }
@@ -199,7 +462,7 @@ fun RatingStars(
 @Composable
 private fun Stars(
     rating: Double?,
-    starSize: Int,
+    starSize: Dp,
     onRate: ((Int) -> Unit)?,
     target: Dp,
     clearable: Boolean,
@@ -210,12 +473,13 @@ private fun Stars(
     // Screen readers hear the stars as one choice among five: only the rated star is selected.
     val chosen = rating?.roundToInt()
     val haptics = LocalHapticFeedback.current
+    val colors = AromaTheme.colors
     Row(
         modifier =
             modifier
                 .semantics(mergeDescendants = onRate == null) { contentDescription = description }
                 .then(if (onRate != null) Modifier.selectableGroup() else Modifier),
-        horizontalArrangement = Arrangement.spacedBy(if (onRate != null) 0.dp else 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (onRate != null) 0.dp else StarGap),
     ) {
         for (star in 1..5) {
             val icon =
@@ -225,22 +489,15 @@ private fun Stars(
                     else -> R.drawable.ic_star
                 }
             val lit = value >= star - 0.5
-            val tint =
-                when {
-                    onRate != null && lit -> MaterialTheme.colorScheme.primary
-                    lit -> MaterialTheme.colorScheme.onSurface
-                    onRate != null -> MaterialTheme.colorScheme.outline
-                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
-                }
+            val tint = if (lit) colors.accent else colors.inkTertiary
             if (onRate != null) {
-                // Tapping the chosen star again is the natural way to take a rating back.
                 val clears = clearable && star == chosen
                 // Stars up to the tapped one fill in turn. The wait belongs to the animation, so with animations off there is none.
                 val fill = remember(star) { Animatable(1f) }
                 LaunchedEffect(lit) {
                     if (lit) {
-                        fill.snapTo(0.4f)
-                        fill.animateTo(1f, tween(Motion.STATE, delayMillis = STAR_STAGGER_MILLIS * (star - 1)))
+                        fill.snapTo(FILL_FROM)
+                        fill.animateTo(1f, tween(Motion.EDGE, delayMillis = STAR_STAGGER_MILLIS * (star - 1)))
                     }
                 }
                 Box(
@@ -260,12 +517,12 @@ private fun Stars(
                         tint = tint,
                         modifier =
                             Modifier
-                                .size(starSize.dp)
+                                .size(starSize)
                                 .graphicsLayer { alpha = fill.value },
                     )
                 }
             } else {
-                Icon(painterResource(icon), contentDescription = null, tint = tint, modifier = Modifier.size(starSize.dp))
+                Icon(painterResource(icon), contentDescription = null, tint = tint, modifier = Modifier.size(starSize))
             }
         }
     }
@@ -277,294 +534,13 @@ private fun Stars(
 fun ratingDescription(rating: Double?): String =
     if (rating == null) stringResource(R.string.rating_none) else stringResource(R.string.rating_description, rating)
 
-/** How long each star waits for the one before it as the stars fill in. */
+/** A shown rating's stars, and the room between them. */
+val StarSize: Dp = 14.dp
+private val StarGap = 2.dp
+
+/** How faint a star starts as it fills in, and how long each waits for the one before it. */
+private const val FILL_FROM = 0.4f
 private const val STAR_STAGGER_MILLIS = 50
 
-/** Interactive stars stand centred in 48 dp targets; offset the row by this to set the first glyph on a keyline. */
-fun ratingTouchInset(starSize: Int): Dp = (TouchTarget - starSize.dp) / 2
-
-/** From the start of interactive stars to the first star's ink; offset the row by this to set the ink on a keyline. */
-fun ratingInkStart(starSize: Int): Dp = ratingTouchInset(starSize) + starSize.dp * STAR_INK_START
-
-/** How far interactive stars' targets reach below their ink: space under the stars that needs no padding of its own. */
-fun ratingInkBelow(starSize: Int): Dp = ratingTouchInset(starSize) + starSize.dp * STAR_INK_BELOW
-
-/** The star's ink starts 3.4 of its glyph's 24 units in from the left and ends 4.2 units short of the bottom. */
-private const val STAR_INK_START = 3.4f / 24
-private const val STAR_INK_BELOW = 4.2f / 24
-
-/** A soft stadium chip; a chosen chip takes the sage wash. */
-@Composable
-fun AromaFilterChip(
-    selected: Boolean,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    @DrawableRes trailingIcon: Int? = null,
-) {
-    val container by animateColorAsState(if (selected) extras.selected else extras.card, tween(Motion.STATE), label = "chip")
-    val content by animateColorAsState(
-        if (selected) extras.onSelected else MaterialTheme.colorScheme.onSurface,
-        tween(Motion.STATE),
-        label = "chipContent",
-    )
-    Surface(
-        selected = selected,
-        onClick = onClick,
-        shape = CircleShape,
-        color = container,
-        contentColor = content,
-        modifier = modifier.height(ChipHeight),
-    ) {
-        Row(
-            Modifier.padding(start = Space.m, end = if (trailingIcon != null) Space.s else Space.m),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(label, style = AromaType.Label, maxLines = 1)
-            if (trailingIcon != null) {
-                Spacer(Modifier.width(Space.xxs))
-                Icon(
-                    painterResource(trailingIcon),
-                    contentDescription = null,
-                    tint = if (selected) content else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(Glyph.s),
-                )
-            }
-        }
-    }
-}
-
-/**
- * A chip that shows the current choice and opens a menu of the others: shaped like a filter chip,
- * on the sage wash while the choice differs from the usual one ([highlighted]), and read out as a
- * drop-down list with [onClickLabel] as what a tap does.
- */
-@Composable
-fun MenuChip(
-    label: String,
-    onClickLabel: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    highlighted: Boolean = false,
-) {
-    val container by animateColorAsState(if (highlighted) extras.selected else extras.card, tween(Motion.STATE), label = "menuChip")
-    val content by animateColorAsState(
-        if (highlighted) extras.onSelected else MaterialTheme.colorScheme.onSurface,
-        tween(Motion.STATE),
-        label = "menuChipContent",
-    )
-    Row(
-        modifier =
-            modifier
-                .height(ChipHeight)
-                .clip(CircleShape)
-                .background(container)
-                .clickable(onClickLabel = onClickLabel, role = Role.DropdownList, onClick = onClick)
-                .padding(start = Space.m, end = Space.s),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = AromaType.Label, color = content, maxLines = 1)
-        Spacer(Modifier.width(Space.xxs))
-        Icon(
-            painterResource(R.drawable.ic_expand_more),
-            contentDescription = null,
-            tint = if (highlighted) content else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(Glyph.s),
-        )
-    }
-}
-
-/** Material's switch with a full-size thumb in both states and the action colour when on. */
-@Composable
-fun AromaSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        // Thumb content with a real size keeps the unchecked thumb as large as the checked one.
-        thumbContent = { Spacer(Modifier.size(SwitchDefaults.IconSize)) },
-        colors =
-            SwitchDefaults.colors(
-                checkedTrackColor = extras.cta,
-                checkedThumbColor = extras.onCta,
-                checkedBorderColor = Color.Transparent,
-                // A step darker than the card it sits on, so an open switch still reads as one.
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceDim,
-                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                uncheckedBorderColor = Color.Transparent,
-            ),
-        modifier = modifier,
-    )
-}
-
-/** A whole row of a card that toggles, with the switch at its end, as Android settings screens do it. */
-@Composable
-fun SwitchRow(
-    title: String,
-    subtitle: String?,
-    checked: Boolean,
-    onChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .heightIn(min = if (subtitle == null) RowHeight.oneLine else RowHeight.twoLines)
-                .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
-                .padding(horizontal = CardPadding, vertical = Space.s),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.m),
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = AromaType.Body)
-            if (subtitle != null) {
-                Text(subtitle, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        AromaSwitch(checked = checked, onCheckedChange = null)
-    }
-}
-
-/** Equal segments on a soft pill; the chosen one takes the sage wash, which slides to it. */
-@Composable
-fun SegmentedControl(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
-    val haptics = LocalHapticFeedback.current
-    BoxWithConstraints(
-        modifier
-            .fillMaxWidth()
-            .height(TouchTarget)
-            .background(extras.card, CircleShape)
-            .padding(SegmentInset),
-    ) {
-        val segment = maxWidth / options.size.coerceAtLeast(1)
-        val offset by animateDpAsState(segment * selectedIndex.coerceAtLeast(0), tween(Motion.EXPAND, easing = Glide), label = "thumb")
-        if (selectedIndex >= 0) {
-            Box(
-                Modifier
-                    .offset { IntOffset(offset.roundToPx(), 0) }
-                    .width(segment)
-                    .fillMaxHeight()
-                    .background(extras.selected, CircleShape),
-            )
-        }
-        Row(Modifier.fillMaxSize().selectableGroup()) {
-            options.forEachIndexed { index, option ->
-                val selected = index == selectedIndex
-                val color by animateColorAsState(
-                    if (selected) extras.onSelected else MaterialTheme.colorScheme.onSurfaceVariant,
-                    tween(Motion.STATE),
-                    label = "segment",
-                )
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .selectable(selected = selected, role = Role.RadioButton, interactionSource = null, indication = null) {
-                            if (!selected) {
-                                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                                onSelect(index)
-                            }
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(option, style = AromaType.Label, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-    }
-}
-
-/** How far the chosen segment stands inside the pill. */
-private val SegmentInset = 4.dp
-
-/**
- * The views of a page, as words on the margin: the current one in ink over a short sage rule, the
- * others in soft ink. Unlike chips, which filter what a view shows, tabs change the view.
- */
-@Composable
-fun PageTabs(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
-    val haptics = LocalHapticFeedback.current
-    Row(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = ScreenMargin)
-            .selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(Space.l),
-    ) {
-        options.forEachIndexed { index, option ->
-            val selected = index == selectedIndex
-            val color by animateColorAsState(
-                if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                tween(Motion.STATE),
-                label = "tab",
-            )
-            val rule by animateFloatAsState(if (selected) 1f else 0f, tween(Motion.STATE), label = "tabRule")
-            Column(
-                Modifier
-                    .height(TouchTarget)
-                    .width(IntrinsicSize.Max)
-                    .selectable(selected = selected, role = Role.Tab, interactionSource = null, indication = QuietPress) {
-                        if (!selected) {
-                            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                            onSelect(index)
-                        }
-                    },
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(option, style = AromaType.BodyStrong, color = color, maxLines = 1)
-                Spacer(Modifier.height(TabRuleGap))
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(TabRuleHeight)
-                        .graphicsLayer { alpha = rule }
-                        .background(MaterialTheme.colorScheme.primary, CircleShape),
-                )
-            }
-        }
-    }
-}
-
-private val TabRuleGap = 6.dp
-private val TabRuleHeight = 2.dp
-
-/**
- * The shopping check: a fine ring that fills with sage, then draws its check stroke. The row it
- * sits in is the touch target.
- */
-@Composable
-fun CheckCircle(checked: Boolean, modifier: Modifier = Modifier, size: Dp = 24.dp) {
-    val fill by animateFloatAsState(if (checked) 1f else 0f, tween(Motion.PRESS), label = "checkFill")
-    val draw = remember { Animatable(if (checked) 1f else 0f) }
-    LaunchedEffect(checked) {
-        if (checked) {
-            draw.animateTo(1f, tween(Motion.STATE, delayMillis = Motion.PRESS, easing = Glide))
-        } else {
-            draw.snapTo(0f)
-        }
-    }
-    val ring = MaterialTheme.colorScheme.outline
-    val filled = MaterialTheme.colorScheme.primary
-    val mark = MaterialTheme.colorScheme.onPrimary
-    Canvas(modifier.size(size)) {
-        val radius = this.size.minDimension / 2
-        if (fill < 1f) {
-            drawCircle(ring.copy(alpha = 1f - fill), radius = radius - Lines.checkRing.toPx() / 2, style = Stroke(Lines.checkRing.toPx()))
-        }
-        if (fill > 0f) drawCircle(filled.copy(alpha = fill), radius = radius)
-        if (draw.value > 0f) {
-            val w = this.size.width
-            val h = this.size.height
-            val path =
-                Path().apply {
-                    moveTo(0.28f * w, 0.52f * h)
-                    lineTo(0.44f * w, 0.67f * h)
-                    lineTo(0.72f * w, 0.36f * h)
-                }
-            val measure = PathMeasure().apply { setPath(path, false) }
-            val partial = Path()
-            measure.getSegment(0f, measure.length * draw.value, partial, true)
-            drawPath(partial, mark, style = Stroke(width = 1.75.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-        }
-    }
-}
+/** Interactive stars stand centred in 48 dp targets; offset the row by this to set the first glyph on an edge. */
+fun ratingTouchInset(starSize: Dp): Dp = (TouchTarget - starSize) / 2

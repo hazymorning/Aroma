@@ -60,35 +60,38 @@ class RecipeFilingTest {
         server.dispatcher =
             object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse {
-                    requests += request
                     val path = request.url.encodedPath
-                    return when {
-                        path == "/api/recipes/pancakes" && request.method == "GET" -> {
-                            json(recipe())
-                        }
+                    val response =
+                        when {
+                            path == "/api/recipes/pancakes" && request.method == "GET" -> {
+                                json(recipe())
+                            }
 
-                        path == "/api/recipes/pancakes" && request.method == "PATCH" && takesChanges -> {
-                            val patch = MealieJson.parseToJsonElement(request.body!!.utf8()).jsonObject
-                            filed = """"recipeCategory":${patch["recipeCategory"]},"tags":${patch["tags"]}"""
-                            json(recipe())
-                        }
+                            path == "/api/recipes/pancakes" && request.method == "PATCH" && takesChanges -> {
+                                val patch = MealieJson.parseToJsonElement(request.body!!.utf8()).jsonObject
+                                filed = """"recipeCategory":${patch["recipeCategory"]},"tags":${patch["tags"]}"""
+                                json(recipe())
+                            }
 
-                        path == "/api/organizers/categories" && request.method == "GET" -> {
-                            json("""{"items":[{"id":"c1","name":"Abendessen","slug":"abendessen"}]}""")
-                        }
+                            path == "/api/organizers/categories" && request.method == "GET" -> {
+                                json("""{"items":[{"id":"c1","name":"Abendessen","slug":"abendessen"}]}""")
+                            }
 
-                        path == "/api/organizers/tags" && request.method == "POST" -> {
-                            json("""{"id":"t1","name":"Schnell","slug":"schnell"}""")
-                        }
+                            path == "/api/organizers/tags" && request.method == "POST" -> {
+                                json("""{"id":"t1","name":"Schnell","slug":"schnell"}""")
+                            }
 
-                        path == "/api/organizers/tags" || path == "/api/organizers/tools" -> {
-                            json("""{"items":[]}""")
-                        }
+                            path == "/api/organizers/tags" || path == "/api/organizers/tools" -> {
+                                json("""{"items":[]}""")
+                            }
 
-                        else -> {
-                            MockResponse.Builder().code(if (request.method == "PATCH") 500 else 404).build()
+                            else -> {
+                                MockResponse.Builder().code(if (request.method == "PATCH") 500 else 404).build()
+                            }
                         }
-                    }
+                    // Recorded once answered: a test that sees the request also sees what it changed.
+                    requests += request
+                    return response
                 }
             }
         server.start()

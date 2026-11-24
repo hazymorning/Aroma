@@ -14,12 +14,11 @@ import androidx.compose.foundation.text.input.KeyboardActionHandler
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldLabelPosition
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,33 +28,37 @@ import androidx.compose.ui.semantics.hintText
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
-import app.aroma.ui.theme.ControlHeight
-import app.aroma.ui.theme.Lines
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.LocalTonalFill
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.extras
 
-/** Fields on the soft fill every control shares; a sage ring shows which one has the cursor. */
+/**
+ * Fields on the tonal fill where they stand, with no edge: the field with the cursor takes the
+ * pressed fill, a step darker, and the cursor is sage.
+ */
 @Composable
 fun aromaFieldColors(): TextFieldColors {
-    val scheme = MaterialTheme.colorScheme
+    val colors = AromaTheme.colors
+    val fill = AromaTheme.tonalFill
     return OutlinedTextFieldDefaults.colors(
-        focusedContainerColor = extras.card,
-        unfocusedContainerColor = extras.card,
-        disabledContainerColor = extras.card,
-        errorContainerColor = extras.card,
-        focusedBorderColor = scheme.primary,
+        focusedContainerColor = colors.surfacePressed,
+        unfocusedContainerColor = fill,
+        disabledContainerColor = fill,
+        errorContainerColor = fill,
+        focusedBorderColor = Color.Transparent,
         unfocusedBorderColor = Color.Transparent,
         disabledBorderColor = Color.Transparent,
-        errorBorderColor = scheme.error,
-        cursorColor = scheme.primary,
-        focusedPlaceholderColor = scheme.onSurfaceVariant,
-        unfocusedPlaceholderColor = scheme.onSurfaceVariant,
-        focusedTrailingIconColor = scheme.onSurfaceVariant,
-        unfocusedTrailingIconColor = scheme.onSurfaceVariant,
-        focusedSupportingTextColor = scheme.onSurfaceVariant,
-        unfocusedSupportingTextColor = scheme.onSurfaceVariant,
+        errorBorderColor = Color.Transparent,
+        cursorColor = colors.accent,
+        errorCursorColor = colors.error,
+        focusedTextColor = colors.ink,
+        unfocusedTextColor = colors.ink,
+        focusedPlaceholderColor = colors.inkSecondary,
+        unfocusedPlaceholderColor = colors.inkSecondary,
+        focusedTrailingIconColor = colors.inkSecondary,
+        unfocusedTrailingIconColor = colors.inkSecondary,
+        focusedSupportingTextColor = colors.inkSecondary,
+        unfocusedSupportingTextColor = colors.inkSecondary,
     )
 }
 
@@ -64,13 +67,13 @@ fun aromaFieldColors(): TextFieldColors {
  * never a notched label inside its border.
  */
 @Composable
-fun FieldLabel(text: String, modifier: Modifier = Modifier) {
+private fun FieldLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        style = AromaType.Label,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = AromaTheme.type.label,
+        color = AromaTheme.colors.inkSecondary,
         // The field itself carries the label for TalkBack, so it is not read twice.
-        modifier = modifier.padding(start = CardPadding, end = CardPadding, bottom = Space.xs).clearAndSetSemantics {},
+        modifier = modifier.padding(start = FieldInset, end = FieldInset, bottom = Space.s8).clearAndSetSemantics {},
     )
 }
 
@@ -79,17 +82,20 @@ fun FieldLabel(text: String, modifier: Modifier = Modifier) {
 private fun FieldNote(text: String, isError: Boolean) {
     Text(
         text = text,
-        style = AromaType.Small,
-        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = CardPadding, end = CardPadding, top = Space.xs),
+        style = AromaTheme.type.bodySmall,
+        color = if (isError) AromaTheme.colors.error else AromaTheme.colors.inkSecondary,
+        modifier = Modifier.padding(start = FieldInset, end = FieldInset, top = Space.s8),
     )
 }
 
+/** Where a field's text starts, and its label and note above and below it: notes set under a field outside it stand there too. */
+val FieldInset = Space.s16
+
 /**
- * The room around a field's text: [CardPadding] at the sides, as in a card, and as much above and
- * below as makes a field of one line of [AromaType.Body] exactly [ControlHeight] tall, like a button.
+ * The room around a field's text: [FieldInset] at the sides, and as much above and below as makes
+ * a field of one line of body text exactly a button's 48 dp, like the button beside it.
  */
-private val FieldPadding = PaddingValues(horizontal = CardPadding, vertical = 14.dp)
+private val FieldPadding = PaddingValues(horizontal = FieldInset, vertical = Space.s12)
 
 /** Where a field for several lines starts. */
 private val MultiLineFieldHeight = 112.dp
@@ -126,17 +132,17 @@ fun LabeledTextField(
             modifier =
                 fieldModifier
                     .fillMaxWidth()
-                    .heightIn(min = if (singleLine) ControlHeight else MultiLineFieldHeight)
+                    .heightIn(min = if (singleLine) ButtonHeight else MultiLineFieldHeight)
                     .semantics { if (label != null) hintText = label },
             enabled = enabled,
-            textStyle = AromaType.Body.copy(color = MaterialTheme.colorScheme.onSurface),
+            textStyle = AromaTheme.type.body.copy(color = AromaTheme.colors.ink),
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,
             singleLine = singleLine,
             minLines = minLines,
             visualTransformation = visualTransformation,
             interactionSource = interaction,
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            cursorBrush = SolidColor(AromaTheme.colors.accent),
             decorationBox = { inner ->
                 OutlinedTextFieldDefaults.DecorationBox(
                     value = value,
@@ -146,8 +152,13 @@ fun LabeledTextField(
                     visualTransformation = visualTransformation,
                     interactionSource = interaction,
                     isError = isError,
-                    placeholder = placeholder?.let { { Text(it, style = AromaType.Body) } },
-                    trailingIcon = trailingIcon,
+                    placeholder = placeholder?.let { { Text(it, style = AromaTheme.type.body) } },
+                    trailingIcon =
+                        trailingIcon?.let { icon ->
+                            {
+                                CompositionLocalProvider(LocalTonalFill provides AromaTheme.colors.surfaceInBox) { icon() }
+                            }
+                        },
                     colors = colors,
                     contentPadding = FieldPadding,
                     container = {
@@ -156,9 +167,9 @@ fun LabeledTextField(
                             isError = isError,
                             interactionSource = interaction,
                             colors = colors,
-                            shape = MaterialTheme.shapes.medium,
-                            focusedBorderThickness = Lines.focus,
-                            unfocusedBorderThickness = Lines.focus,
+                            shape = if (singleLine) AromaTheme.shapes.round else AromaTheme.shapes.box,
+                            focusedBorderThickness = 0.dp,
+                            unfocusedBorderThickness = 0.dp,
                         )
                     },
                 )
@@ -191,12 +202,12 @@ fun LabeledSecureTextField(
             modifier =
                 fieldModifier
                     .fillMaxWidth()
-                    .heightIn(min = ControlHeight)
+                    .heightIn(min = ButtonHeight)
                     .semantics { if (label != null) hintText = label },
             onKeyboardAction = onKeyboardAction,
             interactionSource = interaction,
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            textStyle = AromaType.Body.copy(color = MaterialTheme.colorScheme.onSurface),
+            cursorBrush = SolidColor(AromaTheme.colors.accent),
+            textStyle = AromaTheme.type.body.copy(color = AromaTheme.colors.ink),
             textObfuscationMode = textObfuscationMode,
             keyboardOptions = keyboardOptions,
             decorator =
@@ -207,7 +218,12 @@ fun LabeledSecureTextField(
                     outputTransformation = null,
                     interactionSource = interaction,
                     labelPosition = TextFieldLabelPosition.Attached(),
-                    trailingIcon = trailingIcon,
+                    trailingIcon =
+                        trailingIcon?.let { icon ->
+                            {
+                                CompositionLocalProvider(LocalTonalFill provides AromaTheme.colors.surfaceInBox) { icon() }
+                            }
+                        },
                     isError = isError,
                     colors = colors,
                     contentPadding = FieldPadding,
@@ -217,9 +233,9 @@ fun LabeledSecureTextField(
                             isError = isError,
                             interactionSource = interaction,
                             colors = colors,
-                            shape = MaterialTheme.shapes.medium,
-                            focusedBorderThickness = Lines.focus,
-                            unfocusedBorderThickness = Lines.focus,
+                            shape = AromaTheme.shapes.round,
+                            focusedBorderThickness = 0.dp,
+                            unfocusedBorderThickness = 0.dp,
                         )
                     },
                 ),

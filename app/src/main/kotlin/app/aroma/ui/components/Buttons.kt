@@ -2,63 +2,56 @@ package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.lerp
 import app.aroma.R
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.ChipHeight
-import app.aroma.ui.theme.ControlHeight
+import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
-import app.aroma.ui.theme.extras
-import app.aroma.ui.theme.floatingShadow
-import app.aroma.ui.theme.isDarkScheme
-import app.aroma.ui.theme.photoButtonShadow
-import app.aroma.ui.theme.tabular
 
-/** The one filled action of a screen. While [loading], [InlineProgress] takes the label's place. */
+/** The height of a button, of a compact one inside a box, and of a tall one in cook mode, hit from across the counter. */
+val ButtonHeight: Dp = 48.dp
+val CompactButtonHeight: Dp = 36.dp
+private val TallButtonHeight: Dp = 56.dp
+
+/** How dim a control is while it cannot be used. */
+private const val DISABLED = 0.38f
+
+/**
+ * The one main action of a screen: ink, with its label in paper and an optional 20 dp glyph before
+ * it. [compact] is the one inside a box. While [loading], a fine ring takes the label's place, and
+ * the button keeps its width.
+ */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -66,281 +59,280 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     loading: Boolean = false,
-    @DrawableRes leadingIcon: Int? = null,
+    compact: Boolean = false,
+    tall: Boolean = false,
+    @DrawableRes icon: Int? = null,
     @DrawableRes trailingIcon: Int? = null,
 ) {
-    Button(
-        onClick = { if (!loading) onClick() },
-        enabled = enabled || loading,
-        shape = CircleShape,
-        colors =
-            ButtonDefaults.buttonColors(
-                containerColor = extras.cta,
-                contentColor = extras.onCta,
-                disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
-                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-            ),
-        elevation = null,
-        contentPadding = PaddingValues(horizontal = Space.l),
-        modifier = modifier.height(ControlHeight),
-    ) {
+    val colors = AromaTheme.colors
+    val usable = enabled && !loading
+    ButtonFrame(
+        onClick = onClick,
+        enabled = usable,
+        fill = if (enabled || loading) colors.ink else colors.ink.copy(alpha = 0.12f),
+        content = if (enabled || loading) colors.onInk else colors.ink.copy(alpha = DISABLED),
+        height =
+            if (compact) {
+                CompactButtonHeight
+            } else if (tall) {
+                TallButtonHeight
+            } else {
+                ButtonHeight
+            },
+        onInk = true,
+        modifier = modifier,
+    ) { content ->
         Box(contentAlignment = Alignment.Center) {
-            // The label keeps its place while loading, so the button never changes width.
-            Row(Modifier.alpha(if (loading) 0f else 1f), verticalAlignment = Alignment.CenterVertically) {
-                leadingIcon?.let {
-                    Icon(painterResource(it), contentDescription = null, modifier = Modifier.size(Glyph.m))
-                    Spacer(Modifier.width(Space.xs))
-                }
-                Text(text, style = AromaType.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                trailingIcon?.let {
-                    Spacer(Modifier.width(Space.xs))
-                    Icon(painterResource(it), contentDescription = null, modifier = Modifier.size(Glyph.m))
-                }
-            }
-            if (loading) InlineProgress(color = extras.onCta)
+            ButtonLabel(text, icon, content, Modifier.alpha(if (loading) 0f else 1f), trailingIcon = trailingIcon)
+            if (loading) ButtonProgress(content)
         }
     }
 }
 
 /**
- * The page's main action, floating at its bottom end over what scrolls beneath: a sage pill with a
- * glyph and a label, on the soft shadow of what floats. While not [expanded] it folds to a circle
- * around the glyph; the pill narrows towards its end, and the label has faded before the edge can
- * cut it off.
- */
-@Composable
-fun FloatingAction(
-    text: String,
-    @DrawableRes icon: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    expanded: Boolean = true,
-) {
-    val unfolded = animateFloatAsState(if (expanded) 1f else 0f, tween(Motion.EXPAND, easing = Motion.Glide), label = "unfold")
-    Row(
-        modifier =
-            modifier
-                // The width is read while measuring, so folding lays out the button alone and recomposes nothing.
-                .layout { measurable, constraints ->
-                    val height = ControlHeight.roundToPx()
-                    val width = lerp(height, measurable.maxIntrinsicWidth(height), unfolded.value).coerceAtMost(constraints.maxWidth)
-                    val placeable = measurable.measure(Constraints.fixed(width, height))
-                    layout(width, height) { placeable.place(0, 0) }
-                }.floatingShadow(CircleShape)
-                .clip(CircleShape)
-                .background(extras.cta)
-                .clickable(role = Role.Button, onClick = onClick)
-                .wrapContentWidth(Alignment.Start, unbounded = true)
-                .padding(start = FloatingActionInset, end = Space.l),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(painterResource(icon), contentDescription = null, tint = extras.onCta, modifier = Modifier.size(Glyph.m))
-        Spacer(Modifier.width(Space.xs))
-        Text(
-            text = text,
-            style = AromaType.Label,
-            color = extras.onCta,
-            maxLines = 1,
-            modifier = Modifier.graphicsLayer { alpha = ((unfolded.value - LABEL_SHOWN) / (1 - LABEL_SHOWN)).coerceIn(0f, 1f) },
-        )
-    }
-}
-
-/** Where the glyph of a [FloatingAction] starts, so that folded it stands in the middle of its circle. */
-private val FloatingActionInset = (ControlHeight - Glyph.m) / 2
-
-/** How far unfolded a [FloatingAction] is before its label starts to show. */
-private const val LABEL_SHOWN = 0.8f
-
-/**
- * A quiet action on the soft fill every control shares. [confirmed] turns the icon into a check for
- * a moment once the action went through. [compact] is the chip-sized one, for an action inside text.
- * On a card, which has that fill itself, [onCard] sets it on paper instead. [accented] sets it in
- * the muted sage accent, kept for the few actions right after a page's main one.
+ * An action beside or below the main one: on the tonal fill where it stands, the page's or the
+ * box's, in ink. [confirmed] turns its glyph into a check for a moment once the action went through.
  */
 @Composable
 fun SecondaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    @DrawableRes icon: Int? = null,
     enabled: Boolean = true,
-    confirmed: Boolean = false,
+    loading: Boolean = false,
     compact: Boolean = false,
-    onCard: Boolean = false,
-    accented: Boolean = false,
+    confirmed: Boolean = false,
+    @DrawableRes icon: Int? = null,
 ) {
-    val fill =
-        when {
-            accented -> extras.mutedAccent
-            onCard -> extras.raised
-            else -> extras.card
-        }
-    val content = if (accented) extras.onMutedAccent else MaterialTheme.colorScheme.onSurface
-    Button(
+    val colors = AromaTheme.colors
+    val content = if (enabled) colors.ink else colors.ink.copy(alpha = DISABLED)
+    ButtonFrame(
         onClick = onClick,
-        enabled = enabled,
-        shape = CircleShape,
-        colors =
-            ButtonDefaults.buttonColors(
-                containerColor = fill,
-                contentColor = content,
-                disabledContainerColor = fill,
-                disabledContentColor = content.copy(alpha = 0.38f),
-            ),
-        elevation = null,
-        contentPadding = PaddingValues(horizontal = if (compact) Space.m else Space.l),
-        modifier = modifier.height(if (compact) ChipHeight else ControlHeight),
-    ) {
-        if (icon != null) {
-            Crossfade(confirmed, animationSpec = tween(Motion.STATE), label = "secondaryIcon") { done ->
-                Icon(
-                    painter = painterResource(if (done) R.drawable.ic_check else icon),
-                    contentDescription = null,
-                    // On the accent the words are sage already, and the check keeps their colour.
-                    tint = if (done && !accented) MaterialTheme.colorScheme.primary else content,
-                    modifier = Modifier.size(if (compact) Glyph.s else Glyph.m),
-                )
+        enabled = enabled && !loading,
+        fill = AromaTheme.tonalFill,
+        content = content,
+        height = if (compact) CompactButtonHeight else ButtonHeight,
+        onInk = false,
+        modifier = modifier,
+    ) { tint ->
+        Box(contentAlignment = Alignment.Center) {
+            val shown = if (confirmed && icon != null) R.drawable.ic_check else icon
+            Crossfade(shown, animationSpec = Motion.state(), modifier = Modifier.alpha(if (loading) 0f else 1f), label = "secondaryIcon") {
+                ButtonLabel(text, it, if (confirmed) colors.accent else tint, textColor = tint)
             }
-            Spacer(Modifier.width(Space.xs))
+            if (loading) ButtonProgress(tint)
         }
-        Text(text, style = AromaType.Label.tabular(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun ButtonFrame(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    fill: Color,
+    content: Color,
+    height: Dp,
+    onInk: Boolean,
+    modifier: Modifier = Modifier,
+    label: @Composable (Color) -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    // A width given to the button reaches its pill, so it can span a column; its height does not,
+    // so a compact pill keeps its 36 dp inside a 48 dp target.
+    Box(
+        modifier =
+            modifier
+                .heightIn(min = maxOf(TouchTarget, height))
+                .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+        propagateMinConstraints = true,
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .wrapContentHeight()
+                    .heightIn(min = height)
+                    .clip(CircleShape)
+                    .background(fill)
+                    .indication(interaction, if (onInk) PressTintOnInk else PressTint)
+                    .padding(horizontal = if (height == CompactButtonHeight) Space.s16 else Space.s24, vertical = Space.s8),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) { label(content) }
+    }
+}
+
+@Composable
+private fun ButtonLabel(
+    text: String,
+    @DrawableRes icon: Int?,
+    iconTint: Color,
+    modifier: Modifier = Modifier,
+    textColor: Color = iconTint,
+    @DrawableRes trailingIcon: Int? = null,
+) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        icon?.let {
+            Icon(painterResource(it), contentDescription = null, tint = iconTint, modifier = Modifier.size(Glyph.control))
+            Spacer(Modifier.width(Space.s8))
+        }
+        Text(text, style = AromaTheme.type.label, color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        trailingIcon?.let {
+            Spacer(Modifier.width(Space.s8))
+            Icon(painterResource(it), contentDescription = null, tint = iconTint, modifier = Modifier.size(Glyph.control))
+        }
     }
 }
 
 /**
- * A text link in sage with no container: the text, or the [leadingIcon] before it, sits exactly on
- * the keyline and the touch area grows away from it. Pressing dims it instead of blooming a ripple.
+ * The ring that turns while a button's action runs; the only spinner Aroma shows, in a button or in
+ * the progress that takes a button's place while its work runs.
  */
 @Composable
-fun QuietLink(
+fun ButtonProgress(color: Color, modifier: Modifier = Modifier) {
+    CircularProgressIndicator(strokeWidth = 1.5.dp, color = color, modifier = modifier.size(Glyph.control))
+}
+
+/**
+ * A text action in sage, with no fill: "Alle", "Einplanen", "Erneut versuchen". Its text, or the
+ * [icon] before it, stands on the edge; the touch area grows away from it to 48 dp. An [inline]
+ * action stands within a line of text, in that line's size: in the meta role unless [lineStyle]
+ * names the line's own.
+ */
+@Composable
+fun TextAction(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    @DrawableRes leadingIcon: Int? = null,
-    chevron: Boolean = false,
+    @DrawableRes icon: Int? = null,
     enabled: Boolean = true,
+    inline: Boolean = false,
+    lineStyle: TextStyle = AromaTheme.type.meta,
 ) {
-    val color = MaterialTheme.colorScheme.primary
+    val accent = AromaTheme.colors.accent
+    val interaction = remember { MutableInteractionSource() }
     Row(
         modifier =
             modifier
-                .heightIn(min = TouchTarget)
-                .clickable(interactionSource = null, indication = QuietPress, enabled = enabled, role = Role.Button, onClick = onClick)
-                .alpha(if (enabled) 1f else 0.38f),
+                // Within a line, the target reaches past it without pushing the lines apart.
+                .then(if (inline) Modifier else Modifier.heightIn(min = TouchTarget))
+                .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+                .alpha(if (enabled) 1f else DISABLED),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        leadingIcon?.let {
-            Icon(painterResource(it), contentDescription = null, tint = color, modifier = Modifier.size(Glyph.s))
-            Spacer(Modifier.width(Space.xs))
-        }
-        Text(text, style = AromaType.Label, color = color, maxLines = 1)
-        if (chevron) {
-            Spacer(Modifier.width(Space.xxs))
-            // The chevron is drawn left of its box's centre; shifted so its tip ends on the margin.
-            Icon(
-                painterResource(R.drawable.ic_chevron_right),
-                contentDescription = null,
-                tint = color,
-                modifier =
-                    Modifier
-                        .size(Glyph.s)
-                        .offset(x = 5.dp),
+        Row(
+            Modifier
+                .clip(CircleShape)
+                .indication(interaction, PressTint)
+                // The tint reaches a little past the words; the words stay on the edge.
+                .padding(horizontal = Space.s4)
+                .offset(x = -Space.s4),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            icon?.let {
+                Icon(painterResource(it), contentDescription = null, tint = accent, modifier = Modifier.size(Glyph.control))
+                Spacer(Modifier.width(Space.s4))
+            }
+            Text(
+                text,
+                style = if (inline) lineStyle else AromaTheme.type.label,
+                color = accent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
 }
 
+/** Where an icon button stands, which sets its circle's size and fill. */
+enum class IconButtonPlace {
+    /** On the page or in a box: a 40 dp circle on the tonal fill where it stands. */
+    Content,
+
+    /** In a bar: a 48 dp circle on the tonal fill of bars. */
+    Bar,
+
+    /** On a photo: a 40 dp circle of paper, so it reads on any picture. */
+    Photo,
+
+    /** In cook mode's bar: a 56 dp circle beside the tall button, hit from across the counter. */
+    TallBar,
+}
+
 /**
- * A line glyph in a 48 dp target, with a round ripple for its only container: the quiet action of
- * a row or a field. [HeaderAction] is the larger one in ink, for bars.
+ * An icon that stands alone and takes a tap: always on a circle, a 20 dp glyph in ink, a 48 dp
+ * target. [dot] marks it, as a filter in use. [confirmed] turns the glyph into a check for a moment.
  */
 @Composable
-fun IconAction(
+fun IconButton(
     @DrawableRes icon: Int,
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    glyphSize: Dp = Glyph.m,
+    place: IconButtonPlace = IconButtonPlace.Content,
     enabled: Boolean = true,
+    dot: Boolean = false,
+    confirmed: Boolean = false,
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        colors =
-            IconButtonDefaults.iconButtonColors(
-                contentColor = tint,
-                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-            ),
-    ) {
-        Icon(painterResource(icon), contentDescription = contentDescription, modifier = Modifier.size(glyphSize))
-    }
-}
-
-/** A round button on the soft fill, beside a [PrimaryButton] of the same height: cook mode's step back. */
-@Composable
-fun TonalIconButton(
-    @DrawableRes icon: Int,
-    contentDescription: String?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
+    val colors = AromaTheme.colors
+    val fill =
+        when (place) {
+            IconButtonPlace.Content -> AromaTheme.tonalFill
+            IconButtonPlace.Bar, IconButtonPlace.TallBar -> colors.surfaceOnBar
+            IconButtonPlace.Photo -> colors.background.copy(alpha = ON_PHOTO)
+        }
+    val circle =
+        when (place) {
+            IconButtonPlace.Bar -> TouchTarget
+            IconButtonPlace.TallBar -> TallButtonHeight
+            else -> IconCircle
+        }
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier =
             modifier
-                .size(ControlHeight)
-                .clip(CircleShape)
-                .background(extras.card)
-                .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+                .size(maxOf(TouchTarget, circle))
+                .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            painterResource(icon),
-            contentDescription = contentDescription,
-            tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline,
-            modifier = Modifier.size(Glyph.m),
-        )
-    }
-}
-
-/** A round button resting on a photo: paper with a soft shadow, so it reads on any picture. */
-@Composable
-fun OnPhotoButton(
-    @DrawableRes icon: Int,
-    contentDescription: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    tint: Color = MaterialTheme.colorScheme.onSurface,
-) {
-    Box(
-        modifier =
-            modifier
-                .size(TouchTarget)
-                // Unbounded, so the press does not cut off the button's shadow.
-                .clickable(
-                    interactionSource = null,
-                    indication = ripple(bounded = false, radius = 20.dp),
-                    role = Role.Button,
-                    onClick = onClick,
-                ),
-        contentAlignment = Alignment.Center,
-    ) {
-        // In dark mode a step lighter than the bar, with its fine edge, so it does not sink into dark photos.
-        val dark = isDarkScheme
         Box(
             Modifier
-                .size(40.dp)
-                .photoButtonShadow(CircleShape)
-                .background(
-                    if (dark) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f) else extras.raised.copy(alpha = 0.92f),
-                    CircleShape,
-                ).then(if (dark) Modifier.border(Lines.hairline, extras.floatingEdge, CircleShape) else Modifier),
+                .size(circle)
+                .clip(CircleShape)
+                .background(fill)
+                .indication(interaction, PressTint),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(icon), contentDescription = contentDescription, tint = tint, modifier = Modifier.size(Glyph.m))
+            val glyph = if (confirmed) R.drawable.ic_check else icon
+            Crossfade(glyph, animationSpec = Motion.state(), label = "iconButton") {
+                Icon(
+                    painterResource(it),
+                    contentDescription = contentDescription,
+                    tint = (if (confirmed) colors.accent else colors.ink).copy(alpha = if (enabled) 1f else DISABLED),
+                    modifier = Modifier.size(Glyph.control),
+                )
+            }
+        }
+        if (dot) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = Space.s4, end = Space.s4)
+                    .size(DotSize)
+                    .background(colors.accent, CircleShape),
+            )
         }
     }
 }
+
+/** The visible circle of an icon button on the page and on a photo. */
+val IconCircle: Dp = 40.dp
+
+/** How far an icon button's 48 dp target reaches past its circle: rows end this much short of the margin, so the circle ends on it. */
+val IconButtonReach: Dp = (TouchTarget - IconCircle) / 2
+
+/** The mark on an icon button, such as a filter in use. */
+private val DotSize = 8.dp
+
+/** How much of the page's paper the circle of a button on a photo keeps. */
+private const val ON_PHOTO = 0.9f

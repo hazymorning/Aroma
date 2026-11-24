@@ -6,9 +6,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import app.aroma.onNodeWithWords
 import app.aroma.ui.theme.AromaTheme
 import org.junit.Rule
 import org.junit.Test
@@ -30,10 +30,10 @@ class EditableRowsTest {
                 EditorScreen(EditorUiState(form = form, isLoading = false), EditorActions(onChange = { change -> form = change(form) }))
             }
         }
-        compose.onNodeWithText("Servieren.").performScrollTo().performClick()
+        compose.onNodeWithWords("Servieren.").performScrollTo().performClick()
 
         compose.onNodeWithContentDescription("Remove step 1").performScrollTo().performClick()
 
-        compose.onNodeWithText("Servieren.").assertIsFocused()
+        compose.onNodeWithWords("Servieren.").assertIsFocused()
     }
 }

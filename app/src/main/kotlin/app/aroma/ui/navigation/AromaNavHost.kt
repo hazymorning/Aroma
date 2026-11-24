@@ -35,10 +35,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.aroma.ui.appContainer
+import app.aroma.ui.components.ActionBarHeight
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.LocalScrollToTop
-import app.aroma.ui.theme.ControlHeight
+import app.aroma.ui.components.reducedMotion
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Space
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -125,20 +126,23 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
             val scrollToTop = remember(tab) { reselected.filter { it == tab }.map { } }
             CompositionLocalProvider(LocalBottomBarInset provides barInset, LocalScrollToTop provides scrollToTop, content = page)
         }
+        val planFocus = remember { PlanFocus() }
+        // With the system's animations off, pages only cross-fade.
+        val quiet = reducedMotion()
         NavHost(
             nav,
             startDestination = HomeRoute,
             modifier = Modifier.fillMaxSize(),
-            enterTransition = Transitions.enter,
-            exitTransition = Transitions.exit,
-            popEnterTransition = Transitions.popEnter,
-            popExitTransition = Transitions.popExit,
+            enterTransition = if (quiet) Transitions.fadeIn else Transitions.enter,
+            exitTransition = if (quiet) Transitions.fadeOut else Transitions.exit,
+            popEnterTransition = if (quiet) Transitions.fadeIn else Transitions.popEnter,
+            popExitTransition = if (quiet) Transitions.fadeOut else Transitions.popExit,
             predictivePopEnterTransition = Transitions.predictivePopEnter,
             predictivePopExitTransition = Transitions.predictivePopExit,
         ) {
             composable<HomeRoute> {
                 underBar(Tab.Home) {
-                    HomeDestination(nav, snackbar) {
+                    HomeDestination(nav, snackbar, planFocus) {
                         focusSearch.value = true
                         nav.navigateToTab(Tab.Recipes)
                     }
@@ -149,7 +153,7 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                     Tab.Recipes,
                 ) { RecipesDestination(nav, snackbar, focusSearch.value, onFocusSearchConsume = { focusSearch.value = false }) }
             }
-            composable<MealPlanRoute> { underBar(Tab.MealPlan) { MealPlanDestination(nav, snackbar) } }
+            composable<MealPlanRoute> { underBar(Tab.MealPlan) { MealPlanDestination(nav, snackbar, planFocus) } }
             composable<ShoppingRoute> {
                 underBar(Tab.Shopping) { ShoppingDestination(shoppingRequest.value, onRequestConsume = { shoppingRequest.value = null }) }
             }
@@ -182,14 +186,14 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
         // A message still showing as the page changes glides to its place on the new page.
         val snackbarLift by animateDpAsState(
             when {
-                showBar -> barInset + Space.xs
+                showBar -> barInset + Space.s8
 
-                // Above the recipe's floating cook button.
-                destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + Space.m + ControlHeight + Space.xs
+                // Above the recipe's action bar.
+                destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + ActionBarHeight + Space.s8
 
-                else -> navigationInset + Space.m
+                else -> navigationInset + Space.s16
             },
-            tween(Motion.EXPAND, easing = Motion.Glide),
+            tween(Motion.STATE, easing = Motion.Decelerate),
             label = "snackbarLift",
         )
         AromaSnackbarHost(

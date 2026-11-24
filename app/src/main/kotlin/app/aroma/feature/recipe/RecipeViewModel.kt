@@ -59,6 +59,9 @@ sealed interface RecipeEvent {
 
     data object Deleted : RecipeEvent
 
+    /** The recipe is no longer saved; the snackbar offers to save it again. */
+    data object Unsaved : RecipeEvent
+
     data class Failed(val error: AromaError) : RecipeEvent
 
     /** Mealie's AI reworked the recipe, which [reworked] can undo. */
@@ -209,7 +212,13 @@ class RecipeViewModel(
             it.copy(checkedIngredients = if (index in checked) checked - index else checked + index)
         }
 
-    fun toggleFavorite() = act { recipe -> recipes.setFavorite(recipe.id, recipe.slug, !state.value.isFavorite) }
+    fun toggleFavorite() {
+        val saved = state.value.isFavorite
+        act { recipe ->
+            recipes.setFavorite(recipe.id, recipe.slug, !saved)
+            if (saved) mutableEvents.emit(RecipeEvent.Unsaved)
+        }
+    }
 
     /** Rates the recipe [stars] out of five, or with 0 takes the rating back and offers to put it back. */
     fun rate(stars: Int) {

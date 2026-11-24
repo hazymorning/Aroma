@@ -16,7 +16,6 @@ import app.aroma.core.model.RecipeNote
 import app.aroma.core.model.RecipeSummary
 import app.aroma.core.model.RecipeTime
 import app.aroma.core.model.Step
-import app.aroma.core.model.User
 import app.aroma.data.remote.dto.CookbookDto
 import app.aroma.data.remote.dto.FoodDto
 import app.aroma.data.remote.dto.IngredientDto
@@ -26,7 +25,6 @@ import app.aroma.data.remote.dto.OrganizerDto
 import app.aroma.data.remote.dto.RecipeDto
 import app.aroma.data.remote.dto.RecipeSummaryDto
 import app.aroma.data.remote.dto.UnitDto
-import app.aroma.data.remote.dto.UserDto
 import java.time.Instant
 import java.time.LocalDate
 
@@ -107,6 +105,7 @@ fun RecipeDto.toModel(serverUrl: String) =
                 if (text.isEmpty() && note.title.isNullOrBlank()) null else RecipeNote(note.title.orEmpty().trim(), text)
             },
         nutrition = if (settings?.showNutrition == true) nutrition?.toModel().orEmpty() else emptyList(),
+        yieldText = recipeYield?.trim()?.takeIf { it.isNotEmpty() },
     )
 
 fun IngredientDto.toModel() =

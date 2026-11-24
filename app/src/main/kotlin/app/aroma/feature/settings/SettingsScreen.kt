@@ -1,38 +1,35 @@
 package app.aroma.feature.settings
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.format.MeasureSystem
 import app.aroma.core.model.ServerInfo
@@ -43,29 +40,29 @@ import app.aroma.data.settings.ThemeMode
 import app.aroma.data.update.UpdateState
 import app.aroma.feature.recipe.labelRes
 import app.aroma.ui.components.AromaAlertDialog
-import app.aroma.ui.components.AromaDropdownMenu
-import app.aroma.ui.components.AromaMenuItem
+import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.Avatar
-import app.aroma.ui.components.CardGroup
+import app.aroma.ui.components.ChoiceRow
 import app.aroma.ui.components.DetailPage
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.InlineProgress
+import app.aroma.ui.components.GroupHead
+import app.aroma.ui.components.ProfileAvatarSize
 import app.aroma.ui.components.SecondaryButton
-import app.aroma.ui.components.SoftCard
-import app.aroma.ui.components.SwitchRow
-import app.aroma.ui.components.currentLocale
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
-import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.RowHeight
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.components.Separator
+import app.aroma.ui.components.SettingsRow
+import app.aroma.ui.components.SettingsTextEdge
+import app.aroma.ui.components.Text
+import app.aroma.ui.components.TonalBox
+import app.aroma.ui.components.hideThen
+import app.aroma.ui.components.rememberFullSheetState
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.PageMargin
+import app.aroma.ui.theme.SectionGap
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.ThumbnailSize
-import app.aroma.ui.theme.tabular
 
 data class SettingsUiState(
     val user: User? = null,
     val server: ServerInfo? = null,
+    val connected: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.System,
     val dynamicColor: Boolean = false,
     val dynamicColorAvailable: Boolean = false,
@@ -98,97 +95,155 @@ data class SettingsActions(
     val onSignOut: () -> Unit = {},
 )
 
+/** A setting with a few values, chosen on a sheet. */
+private enum class SettingsChoice { Theme, Language, Measures, IngredientsInSteps }
+
 @Composable
 fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: Modifier = Modifier) {
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
+    var choice by rememberSaveable { mutableStateOf<SettingsChoice?>(null) }
     DetailPage(title = stringResource(R.string.settings_title), onBack = actions.onBack, modifier = modifier) {
-        state.user?.let { user -> SoftCard(Modifier.padding(top = Space.l)) { Account(user, state.server) } }
-        Group(stringResource(R.string.settings_appearance)) {
-            Choice(
-                title = stringResource(R.string.settings_theme),
-                options = ThemeMode.entries,
-                selected = state.themeMode,
-                optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onThemeMode,
-            )
-            if (state.dynamicColorAvailable) {
-                RowDivider()
-                SwitchRow(
-                    title = stringResource(R.string.settings_dynamic_color),
-                    subtitle = stringResource(R.string.settings_dynamic_color_hint),
-                    checked = state.dynamicColor,
-                    onChange = actions.onDynamicColor,
+        Column(Modifier.padding(horizontal = PageMargin)) {
+            state.user?.let { user -> Profile(user, state.server, state.connected) }
+            Group(stringResource(R.string.settings_appearance)) {
+                SettingsRow(
+                    title = stringResource(R.string.settings_theme),
+                    icon = R.drawable.ic_contrast,
+                    value = stringResource(state.themeMode.labelRes()),
+                    onClick = { choice = SettingsChoice.Theme },
+                )
+                if (state.dynamicColorAvailable) {
+                    Separator(start = SettingsTextEdge)
+                    SettingsRow(
+                        title = stringResource(R.string.settings_dynamic_color),
+                        icon = R.drawable.ic_drop,
+                        description = stringResource(R.string.settings_dynamic_color_hint),
+                        checked = state.dynamicColor,
+                        onClick = { actions.onDynamicColor(!state.dynamicColor) },
+                    )
+                }
+            }
+            Group(stringResource(R.string.settings_language)) {
+                SettingsRow(
+                    title = stringResource(R.string.settings_app_language),
+                    icon = R.drawable.ic_globe,
+                    value = stringResource(state.language.labelRes()),
+                    onClick = { choice = SettingsChoice.Language },
+                )
+            }
+            Group(stringResource(R.string.settings_cooking)) {
+                SettingsRow(
+                    title = stringResource(R.string.measures_title),
+                    icon = R.drawable.ic_scale,
+                    description = stringResource(R.string.measures_hint),
+                    value = stringResource(state.measures.labelRes()),
+                    onClick = { choice = SettingsChoice.Measures },
+                )
+                Separator(start = SettingsTextEdge)
+                SettingsRow(
+                    title = stringResource(R.string.settings_keep_screen_on),
+                    icon = R.drawable.ic_visibility,
+                    description = stringResource(R.string.settings_keep_screen_on_hint),
+                    checked = state.keepScreenOn,
+                    onClick = { actions.onKeepScreenOn(!state.keepScreenOn) },
+                )
+                Separator(start = SettingsTextEdge)
+                SettingsRow(
+                    title = stringResource(R.string.settings_ingredients_in_steps),
+                    icon = R.drawable.ic_notes,
+                    description = stringResource(R.string.settings_ingredients_in_steps_hint),
+                    value = stringResource(state.ingredientsInSteps.labelRes()),
+                    onClick = { choice = SettingsChoice.IngredientsInSteps },
+                )
+                Separator(start = SettingsTextEdge)
+                SettingsRow(
+                    title = stringResource(R.string.settings_amounts_in_steps),
+                    icon = R.drawable.ic_plate,
+                    description = stringResource(R.string.settings_amounts_in_steps_hint),
+                    checked = state.amountsInSteps,
+                    onClick = { actions.onAmountsInSteps(!state.amountsInSteps) },
+                )
+            }
+            Group(stringResource(R.string.settings_offline)) {
+                SettingsRow(
+                    title = stringResource(R.string.settings_offline_all),
+                    icon = R.drawable.ic_download,
+                    description =
+                        if (state.offlineCount > 0) {
+                            pluralStringResource(R.plurals.settings_offline_count, state.offlineCount, state.offlineCount)
+                        } else {
+                            stringResource(R.string.settings_offline_all_hint)
+                        },
+                    checked = state.offlineRecipes,
+                    onClick = { actions.onOfflineRecipes(!state.offlineRecipes) },
+                )
+            }
+            Group(stringResource(R.string.settings_about)) {
+                UpdateRow(state.version, state.update, actions.onCheckForUpdates, actions.onInstallUpdate)
+                Separator(start = SettingsTextEdge)
+                SettingsRow(
+                    title = stringResource(R.string.settings_updates_at_start),
+                    icon = R.drawable.ic_refresh,
+                    description = stringResource(R.string.settings_updates_at_start_hint),
+                    checked = state.checkUpdatesAtStart,
+                    onClick = { actions.onCheckUpdatesAtStart(!state.checkUpdatesAtStart) },
+                )
+                Separator(start = SettingsTextEdge)
+                SettingsRow(
+                    title = stringResource(R.string.settings_licenses),
+                    icon = R.drawable.ic_document,
+                    onClick = actions.onOpenLicenses,
+                )
+            }
+            TonalBox(Modifier.padding(top = SectionGap), contentPadding = PaddingValues()) {
+                SettingsRow(
+                    title = stringResource(R.string.settings_sign_out),
+                    icon = R.drawable.ic_logout,
+                    titleColor = AromaTheme.colors.error,
+                    chevron = false,
+                    onClick = { confirmSignOut = true },
                 )
             }
         }
-        Group(stringResource(R.string.settings_language)) {
-            Choice(
-                title = stringResource(R.string.settings_app_language),
-                options = AppLanguage.entries,
-                selected = state.language,
-                optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onLanguage,
-            )
+    }
+    when (choice) {
+        SettingsChoice.Theme -> {
+            ChoiceSheet(stringResource(R.string.settings_theme), ThemeMode.entries, state.themeMode, {
+                stringResource(it.labelRes())
+            }, actions.onThemeMode) {
+                choice = null
+            }
         }
-        Group(stringResource(R.string.settings_cooking)) {
-            Choice(
-                title = stringResource(R.string.measures_title),
-                subtitle = stringResource(R.string.measures_hint),
-                options = MeasureSystem.entries,
-                selected = state.measures,
-                optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onMeasures,
-            )
-            RowDivider()
-            SwitchRow(
-                title = stringResource(R.string.settings_keep_screen_on),
-                subtitle = stringResource(R.string.settings_keep_screen_on_hint),
-                checked = state.keepScreenOn,
-                onChange = actions.onKeepScreenOn,
-            )
-            RowDivider()
-            Choice(
-                title = stringResource(R.string.settings_ingredients_in_steps),
-                subtitle = stringResource(R.string.settings_ingredients_in_steps_hint),
-                options = IngredientsInSteps.entries,
-                selected = state.ingredientsInSteps,
-                optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onIngredientsInSteps,
-            )
-            RowDivider()
-            SwitchRow(
-                title = stringResource(R.string.settings_amounts_in_steps),
-                subtitle = stringResource(R.string.settings_amounts_in_steps_hint),
-                checked = state.amountsInSteps,
-                onChange = actions.onAmountsInSteps,
-            )
+
+        SettingsChoice.Language -> {
+            ChoiceSheet(
+                stringResource(R.string.settings_app_language),
+                AppLanguage.entries,
+                state.language,
+                { stringResource(it.labelRes()) },
+                actions.onLanguage,
+            ) { choice = null }
         }
-        Group(stringResource(R.string.settings_offline)) {
-            SwitchRow(
-                title = stringResource(R.string.settings_offline_all),
-                subtitle =
-                    if (state.offlineCount > 0) {
-                        pluralStringResource(R.plurals.settings_offline_count, state.offlineCount, state.offlineCount)
-                    } else {
-                        stringResource(R.string.settings_offline_all_hint)
-                    },
-                checked = state.offlineRecipes,
-                onChange = actions.onOfflineRecipes,
-            )
+
+        SettingsChoice.Measures -> {
+            ChoiceSheet(stringResource(R.string.measures_title), MeasureSystem.entries, state.measures, {
+                stringResource(it.labelRes())
+            }, actions.onMeasures) {
+                choice = null
+            }
         }
-        Group(stringResource(R.string.settings_about)) {
-            UpdateRow(state.version, state.update, actions.onCheckForUpdates, actions.onInstallUpdate)
-            RowDivider()
-            SwitchRow(
-                title = stringResource(R.string.settings_updates_at_start),
-                subtitle = stringResource(R.string.settings_updates_at_start_hint),
-                checked = state.checkUpdatesAtStart,
-                onChange = actions.onCheckUpdatesAtStart,
-            )
-            RowDivider()
-            NavigationRow(stringResource(R.string.settings_licenses), actions.onOpenLicenses)
+
+        SettingsChoice.IngredientsInSteps -> {
+            ChoiceSheet(
+                stringResource(R.string.settings_ingredients_in_steps),
+                IngredientsInSteps.entries,
+                state.ingredientsInSteps,
+                { stringResource(it.labelRes()) },
+                actions.onIngredientsInSteps,
+            ) { choice = null }
         }
-        SoftCard(Modifier.padding(top = Space.l)) { SignOutRow(onClick = { confirmSignOut = true }) }
+
+        null -> {}
     }
     if (confirmSignOut) {
         AromaAlertDialog(
@@ -206,98 +261,97 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
     }
 }
 
-/** Who is signed in where: their initial beside their name, address and server. */
+/**
+ * Who is signed in where: their initial on a 56 dp circle, their name and address, and the server,
+ * with a sage dot while it answers.
+ */
 @Composable
-private fun Account(user: User, server: ServerInfo?) {
+private fun Profile(user: User, server: ServerInfo?, connected: Boolean) {
     val name = user.fullName.ifBlank { user.username }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = CardPadding, vertical = Space.m)
-            .semantics(mergeDescendants = true) {},
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Avatar(name, ThumbnailSize, onCard = true)
-        Spacer(Modifier.width(Space.m))
-        Column(Modifier.weight(1f)) {
-            Text(name, style = AromaType.Name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (user.email.isNotBlank()) {
-                Text(
-                    text = user.email,
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+    val colors = AromaTheme.colors
+    TonalBox {
+        Row(
+            Modifier.semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Avatar(name, ProfileAvatarSize)
+            Spacer(Modifier.width(Space.s16))
+            Column(Modifier.weight(1f)) {
+                Text(name, style = AromaTheme.type.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (user.email.isNotBlank()) {
+                    Text(user.email, style = AromaTheme.type.meta, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
-            server?.let {
+        }
+        server?.let {
+            Row(Modifier.padding(top = Space.s16), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(StatusDot)
+                        .background(if (connected) colors.accent else colors.inkTertiary, CircleShape),
+                )
+                Spacer(Modifier.width(Space.s8))
                 Text(
                     text =
                         stringResource(
-                            R.string.settings_server_line,
-                            it.url.removePrefix("https://").removePrefix("http://"),
+                            if (connected) R.string.settings_server_connected else R.string.settings_server_offline,
                             it.version,
                         ),
-                    style = AromaType.Small.tabular(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = AromaTheme.type.meta,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            Text(
+                text = it.url.removePrefix("https://").removePrefix("http://"),
+                style = AromaTheme.type.meta,
+                color = colors.inkTertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = StatusDot + Space.s8),
+            )
         }
     }
 }
 
-/** A group of settings: its name in sage above the card that holds its rows. */
+/** The dot that says whether the server answers. */
+private val StatusDot = 8.dp
+
+/** A group of settings: its head, then the box that holds its rows. */
 @Composable
 private fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
-    CardGroup(title, Modifier.padding(top = Space.l), content = content)
+    GroupHead(title, Modifier.padding(top = SectionGap, bottom = Space.s12))
+    TonalBox(contentPadding = PaddingValues(), content = content)
 }
 
-/** A setting with a few values: its name and the current value; a tap opens the others in a menu. */
+/** The values of a setting on a sheet; choosing one applies it and lets the sheet slide away. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun <T> Choice(
+private fun <T> ChoiceSheet(
     title: String,
     options: List<T>,
     selected: T,
     optionLabel: @Composable (T) -> String,
     onSelect: (T) -> Unit,
-    subtitle: String? = null,
+    onDismiss: () -> Unit,
 ) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        Row(
+    val sheetState = rememberFullSheetState()
+    val scope = rememberCoroutineScope()
+    AromaBottomSheet(onDismissRequest = onDismiss, title = title, sheetState = sheetState) {
+        Column(
             Modifier
-                .fillMaxWidth()
-                .heightIn(min = if (subtitle == null) RowHeight.oneLine else RowHeight.twoLines)
-                .clickable(role = Role.DropdownList, onClick = { open = true })
-                .padding(horizontal = CardPadding, vertical = Space.s),
-            verticalAlignment = Alignment.CenterVertically,
+                .selectableGroup()
+                .padding(bottom = Space.s16),
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(title, style = AromaType.Body)
-                if (subtitle != null) Text(subtitle, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.width(Space.m))
-            Text(optionLabel(selected), style = AromaType.Body, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.width(Space.xxs))
-            Icon(
-                painterResource(R.drawable.ic_expand_more),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(Glyph.s),
-            )
-        }
-        AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.align(Alignment.TopEnd)) {
             options.forEach { option ->
-                AromaMenuItem(
-                    text = optionLabel(option),
-                    icon = null,
-                    onClick = {
-                        open = false
-                        onSelect(option)
-                    },
-                    selected = option == selected,
+                ChoiceRow(
+                    label = optionLabel(option),
+                    chosen = option == selected,
+                    modifier =
+                        Modifier.selectable(selected = option == selected, role = Role.RadioButton) {
+                            onSelect(option)
+                            scope.hideThen(sheetState, onDismiss)
+                        },
                 )
             }
         }
@@ -333,85 +387,36 @@ private fun UpdateRow(version: String, update: UpdateState, onCheck: () -> Unit,
             }
 
             is UpdateState.Downloading -> {
-                stringResource(R.string.settings_updates_downloading, update.update.version, (update.progress * 100).toInt())
+                stringResource(
+                    R.string.settings_updates_downloading,
+                    update.update.version,
+                    (
+                        update.progress *
+                            100
+                    ).toInt(),
+                )
             }
         }
     val canCheck = update == UpdateState.Unknown || update == UpdateState.Current || update == UpdateState.Failed
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = RowHeight.twoLines)
-            .clickable(enabled = canCheck, role = Role.Button, onClick = onCheck)
-            .padding(horizontal = CardPadding, vertical = Space.s)
-            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.m),
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.settings_version, version), style = AromaType.Body.tabular())
-            Text(status, style = AromaType.Small.tabular(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        when (update) {
-            is UpdateState.Available -> {
-                SecondaryButton(
-                    stringResource(R.string.settings_updates_install),
-                    onClick = { onInstall(update) },
-                    compact = true,
-                    onCard = true,
-                )
-            }
+    SettingsRow(
+        title = stringResource(R.string.settings_version, version),
+        icon = R.drawable.ic_info,
+        description = status,
+        onClick = onCheck.takeIf { canCheck },
+        chevron = false,
+        modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        trailing =
+            when (update) {
+                // Checking and downloading say so in the row's second line; a spinner is only ever a button's.
+                is UpdateState.Available -> {
+                    { SecondaryButton(stringResource(R.string.settings_updates_install), onClick = { onInstall(update) }, compact = true) }
+                }
 
-            UpdateState.Checking, is UpdateState.Downloading -> {
-                InlineProgress()
-            }
-
-            else -> {}
-        }
-    }
-}
-
-@Composable
-private fun NavigationRow(title: String, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = RowHeight.oneLine)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = CardPadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(title, style = AromaType.Body, modifier = Modifier.weight(1f))
-        Icon(
-            painterResource(R.drawable.ic_chevron_right),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(Glyph.s),
-        )
-    }
-}
-
-/** Signing out is a row in red, on a card of its own rather than a button. */
-@Composable
-private fun SignOutRow(onClick: () -> Unit) {
-    val color = MaterialTheme.colorScheme.error
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = RowHeight.oneLine)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = CardPadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(painterResource(R.drawable.ic_logout), contentDescription = null, tint = color, modifier = Modifier.size(Glyph.m))
-        Spacer(Modifier.width(Space.m))
-        Text(stringResource(R.string.settings_sign_out), style = AromaType.Body, color = color)
-    }
-}
-
-/** The hairline between rows of one group, inset to their text. */
-@Composable
-private fun RowDivider() {
-    Hairline(Modifier.padding(horizontal = CardPadding))
+                else -> {
+                    null
+                }
+            },
+    )
 }
 
 private fun ThemeMode.labelRes() =

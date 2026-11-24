@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.test.hasScrollToKeyAction
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
@@ -76,6 +75,7 @@ import app.aroma.feature.settings.SettingsUiState
 import app.aroma.feature.shopping.ShoppingActions
 import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingUiState
+import app.aroma.onNodeWithWords
 import app.aroma.ui.navigation.Tab
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
@@ -92,12 +92,14 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.File
 import java.util.UUID
+import kotlin.math.roundToInt
 
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @Config(sdk = [36], qualifiers = "w411dp-h891dp-xxhdpi")
 open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest() {
-    data class Variant(val locale: String, val dark: Boolean) {
-        val suffix = "${if (dark) "dark" else "light"}_$locale"
+    /** A language and theme; [scale] is the system font size, named in the file from 130 % on. */
+    data class Variant(val locale: String, val dark: Boolean, val scale: Float = 1f) {
+        val suffix = "${if (dark) "dark" else "light"}_$locale" + if (scale == 1f) "" else "_${(scale * PERCENT).roundToInt()}"
 
         override fun toString() = suffix
     }
@@ -117,14 +119,14 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                         HomeUiState(
                             greeting = Greeting.Evening,
                             firstName = "Mara",
-                            today = sample.mealPlan.take(1),
-                            recent = sample.recipes,
-                            favorites = sample.recipes.reversed(),
+                            date = sample.today,
+                            week = sample.mealPlan,
+                            recent = sample.recipes.reversed(),
                             meal = Meal.Dinner,
-                            suggestions = sample.recipes.drop(2),
+                            suggestions = sample.recipes,
                             suggestionsForMeal = true,
-                            quick = sample.recipes.drop(2).take(3),
-                            cookedLongAgo = sample.recipes.take(3),
+                            quick = sample.recipes.reversed(),
+                            openItems = 8,
                             toRate = sample.recipes.first().let { RateReminder(it.id, it.slug, it.name, it.image) },
                             isLoading = false,
                         ),
@@ -145,6 +147,8 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                         HomeUiState(
                             greeting = Greeting.Morning,
                             firstName = "Mara",
+                            date = sample.today,
+                            week = sample.mealPlan.filter { it.date != sample.today },
                             recent = sample.recipes,
                             meal = Meal.Breakfast,
                             suggestions = sample.recipes.take(4),
@@ -183,7 +187,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         }
     }
 
-    /** Nothing says yet what kind of dish it is: a link after the chips asks for it. */
+    /** Nothing says yet what kind of dish it is: the line under the title names its tags alone. */
     @Test
     fun recipeWithoutMeal() {
         applyLocale()
@@ -234,7 +238,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "recipe_steps_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHeader") },
+            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHead") },
         ) {
             RecipeScreen(state = RecipeUiState(recipe = sample.recipe, isLoading = false), actions = RecipeActions())
         }
@@ -247,7 +251,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "recipe_steps_amounts_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHeader") },
+            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHead") },
         ) {
             RecipeScreen(
                 state = RecipeUiState(recipe = sample.recipe, isLoading = false, scale = 1.5, amountsInSteps = true),
@@ -421,9 +425,11 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
     @Test
     fun shoppingMode() {
         applyLocale()
+        val more = if (variant.locale == "de") "Weitere Optionen" else "More options"
         val toggle = if (variant.locale == "de") "Einkaufsmodus starten" else "Start shopping mode"
         snapshot("shopping_mode_${variant.suffix}", variant.dark, interact = {
-            composeRule.onNodeWithContentDescription(toggle).performClick()
+            composeRule.onNodeWithContentDescription(more).performClick()
+            composeRule.onNodeWithWords(toggle).performClick()
         }) {
             ShoppingScreen(
                 state =
@@ -468,13 +474,11 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         }
     }
 
-    /** All ingredients with their sections, the panel opened by a tap. */
+    /** All ingredients with their sections, in the step's box. */
     @Test
     fun cookStepWithIngredients() {
         applyLocale()
-        snapshot("cook_ingredients_${variant.suffix}", variant.dark, interact = {
-            composeRule.onNodeWithText(if (variant.locale == "de") "Alle 9 Zutaten" else "All 9 ingredients").performClick()
-        }) {
+        snapshot("cook_ingredients_${variant.suffix}", variant.dark) {
             CookScreen(
                 state =
                     CookUiState(
@@ -521,54 +525,28 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
     }
 
     @Test
-    fun cookPanelTwo() = cookPanel("two", page = 0)
+    fun cookStepTwo() = cookStep("two", page = 0)
 
     @Test
-    fun cookPanelTwoOpen() = cookPanel("two_open", page = 0, open = true)
+    fun cookStepNine() = cookStep("nine", page = 1)
 
     @Test
-    fun cookPanelNine() = cookPanel("nine", page = 1)
+    fun cookStepNone() = cookStep("none", page = 2)
 
     @Test
-    fun cookPanelNineOpen() = cookPanel("nine_open", page = 1, open = true)
+    fun cookStepLargeText() = cookStep("large_text", page = 1) { org.robolectric.RuntimeEnvironment.setFontScale(2f) }
 
     @Test
-    fun cookPanelNone() = cookPanel("none", page = 2)
-
-    /** Opened on the step before, and still open after paging on to a step that uses nothing. */
-    @Test
-    fun cookPanelNoneOpen() = cookPanel("none_open", page = 1, open = true, pageOn = true)
-
-    @Test
-    fun cookPanelLargeText() = cookPanel("large_text", page = 1) { org.robolectric.RuntimeEnvironment.setFontScale(2f) }
-
-    @Test
-    fun cookPanelLandscape() =
-        cookPanel("landscape", page = 1, open = true) {
+    fun cookStepLandscape() =
+        cookStep("landscape", page = 1) {
             org.robolectric.RuntimeEnvironment.setQualifiers("+w891dp-h411dp-land")
         }
 
-    /** A step of the curry, whose steps use two, nine, none and two ingredients; the panel opened by a tap where [open]. */
-    private fun cookPanel(
-        name: String,
-        page: Int,
-        open: Boolean = false,
-        pageOn: Boolean = false,
-        configure: () -> Unit = {},
-    ) {
+    /** A step of the curry, whose steps use two, nine, none and two ingredients, each in the step's own box. */
+    private fun cookStep(name: String, page: Int, configure: () -> Unit = {}) {
         applyLocale()
         configure()
-        val german = variant.locale == "de"
-        snapshot("cook_panel_${name}_${variant.suffix}", variant.dark, interact = {
-            if (open) {
-                composeRule
-                    .onNodeWithText(
-                        if (german) "Zutaten für diesen Schritt" else "ingredients for this step",
-                        substring = true,
-                    ).performClick()
-            }
-            if (pageOn) composeRule.onNodeWithText(if (german) "Weiter" else "Next").performClick()
-        }) {
+        snapshot("cook_step_${name}_${variant.suffix}", variant.dark) {
             CookScreen(
                 state = CookUiState(recipe = sample.curry, isLoading = false, checkedIngredients = setOf(1, 6)),
                 actions = CookActions(),
@@ -626,7 +604,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "settings_update_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNodeWithText("Version 0.3.0").performScrollTo() },
+            interact = { composeRule.onNodeWithWords("Version 0.3.0").performScrollTo() },
         ) {
             SettingsScreen(
                 state =
@@ -836,7 +814,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "editor_rows_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNodeWithText(firstStep).performScrollTo() },
+            interact = { composeRule.onNodeWithWords(firstStep).performScrollTo() },
         ) {
             EditorScreen(state = editorState(), actions = EditorActions())
         }
@@ -850,7 +828,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "editor_meal_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNodeWithText(ingredients).performScrollTo() },
+            interact = { composeRule.onNodeWithWords(ingredients).performScrollTo() },
         ) {
             EditorScreen(state = editorState(), actions = EditorActions())
         }
@@ -864,7 +842,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "editor_organizers_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNodeWithText(newTag).performScrollTo() },
+            interact = { composeRule.onNodeWithWords(newTag).performScrollTo() },
         ) {
             EditorScreen(state = editorState(), actions = EditorActions())
         }
@@ -946,9 +924,12 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
 
     private fun applyLocale() {
         org.robolectric.RuntimeEnvironment.setQualifiers("${variant.locale}-w411dp-h${screenHeightDp}dp-xxhdpi")
+        org.robolectric.RuntimeEnvironment.setFontScale(variant.scale)
     }
 
     companion object {
+        private const val PERCENT = 100
+
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
         fun variants() =
@@ -957,6 +938,8 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                 Variant("de", dark = true),
                 Variant("en", dark = false),
                 Variant("en", dark = true),
+                Variant("de", dark = false, scale = 1.3f),
+                Variant("de", dark = true, scale = 1.3f),
             )
     }
 }

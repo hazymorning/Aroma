@@ -7,29 +7,20 @@ import androidx.compose.ui.text.withStyle
 import app.aroma.core.format.DisplayQuantity
 import app.aroma.core.format.IngredientLine
 
-private val fractionStyle = SpanStyle(fontFeatureSettings = "frac")
 private val tabularStyle = SpanStyle(fontFeatureSettings = "tnum")
 
+/** What holds a number and its unit together on screen, "500 g": a narrow no-break space. */
+const val NARROW_NO_BREAK_SPACE = "\u202F"
+
 /**
- * Builds "2 ½ EL" with real typographic fractions. The `frac` feature is applied to the
- * fraction only, otherwise whole numbers would be set as numerators as well.
+ * "2 ½ EL": tabular figures, and fractions as the characters they are, which Aroma's fonts draw; a
+ * whole number and its fraction are held together by a narrow space.
  */
 fun AnnotatedString.Builder.appendQuantity(quantity: DisplayQuantity) {
-    when (quantity) {
-        is DisplayQuantity.Decimal -> {
-            withStyle(tabularStyle) { append(quantity.text) }
-        }
-
-        is DisplayQuantity.Fraction -> {
-            if (quantity.whole > 0) {
-                withStyle(tabularStyle) { append(quantity.whole.toString()) }
-                append(' ')
-            }
-            withStyle(fractionStyle) { append("${quantity.numerator}/${quantity.denominator}") }
-        }
-    }
+    withStyle(tabularStyle) { append(quantity.toPlainText().replace(" ", NARROW_NO_BREAK_SPACE)) }
 }
 
+/** The amount and unit of [line] as the amounts' column and the steps set them: "250 g", "1–2 EL". */
 fun measureText(line: IngredientLine): AnnotatedString =
     buildAnnotatedString {
         line.amount?.let { appendQuantity(it) }
@@ -38,7 +29,7 @@ fun measureText(line: IngredientLine): AnnotatedString =
             appendQuantity(it)
         }
         if (!line.unit.isNullOrBlank()) {
-            if (line.amount != null) append(' ')
+            if (line.amount != null) append(NARROW_NO_BREAK_SPACE)
             append(line.unit)
         }
     }
