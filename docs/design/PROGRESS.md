@@ -404,6 +404,18 @@ Korrigiert:
 Bericht mit Vorher-Nachher-Bildern: [`BERICHT.md`](BERICHT.md); Nachher-Bilder unter
 `screenshots/nachher` (390, dazu 169 unter `kochbuch`).
 
+## P8 – Release-Draft
+
+- Version 0.7.0 (versionCode 9), Eintrag in `CHANGELOG.md` im Stil der bisherigen (Englisch, Neu,
+  Besser, Behoben).
+- `release.yml` wird weiter von Hand gestartet, legt jetzt aber standardmäßig nur einen **Draft** an,
+  auch von einem anderen Branch als `main`: ohne Tag, für niemanden sichtbar, auch nicht für die
+  Update-Prüfung der App. Veröffentlichen heißt, den Draft auf der Release-Seite zu veröffentlichen.
+  Wer „draft" abwählt, veröffentlicht wie bisher sofort, nur von `main`. Kein Workflow hängt an
+  Tag-Pushes.
+- Branch gepusht, Pull Request in `main` geöffnet (nicht gemergt), Release-Workflow als Draft auf
+  `design/kochbuch` gestartet: signiertes APK und Release-Notes aus dem Changelog.
+
 ## Entscheidungen
 
 1. **Branch** `design/kochbuch`, wie im Auftrag.

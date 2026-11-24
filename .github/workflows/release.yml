@@ -1,10 +1,18 @@
 name: Release
 
-# Started by hand once CI passed on main (Actions > Release > Run workflow): publishes the
-# versionName in app/build.gradle.kts as "Aroma 0.3.0", signed with the release key, with its
-# CHANGELOG entry as notes. A version that is already out is left as it is.
+# Started by hand (Actions > Release > Run workflow): builds the versionName in app/build.gradle.kts
+# as "Aroma 0.3.0", signed with the release key, with its CHANGELOG entry as notes. By default it
+# only drafts the release, from any branch, for someone to publish by hand on the releases page; a
+# draft has no tag yet and is seen by no one, the app's update check included. Unticking "draft"
+# publishes at once, and only from main once CI passed there. A version that is already out, or
+# already drafted, is left as it is.
 on:
   workflow_dispatch:
+    inputs:
+      draft:
+        description: Only draft the release, to publish by hand later
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -15,7 +23,7 @@ concurrency:
 
 jobs:
   version:
-    if: github.ref == 'refs/heads/main'
+    if: inputs.draft || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -90,8 +98,13 @@ jobs:
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
+          DRAFT: ${{ inputs.draft }}
         run: |
           apk="Aroma-$VERSION.apk"
           cp app/build/outputs/apk/release/app-release.apk "$apk"
           awk -v heading="## $VERSION " 'index($0, heading) == 1 { found = 1; next } /^## / { found = 0 } found' CHANGELOG.md > notes.md
-          gh release create "v$VERSION" "$apk" --title "Aroma $VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest
+          if [ "$DRAFT" = true ]; then
+            gh release create "v$VERSION" "$apk" --draft --title "Aroma $VERSION" --notes-file notes.md --target "$GITHUB_SHA"
+          else
+            gh release create "v$VERSION" "$apk" --title "Aroma $VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest
+          fi

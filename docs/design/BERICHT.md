@@ -88,8 +88,10 @@ die Wochen-Unterzeile hat eine Schriftgröße. Auf 360 dp stehen morgens Suche u
 Gruß, der so zwei Zeilen behält, und „Einplanen" rückt unter die Metazeile, wenn der Name sonst zu
 schmal würde. Eine ungenutzte Abfrage und 96 unbenutzte Imports sind entfernt.
 
-**P8 – Release.** Version 0.7.0 (versionCode 9), Changelog-Eintrag, Release als Draft mit APK,
-Pull Request in den Hauptbranch.
+**P8 – Release.** Version 0.7.0 (versionCode 9), Changelog-Eintrag, Pull Request in den
+Hauptbranch. Der Release-Workflow legt jetzt standardmäßig nur einen Draft an (ohne Tag, für die
+Update-Prüfung der App unsichtbar) und darf das auch von einem anderen Branch als `main`;
+veröffentlicht wird von Hand auf der Release-Seite. Der Draft für 0.7.0 trägt das signierte APK.
 
 ## Wohin verschobene Funktionen gewandert sind
 
