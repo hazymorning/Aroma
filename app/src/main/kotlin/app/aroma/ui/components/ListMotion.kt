@@ -14,8 +14,8 @@ import app.aroma.ui.theme.Motion
 fun Modifier.animateRow(scope: LazyItemScope): Modifier =
     with(scope) {
         animateItem(
-            fadeInSpec = tween(Motion.STATE, easing = Motion.Settle),
-            placementSpec = tween(Motion.EXPAND, easing = Motion.Glide),
-            fadeOutSpec = tween(Motion.PRESS, delayMillis = Motion.PRESS),
+            fadeInSpec = tween(Motion.STATE, easing = Motion.Decelerate),
+            placementSpec = tween(Motion.STATE, easing = Motion.Decelerate),
+            fadeOutSpec = tween(Motion.EDGE, delayMillis = Motion.EDGE),
         )
     }

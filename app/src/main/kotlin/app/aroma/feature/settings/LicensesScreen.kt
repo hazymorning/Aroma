@@ -2,6 +2,7 @@ package app.aroma.feature.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,14 +30,14 @@ import androidx.compose.ui.semantics.Role
 import app.aroma.R
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.DetailPage
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.Separator
 import app.aroma.ui.components.Text
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
+import app.aroma.ui.components.TonalBox
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.RowHeight
-import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 
 private data class License(val component: String, val license: String, val asset: String? = null)
@@ -44,7 +45,7 @@ private data class License(val component: String, val license: String, val asset
 private val licenses =
     listOf(
         License("Newsreader", "SIL Open Font License 1.1", "licenses/OFL-Newsreader.txt"),
-        License("Figtree", "SIL Open Font License 1.1", "licenses/OFL-Figtree.txt"),
+        License("Instrument Sans", "SIL Open Font License 1.1", "licenses/OFL-InstrumentSans.txt"),
         License("Android Jetpack (AndroidX, Compose, Room, WorkManager)", "Apache License 2.0"),
         License("Kotlin, kotlinx.coroutines, kotlinx.serialization", "Apache License 2.0"),
         License("OkHttp, Retrofit", "Apache License 2.0"),
@@ -55,9 +56,9 @@ private val licenses =
 fun LicensesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     var openAsset by rememberSaveable { mutableStateOf<String?>(null) }
     DetailPage(title = stringResource(R.string.settings_licenses), onBack = onBack, modifier = modifier) {
-        SoftCard(Modifier.padding(top = Space.l)) {
+        TonalBox(Modifier.padding(horizontal = PageMargin), contentPadding = PaddingValues()) {
             licenses.forEachIndexed { index, item ->
-                if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
+                if (index > 0) Separator()
                 LicenseRow(item, onOpen = item.asset?.let { asset -> { openAsset = asset } })
             }
         }
@@ -75,20 +76,20 @@ private fun LicenseRow(item: License, onOpen: (() -> Unit)?) {
             .fillMaxWidth()
             .heightIn(min = RowHeight.twoLines)
             .then(if (onOpen != null) Modifier.clickable(role = Role.Button, onClick = onOpen) else Modifier)
-            .padding(horizontal = CardPadding, vertical = Space.s),
+            .padding(horizontal = BoxPadding, vertical = Space.s12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(item.component, style = AromaType.Body)
-            Text(item.license, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(item.component, style = AromaTheme.type.body)
+            Text(item.license, style = AromaTheme.type.bodySmall, color = AromaTheme.colors.inkSecondary)
         }
         if (onOpen != null) {
-            Spacer(Modifier.width(Space.m))
+            Spacer(Modifier.width(Space.s16))
             Icon(
                 painterResource(R.drawable.ic_chevron_right),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(Glyph.s),
+                tint = AromaTheme.colors.inkSecondary,
+                modifier = Modifier.size(Glyph.meta),
             )
         }
     }
@@ -113,8 +114,8 @@ private fun LicenseDialog(title: String, asset: String, onDismiss: () -> Unit) {
         content = {
             Text(
                 text = text,
-                style = AromaType.Small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = AromaTheme.type.bodySmall,
+                color = AromaTheme.colors.inkSecondary,
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             )
         },

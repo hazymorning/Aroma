@@ -28,14 +28,13 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import app.aroma.R
-import app.aroma.ui.components.InlineProgress
+import app.aroma.ui.components.ButtonHeight
+import app.aroma.ui.components.ButtonProgress
 import app.aroma.ui.components.Text
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
-import app.aroma.ui.theme.ControlHeight
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.tabular
 import kotlinx.coroutines.delay
 
@@ -57,14 +56,14 @@ internal fun WorkProgress(steps: List<ImportStep>, startedAt: Long?, waiting: St
     val resources = LocalResources.current
     Row(
         modifier
-            .height(ControlHeight)
+            .height(ButtonHeight)
             .clip(CircleShape)
-            .background(extras.card)
-            .padding(horizontal = CardPadding),
+            .background(AromaTheme.tonalFill)
+            .padding(horizontal = BoxPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        InlineProgress(color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(Space.s))
+        ButtonProgress(color = AromaTheme.colors.accent)
+        Spacer(Modifier.width(Space.s12))
         AnimatedContent(
             targetState = steps.lastOrNull()?.label(resources) ?: waiting,
             transitionSpec = { fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) },
@@ -73,7 +72,7 @@ internal fun WorkProgress(steps: List<ImportStep>, startedAt: Long?, waiting: St
         ) { step ->
             Text(
                 text = step,
-                style = AromaType.Label,
+                style = AromaTheme.type.label,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 // The step under way is announced as it changes; the clock is not.
@@ -81,7 +80,7 @@ internal fun WorkProgress(steps: List<ImportStep>, startedAt: Long?, waiting: St
             )
         }
         if (startedAt != null) {
-            Spacer(Modifier.width(Space.s))
+            Spacer(Modifier.width(Space.s12))
             Elapsed(startedAt)
         }
     }
@@ -98,8 +97,8 @@ private fun Elapsed(startedAt: Long) {
     }
     Text(
         text = DateUtils.formatElapsedTime(seconds),
-        style = AromaType.Label.tabular(),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = AromaTheme.type.label.tabular(),
+        color = AromaTheme.colors.inkSecondary,
     )
 }
 

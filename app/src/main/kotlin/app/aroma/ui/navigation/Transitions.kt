@@ -26,17 +26,17 @@ import app.aroma.ui.theme.Motion
  */
 internal object Transitions {
     /** A whole screen change: the old screen's fade, then the new one's. */
-    private const val DURATION = Motion.PRESS + Motion.STATE
+    private const val DURATION = Motion.EDGE + Motion.STATE
 
     private fun drift(fullWidth: Int) = fullWidth / 12
 
-    private val drifting = tween<IntOffset>(DURATION, easing = Motion.Glide)
+    private val drifting = tween<IntOffset>(DURATION, easing = Motion.Decelerate)
 
     /** The old screen's fade, and what leaves with it. */
-    val leave: ExitTransition = fadeOut(tween(Motion.PRESS, easing = LinearEasing))
+    val leave: ExitTransition = fadeOut(tween(Motion.EDGE, easing = LinearEasing))
 
     /** The new screen's fade once the old one has gone, and what arrives with it. */
-    val arrive: EnterTransition = fadeIn(tween(Motion.STATE, delayMillis = Motion.PRESS, easing = LinearEasing))
+    val arrive: EnterTransition = fadeIn(tween(Motion.STATE, delayMillis = Motion.EDGE, easing = LinearEasing))
 
     val enter: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
         if (isTabSwitch()) arrive else slideInHorizontally(drifting) { drift(it) } + arrive
@@ -68,9 +68,9 @@ internal object Transitions {
 
     /** The tab bar comes with its page, rising the last quarter of its height into place, and leaves with it. */
     val barEnter: EnterTransition =
-        arrive + slideInVertically(tween(Motion.STATE, delayMillis = Motion.PRESS, easing = Motion.Glide)) { it / 4 }
+        arrive + slideInVertically(tween(Motion.STATE, delayMillis = Motion.EDGE, easing = Motion.Decelerate)) { it / 4 }
 
-    val barExit: ExitTransition = leave + slideOutVertically(tween(Motion.PRESS, easing = Motion.Glide)) { it / 4 }
+    val barExit: ExitTransition = leave + slideOutVertically(tween(Motion.EDGE, easing = Motion.Decelerate)) { it / 4 }
 
     private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTabSwitch(): Boolean =
         initialState.destination.isTab() && targetState.destination.isTab()

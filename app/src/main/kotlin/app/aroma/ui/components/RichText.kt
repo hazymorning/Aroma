@@ -18,6 +18,7 @@ import app.aroma.core.format.DurationDetector
 import app.aroma.core.format.Markdown
 import app.aroma.core.format.StepAmount
 import app.aroma.core.format.StyledText
+import app.aroma.ui.theme.AromaTheme
 
 /**
  * Markdown text where durations such as "10 Minuten" become tappable timer links.
@@ -27,7 +28,7 @@ import app.aroma.core.format.StyledText
 fun rememberRichText(
     markdown: String,
     onDuration: ((DetectedDuration) -> Unit)? = null,
-    linkColor: Color = MaterialTheme.colorScheme.primary,
+    linkColor: Color = AromaTheme.colors.accent,
 ): AnnotatedString = rememberStepText(remember(markdown) { Markdown.parse(markdown) }, emptyList(), onDuration, linkColor)
 
 /**
@@ -40,13 +41,13 @@ fun rememberStepText(
     text: StyledText,
     amounts: List<StepAmount>,
     onDuration: ((DetectedDuration) -> Unit)? = null,
-    linkColor: Color = MaterialTheme.colorScheme.primary,
+    linkColor: Color = AromaTheme.colors.accent,
 ): AnnotatedString {
     val linkStyles =
         TextLinkStyles(
             style = SpanStyle(color = linkColor, fontWeight = FontWeight.Medium, textDecoration = TextDecoration.Underline),
         )
-    val amountStyle = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+    val amountStyle = SpanStyle(color = AromaTheme.colors.accent, fontWeight = FontWeight.Medium)
     return remember(text, amounts, onDuration, linkStyles, amountStyle) { richText(text, amounts, onDuration, linkStyles, amountStyle) }
 }
 

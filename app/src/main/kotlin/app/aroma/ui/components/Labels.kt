@@ -1,23 +1,11 @@
 package app.aroma.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.Meal
 import app.aroma.core.model.MealType
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.Space
 
 @Composable
 @ReadOnlyComposable
@@ -49,25 +37,3 @@ fun mealLabel(meal: Meal): String =
             Meal.Drink -> R.string.meal_drink
         },
     )
-
-/** Quiet hint shown while Aroma works from its offline copy. */
-@Composable
-fun OfflineNotice(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.xs),
-    ) {
-        Icon(
-            painterResource(R.drawable.ic_cloud_off),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(Glyph.s),
-        )
-        Text(
-            text = stringResource(R.string.offline_notice),
-            style = AromaType.Small,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}

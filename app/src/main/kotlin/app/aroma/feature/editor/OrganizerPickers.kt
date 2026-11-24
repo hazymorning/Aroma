@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -20,11 +21,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import app.aroma.R
 import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
-import app.aroma.ui.components.AromaFilterChip
-import app.aroma.ui.components.IconAction
-import app.aroma.ui.components.PillTextField
+import app.aroma.ui.components.IconButton
+import app.aroma.ui.components.PillField
+import app.aroma.ui.components.Segment
+import app.aroma.ui.components.SegmentInset
 import app.aroma.ui.components.mealLabel
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 
 /**
@@ -35,12 +37,11 @@ import app.aroma.ui.theme.Space
 fun MealChips(chosen: Set<Meal>, onToggle: (Meal, String) -> Unit, modifier: Modifier = Modifier) {
     LazyRow(
         modifier = modifier,
-        contentPadding = PaddingValues(horizontal = ScreenMargin),
-        horizontalArrangement = Arrangement.spacedBy(Space.xs),
+        contentPadding = PaddingValues(horizontal = PageMargin - SegmentInset),
     ) {
         items(Meal.entries) { meal ->
             val label = mealLabel(meal)
-            AromaFilterChip(selected = meal in chosen, label = label, onClick = { onToggle(meal, label) })
+            Segment(text = label, selected = meal in chosen, onClick = { onToggle(meal, label) })
         }
     }
 }
@@ -73,24 +74,20 @@ fun OrganizerChips(
             name = ""
         }
     }
-    Column(modifier.padding(horizontal = ScreenMargin)) {
+    Column(modifier.padding(horizontal = PageMargin)) {
         if (shown.isNotEmpty()) {
-            FlowRow(
-                modifier = Modifier.padding(bottom = Space.s),
-                horizontalArrangement = Arrangement.spacedBy(Space.xs),
-                verticalArrangement = Arrangement.spacedBy(Space.xs),
-            ) {
+            FlowRow(modifier = Modifier.padding(bottom = Space.s8).offset(x = -SegmentInset)) {
                 shown.forEach { option ->
                     val isSelected = selected.any(option::sameAs)
-                    AromaFilterChip(
+                    Segment(
+                        text = option.name,
                         selected = isSelected,
-                        label = option.name,
                         onClick = { onChange(if (isSelected) selected.filterNot(option::sameAs) else selected + option) },
                     )
                 }
             }
         }
-        PillTextField(
+        PillField(
             value = name,
             onValueChange = { name = it },
             placeholder = newLabel,
@@ -100,7 +97,7 @@ fun OrganizerChips(
             capitalization = KeyboardCapitalization.Sentences,
             trailing =
                 if (name.isNotBlank()) {
-                    { IconAction(R.drawable.ic_check, stringResource(R.string.organizers_add, name.trim()), add) }
+                    { IconButton(R.drawable.ic_check, stringResource(R.string.organizers_add, name.trim()), add) }
                 } else {
                     null
                 },

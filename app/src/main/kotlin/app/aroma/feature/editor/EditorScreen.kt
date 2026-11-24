@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -54,26 +55,29 @@ import app.aroma.R
 import app.aroma.core.model.Filing
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.RecipeImage
-import app.aroma.ui.components.CardActionPadding
+import app.aroma.ui.components.BottomActionBar
 import app.aroma.ui.components.DetailPage
+import app.aroma.ui.components.ErrorNote
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.IconAction
-import app.aroma.ui.components.InlineProgress
+import app.aroma.ui.components.IconButton
+import app.aroma.ui.components.IconButtonPlace
 import app.aroma.ui.components.LabeledTextField
-import app.aroma.ui.components.OnPhotoButton
-import app.aroma.ui.components.Placeholder
-import app.aroma.ui.components.PlaceholderLines
-import app.aroma.ui.components.QuietLink
+import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RecipeImage
-import app.aroma.ui.components.SectionHeader
-import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.SectionTitle
+import app.aroma.ui.components.Separator
+import app.aroma.ui.components.Skeleton
+import app.aroma.ui.components.SkeletonLine
 import app.aroma.ui.components.Text
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
+import app.aroma.ui.components.TextAction
+import app.aroma.ui.components.TonalBox
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.RowHeight
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.SectionGap
+import app.aroma.ui.theme.SectionTitleGap
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.tabular
 import coil3.compose.AsyncImage
@@ -94,12 +98,16 @@ fun EditorScreen(state: EditorUiState, actions: EditorActions, modifier: Modifie
         onBack = actions.onBack,
         modifier = modifier,
         scroll = scroll,
-        actions = {
-            SaveLink(
-                saving = state.isSaving,
-                enabled = !state.isLoading && state.form.name.isNotBlank(),
-                onSave = actions.onSave,
-            )
+        bottomBar = {
+            BottomActionBar {
+                PrimaryButton(
+                    text = stringResource(R.string.action_save),
+                    onClick = actions.onSave,
+                    enabled = !state.isLoading && state.form.name.isNotBlank(),
+                    loading = state.isSaving,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         },
     ) {
         when {
@@ -118,32 +126,20 @@ fun EditorScreen(state: EditorUiState, actions: EditorActions, modifier: Modifie
     }
 }
 
-/** Save as a quiet link; while saving, a small spinner holds its place. */
-@Composable
-private fun SaveLink(saving: Boolean, enabled: Boolean, onSave: () -> Unit) {
-    // The bar already insets its actions by 8 dp; 16 more puts the text on the right margin.
-    Box(Modifier.padding(end = Space.m), contentAlignment = Alignment.Center) {
-        QuietLink(
-            text = stringResource(R.string.action_save),
-            onClick = onSave,
-            enabled = enabled && !saving,
-            modifier = Modifier.alpha(if (saving) 0f else 1f),
-        )
-        if (saving) InlineProgress()
-    }
-}
-
 @Composable
 private fun Loading() {
-    Column(Modifier.padding(top = Space.l)) {
-        Placeholder(
+    Column {
+        Skeleton(
             Modifier
-                .padding(horizontal = ScreenMargin)
+                .padding(horizontal = PageMargin)
                 .fillMaxWidth()
                 .aspectRatio(PHOTO_RATIO),
+            shape = AromaTheme.shapes.cardImage,
         )
-        Spacer(Modifier.height(Space.l))
-        PlaceholderLines(3, Modifier.padding(horizontal = ScreenMargin))
+        Spacer(Modifier.height(Space.s24))
+        Column(Modifier.padding(horizontal = PageMargin), verticalArrangement = Arrangement.spacedBy(Space.s12)) {
+            listOf(1f, 1f, 0.5f).forEach { SkeletonLine(Modifier.fillMaxWidth(it)) }
+        }
     }
 }
 
@@ -154,22 +150,21 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
     // A failed save is reported under the title, so bring it into view.
     LaunchedEffect(state.error) { if (state.error != null) scroll.animateScrollTo(0) }
     Column {
-        state.error?.let { InlineError(it, Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m)) }
-        Spacer(Modifier.height(Space.l))
+        state.error?.let { ErrorNote(it, Modifier.padding(start = PageMargin, end = PageMargin, bottom = Space.s24)) }
         Photo(
             newImage = state.newImage,
             current = state.currentImage,
             onPick = actions.onPickImage,
-            modifier = Modifier.padding(horizontal = ScreenMargin),
+            modifier = Modifier.padding(horizontal = PageMargin),
         )
-        Spacer(Modifier.height(Space.l))
+        Spacer(Modifier.height(Space.s24))
         Basics(form, change)
-        SectionHeader(stringResource(R.string.organizers_meal))
+        SectionTitle(stringResource(R.string.organizers_meal), Modifier.padding(top = SectionGap, bottom = SectionTitleGap))
         Text(
             text = stringResource(R.string.organizers_meal_hint),
-            style = AromaType.Small,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.s),
+            style = AromaTheme.type.bodySmall,
+            color = AromaTheme.colors.inkSecondary,
+            modifier = Modifier.padding(start = PageMargin, end = PageMargin, bottom = Space.s4),
         )
         MealChips(
             chosen = Filing(form.categories, form.tags).meals,
@@ -177,12 +172,12 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
                 change { it.filedAs(Filing(it.categories, it.tags).toggle(meal, state.allCategories, label)) }
             },
         )
-        SectionHeader(stringResource(R.string.recipe_ingredients))
+        SectionTitle(stringResource(R.string.recipe_ingredients), Modifier.padding(top = SectionGap, bottom = SectionTitleGap))
         Text(
             text = stringResource(R.string.editor_ingredients_hint),
-            style = AromaType.Small,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.s),
+            style = AromaTheme.type.bodySmall,
+            color = AromaTheme.colors.inkSecondary,
+            modifier = Modifier.padding(start = PageMargin, end = PageMargin, bottom = Space.s12),
         )
         EditableRows(
             rows = form.ingredients.lines(),
@@ -192,8 +187,7 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
             removeLabel = R.string.editor_remove_ingredient,
             numbered = false,
         )
-        SectionHeader(stringResource(R.string.recipe_steps))
-        Spacer(Modifier.height(Space.xs))
+        SectionTitle(stringResource(R.string.recipe_steps), Modifier.padding(top = SectionGap, bottom = SectionTitleGap))
         EditableRows(
             rows = form.steps,
             onChange = { steps -> change { it.copy(steps = steps) } },
@@ -202,21 +196,21 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
             removeLabel = R.string.editor_remove_step,
             numbered = true,
         )
-        SectionHeader(stringResource(R.string.recipes_categories))
+        SectionTitle(stringResource(R.string.recipes_categories), Modifier.padding(top = SectionGap, bottom = SectionTitleGap))
         OrganizerChips(
             options = state.allCategories,
             selected = form.categories,
             onChange = { picked -> change { it.copy(categories = picked) } },
             newLabel = stringResource(R.string.organizers_new_category),
-            modifier = Modifier.padding(top = Space.xs),
+            modifier = Modifier.padding(top = Space.s8),
         )
-        SectionHeader(stringResource(R.string.recipes_tags))
+        SectionTitle(stringResource(R.string.recipes_tags), Modifier.padding(top = SectionGap, bottom = SectionTitleGap))
         OrganizerChips(
             options = state.allTags,
             selected = form.tags,
             onChange = { picked -> change { it.copy(tags = picked) } },
             newLabel = stringResource(R.string.organizers_new_tag),
-            modifier = Modifier.padding(top = Space.xs),
+            modifier = Modifier.padding(top = Space.s8),
         )
     }
 }
@@ -224,7 +218,7 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
 /** Name, description, servings and times: the facts at the top of a recipe. */
 @Composable
 private fun Basics(form: EditorForm, change: ((EditorForm) -> EditorForm) -> Unit) {
-    Column(Modifier.padding(horizontal = ScreenMargin), verticalArrangement = Arrangement.spacedBy(Space.m)) {
+    Column(Modifier.padding(horizontal = PageMargin), verticalArrangement = Arrangement.spacedBy(Space.s16)) {
         LabeledTextField(
             value = form.name,
             onValueChange = { value -> change { it.copy(name = value) } },
@@ -238,7 +232,7 @@ private fun Basics(form: EditorForm, change: ((EditorForm) -> EditorForm) -> Uni
             singleLine = false,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.s16)) {
             NumberField(
                 label = stringResource(R.string.editor_servings),
                 value = form.servings,
@@ -252,7 +246,7 @@ private fun Basics(form: EditorForm, change: ((EditorForm) -> EditorForm) -> Uni
                 modifier = Modifier.weight(1f),
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.s16)) {
             NumberField(
                 label = stringResource(R.string.editor_cook_minutes),
                 value = form.cookMinutes,
@@ -290,7 +284,7 @@ private fun Photo(newImage: Uri?, current: RecipeImage?, onPick: () -> Unit, mod
         modifier
             .fillMaxWidth()
             .aspectRatio(PHOTO_RATIO)
-            .clip(MaterialTheme.shapes.medium),
+            .clip(AromaTheme.shapes.cardImage),
     ) {
         when {
             newImage != null -> {
@@ -298,7 +292,7 @@ private fun Photo(newImage: Uri?, current: RecipeImage?, onPick: () -> Unit, mod
             }
 
             current != null -> {
-                RecipeImage(current, ImageSize.Medium, modifier = Modifier.fillMaxSize(), fallbackIconSize = Glyph.xl)
+                RecipeImage(current, ImageSize.Medium, modifier = Modifier.fillMaxSize(), shape = AromaTheme.shapes.cardImage)
             }
 
             else -> {
@@ -306,14 +300,15 @@ private fun Photo(newImage: Uri?, current: RecipeImage?, onPick: () -> Unit, mod
             }
         }
         if (newImage != null || current != null) {
-            OnPhotoButton(
+            IconButton(
                 icon = R.drawable.ic_add_photo_alternate,
                 contentDescription = stringResource(R.string.editor_change_photo),
                 onClick = onPick,
+                place = IconButtonPlace.Photo,
                 modifier =
                     Modifier
                         .align(Alignment.TopEnd)
-                        .padding(Space.xs),
+                        .padding(Space.s8),
             )
         }
     }
@@ -325,7 +320,7 @@ private fun NoPhoto(onPick: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(AromaTheme.colors.surface)
             .clickable(role = Role.Button, onClick = onPick),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -333,11 +328,11 @@ private fun NoPhoto(onPick: () -> Unit) {
         Icon(
             painterResource(R.drawable.ic_plate),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.size(Glyph.xl),
+            tint = AromaTheme.colors.inkTertiary,
+            modifier = Modifier.size(Glyph.nav),
         )
-        Spacer(Modifier.height(Space.s))
-        Text(stringResource(R.string.editor_pick_photo), style = AromaType.Label)
+        Spacer(Modifier.height(Space.s12))
+        Text(stringResource(R.string.editor_pick_photo), style = AromaTheme.type.label)
     }
 }
 
@@ -362,7 +357,7 @@ private fun EditableRows(
         onChange(rows + "")
         focusRow = rows.size
     }
-    SoftCard {
+    TonalBox(Modifier.padding(horizontal = PageMargin), contentPadding = PaddingValues(vertical = Space.s4)) {
         rows.forEachIndexed { index, text ->
             key(rowKeys[index]) {
                 val focusRequester = remember { FocusRequester() }
@@ -373,7 +368,7 @@ private fun EditableRows(
                         focusRow = null
                     }
                 }
-                if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
+                if (index > 0) Separator(start = if (numbered) BoxPadding + StepNumberWidth else BoxPadding)
                 EditableRow(
                     text = text,
                     onTextChange = { value -> onChange(rows.toMutableList().also { it[index] = value }) },
@@ -405,8 +400,7 @@ private fun EditableRows(
                 )
             }
         }
-        Hairline(Modifier.padding(horizontal = CardPadding))
-        QuietLink(addLabel, addRow, Modifier.padding(horizontal = CardPadding), leadingIcon = R.drawable.ic_add)
+        TextAction(addLabel, addRow, Modifier.padding(horizontal = BoxPadding), icon = R.drawable.ic_add)
     }
 }
 
@@ -444,13 +438,13 @@ private fun EditableRow(
     onNext: (() -> Unit)?,
     focusRequester: FocusRequester,
 ) {
-    val body = AromaType.Body
+    val body = AromaTheme.type.body
     // Lines starting with # become section headings; setting them in Medium shows that while typing.
     val style = if (text.trimStart().startsWith("#")) body.copy(fontWeight = FontWeight.Medium) else body
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = CardPadding, end = if (onRemove != null) CardActionPadding else CardPadding),
+            .padding(start = BoxPadding, end = if (onRemove != null) Space.s4 else BoxPadding),
         verticalAlignment = Alignment.Top,
     ) {
         BasicTextField(
@@ -460,20 +454,20 @@ private fun EditableRow(
                 Modifier
                     .weight(1f)
                     .focusRequester(focusRequester),
-            textStyle = style.copy(color = MaterialTheme.colorScheme.onSurface),
+            textStyle = style.copy(color = AromaTheme.colors.ink),
             keyboardOptions =
                 KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = if (onNext != null) ImeAction.Next else ImeAction.Default,
                 ),
             keyboardActions = KeyboardActions(onNext = { onNext?.invoke() }),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            cursorBrush = SolidColor(AromaTheme.colors.accent),
             decorationBox = { field ->
                 // The whole 56 dp row takes the tap, not just the line of text.
                 Row(
                     Modifier
                         .heightIn(min = RowHeight.oneLine)
-                        .padding(vertical = Space.m),
+                        .padding(vertical = Space.s16),
                 ) {
                     if (number != null) StepNumber(number)
                     Box(
@@ -482,7 +476,7 @@ private fun EditableRow(
                             .alignByBaseline(),
                     ) {
                         if (text.isEmpty()) {
-                            Text(placeholder, style = body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(placeholder, style = body, color = AromaTheme.colors.inkSecondary)
                         }
                         field()
                     }
@@ -491,7 +485,7 @@ private fun EditableRow(
         )
         if (onRemove != null) {
             // Level with the first line of text.
-            IconAction(R.drawable.ic_close, removeLabel, onRemove, Modifier.padding(top = Space.xxs))
+            IconButton(R.drawable.ic_close, removeLabel, onRemove, Modifier.padding(top = Space.s4))
         }
     }
 }
@@ -501,8 +495,8 @@ private fun RowScope.StepNumber(number: Int) {
     val label = stringResource(R.string.editor_step, number)
     Text(
         text = number.toString(),
-        style = AromaType.SectionTitle.tabular(),
-        color = MaterialTheme.colorScheme.primary,
+        style = AromaTheme.type.section.tabular(),
+        color = AromaTheme.colors.accent,
         modifier =
             Modifier
                 .width(StepNumberWidth)

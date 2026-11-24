@@ -58,11 +58,22 @@ class RecipesViewModel(
         if (withCookbooks) loadCookbooks()
         reload()
         observeQuery()
+        observeSaved()
         viewModelScope.launch { recipes.changes.collect { reload() } }
         viewModelScope.launch {
             // Mealie answers again: load anew. Out of reach: what shows is the phone's copy.
             connection.isReachable.drop(1).collect { reachable ->
                 if (reachable) loadAll() else mutableState.update { it.copy(isOffline = true) }
+            }
+        }
+    }
+
+    /** The recipes the user saved, which wear the bookmark ribbon on their cards. */
+    private fun observeSaved() {
+        viewModelScope.launch { attempt { recipes.loadRatings() } }
+        viewModelScope.launch {
+            recipes.ratings.collect { ratings ->
+                mutableState.update { state -> state.copy(saved = ratings.filterValues { it.isFavorite }.keys) }
             }
         }
     }

@@ -43,12 +43,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.aroma.R
-import app.aroma.ui.components.Placeholder
+import app.aroma.ui.components.Skeleton
+import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
-import app.aroma.ui.theme.extras
-import app.aroma.ui.theme.photoButtonShadow
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -116,7 +115,7 @@ internal fun PhotoStrip(
     onRemove: (ImportPhoto) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(Space.s8)) {
         // On a narrow screen, photos and tiles share the row rather than run off it.
         photos.forEachIndexed { index, photo ->
             key(photo.id) {
@@ -152,7 +151,7 @@ private fun PhotoThumbnail(
             .aspectRatio(1f),
     ) {
         if (photo.file == null) {
-            Placeholder(Modifier.matchParentSize(), shape = MaterialTheme.shapes.small)
+            Skeleton(Modifier.matchParentSize(), shape = AromaTheme.shapes.thumbnail)
         } else {
             AsyncImage(
                 model = photo.file,
@@ -161,8 +160,8 @@ private fun PhotoThumbnail(
                 modifier =
                     Modifier
                         .matchParentSize()
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                        .clip(AromaTheme.shapes.thumbnail)
+                        .background(AromaTheme.colors.surfacePressed),
             )
             if (removable) {
                 RemovePhotoButton(
@@ -195,15 +194,14 @@ private fun RemovePhotoButton(number: Int, onClick: () -> Unit, modifier: Modifi
         Box(
             Modifier
                 .size(RemoveMark)
-                .photoButtonShadow(CircleShape)
-                .background(extras.raised, CircleShape),
+                .background(AromaTheme.colors.bar, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painterResource(R.drawable.ic_close),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(Glyph.s),
+                tint = AromaTheme.colors.ink,
+                modifier = Modifier.size(Glyph.meta),
             )
         }
     }
@@ -221,8 +219,8 @@ private fun AddPhotoTile(
         modifier
             .widthIn(max = PhotoSize)
             .aspectRatio(1f)
-            .clip(MaterialTheme.shapes.small)
-            .background(extras.card)
+            .clip(AromaTheme.shapes.thumbnail)
+            .background(AromaTheme.tonalFill)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
@@ -230,8 +228,8 @@ private fun AddPhotoTile(
         Icon(
             painterResource(icon),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(Glyph.l),
+            tint = AromaTheme.colors.inkSecondary,
+            modifier = Modifier.size(Glyph.nav),
         )
     }
 }
@@ -240,5 +238,5 @@ private fun AddPhotoTile(
 private val PhotoSize = 72.dp
 private val RemoveMark = 24.dp
 
-/** How far the remove button's touch area reaches past the photo's corner, so that the mark sits [Space.xxs] inside it. */
-private val RemoveReach = (TouchTarget - RemoveMark) / 2 - Space.xxs
+/** How far the remove button's touch area reaches past the photo's corner, so that the mark sits [Space.s4] inside it. */
+private val RemoveReach = (TouchTarget - RemoveMark) / 2 - Space.s4

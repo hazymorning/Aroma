@@ -10,196 +10,150 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.Measurable
-import androidx.compose.ui.layout.MeasureResult
-import androidx.compose.ui.layout.MeasureScope
-import androidx.compose.ui.layout.findRootCoordinates
-import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.node.LayoutModifierNode
-import androidx.compose.ui.node.ModifierNodeElement
-import androidx.compose.ui.node.invalidateMeasurement
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.data.AromaError
-import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.extras
-import kotlin.math.roundToInt
 
 /**
- * A message for empty lists, missing results and errors, set on the page's margin: a line glyph, a
- * serif title, a quiet explanation and the action across the column. [primaryAction] makes the
- * action the filled button, for when it is the only way forward. A message that [standsAlone], with
- * nothing after it on its page, stands a third of the way down the room left below it, where the
- * eye rests, as the end of cooking does.
+ * Emptiness, said quietly: one line in the description role and one text action, no picture, never
+ * taller than 56 dp and never larger than the content it stands for.
  */
 @Composable
-fun MessageState(
-    icon: Int,
-    title: String,
+fun EmptyState(
+    text: String,
     modifier: Modifier = Modifier,
-    body: String? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
-    primaryAction: Boolean = false,
-    standsAlone: Boolean = true,
+    edge: Dp = PageMargin,
 ) {
-    val density = LocalDensity.current
-    // The tab bar, the navigation bar or the keyboard: what takes the bottom of the window.
-    val cover = maxOf(with(density) { LocalBottomBarInset.current.roundToPx() }, WindowInsets.safeDrawing.getBottom(density))
-    Column(
+    Row(
         modifier =
             modifier
-                .then(if (standsAlone) ThirdOfRoomElement(cover) else Modifier)
-                .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl, bottom = Space.l),
+                .fillMaxWidth()
+                .heightIn(min = EmptyHeight)
+                .padding(horizontal = edge),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            painterResource(icon),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier =
-                Modifier
-                    .offset(x = -GlyphInk)
-                    .size(Glyph.xl),
-        )
-        Spacer(Modifier.height(Space.m))
-        Text(title, style = AromaType.SectionTitle)
-        if (body != null) {
-            Spacer(Modifier.height(Space.xs))
-            Text(
-                text = body,
-                style = AromaType.Body,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.widthIn(max = MessageWidth),
-            )
-        }
+        Text(text, style = AromaTheme.type.bodySmall, maxLines = 2, modifier = Modifier.weight(1f, fill = false))
         if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.height(Space.l))
-            val across = Modifier.fillMaxWidth()
-            if (primaryAction) PrimaryButton(actionLabel, onAction, across) else SecondaryButton(actionLabel, onAction, across)
+            Spacer(Modifier.width(Space.s12))
+            TextAction(actionLabel, onAction)
         }
     }
 }
 
-/** The longest a message's lines run, so it reads as a short note even on a tablet. */
-private val MessageWidth = 320.dp
+private val EmptyHeight = 48.dp
 
-/** Aroma's line glyphs start their ink about 3.5 of their 24 units in; moved by that, the ink starts on the text's edge. */
-private val GlyphInk = Glyph.xl * 3.5f / 24
-
-/**
- * Lowers what it holds by a third of the room left below it in the window, down to [cover]. Where it
- * stands only shows as it is placed, so a new lift measures it once more, within the same frame.
- */
-private data class ThirdOfRoomElement(val cover: Int) : ModifierNodeElement<ThirdOfRoomNode>() {
-    override fun create() = ThirdOfRoomNode(cover)
-
-    override fun update(node: ThirdOfRoomNode) {
-        node.cover = cover
-        node.invalidateMeasurement()
-    }
-}
-
-private class ThirdOfRoomNode(var cover: Int) :
-    Modifier.Node(),
-    LayoutModifierNode {
-    private var lift = 0
-
-    override fun MeasureScope.measure(measurable: Measurable, constraints: Constraints): MeasureResult {
-        val content = measurable.measure(constraints.copy(minHeight = 0))
-        return layout(content.width, constraints.constrainHeight(content.height + lift)) {
-            coordinates?.let { placed ->
-                val top = placed.positionInRoot().y.roundToInt()
-                val room = (placed.findRootCoordinates().size.height - cover - top - content.height).coerceAtLeast(0)
-                if (room / 3 != lift) {
-                    lift = room / 3
-                    invalidateMeasurement()
-                }
-            }
-            content.place(0, lift)
-        }
-    }
-}
-
+/** An error, as one line with "Try again". */
 @Composable
 fun ErrorState(error: AromaError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
-    MessageState(
-        icon = if (error is AromaError.Offline) R.drawable.ic_cloud_off else R.drawable.ic_error,
-        title = stringResource(error.titleRes()),
-        body = stringResource(error.messageRes()),
+    EmptyState(
+        text = stringResource(error.titleRes()),
         actionLabel = stringResource(R.string.action_retry),
         onAction = onRetry,
         modifier = modifier,
     )
 }
 
-/** Softly pulsing block that stands in for content while it loads. */
+/**
+ * What stands in for content while it loads: a quiet fill in the shape of what is coming, which
+ * breathes softly from 60 % to full and back.
+ */
 @Composable
-fun Placeholder(modifier: Modifier = Modifier, shape: Shape = MaterialTheme.shapes.medium) {
-    val transition = rememberInfiniteTransition(label = "placeholder")
+fun Skeleton(modifier: Modifier = Modifier, shape: Shape = RectangleShape) {
+    val transition = rememberInfiniteTransition(label = "skeleton")
     val alpha by transition.animateFloat(
-        initialValue = 0.55f,
+        initialValue = SKELETON_LOW,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(Motion.PULSE, easing = LinearEasing), RepeatMode.Reverse),
-        label = "placeholderAlpha",
+        animationSpec = infiniteRepeatable(tween(Motion.PULSE / 2, easing = LinearEasing), RepeatMode.Reverse),
+        label = "skeletonAlpha",
     )
     Box(
         modifier
             .graphicsLayer { this.alpha = alpha }
             .clip(shape)
-            .background(extras.card),
+            .background(AromaTheme.colors.surfacePressed),
     )
 }
 
-/** A line of text that is still loading, as long as [modifier] makes it. */
+/** A line of text that is still loading, as long as [modifier] makes it, as tall as an x-height and a half. */
 @Composable
-fun PlaceholderLine(modifier: Modifier = Modifier) {
-    Placeholder(modifier.height(Space.s), shape = MaterialTheme.shapes.extraSmall)
+fun SkeletonLine(modifier: Modifier = Modifier) {
+    Skeleton(modifier.height(Space.s12), shape = AromaTheme.shapes.round)
 }
 
+private const val SKELETON_LOW = 0.6f
+
+/**
+ * An error set as text where it happened, under the field or button it belongs to: a small mark and
+ * the [title] in the error colour, the [message] below in second ink, and a [hint] on what to do
+ * about it where the message does not say. TalkBack reads it out as it appears.
+ */
 @Composable
-fun PlaceholderLines(lines: Int, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-        repeat(lines) { index ->
-            PlaceholderLine(
-                Modifier
-                    .widthIn(max = if (index == lines - 1) MessageWidth / 2 else MessageWidth)
-                    .fillMaxWidth(),
-            )
+fun ErrorNote(title: String, message: String?, modifier: Modifier = Modifier, hint: String? = null) {
+    val colors = AromaTheme.colors
+    val type = AromaTheme.type
+    // The mark stands centred on the title's first line, at any font size.
+    val firstLine = with(LocalDensity.current) { type.label.lineHeight.toDp() }
+    Row(
+        modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        horizontalArrangement = Arrangement.spacedBy(Space.s8),
+    ) {
+        Box(Modifier.height(firstLine), contentAlignment = Alignment.Center) {
+            Icon(painterResource(R.drawable.ic_error), contentDescription = null, tint = colors.error, modifier = Modifier.size(Glyph.meta))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(Space.s4)) {
+            Text(title, style = type.label, color = colors.error)
+            if (message != null) Text(message, style = type.bodySmall)
+            if (hint != null) Text(hint, style = type.bodySmall)
         }
     }
 }
 
-/** The one way Aroma shows that something is under way: a fine ring in quiet ink. */
+/** [ErrorNote] for an [error] of Aroma's own; an import that failed says why in Mealie's words where it gave some. */
 @Composable
-fun InlineProgress(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
-    CircularProgressIndicator(strokeWidth = Lines.focus, color = color, modifier = modifier.size(Glyph.m))
+fun ErrorNote(error: AromaError, modifier: Modifier = Modifier, hint: String? = null) {
+    ErrorNote(
+        title = stringResource(error.titleRes()),
+        message = (error as? AromaError.ImportFailed)?.detail ?: stringResource(error.messageRes()),
+        modifier = modifier,
+        hint = hint,
+    )
+}
+
+/** That the page shows the phone's own copy while Mealie is out of reach: one quiet line. */
+@Composable
+fun OfflineNotice(modifier: Modifier = Modifier) {
+    MetaLine(items = listOf(stringResource(R.string.offline_notice)), icon = R.drawable.ic_cloud_off, modifier = modifier)
 }

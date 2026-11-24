@@ -8,6 +8,7 @@ import app.aroma.BuildConfig
 import app.aroma.core.format.MeasureSystem
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.User
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.session.SessionManager
 import app.aroma.data.settings.AppLanguage
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -31,6 +33,7 @@ class SettingsViewModel(
     recipes: RecipeRepository,
     private val updates: Updates,
     private val signOutAndForget: () -> Unit,
+    connection: ServerConnection? = null,
 ) : ViewModel() {
     private val language = MutableStateFlow(settings.language)
 
@@ -41,8 +44,15 @@ class SettingsViewModel(
         }
 
     val state: StateFlow<SettingsUiState> =
-        combine(settings.settings, language, recipes.offlineCount(), updates.state) { app, lang, offline, update ->
+        combine(
+            settings.settings,
+            language,
+            recipes.offlineCount(),
+            updates.state,
+            connection?.isReachable ?: flowOf(true),
+        ) { app, lang, offline, update, connected ->
             SettingsUiState(
+                connected = connected,
                 user = account?.first,
                 server = account?.second,
                 themeMode = app.themeMode,

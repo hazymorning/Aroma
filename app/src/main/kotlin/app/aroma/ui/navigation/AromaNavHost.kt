@@ -182,14 +182,14 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
         // A message still showing as the page changes glides to its place on the new page.
         val snackbarLift by animateDpAsState(
             when {
-                showBar -> barInset + Space.xs
+                showBar -> barInset + Space.s8
 
                 // Above the recipe's action bar.
-                destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + ActionBarHeight + Space.xs
+                destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + ActionBarHeight + Space.s8
 
-                else -> navigationInset + Space.m
+                else -> navigationInset + Space.s16
             },
-            tween(Motion.EXPAND, easing = Motion.Glide),
+            tween(Motion.STATE, easing = Motion.Decelerate),
             label = "snackbarLift",
         )
         AromaSnackbarHost(

@@ -1,163 +1,131 @@
 package app.aroma.ui.theme
 
 import android.os.Build
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ripple.RippleAlpha
-import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Shapes
-import androidx.compose.material3.Typography
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.text.intl.LocaleList
+import app.aroma.ui.components.PressTint
+import java.util.Locale
 
-/**
- * Material's slots, for the components Aroma takes from Material: every slot is a role of
- * [AromaType]. Kept apart from Type.kt, so the roles never wait on this while they are created.
- */
-val AromaTypography =
-    Typography(
-        displayLarge = AromaType.PageTitle,
-        displayMedium = AromaType.PageTitle,
-        displaySmall = AromaType.PageTitle,
-        headlineLarge = AromaType.PageTitle,
-        headlineMedium = AromaType.SectionTitle,
-        headlineSmall = AromaType.SectionTitle,
-        titleLarge = AromaType.Name,
-        titleMedium = AromaType.BodyStrong,
-        titleSmall = AromaType.Label,
-        bodyLarge = AromaType.Body,
-        bodyMedium = AromaType.Small,
-        bodySmall = AromaType.Small,
-        labelLarge = AromaType.Label,
-        labelMedium = AromaType.Label,
-        labelSmall = AromaType.Caption,
-    )
-
-val AromaShapes =
-    Shapes(
-        extraSmall = RoundedCornerShape(4.dp),
-        small = RoundedCornerShape(12.dp),
-        medium = RoundedCornerShape(16.dp),
-        large = RoundedCornerShape(16.dp),
-        extraLarge = RoundedCornerShape(28.dp),
-    )
-
-/**
- * Colours Material's scheme has no role for. [card] is the soft fill of everything that holds or
- * takes a tap: cards, fields, chips and quiet buttons. [selected] is the sage wash of a chosen chip,
- * tab or day. [raised] is the paper of what floats above the page: the tab bar, sheets, menus.
- * [cta] is the one filled action of a screen, a deep tone-on-tone green in dark mode instead of a
- * bright mint slab. [mutedAccent] is a soft sage with dark sage words on it, for the few actions
- * that come right after the main one, such as plan and shop on a recipe: it lifts them above the
- * quiet buttons without competing with [cta].
- */
+/** The shapes of the theme, from [Radius]. */
 @Immutable
-data class AromaExtras(
-    val card: Color,
-    val selected: Color,
-    val onSelected: Color,
-    val raised: Color,
-    val cta: Color,
-    val onCta: Color,
-    val mutedAccent: Color,
-    val onMutedAccent: Color,
-    val shadowInk: Color,
-    val floatingEdge: Color,
-)
+class AromaShapes {
+    val box = RoundedCornerShape(Radius.box)
+    val cardImage = RoundedCornerShape(Radius.cardImage)
+    val thumbnail = RoundedCornerShape(Radius.thumbnail)
+    val sheet = RoundedCornerShape(topStart = Radius.sheet, topEnd = Radius.sheet)
+    val round = RoundedCornerShape(percent = 50)
+}
 
-internal val LightExtras =
-    AromaExtras(
-        card = Color(0xFFEEEFE7),
-        selected = Color(0xFFDCE7D4),
-        onSelected = Color(0xFF1C3319),
-        raised = Color(0xFFFFFFFF),
-        cta = Color(0xFF486447),
-        onCta = Color(0xFFFFFFFF),
-        mutedAccent = Color(0xFFD8E3CF),
-        onMutedAccent = Color(0xFF2F4B2C),
-        shadowInk = Color(0xFF1B2A19),
-        floatingEdge = Color(0xFF1A1C18).copy(alpha = 0.05f),
+/** Material's shape slots, for the parts Aroma takes from Material. */
+private val MaterialShapes =
+    Shapes(
+        extraSmall = RoundedCornerShape(Space.s4),
+        small = RoundedCornerShape(Radius.thumbnail),
+        medium = RoundedCornerShape(Radius.cardImage),
+        large = RoundedCornerShape(Radius.box),
+        extraLarge = RoundedCornerShape(Radius.sheet),
     )
 
-internal val DarkExtras =
-    AromaExtras(
-        card = Color(0xFF1E211D),
-        selected = Color(0xFF2E3D2B),
-        onSelected = Color(0xFFDCEBD3),
-        raised = Color(0xFF2C2F2A),
-        cta = Color(0xFF3A5638),
-        onCta = Color(0xFFE2F0DA),
-        mutedAccent = Color(0xFF263324),
-        onMutedAccent = Color(0xFFC3DCB8),
-        shadowInk = Color.Black,
-        floatingEdge = Color.White.copy(alpha = 0.07f),
-    )
+val LocalAromaColors = staticCompositionLocalOf { LightColors }
+val LocalAromaTypography = staticCompositionLocalOf { AromaTypography(LightColors, LocaleList("de-DE")) }
+val LocalAromaShapes = staticCompositionLocalOf { AromaShapes() }
+val LocalAromaShadows = staticCompositionLocalOf { AromaShadows(dark = false) }
+val LocalAromaSpace = staticCompositionLocalOf { Space }
 
-/** With wallpaper colours, the extras follow the generated scheme instead of the sage defaults. */
-private fun dynamicExtras(scheme: ColorScheme, dark: Boolean): AromaExtras =
-    (if (dark) DarkExtras else LightExtras).copy(
-        card = scheme.surfaceContainer,
-        selected = scheme.secondaryContainer,
-        onSelected = scheme.onSecondaryContainer,
-        raised = if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainerLowest,
-        cta = if (dark) scheme.primaryContainer else scheme.primary,
-        onCta = if (dark) scheme.onPrimaryContainer else scheme.onPrimary,
-        mutedAccent = if (dark) scheme.secondaryContainer else scheme.primaryContainer,
-        onMutedAccent = if (dark) scheme.onSecondaryContainer else scheme.onPrimaryContainer,
-    )
+/**
+ * The tonal fill of a control where it stands: [AromaColors.surface] on the page,
+ * [AromaColors.surfaceInBox] inside a box, [AromaColors.surfaceOnBar] on a bar or a sheet. A box or
+ * a sheet sets it for what it holds, so a button never sinks into the fill around it.
+ */
+val LocalTonalFill = staticCompositionLocalOf { Color.Unspecified }
 
-val LocalAromaExtras = staticCompositionLocalOf { LightExtras }
+/** Aroma's design system: its colours, type, spacing, shapes and shadows. */
+object AromaTheme {
+    val colors: AromaColors
+        @Composable @ReadOnlyComposable
+        get() = LocalAromaColors.current
 
-/** Quiet presses: a faint ink wash instead of Material's tinted bloom. */
-private val QuietRipple =
-    RippleAlpha(draggedAlpha = 0.08f, focusedAlpha = 0.10f, hoveredAlpha = 0.04f, pressedAlpha = 0.08f)
+    val type: AromaTypography
+        @Composable @ReadOnlyComposable
+        get() = LocalAromaTypography.current
 
+    /** The spacing scale (4.3); the same everywhere, so most layouts name [Space] and the tokens of Tokens.kt directly. */
+    val space: Space
+        @Composable @ReadOnlyComposable
+        get() = LocalAromaSpace.current
+
+    val shapes: AromaShapes
+        @Composable @ReadOnlyComposable
+        get() = LocalAromaShapes.current
+
+    val shadows: AromaShadows
+        @Composable @ReadOnlyComposable
+        get() = LocalAromaShadows.current
+
+    /** The tonal fill for a control where it stands, see [LocalTonalFill]. */
+    val tonalFill: Color
+        @Composable @ReadOnlyComposable
+        get() = LocalTonalFill.current.takeOrElse { colors.surface }
+}
+
+private inline fun Color.takeOrElse(block: () -> Color): Color = if (this != Color.Unspecified) this else block()
+
+/**
+ * The theme. With [dynamicColor], "Colours from your wallpaper", the wallpaper colours the sage
+ * alone; paper and ink stay. Text breaks lines for the app's language.
+ */
 @Composable
 fun AromaTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean = false, content: @Composable () -> Unit) {
-    val dynamic = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val colorScheme =
-        when {
-            dynamic -> {
-                val context = LocalContext.current
-                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            }
-
-            darkTheme -> {
-                DarkColors
-            }
-
-            else -> {
-                LightColors
-            }
+    val context = LocalContext.current
+    val base = if (darkTheme) DarkColors else LightColors
+    val colors =
+        if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            base.withWallpaperAccent(if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context))
+        } else {
+            base
         }
-    val extras =
-        when {
-            dynamic -> dynamicExtras(colorScheme, darkTheme)
-            darkTheme -> DarkExtras
-            else -> LightExtras
-        }
-    MaterialTheme(colorScheme = colorScheme, typography = AromaTypography, shapes = AromaShapes) {
+    val locale = LocalLocale.current.platformLocale
+    val type = remember(colors, locale) { AromaTypography(colors, textLocale(locale)) }
+    val shadows = remember(darkTheme) { AromaShadows(darkTheme) }
+    MaterialTheme(colorScheme = colors.toMaterial(), typography = type.material, shapes = MaterialShapes) {
         CompositionLocalProvider(
-            LocalAromaExtras provides extras,
-            LocalRippleConfiguration provides RippleConfiguration(color = colorScheme.onSurface, rippleAlpha = QuietRipple),
+            LocalAromaColors provides colors,
+            LocalAromaTypography provides type,
+            LocalAromaShadows provides shadows,
+            LocalContentColor provides colors.ink,
+            LocalTextStyle provides type.body,
+            LocalIndication provides PressTint,
+            // Material's parts press with the same quiet tint instead of a ripple.
+            LocalRippleConfiguration provides null,
             content = content,
         )
     }
 }
 
-/** The colours beyond Material's scheme, see [AromaExtras]. */
-val extras: AromaExtras
-    @Composable
-    @ReadOnlyComposable
-    get() = LocalAromaExtras.current
+/** German text breaks by German rules wherever it is set; a language without a region takes its home region. */
+private fun textLocale(locale: Locale): LocaleList =
+    when {
+        locale.country.isNotEmpty() -> LocaleList(locale.toLanguageTag())
+        locale.language == "de" -> LocaleList("de-DE")
+        locale.language == "en" -> LocaleList("en-US")
+        else -> LocaleList(locale.toLanguageTag())
+    }

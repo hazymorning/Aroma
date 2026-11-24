@@ -5,7 +5,10 @@ It includes fonts by others, under their own licences:
 
 - app/src/main/res/font/newsreader_*.ttf: Newsreader (https://github.com/productiontype/Newsreader), SIL Open
   Font License 1.1; the licence ships as app/src/main/assets/licenses/OFL-Newsreader.txt.
-- app/src/main/res/font/figtree_*.ttf: Figtree (https://github.com/erikdkennedy/figtree), SIL Open Font License
-  1.1; the licence ships as app/src/main/assets/licenses/OFL-Figtree.txt.
+- app/src/main/res/font/instrument_sans_*.ttf: Instrument Sans (https://github.com/Instrument/instrument-sans), SIL
+  Open Font License 1.1; the licence ships as app/src/main/assets/licenses/OFL-InstrumentSans.txt.
+
+Both are static cuts of the variable fonts, made with scripts/fonts/build_fonts.py: Latin only, with a few
+glyphs added (vulgar fractions, narrow and zero-width spaces), as the licence allows.
 
 The libraries Aroma is built with are listed, with their licences, in the app under Settings > Open source licenses.

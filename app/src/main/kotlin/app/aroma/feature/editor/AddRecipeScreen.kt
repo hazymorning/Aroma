@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -70,31 +71,34 @@ import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaAlertDialog
-import app.aroma.ui.components.AromaFilterChip
-import app.aroma.ui.components.CardActionPadding
-import app.aroma.ui.components.CardGroup
-import app.aroma.ui.components.DetailTopBar
-import app.aroma.ui.components.DetailTopBarHeight
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.IconAction
-import app.aroma.ui.components.InlineProgress
+import app.aroma.ui.components.ButtonProgress
+import app.aroma.ui.components.DetailPage
+import app.aroma.ui.components.ErrorNote
+import app.aroma.ui.components.FieldInset
+import app.aroma.ui.components.GroupHead
+import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.LabeledTextField
-import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.PrimaryButton
-import app.aroma.ui.components.QuietLink
+import app.aroma.ui.components.Segment
+import app.aroma.ui.components.SegmentInset
+import app.aroma.ui.components.Separator
+import app.aroma.ui.components.SettingsRow
+import app.aroma.ui.components.SettingsTextEdge
 import app.aroma.ui.components.Text
+import app.aroma.ui.components.TextAction
+import app.aroma.ui.components.TonalBox
 import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.titleRes
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
-import app.aroma.ui.theme.ContentEdge
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Glide
+import app.aroma.ui.theme.Motion.Decelerate
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.RowHeight
-import app.aroma.ui.theme.ScreenMargin
-import app.aroma.ui.theme.SectionSpace
+import app.aroma.ui.theme.SectionGap
+import app.aroma.ui.theme.SectionTitleGap
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
 import java.io.File
@@ -178,38 +182,13 @@ fun AddRecipeScreen(state: AddRecipeUiState, actions: AddRecipeActions, modifier
         view.keepScreenOn = busy
         onDispose { view.keepScreenOn = false }
     }
-    val title = stringResource(R.string.recipes_add)
-    val scroll = rememberScrollState()
-    var titleEnd by remember { mutableIntStateOf(Int.MAX_VALUE) }
-    val collapsed by remember { derivedStateOf { scroll.value > titleEnd } }
     val photoSources = rememberPhotoSources(MAX_IMPORT_PHOTOS - state.photos.size, actions.onAddPhotos)
     var naming by rememberSaveable { mutableStateOf(false) }
-    Box(modifier.fillMaxSize()) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .imePadding()
-                .verticalScroll(scroll)
-                .statusBarsPadding()
-                .padding(top = DetailTopBarHeight)
-                .navigationBarsPadding()
-                .padding(bottom = Space.xl),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(
-                Modifier
-                    .widthIn(max = ContentMaxWidth)
-                    .fillMaxWidth(),
-            ) {
-                LargeTitle(title, Modifier.onSizeChanged { titleEnd = it.height })
-                Spacer(Modifier.height(Space.l))
-                ImportForm(state, actions, photoSources)
-                AnimatedVisibility(visible = !state.isImporting, enter = Unfold, exit = Fold) {
-                    OtherWays(state, photoSources, onWrite = { naming = true }, modifier = Modifier.padding(top = SectionSpace))
-                }
-            }
+    DetailPage(title = stringResource(R.string.recipes_add), onBack = actions.onBack, modifier = modifier) {
+        ImportForm(state, actions, photoSources)
+        AnimatedVisibility(visible = !state.isImporting, enter = Unfold, exit = Fold) {
+            OtherWays(state, photoSources, onWrite = { naming = true }, modifier = Modifier.padding(top = SectionGap))
         }
-        DetailTopBar(onBack = actions.onBack, title = title, collapsed = collapsed)
     }
     if (naming) {
         NameDialog(
@@ -229,7 +208,7 @@ private fun ImportForm(state: AddRecipeUiState, actions: AddRecipeActions, photo
     val importing = state.isImporting
     val job = state.import
     val editable = !importing && !state.creating
-    val inputAlpha by animateFloatAsState(if (importing) 0.6f else 1f, tween(Motion.STATE, easing = LinearEasing), label = "importInput")
+    val inputAlpha by animateFloatAsState(if (importing) RESTING else 1f, Motion.state(), label = "importInput")
     Column {
         Column(Modifier.alpha(inputAlpha)) {
             LabeledTextField(
@@ -241,7 +220,7 @@ private fun ImportForm(state: AddRecipeUiState, actions: AddRecipeActions, photo
                 enabled = editable,
                 // Links are pasted more often than typed, and corrections would only break them.
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
-                modifier = Modifier.padding(horizontal = ScreenMargin),
+                modifier = Modifier.padding(horizontal = PageMargin),
             )
             PasteLink(state.pasteOffer, actions.onPaste)
             if (state.photos.isNotEmpty()) {
@@ -250,7 +229,7 @@ private fun ImportForm(state: AddRecipeUiState, actions: AddRecipeActions, photo
                     editable = editable,
                     sources = photoSources,
                     onRemove = actions.onRemovePhoto,
-                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
+                    modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
                 )
             }
             state.photosNote?.takeIf { !importing }?.let { PhotosNoteText(it) }
@@ -258,9 +237,9 @@ private fun ImportForm(state: AddRecipeUiState, actions: AddRecipeActions, photo
                 AnimatedVisibility(visible = !importing, enter = Unfold, exit = Fold) { AiOptions(state, actions) }
             }
         }
-        Spacer(Modifier.height(Space.l))
+        Spacer(Modifier.height(Space.s24))
         // The button turns into the progress of the import it started, in the same place and as large.
-        Crossfade(importing, Modifier.padding(horizontal = ScreenMargin), tween(Motion.STATE), label = "importAction") { running ->
+        Crossfade(importing, Modifier.padding(horizontal = PageMargin), Motion.state(), label = "importAction") { running ->
             if (running) {
                 ImportProgress(job, Modifier.fillMaxWidth())
             } else {
@@ -279,17 +258,17 @@ private fun ImportForm(state: AddRecipeUiState, actions: AddRecipeActions, photo
                 val withAi = state.usesAi || job?.request?.photos?.isNotEmpty() == true
                 Text(
                     text = stringResource(if (withAi) R.string.add_progress_ai_hint else R.string.add_progress_hint),
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = ContentEdge, end = ContentEdge, top = Space.s),
+                    style = AromaTheme.type.bodySmall,
+                    color = AromaTheme.colors.inkSecondary,
+                    modifier = Modifier.padding(start = NoteEdge, end = NoteEdge, top = Space.s12),
                 )
             }
 
             error != null -> {
-                InlineError(
+                ErrorNote(
                     error,
-                    Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
-                    next = state.nextStep(error)?.let { stringResource(it) },
+                    Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
+                    hint = state.nextStep(error)?.let { stringResource(it) },
                 )
             }
         }
@@ -305,18 +284,17 @@ private fun PasteLink(offer: PasteOffer?, onPaste: () -> Unit) {
     AnimatedContent(
         targetState = offer,
         transitionSpec = {
-            fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.PRESS)) using
-                SizeTransform { _, _ -> tween(Motion.EXPAND, easing = Glide) }
+            fadeIn(Motion.state()) togetherWith fadeOut(Motion.edge()) using SizeTransform { _, _ -> Motion.state() }
         },
         contentAlignment = Alignment.TopStart,
         label = "pasteOffer",
     ) { shown ->
         if (shown != null) {
-            QuietLink(
+            TextAction(
                 text = stringResource(if (shown == PasteOffer.Link) R.string.add_paste_link else R.string.add_paste_text),
                 onClick = onPaste,
-                leadingIcon = R.drawable.ic_content_paste,
-                modifier = Modifier.padding(horizontal = ContentEdge),
+                icon = R.drawable.ic_content_paste,
+                modifier = Modifier.padding(horizontal = NoteEdge),
             )
         }
     }
@@ -331,38 +309,38 @@ private fun PhotosNoteText(note: PhotosNote) {
                 PhotosNote.Unreadable -> stringResource(R.string.add_photos_unreadable)
                 PhotosNote.FirstOnly -> pluralStringResource(R.plurals.add_photos_first, MAX_IMPORT_PHOTOS, MAX_IMPORT_PHOTOS)
             },
-        style = AromaType.Small,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = AromaTheme.type.bodySmall,
+        color = AromaTheme.colors.inkSecondary,
         modifier =
             Modifier
-                .padding(start = ContentEdge, end = ContentEdge, top = Space.xs)
+                .padding(start = NoteEdge, end = NoteEdge, top = Space.s8)
                 .semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
 
 /**
- * Mealie's smarter reading and its translation, as chips that show the remembered choice and change
- * it with a tap. Photos are always read with AI, so while there are some, the chip for a link or a
+ * Mealie's smarter reading and its translation, as pills that show the remembered choice and change
+ * it with a tap. Photos are always read with AI, so while there are some, the pill for a link or a
  * text steps aside; translating only comes with AI.
  */
 @Composable
 private fun AiOptions(state: AddRecipeUiState, actions: AddRecipeActions) {
     FlowRow(
-        Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
-        horizontalArrangement = Arrangement.spacedBy(Space.xs),
-        verticalArrangement = Arrangement.spacedBy(Space.xs),
+        // The pills' words stand on the field's text edge; their tint reaches past it.
+        Modifier.padding(start = PageMargin + FieldInset - SegmentInset, end = PageMargin, top = Space.s12),
+        horizontalArrangement = Arrangement.spacedBy(Space.s4),
     ) {
         if (state.photos.isEmpty()) {
-            AromaFilterChip(
+            Segment(
+                text = stringResource(R.string.add_ai_title),
                 selected = state.useAi,
-                label = stringResource(R.string.add_ai_title),
                 onClick = { actions.onUseAiChange(!state.useAi) },
             )
         }
-        AnimatedVisibility(visible = state.usesAi, enter = fadeIn(tween(Motion.STATE)), exit = fadeOut(tween(Motion.PRESS))) {
-            AromaFilterChip(
+        AnimatedVisibility(visible = state.usesAi, enter = fadeIn(Motion.state()), exit = fadeOut(Motion.edge())) {
+            Segment(
+                text = stringResource(R.string.add_ai_translate),
                 selected = state.translate,
-                label = stringResource(R.string.add_ai_translate),
                 onClick = { actions.onTranslateChange(!state.translate) },
             )
         }
@@ -381,81 +359,35 @@ private fun AddRecipeUiState.nextStep(error: AromaError): Int? {
     }
 }
 
-/** The ways in without a link, quiet on a card below the import: photos for Mealie's AI, and writing the recipe by hand. */
+/** The ways in without a link, in a box below the import: photos for Mealie's AI, and writing the recipe by hand. */
 @Composable
 private fun OtherWays(state: AddRecipeUiState, photoSources: PhotoSources, onWrite: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        CardGroup(stringResource(R.string.add_other_ways)) {
+    Column(modifier.padding(horizontal = PageMargin)) {
+        GroupHead(stringResource(R.string.add_other_ways), Modifier.padding(bottom = SectionTitleGap))
+        TonalBox(contentPadding = PaddingValues()) {
             if (state.photosAvailable && state.photos.isEmpty()) {
-                WayRow(
-                    R.drawable.ic_add_photo_alternate,
-                    stringResource(R.string.add_photos),
-                    stringResource(R.string.add_photos_hint),
-                    photoSources.pick,
-                ) {
-                    photoSources.take?.let { IconAction(R.drawable.ic_photo_camera, stringResource(R.string.add_photos_take), it) }
-                }
-                Hairline(Modifier.padding(start = WayTextEdge, end = CardPadding))
+                val take = photoSources.take
+                SettingsRow(
+                    title = stringResource(R.string.add_photos),
+                    icon = R.drawable.ic_add_photo_alternate,
+                    description = stringResource(R.string.add_photos_hint),
+                    onClick = photoSources.pick,
+                    trailing = take?.let { { IconButton(R.drawable.ic_photo_camera, stringResource(R.string.add_photos_take), it) } },
+                )
+                Separator(start = SettingsTextEdge)
             }
-            WayRow(
-                R.drawable.ic_edit,
-                stringResource(R.string.add_manual),
-                stringResource(R.string.add_manual_hint),
-                onWrite,
-                enabled = !state.creating,
-            ) {
-                // While the recipe is created, a spinner stands at the row's end, where an action would.
-                if (state.creating) Box(Modifier.size(TouchTarget), contentAlignment = Alignment.Center) { InlineProgress() }
-            }
+            // While the recipe is created, the row says so in place of its hint and takes no second tap.
+            SettingsRow(
+                title = stringResource(R.string.add_manual),
+                icon = R.drawable.ic_edit,
+                description = stringResource(if (state.creating) R.string.add_creating else R.string.add_manual_hint),
+                onClick = if (state.creating) null else onWrite,
+                modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+            )
         }
-        state.createError?.let {
-            InlineError(it, Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m))
-        }
+        state.createError?.let { ErrorNote(it, Modifier.padding(top = Space.s16)) }
     }
 }
-
-/** A row of the card of other ways: a glyph, what it does and a second line on what for, and an action at its end. */
-@Composable
-private fun WayRow(
-    @DrawableRes icon: Int,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-    trailing: @Composable RowScope.() -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = RowHeight.twoLines)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(start = CardPadding, end = CardActionPadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            painterResource(icon),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(Glyph.m),
-        )
-        Spacer(Modifier.width(Space.m))
-        Column(
-            Modifier
-                .weight(1f)
-                .padding(end = WayTextEnd, top = Space.s, bottom = Space.s),
-        ) {
-            Text(title, style = AromaType.Body)
-            Text(subtitle, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        trailing()
-    }
-}
-
-/** Where the text of a row of other ways starts in its card, after the glyph: where the hairline between them starts too. */
-private val WayTextEdge = CardPadding + Glyph.m + Space.m
-
-/** How far before the action at its end the text of such a row stops, so that without one it keeps the card's padding. */
-private val WayTextEnd = CardPadding - CardActionPadding
 
 /** A recipe written by hand starts with its name, asked for in a dialog; ingredients and steps follow in the editor. */
 @Composable
@@ -482,40 +414,11 @@ private fun NameDialog(name: String, onNameChange: (String) -> Unit, onCreate: (
     )
 }
 
-private val Unfold = expandVertically(tween(Motion.EXPAND, easing = Glide)) + fadeIn(tween(Motion.EXPAND, easing = LinearEasing))
-private val Fold = shrinkVertically(tween(Motion.EXPAND, easing = Glide)) + fadeOut(tween(Motion.STATE, easing = LinearEasing))
+private val Unfold = expandVertically(Motion.state()) + fadeIn(Motion.state())
+private val Fold = shrinkVertically(Motion.state()) + fadeOut(Motion.state())
 
-/**
- * An error set as text where it happened: a small glyph and title in the error colour, the reason
- * below, and [next], what to do about it, where the reason does not say.
- */
-@Composable
-internal fun InlineError(error: AromaError, modifier: Modifier = Modifier, next: String? = null) {
-    Row(
-        modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-        horizontalArrangement = Arrangement.spacedBy(Space.xs),
-    ) {
-        Icon(
-            painterResource(R.drawable.ic_error),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.error,
-            // Centres the glyph on the title's 18 sp line.
-            modifier =
-                Modifier
-                    .padding(top = ErrorGlyphNudge)
-                    .size(ErrorGlyph),
-        )
-        Column {
-            Text(stringResource(error.titleRes()), style = AromaType.Label, color = MaterialTheme.colorScheme.error)
-            val reason = (error as? AromaError.ImportFailed)?.detail ?: stringResource(error.messageRes())
-            Text(
-                text = listOfNotNull(reason, next).joinToString(" "),
-                style = AromaType.Small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
+/** How far the field steps back while its import runs: still legible, no longer for typing. */
+private const val RESTING = 0.6f
 
-private val ErrorGlyph = 16.dp
-private val ErrorGlyphNudge = 1.dp
+/** Where notes under the field start: on its text, not its edge. */
+private val NoteEdge = PageMargin + FieldInset

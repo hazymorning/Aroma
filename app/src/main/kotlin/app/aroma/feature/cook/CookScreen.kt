@@ -2,7 +2,6 @@ package app.aroma.feature.cook
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -18,13 +17,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -39,7 +38,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -49,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,10 +56,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -88,43 +90,41 @@ import app.aroma.data.AromaError
 import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.feature.settings.labelRes
 import app.aroma.ui.components.AromaBottomSheet
-import app.aroma.ui.components.CardActionPadding
-import app.aroma.ui.components.DetailTopBarHeight
-import app.aroma.ui.components.EdgeActionPadding
+import app.aroma.ui.components.BottomActionBar
+import app.aroma.ui.components.BoxHeader
+import app.aroma.ui.components.EmptyState
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.GroupLabel
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.HeaderAction
-import app.aroma.ui.components.IconAction
+import app.aroma.ui.components.GroupHead
+import app.aroma.ui.components.IconButton
+import app.aroma.ui.components.IconButtonPlace
+import app.aroma.ui.components.IconCircle
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
 import app.aroma.ui.components.PrimaryButton
-import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SecondaryButton
-import app.aroma.ui.components.SegmentedControl
-import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.SelectionRow
+import app.aroma.ui.components.Separator
 import app.aroma.ui.components.Text
-import app.aroma.ui.components.TonalIconButton
+import app.aroma.ui.components.TextAction
+import app.aroma.ui.components.TonalBox
+import app.aroma.ui.components.TopBarHeight
 import app.aroma.ui.components.breakable
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatClock
 import app.aroma.ui.components.formatDuration
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberStepText
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.Glyph
-import app.aroma.ui.theme.Lines
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Glide
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
-import app.aroma.ui.theme.extras
-import app.aroma.ui.theme.tabular
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 data class CookTimerUi(
@@ -171,20 +171,32 @@ data class CookActions(
 private val ProgressHeight = 3.dp
 private val LinkUnderline = 1.dp
 
-private const val DONE_STAR_SIZE = 32
+/** The stars at the end of cooking, large enough to hit with a thumb. */
+private val DoneStarSize = 32.dp
 
 /** The recipe's photo on the page that ends cooking. */
 private val DonePhotoSize = 112.dp
 
-/** A timer's row, with room for its digits and its buttons. */
-private val TimerRowHeight = 64.dp
+/** How many lines of the next step show under "Next". */
+private const val NEXT_LINES = 2
 
+/**
+ * Cook mode: one step at a time in large type, read at arm's length. A fine bar of segments says
+ * how far the cooking has come, the step's number stands large, its text under it, then what the
+ * step uses, to tick off, and the start of the step that follows. Back and next sit in a bar at the
+ * foot, as large as targets hit from across the counter; a swipe turns the step too, with a tick.
+ */
 @Composable
 fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Modifier, initialPage: Int = 0) {
     val steps = state.recipe?.steps.orEmpty()
     val pager = rememberPagerState(initialPage = initialPage) { steps.size + 1 }
+    val haptics = LocalHapticFeedback.current
     LaunchedEffect(pager.settledPage, steps.size) {
         if (steps.isNotEmpty() && pager.settledPage == steps.size) actions.onFinished()
+    }
+    // Every step reached gives a tick, swiped to or tapped to.
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.settledPage }.drop(1).collect { haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick) }
     }
     var showIngredients by rememberSaveable { mutableStateOf(false) }
     val locale = currentLocale()
@@ -216,67 +228,72 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
     Column(
         modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .wrapContentWidth()
-            .widthIn(max = ContentMaxWidth),
+            .background(AromaTheme.colors.background),
     ) {
-        TopBar(
-            title = state.recipe?.name.orEmpty(),
-            // The finished page has nothing left to look up.
-            hasIngredients = rows.isNotEmpty() && pager.currentPage < steps.size,
-            onClose = actions.onClose,
-            onIngredients = { showIngredients = true },
-        )
-        when {
-            state.error != null -> {
-                ErrorState(state.error, onRetry = actions.onRetry, modifier = Modifier.weight(1f).fillMaxWidth())
-            }
-
-            state.isLoading -> {
-                Spacer(Modifier.weight(1f))
-            }
-
-            else -> {
-                StepProgress(pager.currentPage, steps.size)
-                // Without a step that names an ingredient, every box would only ever say there is none.
-                val showsIngredients =
-                    rows.isNotEmpty() &&
-                        when (state.ingredientsInSteps) {
-                            IngredientsInSteps.None -> false
-                            IngredientsInSteps.Used -> byStep.any { it.isNotEmpty() }
-                            IngredientsInSteps.All -> true
-                        }
-                HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
-                    if (page < steps.size) {
-                        StepPage(
-                            index = page,
-                            count = steps.size,
-                            step = steps[page],
-                            text = texts.getOrNull(page) ?: StyledText(steps[page].text, emptyList()),
-                            amounts = amounts.getOrNull(page).orEmpty(),
-                            onStartTimer = actions.onStartTimer,
-                            ingredients =
-                                if (showsIngredients) {
-                                    remember(rows, byStep, page, state.ingredientsInSteps) {
-                                        stepIngredients(rows, byStep.getOrNull(page).orEmpty(), state.ingredientsInSteps)
-                                    }
-                                } else {
-                                    null
-                                },
-                            checked = state.checkedIngredients,
-                            onToggle = actions.onToggleIngredient,
-                        )
-                    } else {
-                        DonePage(state, actions)
-                    }
+        Column(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .wrapContentWidth()
+                .widthIn(max = ContentMaxWidth),
+        ) {
+            TopBar(
+                // The finished page has nothing left to look up.
+                hasIngredients = rows.isNotEmpty() && pager.currentPage < steps.size,
+                onClose = actions.onClose,
+                onIngredients = { showIngredients = true },
+            )
+            when {
+                state.error != null -> {
+                    ErrorState(state.error, onRetry = actions.onRetry)
                 }
-                Timers(state.timers, actions)
-                if (state.exactAlarmHint) ExactAlarmHint(actions.onAllowExactAlarms)
-                BottomActions(pager, steps.size, actions.onClose)
+
+                state.isLoading -> {
+                    Spacer(Modifier.weight(1f))
+                }
+
+                else -> {
+                    StepProgress(pager.currentPage, steps.size)
+                    // Without a step that names an ingredient, every box would only ever say there is none.
+                    val showsIngredients =
+                        rows.isNotEmpty() &&
+                            when (state.ingredientsInSteps) {
+                                IngredientsInSteps.None -> false
+                                IngredientsInSteps.Used -> byStep.any { it.isNotEmpty() }
+                                IngredientsInSteps.All -> true
+                            }
+                    HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
+                        if (page < steps.size) {
+                            StepPage(
+                                index = page,
+                                count = steps.size,
+                                step = steps[page],
+                                text = texts.getOrNull(page) ?: StyledText(steps[page].text, emptyList()),
+                                amounts = amounts.getOrNull(page).orEmpty(),
+                                next = steps.getOrNull(page + 1),
+                                onStartTimer = actions.onStartTimer,
+                                ingredients =
+                                    if (showsIngredients) {
+                                        remember(rows, byStep, page, state.ingredientsInSteps) {
+                                            stepIngredients(rows, byStep.getOrNull(page).orEmpty(), state.ingredientsInSteps)
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                checked = state.checkedIngredients,
+                                onToggle = actions.onToggleIngredient,
+                            )
+                        } else {
+                            DonePage(state, actions)
+                        }
+                    }
+                    Timers(state.timers, actions)
+                    if (state.exactAlarmHint) ExactAlarmHint(actions.onAllowExactAlarms)
+                }
             }
         }
+        if (state.error == null && !state.isLoading) BottomActions(pager, steps.size, actions.onClose)
     }
     if (showIngredients) {
         IngredientsSheet(
@@ -290,54 +307,44 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
     }
 }
 
-/** Close on the margin and the recipe's name beside it, set as on the recipe page's bar, with all the room the button leaves. */
+/** Close on the left and "Ingredients" on the right, nothing between: the step is what matters. */
 @Composable
-private fun TopBar(title: String, hasIngredients: Boolean, onClose: () -> Unit, onIngredients: () -> Unit) {
+private fun TopBar(hasIngredients: Boolean, onClose: () -> Unit, onIngredients: () -> Unit) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(DetailTopBarHeight)
-                .padding(start = EdgeActionPadding, end = ScreenMargin),
+                .height(TopBarHeight)
+                .padding(start = PageMargin - (TouchTarget - IconCircle) / 2, end = PageMargin),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        HeaderAction(R.drawable.ic_close, stringResource(R.string.cook_close), onClose)
-        Text(
-            text = title,
-            style = AromaType.Name,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .padding(start = Space.xs, end = Space.s),
-        )
-        if (hasIngredients) {
-            SecondaryButton(stringResource(R.string.recipe_ingredients), onIngredients, compact = true)
-        }
+        IconButton(R.drawable.ic_close, stringResource(R.string.cook_close), onClose)
+        Spacer(Modifier.weight(1f))
+        if (hasIngredients) TextAction(stringResource(R.string.recipe_ingredients), onIngredients)
     }
 }
 
-/** One fine segment per step; the current one fills from the left as the step comes up. */
+/** One segment per step, fully round: the steps done and the one on screen in sage, the rest open. */
 @Composable
 private fun StepProgress(current: Int, steps: Int) {
+    val colors = AromaTheme.colors
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
-        horizontalArrangement = Arrangement.spacedBy(Space.xxs),
+                .padding(start = PageMargin, end = PageMargin, top = Space.s8)
+                .semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.spacedBy(Space.s4),
     ) {
         repeat(steps) { index ->
-            val fill by animateFloatAsState(if (index <= current) 1f else 0f, tween(Motion.EXPAND, easing = Glide), label = "stepFill")
-            val done = MaterialTheme.colorScheme.primary
+            val fill by animateFloatAsState(if (index <= current) 1f else 0f, Motion.state(), label = "stepFill")
             Box(
                 Modifier
                     .weight(1f)
                     .height(ProgressHeight)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .drawBehind { drawRect(done, size = size.copy(width = size.width * fill)) },
+                    .background(colors.surfacePressed)
+                    .drawBehind { drawRect(colors.accent, size = size.copy(width = size.width * fill)) },
             )
         }
     }
@@ -351,6 +358,7 @@ private fun StepPage(
     step: Step,
     text: StyledText,
     amounts: List<StepAmount>,
+    next: Step?,
     onStartTimer: (Int, String) -> Unit,
     ingredients: StepIngredients?,
     checked: Set<Int>,
@@ -367,20 +375,23 @@ private fun StepPage(
         modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = ScreenMargin, end = ScreenMargin, top = Space.xl, bottom = Space.xl),
+            .padding(start = PageMargin, end = PageMargin, top = Space.s24, bottom = Space.s24),
     ) {
-        Text(stepLabel, style = AromaType.Label, color = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(Space.s))
+        // "3 von 6": the number large, the count small, on one baseline.
+        Row(Modifier.semantics(mergeDescendants = true) { contentDescription = stepLabel }) {
+            Text((index + 1).toString(), style = AromaTheme.type.numeralLarge, modifier = Modifier.alignByBaseline())
+            Spacer(Modifier.width(Space.s8))
+            Text(stringResource(R.string.cook_of_count, count), style = AromaTheme.type.meta, modifier = Modifier.alignByBaseline())
+        }
+        Spacer(Modifier.height(Space.s16))
         if (!step.title.isNullOrBlank()) {
-            Text(step.title, style = AromaType.SectionTitle)
-            Spacer(Modifier.height(Space.xs))
+            Text(step.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = Space.s8))
         }
         StepText(rememberStepText(text, amounts, onDuration = { onStartTimer(it.seconds, stepLabel) }))
         if (durations.isNotEmpty()) {
             FlowRow(
-                modifier = Modifier.padding(top = Space.l),
-                horizontalArrangement = Arrangement.spacedBy(Space.xs),
-                verticalArrangement = Arrangement.spacedBy(Space.xs),
+                modifier = Modifier.padding(top = Space.s16),
+                horizontalArrangement = Arrangement.spacedBy(Space.s8),
             ) {
                 durations.forEach { seconds ->
                     SecondaryButton(
@@ -393,43 +404,47 @@ private fun StepPage(
             }
         }
         if (ingredients != null && ingredients.rows.isNotEmpty()) {
-            StepIngredientsBox(ingredients, checked, onToggle, Modifier.padding(top = Space.l))
+            StepIngredientsBox(ingredients, checked, onToggle, Modifier.padding(top = Space.s24))
         }
+        if (next != null) NextStep(next, Modifier.padding(top = Space.s24))
     }
 }
 
 /**
- * What the step uses, on a soft box as tall as its lines: how many of them are ticked off, then the
- * lines to tick off, as the recipe's list ticks them off.
+ * What the step uses, on a box as tall as its lines: how many of them are ticked off, then the lines
+ * to tick off, as the recipe's list ticks them off.
  */
 @Composable
 private fun StepIngredientsBox(ingredients: StepIngredients, checked: Set<Int>, onToggle: (Int) -> Unit, modifier: Modifier = Modifier) {
     val count = ingredients.rows.size
     val used = ingredients.indexes.count { it in checked }
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(extras.card)
-            .padding(horizontal = CardPadding, vertical = Space.s),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(if (ingredients.all) R.string.cook_all_ingredients else R.string.cook_for_this_step),
-                style = AromaType.Label,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = stringResource(R.string.cook_ticked_of, used, count),
-                style = AromaType.Small.tabular(),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+    TonalBox(modifier) {
+        BoxHeader(
+            title = stringResource(if (ingredients.all) R.string.cook_all_ingredients else R.string.cook_for_this_step),
+            meta = stringResource(R.string.cook_ticked_of, used, count),
+        )
         IngredientList(
             rows = ingredients.rows,
             checked = ingredients.indexes.indices.filterTo(mutableSetOf()) { ingredients.indexes[it] in checked },
             onToggle = { onToggle(ingredients.indexes[it]) },
-            modifier = Modifier.padding(top = Space.xs),
+            checks = true,
+            modifier = Modifier.padding(top = Space.s4),
+        )
+    }
+}
+
+/** The step after this one: "Next", then its first two lines in second ink. */
+@Composable
+private fun NextStep(next: Step, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(stringResource(R.string.cook_next_step), style = AromaTheme.type.label, color = AromaTheme.colors.inkSecondary)
+        Spacer(Modifier.height(Space.s4))
+        Text(
+            text = remember(next) { Markdown.parse(next.title?.let { "$it. ${next.text}" } ?: next.text).text },
+            style = AromaTheme.type.body,
+            color = AromaTheme.colors.inkSecondary,
+            maxLines = NEXT_LINES,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -440,7 +455,7 @@ private fun StepIngredientsBox(ingredients: StepIngredients, checked: Set<Int>, 
  */
 @Composable
 private fun StepText(text: AnnotatedString) {
-    val linkColor = MaterialTheme.colorScheme.primary
+    val linkColor = AromaTheme.colors.accent
     val styled =
         remember(text, linkColor) {
             val quiet = TextLinkStyles(SpanStyle(color = linkColor))
@@ -457,14 +472,14 @@ private fun StepText(text: AnnotatedString) {
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         text = styled,
-        style = AromaType.Reading,
+        style = AromaTheme.type.cookStep,
         onTextLayout = { layout = it },
         modifier = Modifier.drawBehind { layout?.let { drawUnderlines(it, links, linkColor.copy(alpha = 0.5f)) } },
     )
 }
 
 private fun DrawScope.drawUnderlines(layout: TextLayoutResult, links: List<AnnotatedString.Range<LinkAnnotation>>, color: Color) {
-    val below = Space.xxs.toPx()
+    val below = Space.s4.toPx()
     val stroke = LinkUnderline.toPx()
     links.forEach { link ->
         for (line in layout.getLineForOffset(link.start)..layout.getLineForOffset(link.end - 1)) {
@@ -477,41 +492,36 @@ private fun DrawScope.drawUnderlines(layout: TextLayoutResult, links: List<Annot
     }
 }
 
-/** The one centred layout of the app, set a little above the middle, where the eye rests. */
+/** The one centred page of the app, set a little above the middle, where the eye rests. */
 @Composable
 private fun DonePage(state: CookUiState, actions: CookActions) {
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = ScreenMargin, vertical = Space.xl),
+            .padding(horizontal = PageMargin, vertical = Space.s32),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.weight(1f))
         RecipeImage(
             image = state.recipe?.image,
             size = ImageSize.Medium,
-            shape = MaterialTheme.shapes.large,
-            fallbackIconSize = Glyph.xl,
+            shape = AromaTheme.shapes.cardImage,
             modifier = Modifier.size(DonePhotoSize),
         )
-        Spacer(Modifier.height(Space.xl))
-        Text(
-            text = stringResource(R.string.cook_finished_title),
-            style = AromaType.PageTitle,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(Space.s))
+        Spacer(Modifier.height(Space.s32))
+        Text(text = stringResource(R.string.cook_finished_title), style = AromaTheme.type.display, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(Space.s12))
         Text(
             text = stringResource(R.string.cook_rate_question),
-            style = AromaType.Body,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = AromaTheme.type.body,
+            color = AromaTheme.colors.inkSecondary,
             textAlign = TextAlign.Center,
         )
         // The stars' touch targets reach beyond the glyphs; the gaps are measured to the glyphs.
-        Spacer(Modifier.height(Space.m - ratingTouchInset(DONE_STAR_SIZE)))
-        RatingStars(state.rating, starSize = DONE_STAR_SIZE, onRate = actions.onRate, clearable = true)
-        Spacer(Modifier.height(Space.xl - ratingTouchInset(DONE_STAR_SIZE)))
+        Spacer(Modifier.height(Space.s16 - ratingTouchInset(DoneStarSize)))
+        RatingStars(state.rating, starSize = DoneStarSize, onRate = actions.onRate, clearable = true)
+        Spacer(Modifier.height(Space.s32 - ratingTouchInset(DoneStarSize)))
         MarkCooked(state.markedCooked, state.markFailed, actions.onMarkCooked)
         Spacer(Modifier.weight(2f))
     }
@@ -521,7 +531,7 @@ private fun DonePage(state: CookUiState, actions: CookActions) {
 private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
     AnimatedContent(
         targetState = marked,
-        transitionSpec = { fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) },
+        transitionSpec = { fadeIn(Motion.state()) togetherWith fadeOut(Motion.state()) },
         contentAlignment = Alignment.Center,
         label = "markCooked",
     ) { done ->
@@ -536,11 +546,11 @@ private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
                 Icon(
                     painterResource(R.drawable.ic_check),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(Glyph.m),
+                    tint = AromaTheme.colors.accent,
+                    modifier = Modifier.size(Glyph.control),
                 )
-                Spacer(Modifier.width(Space.xs))
-                Text(stringResource(R.string.cook_marked), style = AromaType.BodyStrong)
+                Spacer(Modifier.width(Space.s8))
+                Text(stringResource(R.string.cook_marked), style = AromaTheme.type.label)
             }
         } else {
             SecondaryButton(stringResource(R.string.cook_mark_cooked), onMark, icon = R.drawable.ic_check)
@@ -549,64 +559,57 @@ private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
     if (failed && !marked) {
         Text(
             text = stringResource(R.string.cook_mark_failed),
-            style = AromaType.Small,
-            color = MaterialTheme.colorScheme.error,
+            style = AromaTheme.type.bodySmall,
+            color = AromaTheme.colors.error,
             textAlign = TextAlign.Center,
             modifier =
                 Modifier
-                    .padding(top = Space.xs)
+                    .padding(top = Space.s8)
                     .semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
 }
 
-/** Running timers on a soft card above the step buttons, one row each. */
+/** Running timers on a box above the step bar, one row each; they stay while the steps turn. */
 @Composable
 private fun Timers(timers: List<CookTimerUi>, actions: CookActions) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .animateContentSize(tween(Motion.EXPAND, easing = Glide)),
-    ) {
-        if (timers.isNotEmpty()) {
-            SoftCard(Modifier.padding(top = Space.s)) {
-                timers.forEachIndexed { index, timer ->
-                    if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
-                    TimerRow(timer, onToggle = { actions.onToggleTimer(timer.id) }, onDismiss = { actions.onDismissTimer(timer.id) })
-                }
-            }
+    if (timers.isEmpty()) return
+    TonalBox(Modifier.padding(start = PageMargin, end = PageMargin, bottom = Space.s12), contentPadding = PaddingValues()) {
+        timers.forEachIndexed { index, timer ->
+            if (index > 0) Separator(start = BoxPadding + Glyph.control + Space.s12)
+            TimerRow(timer, onToggle = { actions.onToggleTimer(timer.id) }, onDismiss = { actions.onDismissTimer(timer.id) })
         }
     }
 }
 
 @Composable
 private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> Unit) {
+    val colors = AromaTheme.colors
     val finished = timer.isFinished
     val pulse = if (finished) finishedPulse() else null
     val timeColor by animateColorAsState(
         when {
-            finished -> MaterialTheme.colorScheme.primary
-            timer.isRunning -> MaterialTheme.colorScheme.onSurface
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
+            finished -> colors.accent
+            timer.isRunning -> colors.ink
+            else -> colors.inkSecondary
         },
-        tween(Motion.STATE),
+        Motion.state(),
         label = "timerTime",
     )
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(TimerRowHeight)
-                .padding(start = CardPadding, end = CardActionPadding),
+                .padding(start = BoxPadding, end = Space.s8, top = Space.s8, bottom = Space.s8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             painterResource(R.drawable.ic_timer),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(Glyph.m),
+            tint = colors.inkSecondary,
+            modifier = Modifier.size(Glyph.control),
         )
-        Spacer(Modifier.width(Space.s))
+        Spacer(Modifier.width(Space.s12))
         Row(
             modifier =
                 Modifier
@@ -616,29 +619,28 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
         ) {
             Text(
                 text = timer.label,
-                style = AromaType.Small,
-                color = if (finished) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = AromaTheme.type.meta,
+                color = if (finished) colors.accent else colors.inkSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 text = if (finished) stringResource(R.string.cook_timer_done) else formatClock(timer.remainingSeconds),
-                style = AromaType.Timer,
+                style = AromaTheme.type.numeral,
                 color = timeColor,
                 maxLines = 1,
             )
         }
-        Spacer(Modifier.width(Space.xs))
+        Spacer(Modifier.width(Space.s8))
         if (!finished) {
-            IconAction(
+            IconButton(
                 icon = if (timer.isRunning) R.drawable.ic_pause else R.drawable.ic_play_arrow,
                 contentDescription = stringResource(if (timer.isRunning) R.string.cook_timer_pause else R.string.cook_timer_resume),
                 onClick = onToggle,
-                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
-        IconAction(R.drawable.ic_close, stringResource(R.string.cook_timer_stop), onDismiss, tint = MaterialTheme.colorScheme.onSurface)
+        IconButton(R.drawable.ic_close, stringResource(R.string.cook_timer_stop), onDismiss)
     }
 }
 
@@ -647,51 +649,39 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
 private fun finishedPulse(): State<Float> =
     rememberInfiniteTransition(label = "timerDone").animateFloat(
         initialValue = 1f,
-        targetValue = 0.55f,
-        animationSpec = infiniteRepeatable(tween(Motion.PULSE), RepeatMode.Reverse),
+        targetValue = PULSE_LOW,
+        animationSpec = infiniteRepeatable(tween(Motion.PULSE / 2), RepeatMode.Reverse),
         label = "timerPulse",
     )
 
+private const val PULSE_LOW = 0.55f
+
 @Composable
 private fun ExactAlarmHint(onAllow: () -> Unit) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ScreenMargin),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(R.string.cook_exact_alarm_hint),
-            style = AromaType.Small,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .padding(end = Space.m),
-        )
-        QuietLink(stringResource(R.string.cook_exact_alarm_allow), onAllow)
-    }
+    EmptyState(
+        text = stringResource(R.string.cook_exact_alarm_hint),
+        actionLabel = stringResource(R.string.cook_exact_alarm_allow),
+        onAction = onAllow,
+        modifier = Modifier.padding(bottom = Space.s8),
+    )
 }
 
+/**
+ * The bar at the foot: back as a round button and next as the main one, both 56 dp tall for the
+ * kitchen. On the last step next says "Done"; on the page after, "Close".
+ */
 @Composable
 private fun BottomActions(pager: PagerState, steps: Int, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     val page = pager.currentPage
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ScreenMargin, vertical = Space.m),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TonalIconButton(
+    BottomActionBar {
+        IconButton(
             icon = R.drawable.ic_arrow_back,
             contentDescription = stringResource(R.string.cook_previous),
             onClick = { scope.launch { pager.animateScrollToPage(page - 1) } },
             enabled = page > 0,
+            place = IconButtonPlace.TallBar,
         )
-        Spacer(Modifier.width(Space.s))
         PrimaryButton(
             text =
                 stringResource(
@@ -703,6 +693,7 @@ private fun BottomActions(pager: PagerState, steps: Int, onClose: () -> Unit) {
                 ),
             onClick = { if (page >= steps) onClose() else scope.launch { pager.animateScrollToPage(page + 1) } },
             trailingIcon = R.drawable.ic_arrow_forward.takeIf { page < steps - 1 },
+            tall = true,
             modifier = Modifier.weight(1f),
         )
     }
@@ -723,15 +714,17 @@ private fun IngredientsSheet(
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = Space.l),
+                .padding(bottom = Space.s24),
         ) {
-            IngredientList(rows, Modifier.padding(horizontal = ScreenMargin), checked, onToggle)
-            GroupLabel(stringResource(R.string.settings_ingredients_in_steps), Modifier.padding(top = Space.l, bottom = Space.xs))
-            SegmentedControl(
+            IngredientList(rows, Modifier.padding(horizontal = PageMargin), checked, onToggle, checks = true)
+            GroupHead(
+                stringResource(R.string.settings_ingredients_in_steps),
+                Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s24),
+            )
+            SelectionRow(
                 options = IngredientsInSteps.entries.map { stringResource(it.labelRes()) },
                 selectedIndex = inSteps.ordinal,
                 onSelect = { onInSteps(IngredientsInSteps.entries[it]) },
-                modifier = Modifier.padding(horizontal = ScreenMargin),
             )
         }
     }

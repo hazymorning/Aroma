@@ -620,7 +620,7 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
 /** The shopping tab; [request] asks once for a widget's list, and with its "+" for the field that adds to it. */
 @Composable
 fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -> Unit) {
-    val vm = aromaViewModel { ShoppingViewModel(shopping, settings, connection) }
+    val vm = aromaViewModel { ShoppingViewModel(shopping, settings, connection, mealPlans) }
     val state by vm.state.collectAsStateWithLifecycle()
     val resources = LocalResources.current
     val snackbar = remember { SnackbarHostState() }
@@ -654,6 +654,14 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
                 is ShoppingEvent.Failed -> {
                     launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
                 }
+
+                is ShoppingEvent.AddedFromPlan -> {
+                    launch {
+                        snackbar.showSnackbar(
+                            resources.getQuantityString(R.plurals.plan_week_added, event.count, event.count, event.listName),
+                        )
+                    }
+                }
             }
         }
     }
@@ -672,6 +680,7 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
                 onCreateList = { vm.createList(it) },
                 onRenameList = vm::renameList,
                 onDeleteList = vm::deleteList,
+                onAddFromPlan = vm::addFromPlan,
                 onRefresh = vm::refresh,
             ),
         focusAdd = focusAdd,
@@ -777,7 +786,7 @@ fun EditorDestination(slug: String, nav: NavController) {
 @Composable
 fun SettingsDestination(nav: NavController) {
     val context = LocalContext.current
-    val vm = aromaViewModel { SettingsViewModel(context.applicationContext, settings, sessions, recipes, updates, ::signOut) }
+    val vm = aromaViewModel { SettingsViewModel(context.applicationContext, settings, sessions, recipes, updates, ::signOut, connection) }
     val state by vm.state.collectAsStateWithLifecycle()
     SettingsScreen(
         state = state,

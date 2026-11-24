@@ -1,12 +1,8 @@
 package app.aroma.feature.shopping
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +13,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
@@ -26,14 +21,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconToggleButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -50,15 +45,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.ShoppingItem
@@ -66,38 +57,39 @@ import app.aroma.core.model.ShoppingList
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaAlertDialog
+import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaDropdownMenu
 import app.aroma.ui.components.AromaMenuItem
 import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.AromaSnackbarHost
+import app.aroma.ui.components.CheckSize
+import app.aroma.ui.components.ChoiceRow
+import app.aroma.ui.components.EmptyState
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.HeaderAction
+import app.aroma.ui.components.HeaderState
+import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.LabeledTextField
+import app.aroma.ui.components.LargeHeader
 import app.aroma.ui.components.LocalBottomBarInset
-import app.aroma.ui.components.MenuChip
-import app.aroma.ui.components.MessageState
+import app.aroma.ui.components.MetaLine
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.PageHeader
-import app.aroma.ui.components.PillTextField
-import app.aroma.ui.components.Placeholder
-import app.aroma.ui.components.PlaceholderLine
-import app.aroma.ui.components.QuietPress
+import app.aroma.ui.components.PillField
 import app.aroma.ui.components.ScrollToTopOnReselect
-import app.aroma.ui.components.SoftCard
-import app.aroma.ui.components.StatusBarCover
-import app.aroma.ui.components.Text
+import app.aroma.ui.components.Skeleton
+import app.aroma.ui.components.SkeletonLine
+import app.aroma.ui.components.Subtitle
+import app.aroma.ui.components.TonalBox
+import app.aroma.ui.components.TopBar
 import app.aroma.ui.components.currentLocale
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
-import app.aroma.ui.theme.ContentEdge
-import app.aroma.ui.theme.Glyph
+import app.aroma.ui.components.hideThen
+import app.aroma.ui.components.rememberFullSheetState
+import app.aroma.ui.components.rememberHeaderState
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.EndSpace
+import app.aroma.ui.theme.HeaderGap
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.PageEndSpace
-import app.aroma.ui.theme.RowHeight
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.TouchTarget
-import app.aroma.ui.theme.extras
 import kotlinx.coroutines.flow.first
 
 data class ShoppingUiState(
@@ -126,12 +118,18 @@ data class ShoppingActions(
     val onCreateList: (String) -> Unit = {},
     val onRenameList: (String) -> Unit = {},
     val onDeleteList: () -> Unit = {},
+    val onAddFromPlan: () -> Unit = {},
     val onRefresh: () -> Unit = {},
 )
 
-private enum class ShoppingDialog { Create, Rename, Delete }
+private enum class ShoppingDialog { Create, Rename, Delete, Lists }
 
-/** The shopping list; with [focusAdd], ready to add to it: the cursor in the add field and the keyboard up. */
+/**
+ * The shopping list: its open items by aisle, a box per aisle, and what is in the basket folded
+ * away under "Done". The head adds an item and opens the list's menu, where shopping mode, the
+ * other lists and the list's own changes are. With [focusAdd], ready to add: the field shown, the
+ * cursor in it and the keyboard up.
+ */
 @Composable
 fun ShoppingScreen(
     state: ShoppingUiState,
@@ -145,17 +143,20 @@ fun ShoppingScreen(
     // By id, so the dialog survives rotation and closes by itself once its item is gone.
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
     var shoppingMode by rememberSaveable { mutableStateOf(false) }
+    var adding by rememberSaveable { mutableStateOf(false) }
+    var showDone by rememberSaveable { mutableStateOf(false) }
     KeepScreenOn(shoppingMode)
-    // Another list, or shopping mode with its larger rows, is another page rather than an edit of this
-    // one: it shows at once, from its top, instead of every row gliding to a new place.
+    // Another list, or shopping mode with its larger rows, is another page rather than an edit of this one.
     val listState = key(state.list?.id, shoppingMode) { rememberLazyListState() }
     ScrollToTopOnReselect(listState)
+    val header = rememberHeaderState()
     val addFocus = remember { FocusRequester() }
     val current by rememberUpdatedState(state)
     val consumeFocusAdd by rememberUpdatedState(onFocusAddConsume)
     LaunchedEffect(focusAdd) {
         if (focusAdd) {
             shoppingMode = false
+            adding = true
             // The field shows once a list does, as part of the list's first item, laid out a frame later.
             snapshotFlow { current.list != null }.first { it }
             listState.scrollToItem(0)
@@ -165,80 +166,80 @@ fun ShoppingScreen(
             consumeFocusAdd()
         }
     }
+    LaunchedEffect(adding) {
+        if (adding) {
+            withFrameNanos {}
+            runCatching { addFocus.requestFocus() }
+        }
+    }
     // Grouped here, not in the list's builder, which runs again on every keystroke in the add field.
     val groups = remember(state.list) { state.list?.grouped() }
+    val title = stringResource(R.string.nav_shopping)
+    val headActions: @Composable () -> Unit = {
+        if (state.list != null) {
+            IconButton(R.drawable.ic_add, stringResource(R.string.shopping_add_hint), onClick = { adding = !adding })
+            ListMenu(
+                shoppingMode = shoppingMode,
+                canSwitch = state.lists.size > 1,
+                canClear = groups?.checked?.isNotEmpty() == true,
+                onShoppingMode = { shoppingMode = !shoppingMode },
+                onClear = actions.onClearChecked,
+                openDialog = { dialog = it },
+            )
+        }
+    }
     Box(modifier.fillMaxSize()) {
         AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 state = listState,
-                contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + PageEndSpace),
+                contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + EndSpace),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 item(key = "header") {
-                    Header(state, actions, shoppingMode, addFocus, onShoppingMode = { shoppingMode = it }) { dialog = it }
+                    Header(
+                        state = state,
+                        groups = groups,
+                        header = header,
+                        shoppingMode = shoppingMode,
+                        adding = adding || state.newItem.isNotEmpty(),
+                        addFocus = addFocus,
+                        actions = actions,
+                        headActions = headActions,
+                    )
                 }
                 body(
                     state = state,
                     groups = groups,
                     actions = actions,
                     large = shoppingMode,
+                    showDone = showDone,
+                    onShowDone = { showDone = it },
                     onEdit = { editingId = it.id },
                     onCreateList = { dialog = ShoppingDialog.Create },
                 )
             }
         }
-        StatusBarCover(Modifier.align(Alignment.TopCenter))
+        TopBar(
+            title = title,
+            collapsed = header.collapsed,
+            raised = listState.canScrollBackward,
+            actions = { headActions() },
+        )
         AromaSnackbarHost(
             snackbar,
             Modifier
                 .align(Alignment.BottomCenter)
                 .imePadding()
                 // 8 dp above the bar; while typing the bar is gone and the keyboard takes its place.
-                .padding(bottom = if (WindowInsets.isImeVisible) Space.m else LocalBottomBarInset.current + Space.xs),
+                .padding(bottom = if (WindowInsets.isImeVisible) Space.s16 else LocalBottomBarInset.current + Space.s8),
         )
     }
-    when (dialog) {
-        ShoppingDialog.Create -> {
-            NameDialog(
-                title = stringResource(R.string.shopping_create_list),
-                initial = "",
-                onConfirm = {
-                    actions.onCreateList(it)
-                    dialog = null
-                },
-                onDismiss = { dialog = null },
-            )
-        }
-
-        ShoppingDialog.Rename -> {
-            NameDialog(
-                title = stringResource(R.string.shopping_rename_list),
-                initial = state.list?.name.orEmpty(),
-                onConfirm = {
-                    actions.onRenameList(it)
-                    dialog = null
-                },
-                onDismiss = { dialog = null },
-            )
-        }
-
-        ShoppingDialog.Delete -> {
-            AromaAlertDialog(
-                onDismissRequest = { dialog = null },
-                title = stringResource(R.string.shopping_delete_list_title),
-                text = stringResource(R.string.shopping_delete_list_message, state.list?.name.orEmpty()),
-                confirmLabel = stringResource(R.string.action_delete),
-                onConfirm = {
-                    actions.onDeleteList()
-                    dialog = null
-                },
-                dismissLabel = stringResource(R.string.action_cancel),
-                destructive = true,
-            )
-        }
-
-        null -> {}
-    }
+    ShoppingDialogs(
+        dialog = dialog,
+        state = state,
+        actions = actions,
+        onDismiss = { dialog = null },
+    )
     state.list?.items?.firstOrNull { it.id == editingId }?.let { item ->
         val locale = currentLocale()
         NameDialog(
@@ -250,6 +251,56 @@ fun ShoppingScreen(
             },
             onDismiss = { editingId = null },
         )
+    }
+}
+
+@Composable
+private fun ShoppingDialogs(dialog: ShoppingDialog?, state: ShoppingUiState, actions: ShoppingActions, onDismiss: () -> Unit) {
+    when (dialog) {
+        ShoppingDialog.Create -> {
+            NameDialog(
+                title = stringResource(R.string.shopping_create_list),
+                initial = "",
+                onConfirm = {
+                    actions.onCreateList(it)
+                    onDismiss()
+                },
+                onDismiss = onDismiss,
+            )
+        }
+
+        ShoppingDialog.Rename -> {
+            NameDialog(
+                title = stringResource(R.string.shopping_rename_list),
+                initial = state.list?.name.orEmpty(),
+                onConfirm = {
+                    actions.onRenameList(it)
+                    onDismiss()
+                },
+                onDismiss = onDismiss,
+            )
+        }
+
+        ShoppingDialog.Delete -> {
+            AromaAlertDialog(
+                onDismissRequest = onDismiss,
+                title = stringResource(R.string.shopping_delete_list_title),
+                text = stringResource(R.string.shopping_delete_list_message, state.list?.name.orEmpty()),
+                confirmLabel = stringResource(R.string.action_delete),
+                onConfirm = {
+                    actions.onDeleteList()
+                    onDismiss()
+                },
+                dismissLabel = stringResource(R.string.action_cancel),
+                destructive = true,
+            )
+        }
+
+        ShoppingDialog.Lists -> {
+            ListsSheet(state.lists, state.list?.id, onSelect = actions.onSelectList, onDismiss = onDismiss)
+        }
+
+        null -> {}
     }
 }
 
@@ -268,6 +319,8 @@ private fun LazyListScope.body(
     groups: ShoppingGroups?,
     actions: ShoppingActions,
     large: Boolean,
+    showDone: Boolean,
+    onShowDone: (Boolean) -> Unit,
     onEdit: (ShoppingItem) -> Unit,
     onCreateList: () -> Unit,
 ) {
@@ -277,27 +330,21 @@ private fun LazyListScope.body(
         }
 
         groups == null && state.error != null -> {
-            item(key = "error") {
-                ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.fillMaxWidth())
-            }
+            item(key = "error") { ErrorState(state.error, onRetry = actions.onRefresh) }
         }
 
         groups == null -> {
             item(key = "noLists") {
-                MessageState(
-                    icon = R.drawable.ic_basket,
-                    title = stringResource(R.string.shopping_no_lists_title),
-                    body = stringResource(R.string.shopping_no_lists_message),
+                EmptyState(
+                    text = stringResource(R.string.shopping_no_lists_title),
                     actionLabel = stringResource(R.string.shopping_create_list),
                     onAction = onCreateList,
-                    primaryAction = true,
-                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
 
         else -> {
-            shoppingSections(groups, state, actions, large, onEdit)
+            shoppingSections(groups, state, actions, large, showDone, onShowDone, onEdit)
         }
     }
 }
@@ -305,169 +352,150 @@ private fun LazyListScope.body(
 @Composable
 private fun Header(
     state: ShoppingUiState,
-    actions: ShoppingActions,
+    groups: ShoppingGroups?,
+    header: HeaderState,
     shoppingMode: Boolean,
+    adding: Boolean,
     addFocus: FocusRequester,
-    onShoppingMode: (Boolean) -> Unit,
-    openDialog: (ShoppingDialog) -> Unit,
+    actions: ShoppingActions,
+    headActions: @Composable () -> Unit,
 ) {
     val list = state.list
-    Column {
-        PageHeader(title = stringResource(R.string.nav_shopping)) {
-            if (list != null) {
-                ShoppingModeToggle(shoppingMode, onShoppingMode)
-                ListMenu(openDialog)
-            }
-        }
-        when {
-            shoppingMode -> {
-                Text(
-                    text = stringResource(R.string.shopping_mode_hint),
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
-                )
-            }
-
-            list != null -> {
-                ListSwitcher(list, state.lists, actions.onSelectList)
-                PillTextField(
-                    value = state.newItem,
-                    onValueChange = actions.onNewItemChange,
-                    placeholder = stringResource(R.string.shopping_add_hint),
-                    leadingIcon = R.drawable.ic_add,
-                    imeAction = ImeAction.Done,
-                    onSubmit = actions.onAddItem,
-                    focusRequester = addFocus,
-                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.s),
-                    trailing = { AddButton(visible = state.newItem.isNotBlank(), onClick = actions.onAddItem) },
-                )
-            }
+    val open = groups?.sections?.sumOf { it.items.size } ?: 0
+    Column(Modifier.padding(bottom = HeaderGap)) {
+        LargeHeader(
+            title = stringResource(R.string.nav_shopping),
+            state = header,
+            subtitle =
+                list?.let {
+                    {
+                        val count = pluralStringResource(R.plurals.shopping_open, open, open)
+                        Subtitle(
+                            when {
+                                shoppingMode -> stringResource(R.string.shopping_mode_hint)
+                                state.lists.size > 1 -> "${list.name} · $count"
+                                else -> count
+                            },
+                        )
+                    }
+                },
+            actions = { headActions() },
+        )
+        AnimatedVisibility(
+            visible = list != null && adding && !shoppingMode,
+            enter = fadeIn(Motion.edge()),
+            exit = fadeOut(Motion.edge()),
+        ) {
+            PillField(
+                value = state.newItem,
+                onValueChange = actions.onNewItemChange,
+                placeholder = stringResource(R.string.shopping_add_hint),
+                leadingIcon = R.drawable.ic_add,
+                imeAction = ImeAction.Done,
+                onSubmit = actions.onAddItem,
+                focusRequester = addFocus,
+                capitalization = KeyboardCapitalization.Sentences,
+                modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
+                trailing =
+                    if (state.newItem.isNotBlank()) {
+                        { IconButton(R.drawable.ic_check, stringResource(R.string.shopping_add), actions.onAddItem) }
+                    } else {
+                        null
+                    },
+            )
         }
         SyncStatus(offline = state.isOffline, pendingChanges = state.pendingChanges)
     }
 }
 
-/** That the list is the offline copy, and how many changes wait to be sent, in one quiet block. */
+/** That the list is the offline copy, and how many changes wait to be sent, in quiet lines. */
 @Composable
 private fun SyncStatus(offline: Boolean, pendingChanges: Int) {
     if (!offline && pendingChanges == 0) return
     Column(
-        Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
-        verticalArrangement = Arrangement.spacedBy(Space.xxs),
+        Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
+        verticalArrangement = Arrangement.spacedBy(Space.s4),
     ) {
         if (offline) OfflineNotice()
-        if (pendingChanges > 0) {
-            Text(
-                text = pluralStringResource(R.plurals.shopping_pending, pendingChanges, pendingChanges),
-                style = AromaType.Small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                // Under the notice's text, past its glyph and the gap after it.
-                modifier = if (offline) Modifier.padding(start = Glyph.s + Space.xs) else Modifier,
-            )
-        }
+        if (pendingChanges > 0) MetaLine(listOf(pluralStringResource(R.plurals.shopping_pending, pendingChanges, pendingChanges)))
     }
 }
 
-/** The cart glyph, drawn in sage with a faint fill while shopping mode is on. */
+/** The list's menu: shopping mode, the other lists, the list itself, and clearing what is done. */
 @Composable
-private fun ShoppingModeToggle(on: Boolean, onChange: (Boolean) -> Unit) {
-    val label = stringResource(if (on) R.string.shopping_mode_off else R.string.shopping_mode_on)
-    IconToggleButton(checked = on, onCheckedChange = onChange, modifier = Modifier.semantics { contentDescription = label }) {
-        Crossfade(on, animationSpec = tween(Motion.STATE), label = "shoppingMode") { active ->
-            Icon(
-                painterResource(if (active) R.drawable.ic_cart_selected else R.drawable.ic_cart),
-                contentDescription = null,
-                tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ListMenu(openDialog: (ShoppingDialog) -> Unit) {
+private fun ListMenu(
+    shoppingMode: Boolean,
+    canSwitch: Boolean,
+    canClear: Boolean,
+    onShoppingMode: () -> Unit,
+    onClear: () -> Unit,
+    openDialog: (ShoppingDialog) -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
-    val choose = { dialog: ShoppingDialog ->
+    val choose = { action: () -> Unit ->
         open = false
-        openDialog(dialog)
+        action()
     }
     Box {
-        HeaderAction(R.drawable.ic_more_horiz, stringResource(R.string.action_more), onClick = { open = true })
+        IconButton(R.drawable.ic_more_horiz, stringResource(R.string.action_more), onClick = { open = true })
         AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            AromaMenuItem(stringResource(R.string.shopping_create_list), R.drawable.ic_add, onClick = { choose(ShoppingDialog.Create) })
-            AromaMenuItem(stringResource(R.string.shopping_rename_list), R.drawable.ic_edit, onClick = { choose(ShoppingDialog.Rename) })
+            AromaMenuItem(
+                stringResource(if (shoppingMode) R.string.shopping_mode_off else R.string.shopping_mode_on),
+                R.drawable.ic_cart,
+                onClick = { choose(onShoppingMode) },
+            )
+            if (canSwitch) {
+                AromaMenuItem(stringResource(R.string.shopping_switch_list), R.drawable.ic_basket, onClick = {
+                    choose { openDialog(ShoppingDialog.Lists) }
+                })
+            }
+            if (canClear) AromaMenuItem(stringResource(R.string.shopping_clear_done), R.drawable.ic_done_all, onClick = { choose(onClear) })
+            AromaMenuItem(
+                stringResource(R.string.shopping_create_list),
+                R.drawable.ic_add,
+                onClick = { choose { openDialog(ShoppingDialog.Create) } },
+            )
+            AromaMenuItem(
+                stringResource(R.string.shopping_rename_list),
+                R.drawable.ic_edit,
+                onClick = { choose { openDialog(ShoppingDialog.Rename) } },
+            )
             AromaMenuItem(
                 stringResource(R.string.shopping_delete_list),
                 R.drawable.ic_delete,
-                onClick = { choose(ShoppingDialog.Delete) },
+                onClick = { choose { openDialog(ShoppingDialog.Delete) } },
                 destructive = true,
             )
         }
     }
 }
 
-/** The list's name under the page title; with more than one list, a chip that opens a menu of the others. */
+/** The lists to switch to, the shown one checked; choosing one shows it and lets the sheet slide away. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ListSwitcher(current: ShoppingList, lists: List<ShoppingListInfo>, onSelect: (String) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box(Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs)) {
-        if (lists.size > 1) {
-            MenuChip(label = current.name, onClickLabel = stringResource(R.string.shopping_switch_list), onClick = { open = true })
-        } else {
-            Text(text = current.name, style = AromaType.BodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+private fun ListsSheet(lists: List<ShoppingListInfo>, current: String?, onSelect: (String) -> Unit, onDismiss: () -> Unit) {
+    val sheetState = rememberFullSheetState()
+    val scope = rememberCoroutineScope()
+    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.shopping_switch_list), sheetState = sheetState) {
+        Column(
+            Modifier
+                .selectableGroup()
+                .padding(bottom = Space.s16),
+        ) {
             lists.forEach { info ->
-                AromaMenuItem(
-                    text = info.name,
-                    icon = null,
-                    onClick = {
-                        open = false
-                        onSelect(info.id)
-                    },
-                    selected = info.id == current.id,
+                ChoiceRow(
+                    label = info.name,
+                    chosen = info.id == current,
+                    modifier =
+                        Modifier.selectable(selected = info.id == current, role = Role.RadioButton) {
+                            onSelect(info.id)
+                            scope.hideThen(sheetState, onDismiss)
+                        },
                 )
             }
         }
     }
 }
-
-/** The add field's confirm: a small sage circle 8 dp from the field's end, there only while something is typed. */
-@Composable
-private fun AddButton(visible: Boolean, onClick: () -> Unit) {
-    Box(Modifier.size(TouchTarget)) {
-        AnimatedVisibility(visible, enter = fadeIn(tween(Motion.STATE)), exit = fadeOut(tween(Motion.STATE))) {
-            Box(
-                Modifier
-                    .size(TouchTarget)
-                    .clickable(
-                        interactionSource = null,
-                        indication = ripple(bounded = false, radius = AddCircle / 2),
-                        role = Role.Button,
-                        onClick = onClick,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    Modifier
-                        .size(AddCircle)
-                        .background(extras.cta, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painterResource(R.drawable.ic_check),
-                        contentDescription = stringResource(R.string.shopping_add),
-                        tint = extras.onCta,
-                        modifier = Modifier.size(Glyph.s),
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** The sage circle of the add field's confirm. */
-private val AddCircle = 32.dp
 
 /** A name for a list or the text of an item, typed into one field. Saving needs something to save. */
 @Composable
@@ -493,30 +521,25 @@ private fun NameDialog(title: String, initial: String, onConfirm: (String) -> Un
     )
 }
 
-/** How long the outline's lines are: the category's name, then its items. */
-private val LabelWidth = 96.dp
-private val PlaceholderWidths = listOf(176.dp, 128.dp, 216.dp, 152.dp, 192.dp, 120.dp)
+/** How long the skeleton's lines are: an aisle's name, then its items. */
+private val HeadWidth = 96.dp
+private val LineWidths = listOf(176.dp, 128.dp, 216.dp, 152.dp, 192.dp)
 
-/** The outline of a category while the list loads: its label, then a card of checks and lines. */
+/** The skeleton of an aisle while the list loads: its head, then a box of checks and lines. */
 @Composable
 private fun Loading() {
-    Column(Modifier.padding(top = Space.l)) {
-        PlaceholderLine(
-            Modifier
-                .padding(start = ContentEdge, bottom = Space.xs)
-                .width(LabelWidth),
-        )
-        SoftCard {
-            PlaceholderWidths.forEach { width ->
+    Column(Modifier.padding(horizontal = PageMargin)) {
+        SkeletonLine(Modifier.width(HeadWidth))
+        Spacer(Modifier.height(Space.s12))
+        TonalBox {
+            LineWidths.forEachIndexed { index, width ->
                 Row(
-                    Modifier
-                        .height(RowHeight.oneLine)
-                        .padding(horizontal = CardPadding),
+                    Modifier.padding(top = if (index == 0) 0.dp else Space.s24),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Placeholder(Modifier.size(CheckSize), shape = CircleShape)
-                    Spacer(Modifier.width(Space.m))
-                    PlaceholderLine(Modifier.width(width))
+                    Skeleton(Modifier.size(CheckSize), shape = CircleShape)
+                    Spacer(Modifier.width(Space.s12))
+                    SkeletonLine(Modifier.width(width))
                 }
             }
         }

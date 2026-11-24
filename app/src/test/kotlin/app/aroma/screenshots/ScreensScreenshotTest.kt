@@ -421,9 +421,11 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
     @Test
     fun shoppingMode() {
         applyLocale()
+        val more = if (variant.locale == "de") "Weitere Optionen" else "More options"
         val toggle = if (variant.locale == "de") "Einkaufsmodus starten" else "Start shopping mode"
         snapshot("shopping_mode_${variant.suffix}", variant.dark, interact = {
-            composeRule.onNodeWithContentDescription(toggle).performClick()
+            composeRule.onNodeWithContentDescription(more).performClick()
+            composeRule.onNodeWithText(toggle).performClick()
         }) {
             ShoppingScreen(
                 state =

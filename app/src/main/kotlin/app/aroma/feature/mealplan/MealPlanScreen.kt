@@ -1,5 +1,6 @@
 package app.aroma.feature.mealplan
 
+import android.text.format.DateFormat
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -55,43 +58,41 @@ import app.aroma.feature.recipe.PlanSheet
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaPullToRefreshBox
-import app.aroma.ui.components.CardPart
-import app.aroma.ui.components.DayHeader
-import app.aroma.ui.components.EdgeActionPadding
+import app.aroma.ui.components.BoxPart
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.Hairline
-import app.aroma.ui.components.HeaderAction
-import app.aroma.ui.components.IconAction
+import app.aroma.ui.components.IconButton
+import app.aroma.ui.components.IconButtonReach
+import app.aroma.ui.components.LargeHeader
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
-import app.aroma.ui.components.PageHeader
-import app.aroma.ui.components.Placeholder
-import app.aroma.ui.components.PlaceholderLine
-import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.ScrollToTopOnReselect
+import app.aroma.ui.components.Separator
 import app.aroma.ui.components.SheetAction
-import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.Skeleton
+import app.aroma.ui.components.SkeletonLine
 import app.aroma.ui.components.StatusBarCover
 import app.aroma.ui.components.SwipeToRemove
 import app.aroma.ui.components.Text
+import app.aroma.ui.components.TextAction
+import app.aroma.ui.components.TonalBox
+import app.aroma.ui.components.TonalBoxPart
 import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.weekday
-import app.aroma.ui.theme.AromaType
-import app.aroma.ui.theme.CardPadding
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
+import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Settle
-import app.aroma.ui.theme.PageEndSpace
+import app.aroma.ui.theme.Motion.Decelerate
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.RowHeight
-import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.ThumbnailSize
-import app.aroma.ui.theme.extras
 import app.aroma.ui.theme.tabular
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -134,7 +135,7 @@ fun MealPlanScreen(state: MealPlanUiState, actions: MealPlanActions, modifier: M
     AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + PageEndSpace),
+            contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + EndSpace),
             modifier = Modifier.fillMaxSize(),
         ) {
             item(key = "header") { Header(state, actions) }
@@ -191,11 +192,11 @@ private fun Header(state: MealPlanUiState, actions: MealPlanActions) {
     val weekEnd = state.weekStart.plusDays(6)
     val range = remember(state.weekStart, locale) { formatRange(state.weekStart, weekEnd, locale) }
     val showsToday = state.today in state.weekStart..weekEnd
-    Column(Modifier.padding(bottom = Space.xs)) {
+    Column(Modifier.padding(bottom = Space.s8)) {
         val recipes = state.days.sumOf { day -> day.entries.count { it.recipe != null } }
         var confirmShopping by rememberSaveable { mutableStateOf(false) }
-        PageHeader(title = stringResource(R.string.nav_meal_plan)) {
-            if (recipes > 0) HeaderAction(R.drawable.ic_basket_add, stringResource(R.string.plan_shop_week), { confirmShopping = true })
+        LargeHeader(title = stringResource(R.string.nav_meal_plan)) {
+            if (recipes > 0) IconButton(R.drawable.ic_basket_add, stringResource(R.string.plan_shop_week), { confirmShopping = true })
         }
         if (confirmShopping) {
             AromaAlertDialog(
@@ -214,29 +215,29 @@ private fun Header(state: MealPlanUiState, actions: MealPlanActions) {
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = ScreenMargin, end = EdgeActionPadding, top = Space.xs),
+                    .padding(start = PageMargin, end = PageMargin - IconButtonReach, top = Space.s8),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(text = range, style = AromaType.BodyStrong.tabular(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(text = range, style = AromaTheme.type.label.tabular(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     text = weekNumbers(state.weekStart, weekEnd),
-                    style = AromaType.Small.tabular(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = AromaTheme.type.bodySmall.tabular(),
+                    color = AromaTheme.colors.inkSecondary,
                     maxLines = 1,
                 )
             }
             if (!showsToday) {
-                QuietLink(
+                TextAction(
                     text = stringResource(R.string.plan_this_week),
                     onClick = actions.onToday,
-                    modifier = Modifier.padding(start = Space.m, end = Space.xs),
+                    modifier = Modifier.padding(start = Space.s16, end = Space.s8),
                 )
             }
-            IconAction(R.drawable.ic_chevron_left, stringResource(R.string.plan_previous_week), actions.onPreviousWeek)
-            IconAction(R.drawable.ic_chevron_right, stringResource(R.string.plan_next_week), actions.onNextWeek)
+            IconButton(R.drawable.ic_chevron_left, stringResource(R.string.plan_previous_week), actions.onPreviousWeek)
+            IconButton(R.drawable.ic_chevron_right, stringResource(R.string.plan_next_week), actions.onNextWeek)
         }
-        if (state.isOffline) OfflineNotice(Modifier.padding(horizontal = ScreenMargin))
+        if (state.isOffline) OfflineNotice(Modifier.padding(horizontal = PageMargin))
     }
 }
 
@@ -271,23 +272,23 @@ private fun formatRange(start: LocalDate, end: LocalDate, locale: Locale): Strin
 private fun LazyListScope.daySection(day: MealPlanDay, today: LocalDate, actions: MealPlanActions, onMore: (MealPlanEntry) -> Unit) {
     val parts = day.entries.size + 1
     item(key = "day-${day.date}") {
-        SoftCard(
-            part = CardPart.of(0, parts),
+        TonalBoxPart(
+            part = BoxPart.of(0, parts),
             modifier =
                 Modifier
                     .animateRow(this)
-                    .padding(top = Space.s),
+                    .padding(start = PageMargin, end = PageMargin, top = Space.s12),
         ) {
             PlanDayHeader(day.date, today, isEmpty = day.entries.isEmpty(), onAdd = { actions.onAdd(day.date) })
         }
     }
     itemsIndexed(day.entries, key = { _, entry -> "entry-${entry.id}" }) { index, entry ->
-        SoftCard(part = CardPart.of(index + 1, parts), modifier = Modifier.animateRow(this)) {
-            if (index > 0) Hairline(Modifier.padding(horizontal = CardPadding))
+        TonalBoxPart(part = BoxPart.of(index + 1, parts), modifier = Modifier.animateRow(this).padding(horizontal = PageMargin)) {
+            if (index > 0) Separator()
             SwipeToRemove(onRemove = { actions.onDeleteEntry(entry) }) {
                 EntryRow(
                     entry = entry,
-                    paper = extras.card,
+                    paper = AromaTheme.tonalFill,
                     onClick = { if (entry.recipe != null) actions.onOpenEntry(entry) else onMore(entry) },
                     onMore = { onMore(entry) },
                     onShop = entry.recipe?.let { { actions.onShopEntry(entry) } },
@@ -295,6 +296,37 @@ private fun LazyListScope.daySection(day: MealPlanDay, today: LocalDate, actions
                 )
             }
         }
+    }
+}
+
+/** A day's name and date, today's in the accent, with an [action] at the end. */
+@Composable
+private fun DayHead(date: LocalDate, today: LocalDate, action: @Composable () -> Unit) {
+    val locale = currentLocale()
+    val name = remember(date, locale) { weekday(date, locale) }
+    val shortDate =
+        remember(date, today.year, locale) {
+            val skeleton = if (date.year == today.year) "MMMd" else "MMMdy"
+            date.format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale))
+        }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = RowHeight.oneLine)
+            .padding(start = BoxPadding, end = Space.s4),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            Modifier
+                .weight(1f)
+                .semantics(mergeDescendants = true) { heading() },
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(name, style = AromaTheme.type.label, color = if (date == today) AromaTheme.colors.accent else AromaTheme.colors.ink)
+            Spacer(Modifier.width(Space.s8))
+            Text(shortDate, style = AromaTheme.type.meta)
+        }
+        action()
     }
 }
 
@@ -309,21 +341,21 @@ private fun PlanDayHeader(date: LocalDate, today: LocalDate, isEmpty: Boolean, o
     // The note takes its room at once, so the list glides around it instead of following it in
     // steps; it fades in when the day's last meal goes, and is simply there on a day that opens empty.
     val note = remember { Animatable(if (isEmpty) 1f else 0f) }
-    LaunchedEffect(isEmpty) { if (isEmpty) note.animateTo(1f, tween(Motion.STATE, easing = Settle)) else note.snapTo(0f) }
+    LaunchedEffect(isEmpty) { if (isEmpty) note.animateTo(1f, tween(Motion.STATE, easing = Motion.Decelerate)) else note.snapTo(0f) }
     Column(
         Modifier
             .fillMaxWidth()
             .then(if (isEmpty) Modifier.clickable(onClickLabel = addLabel, role = Role.Button, onClick = onAdd) else Modifier),
     ) {
-        DayHeader(date, today) { IconAction(R.drawable.ic_add, addLabel, onAdd) }
+        DayHead(date, today) { IconButton(R.drawable.ic_add, addLabel, onAdd) }
         if (isEmpty) {
             Text(
                 text = stringResource(R.string.plan_day_empty),
-                style = AromaType.Small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = AromaTheme.type.bodySmall,
+                color = AromaTheme.colors.inkSecondary,
                 modifier =
                     Modifier
-                        .padding(start = CardPadding, end = CardPadding, bottom = Space.s)
+                        .padding(start = BoxPadding, end = BoxPadding, bottom = Space.s12)
                         .graphicsLayer { alpha = note.value },
             )
         }
@@ -370,24 +402,24 @@ private fun EntryRow(
                                 true
                             },
                         )
-                }.padding(horizontal = CardPadding, vertical = Space.s),
+                }.padding(horizontal = BoxPadding, vertical = Space.s12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         EntryThumbnail(entry)
-        Spacer(Modifier.width(Space.m))
+        Spacer(Modifier.width(Space.s16))
         Column(Modifier.weight(1f)) {
-            Text(mealTypeLabel(entry.type), style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(mealTypeLabel(entry.type), style = AromaTheme.type.bodySmall, color = AromaTheme.colors.inkSecondary)
             Text(
                 text = entry.recipe?.name ?: entry.title,
-                style = AromaType.Name,
+                style = AromaTheme.type.cardTitle,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (entry.note.isNotBlank()) {
                 Text(
                     text = entry.note,
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = AromaTheme.type.bodySmall,
+                    color = AromaTheme.colors.inkSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -402,22 +434,22 @@ private fun EntryThumbnail(entry: MealPlanEntry) {
         RecipeImage(
             image = entry.recipe.image,
             size = ImageSize.Thumbnail,
-            shape = MaterialTheme.shapes.small,
-            fallbackIconSize = Glyph.m,
+            shape = AromaTheme.shapes.thumbnail,
+            fallbackIconSize = Glyph.control,
             modifier = Modifier.size(ThumbnailSize),
         )
     } else {
         Box(
             Modifier
                 .size(ThumbnailSize)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.shapes.small),
+                .background(AromaTheme.colors.surfacePressed, AromaTheme.shapes.thumbnail),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painterResource(R.drawable.ic_notes),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(Glyph.m),
+                tint = AromaTheme.colors.inkTertiary,
+                modifier = Modifier.size(Glyph.control),
             )
         }
     }
@@ -445,16 +477,17 @@ private fun EntrySheet(
     AromaBottomSheet(
         onDismissRequest = onDismiss,
         title = entry.recipe?.name ?: entry.title,
+        titleStyle = AromaTheme.type.cardTitle,
         sheetState = sheetState,
         meta = {
             Text(
                 text = "${weekday(entry.date, locale)} · ${mealTypeLabel(entry.type)}",
-                style = AromaType.Small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = AromaTheme.type.bodySmall,
+                color = AromaTheme.colors.inkSecondary,
             )
         },
     ) {
-        Column(Modifier.padding(bottom = Space.m)) {
+        Column(Modifier.padding(bottom = Space.s16)) {
             if (entry.recipe != null) {
                 SheetAction(R.drawable.ic_basket_add, stringResource(R.string.recipe_add_to_list), onClick = { choose(onShop) })
             }
@@ -473,18 +506,18 @@ private val EntryLineWidths = listOf(64.dp, 180.dp)
 private fun Loading() {
     Column {
         repeat(3) {
-            SoftCard(Modifier.padding(top = Space.s)) {
+            TonalBox(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s12), contentPadding = PaddingValues()) {
                 Box(
                     Modifier
-                        .padding(start = CardPadding)
+                        .padding(start = BoxPadding)
                         .height(RowHeight.oneLine),
                     contentAlignment = Alignment.CenterStart,
-                ) { PlaceholderLine(Modifier.width(DayWidth)) }
-                Row(Modifier.padding(horizontal = CardPadding, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
-                    Placeholder(Modifier.size(ThumbnailSize), shape = MaterialTheme.shapes.small)
-                    Spacer(Modifier.width(Space.m))
-                    Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-                        EntryLineWidths.forEach { PlaceholderLine(Modifier.width(it)) }
+                ) { SkeletonLine(Modifier.width(DayWidth)) }
+                Row(Modifier.padding(horizontal = BoxPadding, vertical = Space.s12), verticalAlignment = Alignment.CenterVertically) {
+                    Skeleton(Modifier.size(ThumbnailSize), shape = AromaTheme.shapes.thumbnail)
+                    Spacer(Modifier.width(Space.s16))
+                    Column(verticalArrangement = Arrangement.spacedBy(Space.s8)) {
+                        EntryLineWidths.forEach { SkeletonLine(Modifier.width(it)) }
                     }
                 }
             }

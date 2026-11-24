@@ -7,7 +7,7 @@ Wird nach jedem Schritt aktualisiert.
 
 - [x] P0 Bestandsaufnahme, Vorher-Screenshots (`screenshots/vorher/`, 308 Bilder)
 - [x] P1 Fehler beheben (Abschnitt 8)
-- [ ] P2 Grundlagen (4) und Komponenten (5), alte Varianten migriert und gelöscht
+- [x] P2 Grundlagen (4) und Komponenten (5), alte Varianten migriert und gelöscht
 - [ ] P3 Rezeptseite
 - [ ] P4 Start und Wochenplan
 - [ ] P5 Rezepte, Kochmodus, Einkauf, Einstellungen, übrige Screens, Sheets, Dialoge, Zustände
@@ -146,6 +146,56 @@ gespeichert (gut lesbar, klein genug fürs Repository).
    keine Bewertung mehr, sondern Zeit oder ersatzweise die Kategorie.
 8. **Maßeinheiten** als beschriftete Textaktion „Einheiten: wie im Rezept", die ein Sheet öffnet.
 
+## P2 – Grundlagen und Komponenten (erledigt)
+
+**Theme (`ui/theme`).** `AromaTheme` stellt per CompositionLocal Farben (`AromaColors`, Tokens aus
+4.1, hell und dunkel), Typografie (`AromaTypography`, genau die Rollen aus 4.2, dazu die
+Profil-Initiale aus 6.7), Abstände (`Space`), Formen (`AromaShapes`) und Schatten (`AromaShadows`)
+bereit. Das Material-`ColorScheme` wird nur auf die Tokens abgebildet, damit Material-Teile keine
+Mint- oder Tonal-Container mehr zeigen. Kein Ripple: Drücken tönt mit `ink` 6 % (`PressTint`),
+Karten und Boxen geben auf 0,98 nach. Material You ist standardmäßig aus und färbt eingeschaltet nur
+`accent` und `accentSoft`.
+
+- Tokens: Abstände 4–64, Seitenrand 24, Box 16 innen und 12 untereinander, Abschnitte 40, Titel bis
+  Inhalt 12, Kopf 16/4/24, Raster 16/28, Radien 20/14/12/28, Bewegung 150/250/350 ms, Bilder 200 ms,
+  Skeleton 1,2 s, Touch-Ziel 48.
+- Schatten: mehrschichtige `dropShadow`-Ketten nach 4.5 in `shadow` (#3A2E22, dunkel Schwarz mit
+  doppelter Deckkraft); die Kopfleiste blendet ihren Schatten in 150 ms ein, sobald Inhalt
+  darunter liegt.
+- Schriften: Newsreader (Display, Subhead, Text, Text kursiv) und Instrument Sans 400/500; Figtree
+  entfernt.
+- Icons: neu im bestehenden Stil Besteck, Flamme, Uhr, Lesezeichen, Regler, Blatt, Pfeil nach rechts
+  oben und die Einstellungs-Icons; aktive Tabs mit 2-dp-Strich statt Duoton.
+
+**Komponenten (`ui/components`), jede genau einmal.**
+
+| Bereich | Neu | Ersetzt |
+|---|---|---|
+| Kopf | `LargeHeader`, `TopBar` (56 dp, `barTitle`, Schatten statt Linie), `DetailPage`, `SectionTitle`, `BackButton`, `StatusBarCover`, `StatusBarOverPhoto` | `PageHeader`, `HeaderAction`, `DetailTopBar`, `LargeTitle`, `SectionHeader` |
+| Navigation | `TabBar` (64 dp, gleitende Pill 56 × 32 in `accentSoft`, Schatten) | Leiste mit Haarlinie |
+| Buttons | `PrimaryButton` (Tinte, 48/36/56 dp), `SecondaryButton` (Tonfläche), `TextAction` (Salbei), `IconButton` (Kreis 40 dp, in Leisten 48 dp, auf Fotos Papier 90 %), `ButtonProgress` | `FloatingAction`, `QuietLink`, `IconAction`, `TonalIconButton`, `OnPhotoButton`, `BarIconButton`, Mint-Varianten |
+| Flächen | `TonalBox`, `TonalBoxPart`, `BoxHeader`, `GroupHead`, `Separator` (die einzige Linie), `IconCircleMark` | `SoftCard`, `CardPart`, `CardGroup`, `GroupLabel`, `Hairline`, `DayHeader` |
+| Inhalt | `RecipeCard` (4 : 5, Radius 14, Innenkontur, Lesebändchen, zwei Zeilen reserviert), `RecipeRow`, `MetaLine`, `RecipeImage`, `Ribbon`, `IngredientList`, `RecipeGrid` | `PhotoCard`, `RecipeListItem`, `RecipeMeta` |
+| Auswahl | `Stepper` (Pill 40 dp), `SelectionRow` (gleitende Pill), `Segment`, `CheckCircle`, `SettingsRow` mit Schalter, `RatingStars` | `AromaFilterChip`, `MenuChip`, `SegmentedControl`, `PageTabs`, `SwitchRow` |
+| Eingabe | `PillField` (Suchfeld 48 dp), randlose Felder auf Tonfläche | `PillTextField`, `SearchPill`, umrandete Felder |
+| Ebenen | `AromaBottomSheet` (`bar`, Radius 28, Griff 32 × 4), `AromaDropdownMenu`, `AromaAlertDialog`, Snackbar (`ink`), `BottomActionBar` (72 dp) | weiße Flächen mit Haarlinien |
+| Zustände | `EmptyState`, `ErrorState` (eine Zeile mit „Erneut versuchen"), `ErrorNote`, `Skeleton`, `SkeletonLine`, `OfflineNotice` | `MessageState`, `Placeholder`, `PlaceholderLines`, `InlineProgress` |
+| Text | `Text` (Umbruch nach Bindestrichen, U+2011 → „-") | `material3.Text` |
+
+**Migration.** Alle Screens nutzen nur noch die neuen Komponenten; die alten sind gelöscht.
+Einkauf, Einstellungen, Kochmodus, Rezepte und Sammlungen sind dabei schon nach 6.4–6.7 aufgebaut
+worden, weil die Migration sie ohnehin ganz berührte. Start, Wochenplan und Rezeptseite sind nur
+umgestellt und werden in P3/P4 neu aufgebaut.
+
+**Prüfungen.** `DesignRulesTest` prüft jetzt: Größen nur aus Tokens oder benannten Konstanten,
+Abstände nur auf der Skala, Farben nur aus dem Theme, keine Flächen in #FFFFFF/#EFEEEB/#D6E7DA
+(Palette und Ressourcen), Formen und Schrift nur aus dem Theme, `Text` statt `material3.Text`,
+keine Großbuchstaben und keine Laufweite, keine Rahmen, keine Divider, keine FABs, keine
+Material-Bausteine in Screens, Bewegung aus `Motion`, Kontrast ≥ 4,5 : 1 für jede Paarung von Schrift
+und Grund (hell und dunkel). `TypeRolesTest` hält die Rollen deckungsgleich mit der Tabelle in 4.2
+(Schrift, Größe, Zeilenhöhe, Gewicht, Kursiv, Tabellenziffern, Silbentrennung, Sprache).
+`WidgetPaletteTest` hält die Widgets in der neuen Palette.
+
 ## Entscheidungen
 
 1. **Branch** `design/kochbuch`, wie im Auftrag.
@@ -157,10 +207,25 @@ gespeichert (gut lesbar, klein genug fürs Repository).
    aus den eigenen Ziffern ergänzt (OFL erlaubt Änderungen, keine reservierten Namen).
 4. **Rasterabstand 28 dp** zwischen Rezeptkarten-Reihen, obwohl 28 nicht in der Abstandsliste
    steht: Abschnitt 4.3 fordert ihn ausdrücklich; die spezielle Vorgabe geht der allgemeinen vor.
+5. **Icon-Buttons in der Kopfleiste 40 dp.** 4.6 nennt für Leisten 48 dp; in der 56-dp-Kopfleiste
+   blieben einem 48-dp-Kreis nur 4 dp Luft, und die Kreise würden beim Einklappen springen. Die
+   unteren Leisten (Navigation, Aktionsleisten) haben 48-dp-Kreise, Kopf und Kopfleiste 40 dp.
+6. **Titel von Sheets und Dialogen in der Sans** (`labelLarge`), weil 4.2 dafür keine Serif-Rolle
+   vorsieht; steht ein Rezeptname im Titel, ist er `cardTitle`.
+7. **Lade-Kreisel nur in Buttons** (5.21). Zeilen, die etwas laden (Update-Suche, Rezept anlegen),
+   sagen es in ihrer zweiten Zeile; der Import zeigt seinen Fortschritt an der Stelle seines Buttons.
+8. **Fehler am Ort** (`ErrorNote`): unter Feld oder Button ein Titel in `error` und der Grund in
+   `bodySmall`; Seitenfehler sind eine Zeile mit „Erneut versuchen" (6.8).
+9. **Einkauf:** Einkaufsmodus, Listenwechsel und Listenverwaltung stehen im Menü ⋯; „Zutaten aus dem
+   Wochenplan hinzufügen" übernimmt die Rezepte der nächsten sieben Tage, wie „Woche einkaufen"
+   im Wochenplan.
+10. **Zutatenzeilen** sind 40 dp hoch, antippbare (Kochmodus) 48 dp, wegen der Touch-Ziele.
+11. **Widgets** folgen der neuen Palette (Papier, Tinte, Salbei; Button in Tinte), mit Material You
+    nur im Akzent wie die App.
 
 ## Abweichungen
 
-(noch keine)
+1. Icon-Buttons in der Kopfleiste 40 statt 48 dp (Entscheidung 5).
 
 ## Offene Punkte
 

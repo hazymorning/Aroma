@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.format.IngredientFormatter
 import app.aroma.core.format.IngredientLine
@@ -42,27 +43,27 @@ import app.aroma.core.model.MealType
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.ui.components.AromaBottomSheet
-import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.CheckCircle
-import app.aroma.ui.components.GroupLabel
-import app.aroma.ui.components.Hairline
+import app.aroma.ui.components.GroupHead
 import app.aroma.ui.components.PrimaryButton
-import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.RatingStars
-import app.aroma.ui.components.SegmentedControl
+import app.aroma.ui.components.SelectionRow
+import app.aroma.ui.components.Separator
+import app.aroma.ui.components.SettingsRow
 import app.aroma.ui.components.SheetFooter
 import app.aroma.ui.components.Stepper
-import app.aroma.ui.components.SwitchRow
 import app.aroma.ui.components.Text
+import app.aroma.ui.components.TextAction
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberFullSheetState
-import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.RowHeight
-import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -75,7 +76,7 @@ import java.util.Locale
 private const val MAX_SEGMENTS = 3
 
 /** The rating sheet's stars, large enough to hit with a thumb. */
-private const val STAR_SIZE = 28
+private val StarSize = 28.dp
 
 /** How long the chosen stars stay in view before the rating sheet closes. */
 private const val RATED_PAUSE_MILLIS = 600L
@@ -104,13 +105,13 @@ fun AddToListSheet(
     val allSelected = selected.size == recipe.ingredients.size
     AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.recipe_add_to_list), modifier = modifier) {
         if (lists != null && lists.size > 1) {
-            ListChoice(lists, selected = list, onSelect = { listId = it.id }, modifier = Modifier.padding(bottom = Space.m))
+            ListChoice(lists, selected = list, onSelect = { listId = it.id }, modifier = Modifier.padding(bottom = Space.s16))
         }
         // The row on the recipe sits above the servings, so they can be chosen here as well.
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = ScreenMargin),
+                .padding(horizontal = PageMargin),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // The minus circle, not its touch area, starts on the margin.
@@ -119,10 +120,10 @@ fun AddToListSheet(
                 onDecrease = { onScale(Servings.step(recipe.servings, scale, -1)) },
                 onIncrease = { onScale(Servings.step(recipe.servings, scale, +1)) },
                 canDecrease = Servings.canDecrease(recipe.servings, scale),
-                modifier = Modifier.offset(x = -Space.xxs),
+                modifier = Modifier.offset(x = -Space.s4),
             )
             Spacer(Modifier.weight(1f))
-            QuietLink(
+            TextAction(
                 text = stringResource(if (allSelected) R.string.select_none else R.string.select_all),
                 onClick = { selected = if (allSelected) emptySet() else recipe.ingredients.indices.toSet() },
             )
@@ -130,7 +131,7 @@ fun AddToListSheet(
         LazyColumn(
             Modifier
                 .weight(1f, fill = false)
-                .padding(top = Space.xs),
+                .padding(top = Space.s8),
         ) {
             itemsIndexed(shown, key = { _, (index, _) -> index }) { position, (index, ingredient) ->
                 IngredientChoice(
@@ -143,9 +144,9 @@ fun AddToListSheet(
         if (lists != null && lists.isEmpty()) {
             Text(
                 text = stringResource(R.string.shopping_no_lists_message),
-                style = AromaType.Small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
+                style = AromaTheme.type.bodySmall,
+                color = AromaTheme.colors.inkSecondary,
+                modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
             )
         }
         SheetFooter {
@@ -169,22 +170,19 @@ private fun ListChoice(
     modifier: Modifier = Modifier,
 ) {
     if (lists.size <= MAX_SEGMENTS) {
-        SegmentedControl(
+        SelectionRow(
             options = lists.map { it.name },
             selectedIndex = lists.indexOf(selected),
             onSelect = { onSelect(lists[it]) },
-            modifier = modifier.padding(horizontal = ScreenMargin),
+            modifier = modifier,
         )
     } else {
-        LazyRow(
+        SelectionRow(
+            options = lists.map { it.name },
+            selectedIndex = lists.indexOf(selected),
+            onSelect = { onSelect(lists[it]) },
             modifier = modifier,
-            contentPadding = PaddingValues(horizontal = ScreenMargin),
-            horizontalArrangement = Arrangement.spacedBy(Space.xs),
-        ) {
-            items(lists, key = { it.id }) { option ->
-                AromaFilterChip(selected = option == selected, label = option.name, onClick = { onSelect(option) })
-            }
-        }
+        )
     }
 }
 
@@ -192,11 +190,11 @@ private fun ListChoice(
 @Composable
 private fun IngredientChoice(line: IngredientLine, checked: Boolean, onToggle: () -> Unit) {
     val color by animateColorAsState(
-        if (checked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+        if (checked) AromaTheme.colors.ink else AromaTheme.colors.inkSecondary,
         tween(Motion.STATE),
         label = "ingredientChoice",
     )
-    val noteColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val noteColor = AromaTheme.colors.inkSecondary
     val text =
         remember(line, noteColor) {
             buildAnnotatedString {
@@ -213,12 +211,12 @@ private fun IngredientChoice(line: IngredientLine, checked: Boolean, onToggle: (
                 .fillMaxWidth()
                 .heightIn(min = RowHeight.oneLine)
                 .toggleable(checked, role = Role.Checkbox, onValueChange = { onToggle() })
-                .padding(horizontal = ScreenMargin, vertical = Space.s),
+                .padding(horizontal = PageMargin, vertical = Space.s12),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.m),
+        horizontalArrangement = Arrangement.spacedBy(Space.s16),
     ) {
         CheckCircle(checked)
-        Text(text, style = AromaType.Body, color = color)
+        Text(text, style = AromaTheme.type.body, color = color)
     }
 }
 
@@ -245,21 +243,27 @@ fun PlanSheet(
     val todayLabel = stringResource(R.string.home_today)
     val tomorrowLabel = stringResource(R.string.plan_tomorrow)
     AromaBottomSheet(onDismissRequest = onDismiss, title = title, modifier = modifier) {
-        ChipGroup(stringResource(R.string.plan_day)) {
-            items(days, key = { it.toEpochDay() }) { date ->
-                val label =
-                    when (date) {
-                        today -> todayLabel
-                        today.plusDays(1) -> tomorrowLabel
-                        else -> shortDayLabel(date, locale)
-                    }
-                AromaFilterChip(selected = chosenDay == date.toEpochDay(), label = label, onClick = { chosenDay = date.toEpochDay() })
+        val dayLabels =
+            days.map { date ->
+                when (date) {
+                    today -> todayLabel
+                    today.plusDays(1) -> tomorrowLabel
+                    else -> shortDayLabel(date, locale)
+                }
             }
+        ChoiceGroup(stringResource(R.string.plan_day)) {
+            SelectionRow(
+                options = dayLabels,
+                selectedIndex = days.indexOfFirst { it.toEpochDay() == chosenDay },
+                onSelect = { chosenDay = days[it].toEpochDay() },
+            )
         }
-        ChipGroup(stringResource(R.string.plan_meal), Modifier.padding(top = Space.l, bottom = Space.l)) {
-            items(MealType.entries) { option ->
-                AromaFilterChip(selected = chosenType == option, label = mealTypeLabel(option), onClick = { chosenType = option })
-            }
+        ChoiceGroup(stringResource(R.string.plan_meal), Modifier.padding(top = Space.s16, bottom = Space.s16)) {
+            SelectionRow(
+                options = MealType.entries.map { mealTypeLabel(it) },
+                selectedIndex = MealType.entries.indexOf(chosenType),
+                onSelect = { chosenType = MealType.entries[it] },
+            )
         }
         SheetFooter {
             PrimaryButton(
@@ -271,16 +275,12 @@ fun PlanSheet(
     }
 }
 
-/** A label over a row of chips that scrolls from edge to edge but starts on the margin. */
+/** A group's head over its row of choices, which scrolls from edge to edge but starts on the margin. */
 @Composable
-private fun ChipGroup(label: String, modifier: Modifier = Modifier, chips: LazyListScope.() -> Unit) {
+private fun ChoiceGroup(label: String, modifier: Modifier = Modifier, choices: @Composable () -> Unit) {
     Column(modifier) {
-        GroupLabel(label, start = ScreenMargin)
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = ScreenMargin),
-            horizontalArrangement = Arrangement.spacedBy(Space.xs),
-            content = chips,
-        )
+        GroupHead(label, Modifier.padding(horizontal = PageMargin))
+        choices()
     }
 }
 
@@ -296,7 +296,7 @@ internal fun RatingSheet(rating: Double?, onRate: (Int) -> Unit, onDismiss: () -
     val scope = rememberCoroutineScope()
     var chosen by remember { mutableStateOf(rating) }
     // The line that says how to take a rating back stands under the stars, in the room they leave below.
-    val below = if (rating == null) Space.l else Space.xxs
+    val below = if (rating == null) Space.s24 else Space.s4
     AromaBottomSheet(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.recipe_rate),
@@ -305,7 +305,7 @@ internal fun RatingSheet(rating: Double?, onRate: (Int) -> Unit, onDismiss: () -
     ) {
         RatingStars(
             rating = chosen,
-            starSize = STAR_SIZE,
+            starSize = StarSize,
             clearable = true,
             onRate = { stars ->
                 chosen = stars.takeIf { it > 0 }?.toDouble()
@@ -316,14 +316,14 @@ internal fun RatingSheet(rating: Double?, onRate: (Int) -> Unit, onDismiss: () -
                         sheetState.hide()
                     }.invokeOnCompletion { onDismiss() }
             },
-            modifier = Modifier.padding(start = ScreenMargin - ratingTouchInset(STAR_SIZE), bottom = below),
+            modifier = Modifier.padding(start = PageMargin - ratingTouchInset(StarSize), bottom = below),
         )
         if (rating != null) {
             Text(
                 text = stringResource(R.string.rating_remove_hint),
-                style = AromaType.Small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.l),
+                style = AromaTheme.type.bodySmall,
+                color = AromaTheme.colors.inkSecondary,
+                modifier = Modifier.padding(start = PageMargin, end = PageMargin, bottom = Space.s24),
             )
         }
     }
@@ -347,16 +347,15 @@ internal fun ReworkSheet(translate: Boolean, onRework: (translate: Boolean) -> U
     ) {
         Text(
             text = stringResource(R.string.recipe_rework_hint),
-            style = AromaType.Body,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = ScreenMargin),
+            style = AromaTheme.type.body,
+            color = AromaTheme.colors.inkSecondary,
+            modifier = Modifier.padding(horizontal = PageMargin),
         )
-        SwitchRow(
+        SettingsRow(
             title = stringResource(R.string.add_ai_translate),
-            subtitle = null,
             checked = translated,
-            onChange = { translated = it },
-            modifier = Modifier.padding(top = Space.s),
+            onClick = { translated = !translated },
+            modifier = Modifier.padding(top = Space.s12, start = PageMargin - BoxPadding, end = PageMargin - BoxPadding),
         )
         SheetFooter {
             PrimaryButton(

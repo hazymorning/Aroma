@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="widget_background">#FF121411</color>
-    <color name="widget_card">#FF1E211D</color>
-    <color name="widget_on_surface">#FFE3E4DD</color>
-    <color name="widget_on_surface_variant">#FFA8AEA2</color>
-    <color name="widget_primary">#FFAECDA5</color>
-    <color name="widget_on_primary">#FF1A3518</color>
-    <color name="widget_selected">#FF2E3D2B</color>
-    <color name="widget_on_selected">#FFDCEBD3</color>
-    <color name="widget_cta">#FF3A5638</color>
-    <color name="widget_on_cta">#FFE2F0DA</color>
-    <color name="widget_outline">#FF6C7266</color>
+    <color name="widget_background">#FF171512</color>
+    <color name="widget_card">#FF221F1B</color>
+    <color name="widget_on_surface">#FFEDE9E2</color>
+    <color name="widget_on_surface_variant">#FFA8A298</color>
+    <color name="widget_primary">#FFBACBBE</color>
+    <color name="widget_on_primary">#FF171512</color>
+    <color name="widget_selected">#FF3A4A3F</color>
+    <color name="widget_on_selected">#FFEDE9E2</color>
+    <color name="widget_cta">#FFEDE9E2</color>
+    <color name="widget_on_cta">#FF171512</color>
+    <color name="widget_outline">#FF77716A</color>
 </resources>

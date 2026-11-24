@@ -177,19 +177,19 @@
     <string name="login_http_hint">Läuft dein Server ohne https, gib die Adresse mit http:// davor ein.</string>
 
     <!-- Recipe library -->
-    <string name="recipes_all">Alle Rezepte</string>
     <string name="recipes_cookbooks">Kochbücher</string>
     <string name="recipes_add">Rezept hinzufügen</string>
+    <string name="recipes_filter">Filter</string>
+    <string name="recipes_all_kinds">Alle</string>
+    <string name="recipes_narrow">Zeigen</string>
+    <string name="recipes_saved">Gemerkt</string>
     <string name="recipes_quick">Schnell</string>
     <string name="recipes_categories">Kategorien</string>
     <string name="recipes_tags">Schlagwörter</string>
     <string name="recipes_clear_filters">Filter zurücksetzen</string>
     <string name="recipes_empty_title">Noch keine Rezepte</string>
-    <string name="recipes_empty_message">Importiere dein erstes Rezept von einer Webseite oder schreib selbst eins.</string>
     <string name="recipes_no_results_title">Nichts gefunden</string>
-    <string name="recipes_no_results_message">Probier einen anderen Suchbegriff oder entferne ein paar Filter.</string>
     <string name="recipes_meal_empty_title">Noch keine Rezepte für diese Mahlzeit</string>
-    <string name="recipes_meal_empty_message">Wähle beim Bearbeiten eines Rezepts die Mahlzeit, dann erscheint es hier.</string>
     <plurals name="recipe_count">
         <item quantity="one">%1$d Rezept</item>
         <item quantity="other">%1$d Rezepte</item>
@@ -212,6 +212,8 @@
     <!-- Cooking mode -->
     <string name="cook_close">Kochmodus verlassen</string>
     <string name="cook_step_of">Schritt %1$d von %2$d</string>
+    <string name="cook_of_count">von %1$d</string>
+    <string name="cook_next_step">Als Nächstes</string>
     <string name="cook_for_this_step">Für diesen Schritt</string>
     <string name="cook_all_ingredients">Alle Zutaten</string>
     <string name="cook_ticked_of">%1$d von %2$d</string>
@@ -271,6 +273,10 @@
     <string name="shopping_mode_hint">Große Schrift, der Bildschirm bleibt an.</string>
     <string name="shopping_add_hint">Artikel hinzufügen</string>
     <string name="shopping_add">Hinzufügen</string>
+    <plurals name="shopping_open">
+        <item quantity="one">%1$d offen</item>
+        <item quantity="other">%1$d offen</item>
+    </plurals>
     <string name="shopping_create_list">Neue Liste</string>
     <string name="shopping_switch_list">Liste wechseln</string>
     <string name="shopping_rename_list">Liste umbenennen</string>
@@ -280,15 +286,15 @@
     <string name="shopping_edit_item">Artikel bearbeiten</string>
     <string name="shopping_item_deleted">Artikel entfernt</string>
     <string name="shopping_other">Sonstiges</string>
-    <string name="shopping_in_cart">Im Korb · %1$d</string>
     <string name="shopping_clear_checked">Leeren</string>
+    <string name="shopping_done_group">Erledigt (%1$d)</string>
+    <string name="shopping_clear_done">Erledigte entfernen</string>
     <string name="shopping_for_recipe">für %1$s</string>
     <string name="shopping_checked">Abgehakt</string>
     <string name="shopping_unchecked">Nicht abgehakt</string>
     <string name="shopping_empty_title">Die Liste ist leer</string>
-    <string name="shopping_empty_message">Füge oben Artikel hinzu oder setze die Zutaten eines Rezepts auf die Liste.</string>
+    <string name="shopping_add_from_plan">Zutaten aus dem Wochenplan hinzufügen</string>
     <string name="shopping_done_title">Alles erledigt</string>
-    <string name="shopping_done_message">Alles auf der Liste liegt im Korb.</string>
     <string name="shopping_no_lists_title">Noch keine Einkaufsliste</string>
     <string name="shopping_no_lists_message">Lege eine Liste an, um Artikel hinzuzufügen.</string>
     <plurals name="shopping_pending">
@@ -302,7 +308,6 @@
     <string name="collection_tag">Tag</string>
     <string name="collection_tool">Utensil</string>
     <string name="cookbook_empty_title">Dieses Kochbuch ist leer</string>
-    <string name="cookbook_empty_message">Rezepte erscheinen hier, sobald sie in Mealie zu den Filtern des Kochbuchs passen.</string>
 
     <!-- Timeline -->
     <string name="timeline_made_this">%1$s hat das gekocht</string>
@@ -344,6 +349,7 @@
     <string name="add_manual">Selbst schreiben</string>
     <string name="add_manual_hint">Beginne mit einem Namen</string>
     <string name="add_create">Rezept anlegen</string>
+    <string name="add_creating">Rezept wird angelegt …</string>
     <string name="editor_title">Rezept bearbeiten</string>
     <string name="editor_name">Name</string>
     <string name="editor_description">Beschreibung</string>
@@ -373,14 +379,15 @@
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
-    <string name="settings_server_line">%1$s · Mealie %2$s</string>
+    <string name="settings_server_connected">Verbunden · Mealie %1$s</string>
+    <string name="settings_server_offline">Nicht verbunden · Mealie %1$s</string>
     <string name="settings_appearance">Darstellung</string>
     <string name="settings_theme">Design</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Hell</string>
     <string name="settings_theme_dark">Dunkel</string>
     <string name="settings_dynamic_color">Farben vom Hintergrundbild</string>
-    <string name="settings_dynamic_color_hint">Nutzt Material You statt Aromas Salbeitönen.</string>
+    <string name="settings_dynamic_color_hint">Färbt Akzente passend zu deinem Hintergrundbild.</string>
     <string name="settings_language">Sprache</string>
     <string name="settings_app_language">Sprache der App</string>
     <string name="settings_language_system">System</string>

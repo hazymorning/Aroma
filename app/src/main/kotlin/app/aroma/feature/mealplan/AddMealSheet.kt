@@ -45,24 +45,23 @@ import app.aroma.R
 import app.aroma.core.model.MealType
 import app.aroma.core.model.RecipeSummary
 import app.aroma.ui.components.AromaBottomSheet
-import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.LabeledTextField
-import app.aroma.ui.components.PillTextField
-import app.aroma.ui.components.Placeholder
-import app.aroma.ui.components.PlaceholderLine
+import app.aroma.ui.components.PillField
 import app.aroma.ui.components.PrimaryButton
-import app.aroma.ui.components.RecipeListItem
-import app.aroma.ui.components.SegmentedControl
+import app.aroma.ui.components.RecipeRow
+import app.aroma.ui.components.SelectionRow
 import app.aroma.ui.components.SheetFooter
+import app.aroma.ui.components.Skeleton
+import app.aroma.ui.components.SkeletonLine
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.rememberFullSheetState
-import app.aroma.ui.theme.AromaType
+import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.Motion.Glide
-import app.aroma.ui.theme.ScreenMargin
+import app.aroma.ui.theme.Motion.Decelerate
+import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.ThumbnailSize
 import kotlinx.coroutines.CoroutineScope
@@ -100,21 +99,21 @@ fun AddMealSheet(
         title = stringResource(R.string.plan_for_day, date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)),
         modifier = modifier,
         sheetState = sheetState,
-        meta = { Text(day, style = AromaType.Small, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        meta = { Text(day, style = AromaTheme.type.bodySmall, color = AromaTheme.colors.inkSecondary) },
     ) {
         MealTypeChips(selected = type, onSelect = { type = it })
-        SegmentedControl(
+        SelectionRow(
             options = listOf(stringResource(R.string.plan_mode_recipe), stringResource(R.string.plan_mode_note)),
             selectedIndex = if (noteMode) 1 else 0,
             onSelect = { noteMode = it == 1 },
-            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
+            modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
         )
         // The sheet grows or shrinks with the form instead of jumping to its new height.
         AnimatedContent(
             targetState = noteMode,
             transitionSpec = {
                 fadeIn(tween(Motion.STATE)) togetherWith fadeOut(tween(Motion.STATE)) using
-                    SizeTransform(clip = false) { _, _ -> tween(Motion.EXPAND, easing = Glide) }
+                    SizeTransform(clip = false) { _, _ -> tween(Motion.STATE, easing = Motion.Decelerate) }
             },
             label = "addMealMode",
         ) { notes ->
@@ -135,30 +134,27 @@ fun AddMealSheet(
 
 @Composable
 private fun MealTypeChips(selected: MealType, onSelect: (MealType) -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = ScreenMargin),
-        horizontalArrangement = Arrangement.spacedBy(Space.xs),
-    ) {
-        items(MealType.entries) { option ->
-            AromaFilterChip(selected = selected == option, label = mealTypeLabel(option), onClick = { onSelect(option) })
-        }
-    }
+    SelectionRow(
+        options = MealType.entries.map { mealTypeLabel(it) },
+        selectedIndex = MealType.entries.indexOf(selected),
+        onSelect = { onSelect(MealType.entries[it]) },
+    )
 }
 
 @Composable
 private fun RecipePicker(search: PlanSearchState, onSearch: (String) -> Unit, onPick: (RecipeSummary) -> Unit) {
-    Column(Modifier.padding(top = Space.l)) {
-        PillTextField(
+    Column(Modifier.padding(top = Space.s24)) {
+        PillField(
             value = search.query,
             onValueChange = onSearch,
             placeholder = stringResource(R.string.search_recipes_hint),
-            modifier = Modifier.padding(horizontal = ScreenMargin),
+            modifier = Modifier.padding(horizontal = PageMargin),
         )
         Text(
             text = stringResource(R.string.plan_tap_recipe),
-            style = AromaType.Small,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs, bottom = Space.xxs),
+            style = AromaTheme.type.bodySmall,
+            color = AromaTheme.colors.inkSecondary,
+            modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s8, bottom = Space.s4),
         )
         when {
             search.isLoading && search.results.isEmpty() -> {
@@ -168,22 +164,22 @@ private fun RecipePicker(search: PlanSearchState, onSearch: (String) -> Unit, on
             search.results.isEmpty() -> {
                 Text(
                     text = stringResource(R.string.plan_search_empty),
-                    style = AromaType.Small,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m, bottom = Space.l),
+                    style = AromaTheme.type.bodySmall,
+                    color = AromaTheme.colors.inkSecondary,
+                    modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16, bottom = Space.s24),
                 )
             }
 
             else -> {
                 LazyColumn(
-                    contentPadding = PaddingValues(bottom = Space.xs),
+                    contentPadding = PaddingValues(bottom = Space.s8),
                     modifier =
                         Modifier
                             .fillMaxWidth()
                             .heightIn(max = ResultsMaxHeight),
                 ) {
                     items(search.results, key = { it.id }) { recipe ->
-                        RecipeListItem(recipe = recipe, onClick = { onPick(recipe) })
+                        RecipeRow(recipe = recipe, onClick = { onPick(recipe) })
                     }
                 }
             }
@@ -200,12 +196,12 @@ private val ResultWidth = 160.dp
 /** Rows shaped like the results, while the first ones load. */
 @Composable
 private fun ResultsPlaceholder() {
-    Column(Modifier.padding(bottom = Space.xs)) {
+    Column(Modifier.padding(bottom = Space.s8)) {
         repeat(3) {
-            Row(Modifier.padding(horizontal = ScreenMargin, vertical = Space.s), verticalAlignment = Alignment.CenterVertically) {
-                Placeholder(Modifier.size(ThumbnailSize), shape = MaterialTheme.shapes.small)
-                Spacer(Modifier.width(Space.m))
-                PlaceholderLine(Modifier.width(ResultWidth))
+            Row(Modifier.padding(horizontal = PageMargin, vertical = Space.s12), verticalAlignment = Alignment.CenterVertically) {
+                Skeleton(Modifier.size(ThumbnailSize), shape = AromaTheme.shapes.thumbnail)
+                Spacer(Modifier.width(Space.s16))
+                SkeletonLine(Modifier.width(ResultWidth))
             }
         }
     }
@@ -224,8 +220,8 @@ private fun NoteForm(
     LaunchedEffect(Unit) { titleFocus.requestFocus() }
     Column {
         Column(
-            Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l, bottom = Space.l),
-            verticalArrangement = Arrangement.spacedBy(Space.m),
+            Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s24, bottom = Space.s24),
+            verticalArrangement = Arrangement.spacedBy(Space.s16),
         ) {
             LabeledTextField(
                 value = title,
