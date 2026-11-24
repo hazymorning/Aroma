@@ -112,6 +112,7 @@ import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
+import app.aroma.ui.components.RecipePart
 import app.aroma.ui.components.Ribbon
 import app.aroma.ui.components.RibbonSize
 import app.aroma.ui.components.SEPARATOR
@@ -134,6 +135,7 @@ import app.aroma.ui.components.recipeTimeText
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.components.rememberStepText
+import app.aroma.ui.components.sharedRecipe
 import app.aroma.ui.components.totalTime
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.ContentMaxWidth
@@ -526,7 +528,7 @@ private fun Hero(recipe: Recipe, saved: Boolean, onUnsave: () -> Unit) {
             size = ImageSize.Original,
             placeholder = ImageSize.Medium,
             fallbackIconSize = HeroPlateSize,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().sharedRecipe(RecipePart.Photo, recipe.slug),
         )
         val scrim = AromaTheme.colors.scrim
         Box(
@@ -666,7 +668,11 @@ private fun TitleBlock(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.padding(horizontal = PageMargin)) {
-        Text(recipe.name, style = AromaTheme.type.recipeTitle, modifier = Modifier.semantics { heading() })
+        Text(
+            recipe.name,
+            style = AromaTheme.type.recipeTitle,
+            modifier = Modifier.sharedRecipe(RecipePart.Name, recipe.slug).semantics { heading() },
+        )
         Byline(recipe.categories, recipe.tags, recipe.sourceUrl, onOpenUrl, Modifier.padding(top = SubtitleGap))
         if (rating != null) Stars(rating, Modifier.padding(top = Space.s8))
         if (isOffline) OfflineNotice(Modifier.padding(top = Space.s8))

@@ -107,28 +107,32 @@ fun Text(
 private data class Cut(val at: Int?, val width: Int)
 
 /**
- * Where to end text that overflows [layout]: after the last whole word of its last line, without
- * the space or the comma after it; null where that line holds no space to end at.
+ * Where to end text that overflows [layout]: after the last whole word of its last line, or the
+ * last whole part of a word joined by hyphens, without the space, comma or hyphen after it; null
+ * where that line holds nothing to end at.
  */
 private fun wordEnd(text: String, layout: TextLayoutResult): Int? {
     val line = layout.lineCount - 1
     val start = layout.getLineStart(line)
     val end = layout.getLineEnd(line, visibleEnd = true)
-    // The line ends with a whole word where a space follows it; otherwise its last word is cut.
-    val whole = end < text.length && text[end].isWhitespace()
+    // The line ends with a whole word where a break follows it; otherwise its last word is cut.
+    val whole = end < text.length && (text[end].endsWord() || text[end - 1] == ZERO_WIDTH_SPACE)
     return if (whole) trimmed(text, end, start) else previousWordEnd(text, end, start)
 }
 
-/** The end of the word before the one that ends at [end], not before [start]; null where there is none. */
+/** The end of the word, or part of a word, before the one that ends at [end], not before [start]; null where there is none. */
 private fun previousWordEnd(text: String, end: Int, start: Int = 0): Int? {
-    val space = (end - 1 downTo start + 1).firstOrNull { text[it].isWhitespace() } ?: return null
+    val space = (end - 1 downTo start + 1).firstOrNull { text[it].endsWord() } ?: return null
     return trimmed(text, space, start)
 }
 
-/** [end], moved back over spaces and over the comma or dash a "…" should not follow. */
+/** Where a word ends: at a space, or after a hyphen, where [breakable] put a zero-width space. */
+private fun Char.endsWord() = isWhitespace() || this == ZERO_WIDTH_SPACE
+
+/** [end], moved back over spaces and over the comma or hyphen a "…" should not follow. */
 private fun trimmed(text: String, end: Int, start: Int): Int? {
     var at = end
-    while (at > start && (text[at - 1].isWhitespace() || text[at - 1] in TRAILING)) at--
+    while (at > start && (text[at - 1].endsWord() || text[at - 1] in TRAILING)) at--
     return at.takeIf { it > start }
 }
 

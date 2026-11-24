@@ -14,7 +14,7 @@
     <color name="widget_on_selected">#FF1F1D1A</color>
     <color name="widget_cta">#FF1F1D1A</color>
     <color name="widget_on_cta">#FFFBF9F7</color>
-    <color name="widget_outline">#FF8F8A81</color>
+    <color name="widget_outline">#FF837E76</color>
 
     <!--
         Words set on a photo, and the scrim behind them: the same in light and dark, as the photo is.

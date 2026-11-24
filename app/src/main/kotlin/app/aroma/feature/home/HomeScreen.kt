@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -70,6 +71,7 @@ import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeCard
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.RecipeMetaLine
+import app.aroma.ui.components.RecipePart
 import app.aroma.ui.components.RecipeRow
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SecondaryButton
@@ -88,6 +90,7 @@ import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.recipeTime
 import app.aroma.ui.components.rememberTitleLines
+import app.aroma.ui.components.sharedRecipe
 import app.aroma.ui.components.weekdayShort
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxGap
@@ -427,10 +430,13 @@ private fun TodayBox(state: HomeUiState, suggestions: List<RecipeSummary>, actio
                     Modifier
                         .fillMaxWidth()
                         .aspectRatio(TODAY_PHOTO)
+                        .sharedRecipe(RecipePart.Photo, recipe.slug)
                         .clickable(
                             role = Role.Button,
                             onClickLabel = stringResource(R.string.home_open_recipe),
-                        ) { actions.onOpenRecipe(recipe.slug) },
+                        ) { actions.onOpenRecipe(recipe.slug) }
+                        // The photo is a button: TalkBack names it by its recipe.
+                        .semantics { contentDescription = recipe.name },
             )
         }
         Column(Modifier.padding(BoxPadding)) {
@@ -451,13 +457,19 @@ private fun TodayBox(state: HomeUiState, suggestions: List<RecipeSummary>, actio
                 modifier =
                     Modifier
                         .padding(top = Space.s4)
+                        .sharedRecipe(RecipePart.Name, recipe?.slug)
                         .semantics { heading() },
             )
             if (recipe == null && next.note.isNotBlank()) {
                 Text(next.note, style = AromaTheme.type.bodySmall, modifier = Modifier.padding(top = Space.s4))
             }
             if (recipe != null) {
-                Row(Modifier.padding(top = Space.s12), horizontalArrangement = Arrangement.spacedBy(Space.s8)) {
+                // With large text the second button moves under the first instead of being cut short.
+                FlowRow(
+                    Modifier.padding(top = Space.s12),
+                    horizontalArrangement = Arrangement.spacedBy(Space.s8),
+                    verticalArrangement = Arrangement.spacedBy(Space.s8),
+                ) {
                     PrimaryButton(
                         stringResource(R.string.recipe_start_cooking),
                         { actions.onCook(recipe.slug) },
@@ -707,9 +719,17 @@ private fun Newest(recipe: RecipeSummary, actions: HomeActions, modifier: Modifi
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .aspectRatio(NEWEST_PHOTO),
+                        .aspectRatio(NEWEST_PHOTO)
+                        .sharedRecipe(RecipePart.Photo, recipe.slug),
             )
-            Text(recipe.name, style = AromaTheme.type.section, modifier = Modifier.padding(top = Space.s12))
+            Text(
+                recipe.name,
+                style = AromaTheme.type.section,
+                modifier =
+                    Modifier
+                        .padding(top = Space.s12)
+                        .sharedRecipe(RecipePart.Name, recipe.slug),
+            )
             if (recipe.description.isNotBlank()) {
                 Text(
                     text = recipe.description,
@@ -770,7 +790,8 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                             .padding(top = Space.s4)
                             .size(app.aroma.ui.theme.ThumbnailSize)
                             .clip(AromaTheme.shapes.thumbnail)
-                            .clickable(onClickLabel = stringResource(R.string.home_open_recipe)) { actions.onOpenRecipe(toRate.slug) },
+                            .clickable(onClickLabel = stringResource(R.string.home_open_recipe)) { actions.onOpenRecipe(toRate.slug) }
+                            .semantics { contentDescription = toRate.name },
                 )
                 Spacer(Modifier.width(Space.s16))
                 // The words keep clear of the close button; the stars may pass under it, so five fit on a small phone.

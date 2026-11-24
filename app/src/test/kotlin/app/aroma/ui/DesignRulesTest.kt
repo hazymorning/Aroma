@@ -225,6 +225,33 @@ class DesignRulesTest {
         }
     }
 
+    @Test
+    fun shapesThatMeanSomethingStandOut() {
+        listOf("light" to LightColors, "dark" to DarkColors).forEach { (scheme, c) ->
+            val pairs =
+                listOf(
+                    "open tick's ring on surface" to (c.inkTertiary to c.surface),
+                    "open tick's ring on background" to (c.inkTertiary to c.background),
+                    "open tick's ring on bar" to (c.inkTertiary to c.bar),
+                    "done tick on surface" to (c.accent to c.surface),
+                    "done tick on bar" to (c.accent to c.bar),
+                    "switch's knob, off, on its track" to (c.inkTertiary to c.surfacePressed),
+                    "switch's track, on, on surface" to (c.accent to c.surface),
+                    "steps done on background" to (c.accent to c.background),
+                    "glyphs in second ink on surface" to (c.inkSecondary to c.surface),
+                    "glyphs in second ink on bar" to (c.inkSecondary to c.bar),
+                    "today's circle on surface" to (c.ink to c.surface),
+                    "ribbon on a light photo" to (c.accent to c.background),
+                )
+            val weak =
+                pairs.mapNotNull { (name, colors) ->
+                    val ratio = contrast(colors.first, colors.second)
+                    if (ratio < MIN_SHAPE_CONTRAST) "$scheme $name: ${"%.2f".format(ratio)}:1" else null
+                }
+            assertNone("Icons and shapes that mean something must stand at least $MIN_SHAPE_CONTRAST:1 against their ground:", weak)
+        }
+    }
+
     /** The contrast of two colours as WCAG has it, from 1 to 21. */
     private fun contrast(a: Color, b: Color): Float {
         val (lighter, darker) = listOf(a.compositeOver(b).luminance(), b.luminance()).sortedDescending()
@@ -250,6 +277,9 @@ class DesignRulesTest {
     private companion object {
         /** WCAG's least contrast for text of a normal size. */
         const val MIN_CONTRAST = 4.5f
+
+        /** WCAG's least contrast for icons and shapes that carry meaning. */
+        const val MIN_SHAPE_CONTRAST = 3f
 
         /** `val Name = 56.dp`: a size with a name, which is what the rules ask for. */
         val NamedConstant = Regex("""^\s*(private |internal )?(const )?val [A-Z][A-Za-z0-9]*\s*(:\s*\w+\s*)?=""")

@@ -1,6 +1,5 @@
 package app.aroma.ui.components
 
-import android.provider.Settings
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -99,13 +98,3 @@ fun RecipeImage(
 
 /** How strong the outline inside a photo's edge is. */
 private const val OUTLINE = 0.06f
-
-/**
- * How fast the system runs animations, 0 with them turned off. Compose's own animations follow it by
- * themselves; Coil times its crossfade on its own clock, so the photo is told.
- */
-@Composable
-private fun systemAnimationScale(): Float {
-    val resolver = LocalContext.current.contentResolver
-    return remember(resolver) { Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) }
-}

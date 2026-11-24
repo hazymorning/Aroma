@@ -37,7 +37,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -46,6 +48,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.ui.components.LocalScreenTransition
+import app.aroma.ui.components.LocalSharedTransition
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.LocalTonalFill
@@ -84,15 +88,22 @@ fun AromaBottomSheet(
         tonalElevation = 0.dp,
         scrimColor = colors.scrim.copy(alpha = if (colors.isDark) 0.6f else 0.32f),
         dragHandle = {
+            val handle = stringResource(R.string.sheet_handle)
             Box(
                 Modifier
                     .padding(vertical = Space.s12)
                     .size(width = HandleWidth, height = Space.s4)
-                    .background(colors.surfacePressed, AromaTheme.shapes.round),
+                    .background(colors.surfacePressed, AromaTheme.shapes.round)
+                    .semantics { contentDescription = handle },
             )
         },
     ) {
-        CompositionLocalProvider(LocalTonalFill provides colors.surfaceOnBar) {
+        // A sheet is a window of its own: nothing in it travels to the next screen.
+        CompositionLocalProvider(
+            LocalTonalFill provides colors.surfaceOnBar,
+            LocalSharedTransition provides null,
+            LocalScreenTransition provides null,
+        ) {
             Column(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s4, bottom = Space.s16)) {
                 Text(
                     text = title,

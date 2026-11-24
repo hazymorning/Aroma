@@ -64,7 +64,8 @@ val LightColors =
         bar = Color(0xFFFBF9F7),
         ink = LightInk,
         inkSecondary = Color(0xFF6B675F),
-        inkTertiary = Color(0xFF8F8A81),
+        // A shade darker than the brief's #8F8A81, so an open tick's ring and a switch turned off stand 3:1 (section 9).
+        inkTertiary = Color(0xFF837E76),
         accent = Color(0xFF536258),
         accentSoft = Color(0xFFD6E1D7),
         onInk = Color(0xFFFBF9F7),
@@ -84,7 +85,8 @@ val DarkColors =
         bar = Color(0xFF221F1B),
         ink = DarkInk,
         inkSecondary = Color(0xFFA8A298),
-        inkTertiary = Color(0xFF77716A),
+        // A shade lighter than the brief's #77716A, so a switch turned off stands 3:1 on its track (section 9).
+        inkTertiary = Color(0xFF837D76),
         accent = Color(0xFFBACBBE),
         accentSoft = Color(0xFF3A4A3F),
         onInk = Color(0xFF171512),

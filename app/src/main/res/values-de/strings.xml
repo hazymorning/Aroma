@@ -16,6 +16,7 @@
     <string name="action_back">Zurück</string>
     <string name="action_cancel">Abbrechen</string>
     <string name="action_close">Schließen</string>
+    <string name="sheet_handle">Ziehpunkt</string>
     <string name="action_continue">Weiter</string>
     <string name="action_decrease">Weniger</string>
     <string name="action_delete">Löschen</string>

@@ -11,7 +11,7 @@ Wird nach jedem Schritt aktualisiert.
 - [x] P3 Rezeptseite
 - [x] P4 Start und Wochenplan
 - [x] P5 Rezepte, Kochmodus, Einkauf, Einstellungen, übrige Screens, Sheets, Dialoge, Zustände
-- [ ] P6 Dark Mode, Bewegung, Haptik, Barrierefreiheit
+- [x] P6 Dark Mode, Bewegung, Haptik, Barrierefreiheit
 - [ ] P7 Art-Director-Review, `BERICHT.md`
 - [ ] P8 Release-Draft
 
@@ -341,6 +341,46 @@ Kochmodus mit und ohne Zutaten; Einstellungen, auch ganz; je hell und dunkel, 10
 und `ScreensScreenshotTest`, der alle Screens, Sheets und Zustände jetzt auch mit 130 % Schrift in
 hell und dunkel rendert.
 
+## P6 – Dark Mode, Bewegung, Haptik, Barrierefreiheit (erledigt)
+
+**Bewegung (4.7).**
+
+- Screen-Wechsel dauern 350 ms: Die alte Seite blendet in 150 ms aus, die neue in 200 ms danach ein;
+  beide gleiten auf einer Abbremskurve über die ganzen 350 ms. Tabs blenden nur über.
+- **Shared Element:** Beim Öffnen wächst das Foto von der Karte, der Rezeptzeile, der Heute-Box oder
+  „Neu in deiner Sammlung" ins Hero; seine runden Ecken werden auf dem Weg eckig. Der Name wandert
+  mit: Der alte blendet beim Losgehen aus, der Titel nach 150 ms ein, sodass nie zwei Schriften
+  übereinanderstehen. Zurück geht es umgekehrt. Das Hero zeigt bis zum Laden des großen Bilds die
+  Kopie der Karte aus dem Speicher.
+- Nicht mit unterwegs: Rezepte aus Sheets (eigene Fenster) und ein Rezept, das in derselben Woche
+  zweimal geplant ist (sein Foto wüsste nicht, aus welcher Zeile es kam).
+- **Reduzierte Bewegung** (Entscheidung 32): Pages und Wochen blenden nur über, nichts gleitet,
+  nichts fliegt.
+- Unverändert aus P2 und P3: Pill gleitet in 250 ms, Karten und Boxen geben beim Drücken auf 0,98
+  nach und tönen sich mit Tinte 6 %, Bilder blenden nach dem Platzhalter in 200 ms ein.
+
+**Haptik.** Abhaken (Rezeptseite, Kochmodus, Einkauf), Schrittwechsel im Kochmodus und Merken geben
+haptisches Feedback, außerdem Tab-Wechsel und Auswahlsegmente.
+
+**Dark Mode.** Warm (#171512, Flächen #221F1B), Leisten heben sich durch die hellere Fläche `bar`
+und Schatten mit doppelter Deckkraft ab, ohne Linien. Alle Screens in dunkel durchgesehen.
+
+**Barrierefreiheit.**
+
+- Jeder Screenshot-Test prüft jetzt, dass alles Antippbare Text oder eine Beschreibung für TalkBack
+  hat (alle Screens, Sheets und Zustände, beide Sprachen, hell und dunkel, 100 und 130 %). Gefunden
+  und behoben: das Foto der Heute-Box und das Vorschaubild der Bewertungsfrage (jetzt mit dem
+  Rezeptnamen) und der Griff der Sheets („Ziehpunkt").
+- `DesignRulesTest` prüft zusätzlich 3 : 1 für Icons und Flächen, die etwas bedeuten (offener
+  Abhak-Ring, ausgeschalteter Schalter, erledigte Schritte, Lesebändchen …). Ring und Schalterknopf
+  lagen knapp darunter; `inkTertiary` ist dafür eine Spur dunkler bzw. heller (Entscheidung 31).
+- 200 %: In der Heute-Box wurde „Rezept" zu „Rez…" gekürzt; die Buttons brechen jetzt um. Gekürzte
+  Namen enden auch nach einem Teil eines Bindestrich-Worts („Kürbis-Couscous…" statt
+  „Kürbis-Couscous-…", „Auberginen-Tikka…" statt „Cremiges…").
+
+Geprüft mit `TravelScreenshotTest` (Einzelbilder des Übergangs von der Karte zur Rezeptseite,
+`kochbuch/uebergang_hin_*`), den Screenshot-Tests in 100, 130 und 200 % und `DesignRulesTest`.
+
 ## Entscheidungen
 
 1. **Branch** `design/kochbuch`, wie im Auftrag.
@@ -408,6 +448,13 @@ hell und dunkel rendert.
 30. **Wochenplan: 24 dp zwischen den Tagen, 12 dp zwischen den Gerichten eines Tages** statt je
     8 dp (6.3). Mit 8 dp waren Tage und Gerichte nicht zu unterscheiden; 12 dp gelten auch sonst
     für Rezeptzeilen (5.9).
+31. **`inkTertiary` #837E76 (hell) und #837D76 (dunkel)** statt #8F8A81 und #77716A: Der offene
+    Abhak-Ring (2,93 : 1) und der Knopf des ausgeschalteten Schalters (2,63 : 1) erreichten die
+    3 : 1 aus Abschnitt 9 nicht. Der Ton ist kaum dunkler bzw. heller, die Widgets folgen.
+32. **Reduzierte Bewegung:** Android kennt dafür „Animationen entfernen", das die Animationsdauer
+    auf 0 setzt; Compose folgt dem von selbst. Aroma schaltet dann zusätzlich auf reine
+    Überblendungen ohne Gleiten und ohne Shared Element; das System verkürzt sie auf null, statt
+    sie kurz zu zeigen. Eigene Überblendungen gegen die Systemeinstellung erzwingen wir nicht.
 
 ## Abweichungen
 
@@ -418,6 +465,8 @@ hell und dunkel rendert.
 5. Aktionsleiste 80 statt 72 dp, im Kochmodus 88 dp (Entscheidung 22).
 6. Beschriftungen der Navigation wachsen nur bis 130 % (Entscheidung 23).
 7. Wochenplan mit 24 dp zwischen den Tagen und 12 dp zwischen Gerichten statt 8 dp (Entscheidung 30).
+8. `inkTertiary` leicht angepasst, damit bedeutungstragende Formen 3 : 1 erreichen (Entscheidung 31).
+9. Reduzierte Bewegung: Überblendungen, die das System auf null verkürzt (Entscheidung 32).
 
 ## Offene Punkte
 
