@@ -58,7 +58,9 @@ val AromaShapes =
  * takes a tap: cards, fields, chips and quiet buttons. [selected] is the sage wash of a chosen chip,
  * tab or day. [raised] is the paper of what floats above the page: the tab bar, sheets, menus.
  * [cta] is the one filled action of a screen, a deep tone-on-tone green in dark mode instead of a
- * bright mint slab.
+ * bright mint slab. [mutedAccent] is a soft sage with dark sage words on it, for the few actions
+ * that come right after the main one, such as plan and shop on a recipe: it lifts them above the
+ * quiet buttons without competing with [cta].
  */
 @Immutable
 data class AromaExtras(
@@ -68,11 +70,13 @@ data class AromaExtras(
     val raised: Color,
     val cta: Color,
     val onCta: Color,
+    val mutedAccent: Color,
+    val onMutedAccent: Color,
     val shadowInk: Color,
     val floatingEdge: Color,
 )
 
-private val LightExtras =
+internal val LightExtras =
     AromaExtras(
         card = Color(0xFFEEEFE7),
         selected = Color(0xFFDCE7D4),
@@ -80,11 +84,13 @@ private val LightExtras =
         raised = Color(0xFFFFFFFF),
         cta = Color(0xFF486447),
         onCta = Color(0xFFFFFFFF),
+        mutedAccent = Color(0xFFD8E3CF),
+        onMutedAccent = Color(0xFF2F4B2C),
         shadowInk = Color(0xFF1B2A19),
         floatingEdge = Color(0xFF1A1C18).copy(alpha = 0.05f),
     )
 
-private val DarkExtras =
+internal val DarkExtras =
     AromaExtras(
         card = Color(0xFF1E211D),
         selected = Color(0xFF2E3D2B),
@@ -92,6 +98,8 @@ private val DarkExtras =
         raised = Color(0xFF2C2F2A),
         cta = Color(0xFF3A5638),
         onCta = Color(0xFFE2F0DA),
+        mutedAccent = Color(0xFF263324),
+        onMutedAccent = Color(0xFFC3DCB8),
         shadowInk = Color.Black,
         floatingEdge = Color.White.copy(alpha = 0.07f),
     )
@@ -105,6 +113,8 @@ private fun dynamicExtras(scheme: ColorScheme, dark: Boolean): AromaExtras =
         raised = if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainerLowest,
         cta = if (dark) scheme.primaryContainer else scheme.primary,
         onCta = if (dark) scheme.onPrimaryContainer else scheme.onPrimary,
+        mutedAccent = if (dark) scheme.secondaryContainer else scheme.primaryContainer,
+        onMutedAccent = if (dark) scheme.onSecondaryContainer else scheme.onPrimaryContainer,
     )
 
 val LocalAromaExtras = staticCompositionLocalOf { LightExtras }

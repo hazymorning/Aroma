@@ -19,11 +19,14 @@ pieces in `ui/components`. Screens under `feature/` are built from those two onl
 3. **One accent.** Sage marks the one filled action of a screen, what is chosen (a chip, a tab,
    a check, a switch, today), links (every link is sage), group labels and step numbers, amounts in
    ingredient and shopping lists and those written into steps, and the brand: the wordmark and the name in the greeting. It is
-   never decoration.
+   never decoration. A muted sage, soft fill and dark sage words, lifts the few actions that come
+   right after the main one: plan and shop on a recipe, and nothing else yet. It stays that rare, or
+   it stops lifting anything.
 4. **Two typefaces, seven sizes.** Newsreader names things; Figtree carries everything that is
    read or tapped. Nothing is set in capitals or tracked out.
 5. **One controls style.** Every control is a soft pill on the card fill; the one main action is
-   a sage pill; the chosen value of a chip or segment takes the sage wash.
+   a sage pill; the actions right after it take the muted accent; the chosen value of a chip or
+   segment takes the sage wash.
 
 ## Type
 
@@ -72,13 +75,14 @@ tokens or named constants only *(checked)*.
 | `extras.card` | #EEEFE7 | #1E211D | Cards, fields, chips, quiet buttons |
 | `extras.selected` / `onSelected` | #DCE7D4 | #2E3D2B | The chosen chip, segment, today |
 | `extras.cta` / `onCta` | #486447 | #3A5638 | The one filled action |
+| `extras.mutedAccent` / `onMutedAccent` | #D8E3CF / #2F4B2C | #263324 / #C3DCB8 | The actions right after the main one: plan and shop on a recipe (`SecondaryButton(accented = true)`) |
 | `extras.raised` | #FFFFFF | #2C2F2A | Sheets, menus; the tab bar, a step darker in the dark |
 | `primary` | #486447 | #AECDA5 | Links, checks, group labels, step numbers, amounts, the brand |
 | `onSurface` / `onSurfaceVariant` | ink / soft ink | | Text and glyphs |
 | `error` | | | Removing and failing, nothing else |
 
-No colour literals outside `ui/theme` *(checked)*. With "Colors from your wallpaper", the same roles
-come from Material You.
+No colour literals outside `ui/theme` *(checked)*. Words on the muted accent stand out from it at
+least 4.5:1 *(checked)*. With "Colors from your wallpaper", the same roles come from Material You.
 
 ## Shape and depth
 

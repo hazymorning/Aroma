@@ -155,7 +155,8 @@ private const val LABEL_SHOWN = 0.8f
 /**
  * A quiet action on the soft fill every control shares. [confirmed] turns the icon into a check for
  * a moment once the action went through. [compact] is the chip-sized one, for an action inside text.
- * On a card, which has that fill itself, [onCard] sets it on paper instead.
+ * On a card, which has that fill itself, [onCard] sets it on paper instead. [accented] sets it in
+ * the muted sage accent, kept for the few actions right after a page's main one.
  */
 @Composable
 fun SecondaryButton(
@@ -167,8 +168,15 @@ fun SecondaryButton(
     confirmed: Boolean = false,
     compact: Boolean = false,
     onCard: Boolean = false,
+    accented: Boolean = false,
 ) {
-    val fill = if (onCard) extras.raised else extras.card
+    val fill =
+        when {
+            accented -> extras.mutedAccent
+            onCard -> extras.raised
+            else -> extras.card
+        }
+    val content = if (accented) extras.onMutedAccent else MaterialTheme.colorScheme.onSurface
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -176,9 +184,9 @@ fun SecondaryButton(
         colors =
             ButtonDefaults.buttonColors(
                 containerColor = fill,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                contentColor = content,
                 disabledContainerColor = fill,
-                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                disabledContentColor = content.copy(alpha = 0.38f),
             ),
         elevation = null,
         contentPadding = PaddingValues(horizontal = if (compact) Space.m else Space.l),
@@ -189,7 +197,8 @@ fun SecondaryButton(
                 Icon(
                     painter = painterResource(if (done) R.drawable.ic_check else icon),
                     contentDescription = null,
-                    tint = if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    // On the accent the words are sage already, and the check keeps their colour.
+                    tint = if (done && !accented) MaterialTheme.colorScheme.primary else content,
                     modifier = Modifier.size(if (compact) Glyph.s else Glyph.m),
                 )
             }

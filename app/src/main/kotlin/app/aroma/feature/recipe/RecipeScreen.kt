@@ -637,7 +637,8 @@ private fun Dot(style: TextStyle) {
 
 /**
  * Plan and shop, the two things people do with a recipe besides cooking it, right under its name:
- * two even buttons across the column, or plan alone across it where there is nothing to buy.
+ * two even buttons across the column, or plan alone across it where there is nothing to buy. They
+ * take the muted accent, which sets them above the page's quiet controls and below cooking.
  */
 @Composable
 private fun RecipeQuickActions(
@@ -653,6 +654,7 @@ private fun RecipeQuickActions(
             text = stringResource(R.string.recipe_action_plan),
             onClick = onPlan,
             confirmed = confirmed == QuickAction.Plan,
+            accented = true,
             modifier = Modifier.weight(1f),
         )
         if (canShop) {
@@ -661,6 +663,7 @@ private fun RecipeQuickActions(
                 text = stringResource(R.string.recipe_action_shop),
                 onClick = onShop,
                 confirmed = confirmed == QuickAction.Shop,
+                accented = true,
                 modifier = Modifier.weight(1f),
             )
         }

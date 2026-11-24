@@ -1,8 +1,12 @@
 package app.aroma.ui
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.AromaTypography
+import app.aroma.ui.theme.DarkExtras
+import app.aroma.ui.theme.LightExtras
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -11,7 +15,7 @@ import java.io.File
 /**
  * The rules of docs/DESIGN.md that can be read from the code: one type scale of seven sizes, set
  * without capitals or tracking; nothing outlined on a page; sizes, colours, shapes, type and motion
- * from the theme; controls from Aroma's components.
+ * from the theme; controls from Aroma's components; words that read well on the muted accent.
  */
 class DesignRulesTest {
     private val root = File("src/main/kotlin/app/aroma")
@@ -94,6 +98,20 @@ class DesignRulesTest {
     }
 
     @Test
+    fun wordsOnTheMutedAccentReadWell() {
+        listOf("light" to LightExtras, "dark" to DarkExtras).forEach { (scheme, extras) ->
+            val contrast = contrast(extras.onMutedAccent, extras.mutedAccent)
+            assertTrue("Words on the $scheme muted accent stand only $contrast:1 against it", contrast >= MIN_CONTRAST)
+        }
+    }
+
+    /** The contrast of two colours as WCAG has it, from 1 to 21. */
+    private fun contrast(a: Color, b: Color): Float {
+        val (lighter, darker) = listOf(a.luminance(), b.luminance()).sortedDescending()
+        return (lighter + 0.05f) / (darker + 0.05f)
+    }
+
+    @Test
     fun theScaleHasSevenSizes() {
         // Every role in AromaType, found by reflection so a new role is checked too.
         val roles =
@@ -129,6 +147,9 @@ class DesignRulesTest {
     }
 
     private companion object {
+        /** WCAG's least contrast for text of a normal size. */
+        const val MIN_CONTRAST = 4.5f
+
         /** `val Name = 56.dp`: a size with a name, which is what the rules ask for. */
         val NamedConstant = Regex("""^\s*(private |internal )?(const )?val [A-Z][A-Za-z0-9]*\s*(:\s*\w+\s*)?=""")
 
