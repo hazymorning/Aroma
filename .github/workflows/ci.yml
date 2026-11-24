@@ -1,14 +1,24 @@
 name: CI
 
-# Every push to main and every pull request. scripts/check.sh runs the same checks before a push,
-# so a run here passes the first time: a failed run mails the owner.
+# Every push to main and every pull request that touches the app or its build. scripts/check.sh
+# runs the same checks before a push, so a run here passes the first time: a failed run mails the
+# owner. Changes to documents and to the hand-started workflows run nothing.
 on:
   push:
     branches: [main]
     paths-ignore:
-      - CHANGELOG.md
+      - "**.md"
+      - docs/**
       - .github/workflows/release.yml
+      - .github/workflows/screenshots.yml
+      - .github/workflows/prune-releases.yml
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - docs/**
+      - .github/workflows/release.yml
+      - .github/workflows/screenshots.yml
+      - .github/workflows/prune-releases.yml
 
 # A newer push to a pull request replaces its run. On main every run finishes, so no run ends as
 # cancelled and mails for it.

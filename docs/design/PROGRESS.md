@@ -5,7 +5,7 @@ Wird nach jedem Schritt aktualisiert.
 
 ## Phasen
 
-- [x] P0 Bestandsaufnahme, Vorher-Screenshots (`screenshots/vorher/`, 308 Bilder)
+- [x] P0 Bestandsaufnahme, Vorher-Screenshots (308 gerendert; im Repository nur die Paare des Berichts)
 - [x] P1 Fehler beheben (Abschnitt 8)
 - [x] P2 Grundlagen (4) und Komponenten (5), alte Varianten migriert und gelöscht
 - [x] P3 Rezeptseite
@@ -393,8 +393,8 @@ Korrigiert:
   Filter „Lange nicht gekocht") und 96 unbenutzte Imports entfernt; keine TODOs, kein
   auskommentierter Code, keine ungenutzten Komponenten (per Code-Suche geprüft).
 
-Bericht mit Vorher-Nachher-Bildern: [`BERICHT.md`](BERICHT.md); Nachher-Bilder unter
-`screenshots/nachher` (390, dazu 169 unter `kochbuch`).
+Bericht mit Vorher-Nachher-Bildern: [`BERICHT.md`](BERICHT.md). Im Repository liegen nur die Paare
+des Berichts; alle Screens rendert bei Bedarf der Workflow „Screenshots".
 
 ## P8 – Release-Draft
 
