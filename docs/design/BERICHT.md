@@ -7,8 +7,8 @@ Der Auftrag steht in [`AUFTRAG.md`](AUFTRAG.md), der Verlauf mit allen Einzelhei
 Entscheidungen in [`PROGRESS.md`](PROGRESS.md).
 
 Branch `design/kochbuch`, Phasen P0 bis P8 je mit eigenem Commit. Build, Lint (Warnungen als
-Fehler), Spotless und 847 Tests sind grün; 18 Tests laufen nur gegen einen echten Mealie-Server und
-werden lokal übersprungen, in der CI laufen sie mit.
+Fehler), Spotless und 847 Tests sind grün; 18 davon laufen nur gegen einen echten Mealie-Server und
+sind in der CI des Pull Requests grün.
 
 ## Vorher – Nachher
 
@@ -170,5 +170,5 @@ veröffentlicht wird von Hand auf der Release-Seite. Der Draft für 0.7.0 trägt
 - **Querformat und Tablets:** Telefone hochkant sind auf 360, 411 und 480 dp geprüft, der
   Kochmodus auch quer. Andere Screens im Querformat und Tablets sind lauffähig, aber nicht eigens
   gestaltet (Abschnitt 4.3 nennt Telefone hochkant als Ziel).
-- **Live-Tests gegen Mealie** (18) liefen lokal nicht, weil kein Server erreichbar war; die CI
-  startet dafür einen Mealie-Container.
+- **Live-Tests gegen Mealie** (18) liefen lokal nicht, weil kein Server erreichbar war; in der CI
+  des Pull Requests mit dem Mealie-Container sind sie grün.

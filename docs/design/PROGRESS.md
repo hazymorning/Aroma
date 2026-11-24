@@ -13,7 +13,7 @@ Wird nach jedem Schritt aktualisiert.
 - [x] P5 Rezepte, Kochmodus, Einkauf, Einstellungen, übrige Screens, Sheets, Dialoge, Zustände
 - [x] P6 Dark Mode, Bewegung, Haptik, Barrierefreiheit
 - [x] P7 Art-Director-Review, `BERICHT.md`
-- [ ] P8 Release-Draft
+- [x] P8 Release-Draft
 
 ## Inventar (Stand vor der Runde)
 
@@ -413,8 +413,12 @@ Bericht mit Vorher-Nachher-Bildern: [`BERICHT.md`](BERICHT.md); Nachher-Bilder u
   Update-Prüfung der App. Veröffentlichen heißt, den Draft auf der Release-Seite zu veröffentlichen.
   Wer „draft" abwählt, veröffentlicht wie bisher sofort, nur von `main`. Kein Workflow hängt an
   Tag-Pushes.
-- Branch gepusht, Pull Request in `main` geöffnet (nicht gemergt), Release-Workflow als Draft auf
-  `design/kochbuch` gestartet: signiertes APK und Release-Notes aus dem Changelog.
+- Branch gepusht, Pull Request in `main` geöffnet (nicht gemergt):
+  https://github.com/hazymorning/Aroma/pull/1. Die CI des Pull Requests ist grün, auch die
+  Live-Tests gegen den Mealie-Container.
+- Release-Workflow als Draft auf `design/kochbuch` gelaufen: „Aroma 0.7.0" mit dem signierten APK
+  (Signaturprüfung bestanden) und den Release-Notes aus dem Changelog, nicht veröffentlicht:
+  https://github.com/hazymorning/Aroma/releases/tag/untagged-cc28bf45b1d3f2f56c09
 
 ## Entscheidungen
 
