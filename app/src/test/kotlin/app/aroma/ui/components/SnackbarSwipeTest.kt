@@ -4,10 +4,10 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
+import app.aroma.onNodeWithWords
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,7 +32,7 @@ class SnackbarSwipeTest {
             var result: SnackbarResult? = null
             CoroutineScope(Dispatchers.Main).launch { result = state.showSnackbar(message, duration = SnackbarDuration.Indefinite) }
             compose.waitForIdle()
-            compose.onNodeWithText(message).performTouchInput {
+            compose.onNodeWithWords(message).performTouchInput {
                 // A thumb's swipe, wider than the short message text it starts on.
                 if (index ==
                     0
@@ -43,7 +43,7 @@ class SnackbarSwipeTest {
                 }
             }
             compose.waitForIdle()
-            compose.onNodeWithText(message).assertDoesNotExist()
+            compose.onNodeWithWords(message).assertDoesNotExist()
             assertEquals(SnackbarResult.Dismissed, result)
         }
     }

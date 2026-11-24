@@ -375,7 +375,15 @@ private fun Header(state: MealPlanUiState, actions: MealPlanActions, modifier: M
             subtitle = {
                 FlowRow(itemVerticalAlignment = Alignment.CenterVertically) {
                     Subtitle(range + SEPARATOR + week + if (state.showsToday) "" else SEPARATOR)
-                    if (!state.showsToday) TextAction(stringResource(R.string.plan_this_week), actions.onToday, inline = true)
+                    if (!state.showsToday) {
+                        TextAction(
+                            stringResource(R.string.plan_this_week),
+                            actions.onToday,
+                            inline = true,
+                            // In the subtitle's size, so the line keeps one size throughout.
+                            lineStyle = AromaTheme.type.subtitle.copy(fontWeight = FontWeight.Medium),
+                        )
+                    }
                 }
             },
         ) { WeekSwitcher(actions.onPreviousWeek, actions.onNextWeek) }

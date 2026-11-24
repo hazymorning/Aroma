@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.test.hasScrollToKeyAction
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
@@ -76,6 +75,7 @@ import app.aroma.feature.settings.SettingsUiState
 import app.aroma.feature.shopping.ShoppingActions
 import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingUiState
+import app.aroma.onNodeWithWords
 import app.aroma.ui.navigation.Tab
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
@@ -429,7 +429,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         val toggle = if (variant.locale == "de") "Einkaufsmodus starten" else "Start shopping mode"
         snapshot("shopping_mode_${variant.suffix}", variant.dark, interact = {
             composeRule.onNodeWithContentDescription(more).performClick()
-            composeRule.onNodeWithText(toggle).performClick()
+            composeRule.onNodeWithWords(toggle).performClick()
         }) {
             ShoppingScreen(
                 state =
@@ -604,7 +604,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "settings_update_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNodeWithText("Version 0.3.0").performScrollTo() },
+            interact = { composeRule.onNodeWithWords("Version 0.3.0").performScrollTo() },
         ) {
             SettingsScreen(
                 state =
@@ -814,7 +814,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "editor_rows_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNodeWithText(firstStep).performScrollTo() },
+            interact = { composeRule.onNodeWithWords(firstStep).performScrollTo() },
         ) {
             EditorScreen(state = editorState(), actions = EditorActions())
         }
@@ -828,7 +828,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "editor_meal_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNodeWithText(ingredients).performScrollTo() },
+            interact = { composeRule.onNodeWithWords(ingredients).performScrollTo() },
         ) {
             EditorScreen(state = editorState(), actions = EditorActions())
         }
@@ -842,7 +842,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "editor_organizers_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNodeWithText(newTag).performScrollTo() },
+            interact = { composeRule.onNodeWithWords(newTag).performScrollTo() },
         ) {
             EditorScreen(state = editorState(), actions = EditorActions())
         }

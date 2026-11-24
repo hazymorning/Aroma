@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -151,41 +152,59 @@ private const val ELLIPSIS = '…'
 /** A space of no width: a place a line may break that shows nothing. */
 private const val ZERO_WIDTH_SPACE = '\u200B'
 
+/** A joiner of no width: inside a word it shows nothing and keeps Android's hyphenator off the word. */
+private const val WORD_JOINER = '\u2060'
+
 private const val NON_BREAKING_HYPHEN = '‑'
 
 /** A hyphen between two letters, as in "Zitronen-Baiser-Plätzchen", not yet followed by a zero-width space. */
 private val JoiningHyphen = Regex("(?<=\\p{L})[-\u2010\u2011](?=\\p{L})")
 
+/** The first letter of a word of four to seven letters, too short to hyphenate well, not yet joined. */
+private val ShortWord = Regex("(?<![\\p{L}\u2060])\\p{L}(?=\\p{L}{3,6}(?!\\p{L}))")
+
 /**
  * The text ready for Android's line breaker. Android never hyphenates a word that holds a hyphen,
  * so "Erdbeer-Streuselkuchenschnitten" would break anywhere in its second half, without a hyphen,
  * once it does not fit. A zero-width space after each hyphen between letters hands every part to
- * the hyphenator on its own, and a line still breaks only after a hyphen, never before one. A
- * non-breaking hyphen becomes an ordinary one. Running it again changes nothing.
+ * the hyphenator on its own, and a line still breaks only after a hyphen, never before one. Android
+ * also leaves alone a word with a character it does not know: a word joiner after the first letter
+ * of a word of four to seven letters keeps it whole, as "ei-nem", "un-ter" and "Sa-lat" read badly;
+ * longer words still hyphenate. A non-breaking hyphen becomes an ordinary one. Running it again
+ * changes nothing.
  */
-fun String.breakable(): String {
-    if (none { it == '-' || it == '\u2010' || it == NON_BREAKING_HYPHEN }) return this
-    return replace(NON_BREAKING_HYPHEN, '-').replace(JoiningHyphen) { it.value + ZERO_WIDTH_SPACE }
-}
+fun String.breakable(): String = AnnotatedString(this).breakable().text
 
-/** [String.breakable] for styled text: its styles, links and annotations stay on their characters. */
+/** [String.breakable] for styled text: its styles, links and annotations stay whole, on their characters. */
 fun AnnotatedString.breakable(): AnnotatedString {
-    val cuts = JoiningHyphen.findAll(text).map { it.range.first }.toList()
-    if (cuts.isEmpty()) return this
-    val source = this
+    val source = text
+    val inserts =
+        (
+            JoiningHyphen.findAll(source).map { it.range.first to ZERO_WIDTH_SPACE } +
+                ShortWord.findAll(source).map { it.range.first to WORD_JOINER }
+        ).groupBy({ it.first }, { it.second })
+    if (inserts.isEmpty() && NON_BREAKING_HYPHEN !in source) return this
+    // Where each character of the source lands in the new text, and where its end does.
+    val moved = IntArray(source.length + 1)
+    val built = StringBuilder(source.length + inserts.size)
+    source.forEachIndexed { index, char ->
+        moved[index] = built.length
+        built.append(if (char == NON_BREAKING_HYPHEN) '-' else char)
+        inserts[index]?.forEach { built.append(it) }
+    }
+    moved[source.length] = built.length
+    val original = this
     return buildAnnotatedString {
-        var start = 0
-        cuts.forEach { hyphen ->
-            if (source.text[hyphen] == NON_BREAKING_HYPHEN) {
-                append(source.subSequence(start, hyphen))
-                withStyle(source.spanStyleAt(hyphen)) { append('-') }
-            } else {
-                append(source.subSequence(start, hyphen + 1))
+        append(built.toString())
+        original.spanStyles.forEach { addStyle(it.item, moved[it.start], moved[it.end]) }
+        original.paragraphStyles.forEach { addStyle(it.item, moved[it.start], moved[it.end]) }
+        original.getStringAnnotations(0, original.length).forEach { addStringAnnotation(it.tag, it.item, moved[it.start], moved[it.end]) }
+        original.getLinkAnnotations(0, original.length).forEach { link ->
+            when (val item = link.item) {
+                is LinkAnnotation.Url -> addLink(item, moved[link.start], moved[link.end])
+                is LinkAnnotation.Clickable -> addLink(item, moved[link.start], moved[link.end])
             }
-            append(ZERO_WIDTH_SPACE)
-            start = hyphen + 1
         }
-        append(source.subSequence(start, source.length))
     }
 }
 

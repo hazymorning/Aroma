@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
@@ -16,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import app.aroma.feature.recipe.RecipeActions
 import app.aroma.feature.recipe.RecipeScreen
 import app.aroma.feature.recipe.RecipeUiState
+import app.aroma.onNodeWithWords
 import app.aroma.ui.components.LocalScreenTransition
 import app.aroma.ui.components.LocalSharedTransition
 import app.aroma.ui.components.RecipeCard
@@ -77,7 +77,7 @@ class TravelScreenshotTest : ScreenshotTest() {
             }
         }
         composeRule.mainClock.advanceTimeBy(FRAME)
-        composeRule.onNodeWithText("Zitronen", substring = true).performClick()
+        composeRule.onNodeWithWords("Zitronen", substring = true).performClick()
         listOf(0, 1, 2, 3, 4).forEach { step ->
             composeRule.mainClock.advanceTimeBy(if (step == 0) FRAME else (Motion.PAGE / 4).toLong())
             composeRule.onRoot().captureRoboImage("build/outputs/roborazzi/kochbuch/uebergang_hin_$step.png")

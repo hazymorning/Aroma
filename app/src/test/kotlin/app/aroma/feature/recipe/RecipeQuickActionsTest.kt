@@ -2,8 +2,8 @@ package app.aroma.feature.recipe
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import app.aroma.onNodeWithWords
 import app.aroma.screenshots.SampleData
 import app.aroma.ui.theme.AromaTheme
 import org.junit.Assert.assertEquals
@@ -34,7 +34,7 @@ class RecipeQuickActionsTest {
         )
         compose.onNodeWithContentDescription("Plan").performClick()
         compose.onNodeWithContentDescription("Shop").performClick()
-        compose.onNodeWithText("Start cooking").performClick()
+        compose.onNodeWithWords("Start cooking").performClick()
         assertEquals(listOf("plan", "shop", "cook"), opened)
     }
 
@@ -50,10 +50,10 @@ class RecipeQuickActionsTest {
         val chosen = mutableListOf<String>()
         show(recipe.copy(rating = null), RecipeActions(onEdit = { chosen += "edit" }))
         compose.onNodeWithContentDescription("More options").performClick()
-        compose.onNodeWithText("Rate this recipe").assertExists()
-        compose.onNodeWithText("Share").assertExists()
-        compose.onNodeWithText("Delete").assertExists()
-        compose.onNodeWithText("Edit").performClick()
+        compose.onNodeWithWords("Rate this recipe").assertExists()
+        compose.onNodeWithWords("Share").assertExists()
+        compose.onNodeWithWords("Delete").assertExists()
+        compose.onNodeWithWords("Edit").performClick()
         assertEquals(listOf("edit"), chosen)
     }
 

@@ -381,6 +381,19 @@ und Schatten mit doppelter Deckkraft ab, ohne Linien. Alle Screens in dunkel dur
 Geprüft mit `TravelScreenshotTest` (Einzelbilder des Übergangs von der Karte zur Rezeptseite,
 `kochbuch/uebergang_hin_*`), den Screenshot-Tests in 100, 130 und 200 % und `DesignRulesTest`.
 
+## P7 – Art-Director-Review (in Arbeit)
+
+Alle Screens Abschnitt für Abschnitt in doppelter Größe durchgesehen, mit gemessenen Abständen.
+Korrigiert:
+
+- **Silbentrennung:** Android trennte kurze Wörter („ei-nem", „un-ter", „Sa-lat", „Pan-cakes").
+  Wörter mit vier bis sieben Buchstaben bleiben jetzt ganz (Entscheidung 33); längere trennen
+  weiter, wie Abschnitt 13 es will.
+- **Zutatengruppen:** Der Gruppenname stand näher an der Metazeile darüber (17 dp) als an seiner
+  ersten Zutat (26 dp). Jetzt 12 dp mehr davor und keiner danach: rund 29 dp darüber, 18 dp zu den
+  Zutaten, auch in der Schritt-Box des Kochmodus.
+- **Wochenplan:** „Zur aktuellen Woche" steht in der Größe der Unterzeile statt kleiner.
+
 ## Entscheidungen
 
 1. **Branch** `design/kochbuch`, wie im Auftrag.
@@ -455,6 +468,10 @@ Geprüft mit `TravelScreenshotTest` (Einzelbilder des Übergangs von der Karte z
     auf 0 setzt; Compose folgt dem von selbst. Aroma schaltet dann zusätzlich auf reine
     Überblendungen ohne Gleiten und ohne Shared Element; das System verkürzt sie auf null, statt
     sie kurz zu zeigen. Eigene Überblendungen gegen die Systemeinstellung erzwingen wir nicht.
+33. **Kurze Wörter werden nicht getrennt:** Ein unsichtbarer Wortverbinder (U+2060) nach dem ersten
+    Buchstaben eines Worts mit vier bis sieben Buchstaben hält Androids Silbentrennung von ihm fern;
+    TalkBack liest ihn nicht, Links und Stile bleiben ganz. Längere Wörter trennen weiter
+    (`Hyphens.Auto`, Abschnitt 13).
 
 ## Abweichungen
 

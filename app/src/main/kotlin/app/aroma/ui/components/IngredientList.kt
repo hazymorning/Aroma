@@ -68,12 +68,14 @@ fun IngredientList(
         Column {
             rows.forEachIndexed { index, row ->
                 if (!row.section.isNullOrBlank()) {
+                    // A group's name stands nearer its rows than what comes before it: the rows bring
+                    // their own air above their words, so the name takes none below it.
                     Text(
                         text = row.section,
                         style = AromaTheme.type.groupLabel,
                         modifier =
                             Modifier
-                                .padding(top = if (index == 0) 0.dp else Space.s24, bottom = Space.s8)
+                                .padding(top = if (index == 0) Space.s12 else Space.s24)
                                 .semantics { heading() },
                     )
                 }
