@@ -3,7 +3,7 @@
 ## 0.8.0 – 2026-11-25
 
 **New**
-- A new logo, and a round app icon on a clear background.
+- A new logo, and a round app icon on a clear background; the settings end with a quiet version of the logo.
 - Tap an ingredient where a step names it to tick it off, as in the list.
 - Home greets you with a kitchen nickname that changes every day.
 - Choose in the settings what Home shows; the shopping list is no longer on it unless you add it.
@@ -15,6 +15,7 @@
 
 **Fixed**
 - Search on Home now lands right in the search field.
+- The recipes to plan for a day stand on the page margin and apart again, and "Deselect all" says what it does.
 
 ## 0.7.0 – 2026-11-24
 

@@ -173,7 +173,7 @@
     <string name="action_undo">Undo</string>
     <string name="recipe_unsaved">Removed from saved</string>
     <string name="select_all">Select all</string>
-    <string name="select_none">Select none</string>
+    <string name="deselect_all">Deselect all</string>
     <string name="share_import_label">Add to Aroma</string>
     <string name="recipe_action_plan">Plan</string>
     <string name="recipe_action_shop">Shop</string>
