@@ -1,0 +1,37 @@
+name: Screenshots
+
+# Started by hand (Actions > Screenshots > Run workflow) for a design review: renders every screen,
+# sheet and widget with Roborazzi and uploads the images. CI does not render them, as they compare
+# nothing and take most of a test run.
+on:
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Robolectric downloads large Android jars at test time; Maven Central asks clients to cache them.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Render
+        run: ./gradlew :app:recordRoborazziDebug -Pscreenshots --tests 'app.aroma.screenshots.*'
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screenshots
+          path: app/build/outputs/roborazzi

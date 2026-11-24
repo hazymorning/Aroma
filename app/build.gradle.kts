@@ -74,6 +74,9 @@ android {
             isIncludeAndroidResources = true
             all { test ->
                 test.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+                // Screenshots are for design reviews, not for every push: they render only with
+                // -Pscreenshots (see the Screenshots workflow), the other tests run on every build.
+                if (!providers.gradleProperty("screenshots").isPresent) test.exclude("app/aroma/screenshots/**")
                 // The live tests read these; another server must mean another test run, not a cached one.
                 listOf("MEALIE_TEST_URL", "MEALIE_TEST_USER").forEach { name ->
                     test.inputs.property(name, providers.environmentVariable(name).orElse(""))
@@ -86,6 +89,8 @@ android {
         abortOnError = true
         warningsAsErrors = true
         checkDependencies = false
+        // Tests are not shipped: linting them doubled the time lint takes and found nothing users meet.
+        ignoreTestSources = true
         disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
         lintConfig = file("lint.xml")
     }
