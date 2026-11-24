@@ -12,10 +12,9 @@ sind in der CI des Pull Requests grün.
 
 ## Vorher – Nachher
 
-Gerendert mit Roborazzi auf 411 × 891 dp, Deutsch. Alle Bilder liegen unter
-[`screenshots/vorher`](screenshots/vorher) (308) und [`screenshots/nachher`](screenshots/nachher)
-(390 mit denselben Namen und zusätzlich 130 % Schrift, dazu 172 unter `nachher/kochbuch` mit den
-Testtexten aus Abschnitt 14 in 100, 130 und 200 %, auf 360 und 480 dp Breite und der Snackbar).
+Gerendert mit Roborazzi auf 411 × 891 dp, Deutsch. Im Repository liegen nur diese Paare; alle
+Screens, Sheets und Widgets rendert bei Bedarf der Workflow „Screenshots" (oder
+`./gradlew :app:recordRoborazziDebug -Pscreenshots`).
 
 | | Vorher | Nachher |
 |---|---|---|
