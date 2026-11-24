@@ -33,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,7 +42,6 @@ import app.aroma.R
 import app.aroma.core.model.Filing
 import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
-import app.aroma.core.model.OrganizerKind
 import app.aroma.feature.cook.CookActions
 import app.aroma.feature.cook.CookScreen
 import app.aroma.feature.cook.CookViewModel

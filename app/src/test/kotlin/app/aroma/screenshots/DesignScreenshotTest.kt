@@ -45,14 +45,15 @@ import kotlin.math.roundToInt
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @Config(sdk = [36], qualifiers = "de-w411dp-h891dp-xxhdpi")
 class DesignScreenshotTest(private val look: Look) : ScreenshotTest() {
-    data class Look(val dark: Boolean, val scale: Float) {
-        val suffix = "${if (dark) "dunkel" else "hell"}_${(scale * PERCENT).roundToInt()}"
+    /** Theme, font size and, from the phone of 411 dp on, the window's width: the brief's phones are 360 to 480 dp wide. */
+    data class Look(val dark: Boolean, val scale: Float, val width: Int = PHONE_WIDTH) {
+        val suffix = "${if (dark) "dunkel" else "hell"}_${(scale * PERCENT).roundToInt()}" + if (width == PHONE_WIDTH) "" else "_${width}dp"
 
         override fun toString() = suffix
     }
 
     private fun shoot(name: String, height: Int = PHONE_HEIGHT, content: @Composable () -> Unit) {
-        RuntimeEnvironment.setQualifiers("de-w411dp-h${height}dp-xxhdpi")
+        RuntimeEnvironment.setQualifiers("de-w${look.width}dp-h${height}dp-xxhdpi")
         RuntimeEnvironment.setFontScale(look.scale)
         snapshot("kochbuch/${name}_${look.suffix}", look.dark, content = content)
     }
@@ -364,10 +365,17 @@ class DesignScreenshotTest(private val look: Look) : ScreenshotTest() {
     companion object {
         private const val PERCENT = 100
         private const val PHONE_HEIGHT = 891
+        private const val PHONE_WIDTH = 411
+
+        /** The narrowest and the widest phone the brief aims at. */
+        private const val NARROW = 360
+        private const val WIDE = 480
         private const val WHOLE_PAGE = 4200
 
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun looks() = listOf(false, true).flatMap { dark -> listOf(1f, 1.3f, 2f).map { Look(dark, it) } }
+        fun looks() =
+            listOf(false, true).flatMap { dark -> listOf(1f, 1.3f, 2f).map { Look(dark, it) } } +
+                listOf(NARROW, WIDE).map { Look(dark = false, scale = 1f, width = it) }
     }
 }

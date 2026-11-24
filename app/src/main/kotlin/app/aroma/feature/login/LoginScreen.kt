@@ -26,7 +26,6 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,10 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -62,12 +59,8 @@ import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TextAction
 import app.aroma.ui.components.TonalBox
-import app.aroma.ui.components.fullBleed
-import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.rememberSyncedTextFieldState
-import app.aroma.ui.components.titleRes
 import app.aroma.ui.theme.AromaTheme
-import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Motion.Decelerate

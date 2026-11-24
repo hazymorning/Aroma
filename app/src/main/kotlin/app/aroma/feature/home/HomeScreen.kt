@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -46,7 +48,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.ImageSize
@@ -60,6 +64,7 @@ import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.BoxHeader
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.IconButton
+import app.aroma.ui.components.IconButtonReach
 import app.aroma.ui.components.IconCircleMark
 import app.aroma.ui.components.LargeHeader
 import app.aroma.ui.components.LocalBottomBarInset
@@ -84,6 +89,7 @@ import app.aroma.ui.components.Text
 import app.aroma.ui.components.TextAction
 import app.aroma.ui.components.TonalBox
 import app.aroma.ui.components.animateRow
+import app.aroma.ui.components.breakable
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.mealLabel
 import app.aroma.ui.components.mealTypeLabel
@@ -395,10 +401,45 @@ private fun HomeHeader(state: HomeUiState, actions: HomeActions, modifier: Modif
         }
     val locale = currentLocale()
     val date = remember(state.date, locale) { longDate(state.date, locale) }
+    val buttons: @Composable () -> Unit = {
+        IconButton(R.drawable.ic_search, stringResource(R.string.search_recipes_hint), actions.onSearch)
+        ProfileButton(name, stringResource(R.string.home_open_profile), actions.onOpenSettings)
+    }
     Column(modifier.padding(bottom = HeaderGap)) {
-        LargeHeader(title = greeting, subtitle = { Subtitle(date) }) {
-            IconButton(R.drawable.ic_search, stringResource(R.string.search_recipes_hint), actions.onSearch)
-            ProfileButton(name, stringResource(R.string.home_open_profile), actions.onOpenSettings)
+        // "Guten Morgen," does not fit beside the buttons on the narrowest phones: they then stand in
+        // a row of their own above it, as a pushed page's back button does, and the greeting keeps
+        // its two lines instead of breaking into three.
+        BoxWithConstraints {
+            val measurer = rememberTextMeasurer()
+            val style = AromaTheme.type.display
+            val beside = maxWidth - PageMargin - (PageMargin - IconButtonReach) - Space.s8 - TouchTarget * 2
+            val firstLine = greeting.substringBefore('\n')
+            val fits =
+                with(LocalDensity.current) {
+                    remember(firstLine, style, beside) {
+                        measurer
+                            .measure(
+                                firstLine.breakable(),
+                                style,
+                                constraints = Constraints(maxWidth = beside.roundToPx()),
+                            ).lineCount ==
+                            1
+                    }
+                }
+            if (fits) {
+                LargeHeader(title = greeting, subtitle = { Subtitle(date) }) { buttons() }
+            } else {
+                LargeHeader(
+                    title = greeting,
+                    subtitle = { Subtitle(date) },
+                    navigation = {
+                        Row(
+                            Modifier.fillMaxWidth().padding(end = PageMargin - IconButtonReach),
+                            Arrangement.End,
+                        ) { buttons() }
+                    },
+                )
+            }
         }
         if (state.isOffline) OfflineNotice(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s12))
     }

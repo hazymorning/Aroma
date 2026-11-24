@@ -12,7 +12,7 @@ Wird nach jedem Schritt aktualisiert.
 - [x] P4 Start und Wochenplan
 - [x] P5 Rezepte, Kochmodus, Einkauf, Einstellungen, übrige Screens, Sheets, Dialoge, Zustände
 - [x] P6 Dark Mode, Bewegung, Haptik, Barrierefreiheit
-- [ ] P7 Art-Director-Review, `BERICHT.md`
+- [x] P7 Art-Director-Review, `BERICHT.md`
 - [ ] P8 Release-Draft
 
 ## Inventar (Stand vor der Runde)
@@ -381,7 +381,7 @@ und Schatten mit doppelter Deckkraft ab, ohne Linien. Alle Screens in dunkel dur
 Geprüft mit `TravelScreenshotTest` (Einzelbilder des Übergangs von der Karte zur Rezeptseite,
 `kochbuch/uebergang_hin_*`), den Screenshot-Tests in 100, 130 und 200 % und `DesignRulesTest`.
 
-## P7 – Art-Director-Review (in Arbeit)
+## P7 – Art-Director-Review (erledigt)
 
 Alle Screens Abschnitt für Abschnitt in doppelter Größe durchgesehen, mit gemessenen Abständen.
 Korrigiert:
@@ -393,6 +393,16 @@ Korrigiert:
   ersten Zutat (26 dp). Jetzt 12 dp mehr davor und keiner danach: rund 29 dp darüber, 18 dp zu den
   Zutaten, auch in der Schritt-Box des Kochmodus.
 - **Wochenplan:** „Zur aktuellen Woche" steht in der Größe der Unterzeile statt kleiner.
+- **Breiten:** Die Design-Screenshots laufen zusätzlich auf 360 und 480 dp (Abschnitt 4.3). Auf
+  360 dp brach „Guten Morgen, Mara" neben Suche und Profil in drei Zeilen; die Buttons stehen dann
+  darüber (Entscheidung 34). „Einplanen" rückt unter die Metazeile, sobald der Name daneben
+  schmaler als 136 dp würde, bei großer Schrift entsprechend früher (Entscheidung 26 präzisiert).
+- **Aufräumen:** die seit P4 ungenutzte Abfrage `cookedLongAgo` (der Live-Test prüft jetzt den
+  Filter „Lange nicht gekocht") und 96 unbenutzte Imports entfernt; keine TODOs, kein
+  auskommentierter Code, keine ungenutzten Komponenten (per Code-Suche geprüft).
+
+Bericht mit Vorher-Nachher-Bildern: [`BERICHT.md`](BERICHT.md); Nachher-Bilder unter
+`screenshots/nachher` (390, dazu 169 unter `kochbuch`).
 
 ## Entscheidungen
 
@@ -451,7 +461,8 @@ Korrigiert:
     darunter über die volle Breite, das Icon auf Höhe des Titels. Neben „Wie im Rezept" wurden lange
     Beschreibungen sonst zu schmalen Spalten voller Trennungen.
 25. **Leerzustand:** Passen Text und Textaktion nicht in eine Zeile, steht die Aktion darunter.
-26. **Aktion einer Rezeptzeile** steht ab Androids Schriftgröße „Groß" (115 %) unter der Metazeile.
+26. **Aktion einer Rezeptzeile** steht unter der Metazeile, sobald der Name daneben schmaler als
+    136 dp (mal Schriftgröße) würde: auf 360 dp und ab Androids Schriftgröße „Groß".
 27. **4 dp zwischen Auswahlsegmenten**, in Auswahlreihen und bei Mehrfachauswahl.
 28. **„Aroma" bei der Anmeldung in Tinte**: ein Seitentitel wie die anderen; Salbei bleibt Auswahl
     und Aktionen vorbehalten.
@@ -472,6 +483,9 @@ Korrigiert:
     Buchstaben eines Worts mit vier bis sieben Buchstaben hält Androids Silbentrennung von ihm fern;
     TalkBack liest ihn nicht, Links und Stile bleiben ganz. Längere Wörter trennen weiter
     (`Hyphens.Auto`, Abschnitt 13).
+34. **Suche und Profil über dem Gruß auf schmalen Telefonen:** Passt „Guten Morgen," nicht neben die
+    beiden Buttons (360 dp), stehen sie in einer eigenen Zeile darüber wie der Zurück-Button einer
+    Detailseite, und der Gruß behält zwei Zeilen statt drei.
 
 ## Abweichungen
 
@@ -484,7 +498,10 @@ Korrigiert:
 7. Wochenplan mit 24 dp zwischen den Tagen und 12 dp zwischen Gerichten statt 8 dp (Entscheidung 30).
 8. `inkTertiary` leicht angepasst, damit bedeutungstragende Formen 3 : 1 erreichen (Entscheidung 31).
 9. Reduzierte Bewegung: Überblendungen, die das System auf null verkürzt (Entscheidung 32).
+10. Auf 360 dp stehen Suche und Profil über dem Gruß statt neben ihm (Entscheidung 34).
 
 ## Offene Punkte
 
-(noch keine)
+Stehen im Bericht unter [„Offene Punkte"](BERICHT.md#offene-punkte): Prüfung auf einem echten Gerät,
+Platzhalter im Übergang bei noch nicht geladenen Bildern, Systemschrift in den Widgets, die
+Faustregel der Silbentrennung, Querformat außerhalb des Kochmodus und die Live-Tests gegen Mealie.

@@ -320,24 +320,11 @@ class RecipeRepository(
         }
     }
 
-    /** Mealie's filter for recipes cooked before, but not since, [day]. */
+    /**
+     * Mealie's filter for recipes cooked before, but not since, [day]. Recipes never cooked compare as
+     * earliest in Mealie 3, so a lower bound keeps them out.
+     */
     private fun cookedBeforeFilter(day: java.time.LocalDate) = "lastMade > \"$EARLIEST_MADE\" AND lastMade < \"$day\""
-
-    /** A choice of recipes cooked before, but not since [since]; new each [day]. */
-    fun cookedLongAgo(since: LocalDate, day: LocalDate, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
-        summaries("home:cooked-long-ago") {
-            sessions
-                .api()
-                .recipes(
-                    page = 1,
-                    perPage = limit,
-                    orderBy = "random",
-                    orderDirection = "asc",
-                    // Recipes never cooked compare as earliest in Mealie 3, so a lower bound keeps them out.
-                    queryFilter = cookedBeforeFilter(since),
-                    paginationSeed = day.toString(),
-                ).items
-        }
 
     /** Summaries of [ids], from the stored copy where it has them and from Mealie for the rest. */
     suspend fun summaries(ids: Set<String>): Map<String, RecipeSummary> {

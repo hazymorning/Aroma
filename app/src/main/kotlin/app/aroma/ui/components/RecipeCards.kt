@@ -4,11 +4,8 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -128,8 +126,8 @@ fun rememberTitleLines(names: List<String>, width: Dp): Int {
 /**
  * A recipe as a row: a 56 dp thumbnail with 12 dp corners, the name beside it in at most two lines
  * and a meta line under it. Rows stand 12 dp apart. A [dimmed] row is past: its words in tertiary
- * ink and its photo faded. A [trailing] action stands on the right; with large text it moves under
- * the meta line, so the name keeps its width instead of breaking into a narrow column. With the
+ * ink and its photo faded. A [trailing] action stands on the right; on a narrow phone or with large
+ * text it moves under the meta line, so the name keeps its width instead of a narrow column. With the
  * recipe's [slug], photo and name travel to its page as it opens.
  */
 @Composable
@@ -145,7 +143,7 @@ fun RecipeRow(
     dimmed: Boolean = false,
     @DrawableRes fallbackIcon: Int = R.drawable.ic_plate,
     slug: String? = null,
-    trailing: @Composable (RowScope.() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val colors = AromaTheme.colors
     val interaction = remember { MutableInteractionSource() }
@@ -162,49 +160,77 @@ fun RecipeRow(
         } else {
             Modifier
         }
-    val actionBelow = trailing != null && LocalDensity.current.fontScale > LARGE_TEXT
-    Row(
+    val fontScale = LocalDensity.current.fontScale
+    Layout(
+        contents =
+            listOf(
+                {
+                    RecipeImage(
+                        image = image,
+                        size = ImageSize.Thumbnail,
+                        shape = AromaTheme.shapes.thumbnail,
+                        fallbackIcon = fallbackIcon,
+                        fallbackIconSize = FallbackGlyph,
+                        modifier =
+                            Modifier
+                                .size(ThumbnailSize)
+                                .sharedRecipe(RecipePart.Photo, slug)
+                                .alpha(if (dimmed) DIMMED_PHOTO else 1f)
+                                .indication(interaction, PressTint),
+                    )
+                },
+                {
+                    Column {
+                        Text(
+                            text = title,
+                            style = AromaTheme.type.cardTitle,
+                            color = if (dimmed) colors.inkTertiary else colors.ink,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.sharedRecipe(RecipePart.Name, slug),
+                        )
+                        // A row's meta line may take a second line with large text, so nothing of it is lost.
+                        MetaLine(
+                            items = meta,
+                            icon = metaIcon,
+                            color = if (dimmed) colors.inkTertiary else colors.inkSecondary,
+                            maxLines = ROW_META_LINES,
+                            modifier = Modifier.padding(top = Space.s4),
+                        )
+                    }
+                },
+                { trailing?.invoke() },
+            ),
         modifier =
             modifier
                 .fillMaxWidth()
                 .heightIn(min = ThumbnailSize)
                 .then(tap),
-        verticalAlignment = if (actionBelow) Alignment.Top else Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.s16),
-    ) {
-        RecipeImage(
-            image = image,
-            size = ImageSize.Thumbnail,
-            shape = AromaTheme.shapes.thumbnail,
-            fallbackIcon = fallbackIcon,
-            fallbackIconSize = FallbackGlyph,
-            modifier =
-                Modifier
-                    .size(ThumbnailSize)
-                    .sharedRecipe(RecipePart.Photo, slug)
-                    .alpha(if (dimmed) DIMMED_PHOTO else 1f)
-                    .indication(interaction, PressTint),
-        )
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = AromaTheme.type.cardTitle,
-                color = if (dimmed) colors.inkTertiary else colors.ink,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.sharedRecipe(RecipePart.Name, slug),
-            )
-            // A row's meta line may take a second line with large text, so nothing of it is lost.
-            MetaLine(
-                items = meta,
-                icon = metaIcon,
-                color = if (dimmed) colors.inkTertiary else colors.inkSecondary,
-                maxLines = ROW_META_LINES,
-                modifier = Modifier.padding(top = Space.s4),
-            )
-            if (actionBelow && trailing != null) Row(content = trailing)
+    ) { (photo, words, action), constraints ->
+        val gap = Space.s16.roundToPx()
+        val thumbnail = photo.first().measure(Constraints())
+        val width = constraints.maxWidth
+        val wordsWidth = (width - thumbnail.width - gap).coerceAtLeast(0)
+        val end = action.firstOrNull()?.measure(Constraints(maxWidth = wordsWidth))
+        // The action stands beside the name while the name keeps a fair column, else under the meta line.
+        val besideWidth = wordsWidth - (end?.let { it.width + gap } ?: 0)
+        val below = end != null && besideWidth < (NameColumn * fontScale).roundToPx()
+        val text = words.first().measure(Constraints(maxWidth = if (end == null || below) wordsWidth else besideWidth))
+        val height =
+            maxOf(thumbnail.height, if (below) text.height + end.height else maxOf(text.height, end?.height ?: 0))
+                .coerceAtLeast(constraints.minHeight)
+        layout(width, height) {
+            val x = thumbnail.width + gap
+            if (below) {
+                thumbnail.place(0, 0)
+                text.place(x, 0)
+                end?.place(x, text.height)
+            } else {
+                thumbnail.place(0, (height - thumbnail.height) / 2)
+                text.place(x, (height - text.height) / 2)
+                end?.place(width - end.width, (height - end.height) / 2)
+            }
         }
-        if (!actionBelow) trailing?.invoke(this)
     }
 }
 
@@ -215,7 +241,7 @@ fun RecipeRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
-    trailing: @Composable (RowScope.() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val time = recipeTime(recipe)
     RecipeRow(
@@ -261,5 +287,5 @@ private const val DIMMED_PHOTO = 0.6f
 /** How many lines a row's meta line may take. */
 private const val ROW_META_LINES = 2
 
-/** From Android's "large" font size on, a row's action moves under its words. */
-private const val LARGE_TEXT = 1.1f
+/** The narrowest column a row's name keeps beside its action, at the normal font size; else the action moves under it. */
+private val NameColumn = 136.dp

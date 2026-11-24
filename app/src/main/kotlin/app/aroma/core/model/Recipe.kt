@@ -1,8 +1,5 @@
 package app.aroma.core.model
 
-import java.time.Instant
-import java.time.LocalDate
-
 enum class ImageSize(val fileName: String) {
     Original("original.webp"),
     Medium("min-original.webp"),
