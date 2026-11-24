@@ -85,10 +85,17 @@ fun Text(
             if (shortens) {
                 val width = result.layoutInput.constraints.maxWidth
                 val current = cut
-                when {
-                    current == null && result.hasVisualOverflow -> cut = Cut(wordEnd(prepared.text, result), width)
-                    current != null && current.width != width -> cut = null
-                }
+                cut =
+                    when {
+                        current == null -> if (result.hasVisualOverflow) Cut(wordEnd(prepared.text, result), width) else null
+
+                        current.width != width -> null
+
+                        // The "…" did not fit after the last word: one word less.
+                        current.at != null && result.hasVisualOverflow -> Cut(previousWordEnd(prepared.text, current.at), width)
+
+                        else -> current
+                    }
             }
             onTextLayout?.invoke(result)
         },
@@ -107,13 +114,26 @@ private fun wordEnd(text: String, layout: TextLayoutResult): Int? {
     val line = layout.lineCount - 1
     val start = layout.getLineStart(line)
     val end = layout.getLineEnd(line, visibleEnd = true)
-    var at = (end - 1 downTo start + 1).firstOrNull { text[it].isWhitespace() } ?: return null
-    while (at > start && (text[at - 1].isWhitespace() || text[at - 1] in Trailing)) at--
-    return at
+    // The line ends with a whole word where a space follows it; otherwise its last word is cut.
+    val whole = end < text.length && text[end].isWhitespace()
+    return if (whole) trimmed(text, end, start) else previousWordEnd(text, end, start)
+}
+
+/** The end of the word before the one that ends at [end], not before [start]; null where there is none. */
+private fun previousWordEnd(text: String, end: Int, start: Int = 0): Int? {
+    val space = (end - 1 downTo start + 1).firstOrNull { text[it].isWhitespace() } ?: return null
+    return trimmed(text, space, start)
+}
+
+/** [end], moved back over spaces and over the comma or dash a "…" should not follow. */
+private fun trimmed(text: String, end: Int, start: Int): Int? {
+    var at = end
+    while (at > start && (text[at - 1].isWhitespace() || text[at - 1] in TRAILING)) at--
+    return at.takeIf { it > start }
 }
 
 /** What a shortened text drops before its "…": "Teig, …" reads as "Teig…". */
-private const val Trailing = ",;:–-"
+private const val TRAILING = ",;:–-"
 
 /** The text up to [end], and "…" after it, in the style of the last character kept. */
 fun AnnotatedString.ellipsis(end: Int): AnnotatedString =

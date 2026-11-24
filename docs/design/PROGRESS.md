@@ -8,7 +8,7 @@ Wird nach jedem Schritt aktualisiert.
 - [x] P0 Bestandsaufnahme, Vorher-Screenshots (`screenshots/vorher/`, 308 Bilder)
 - [x] P1 Fehler beheben (Abschnitt 8)
 - [x] P2 Grundlagen (4) und Komponenten (5), alte Varianten migriert und gelöscht
-- [ ] P3 Rezeptseite
+- [x] P3 Rezeptseite
 - [ ] P4 Start und Wochenplan
 - [ ] P5 Rezepte, Kochmodus, Einkauf, Einstellungen, übrige Screens, Sheets, Dialoge, Zustände
 - [ ] P6 Dark Mode, Bewegung, Haptik, Barrierefreiheit
@@ -196,6 +196,53 @@ und Grund (hell und dunkel). `TypeRolesTest` hält die Rollen deckungsgleich mit
 (Schrift, Größe, Zeilenhöhe, Gewicht, Kursiv, Tabellenziffern, Silbentrennung, Sprache).
 `WidgetPaletteTest` hält die Widgets in der neuen Palette.
 
+## P3 – Rezeptseite (erledigt)
+
+Aufbau nach 6.1, von oben nach unten:
+
+- **Hero** 4 : 3 bis an den Rand (im Querformat höchstens 60 % der Fensterhöhe), Scrim 120 dp
+  von 45 % auf 0 %, Statusleiste hell, solange das Foto darunter liegt. Zurück, Merken und ⋯ als
+  Icon-Buttons auf Papier mit 90 %. Gemerkt: Der Merken-Button weicht, das Lesebändchen (16 × 52 dp)
+  gleitet in 250 ms von der Oberkante herab, wo er stand; ein Tippen darauf hebt das Merken auf,
+  die Snackbar bietet „Rückgängig". Merken gibt haptisches Feedback.
+- **Titelblock** 24 dp unter dem Foto: `recipeTitle`; Unterzeile `subtitle` mit Kategorie, bis zu
+  zwei Tags und der Quelle als Domain ohne „www" mit ↗ in `accent`; die Quelle ist ein eigenes
+  Element und bricht nur als Ganzes um. Sterne nur bei einer Bewertung, eigene Zeile, 14 dp,
+  `accent`, die Zahl in `meta`.
+- **Kopfnote** in `headnote` 16 dp darunter.
+- **Kennzahlen-Box** 24 dp darunter: Vorbereitung (Besteck), Kochen oder Backen (Flamme), Gesamt
+  (Uhr); fehlende Werte entfallen, ohne Werte entfällt die Box. „Backen", wenn Name, Kategorie oder
+  Tag ein Backrezept nennen (Kuchen, Plätzchen, Gebäck, Torte, Brot, Muffin …; „No-Bake" nicht).
+- **Zutaten** 40 dp darunter: Titel `section`, rechts der Stepper mit der Einheit aus dem Ertrag
+  („1 Blech", „4 Portionen"). Darunter die Metazeile mit eigenem Ertrag („ca. 24 Stück", skaliert)
+  und der Textaktion „Einheiten: wie im Rezept", die ein Sheet öffnet. Gruppen in `groupLabel`
+  24 dp davor, 8 dp danach. Zeilen 40 dp ohne Linien und Boxen, Mengenspalte rechtsbündig, so breit
+  wie die breiteste Menge, mindestens 56 dp, in `accent` und `tnum`; Zutaten ohne Menge in der
+  Namensspalte. Utensilien als letzte Gruppe.
+- **Zubereitung** 40 dp darunter: Ziffern in `numeral` und `inkSecondary` in einer 40-dp-Spalte,
+  Text in `body`, 24 dp zwischen den Schritten, die Zutaten des Schritts als `meta` darunter.
+- **Notizen und Nährwerte** offen mit Titel in `section`.
+- **Aktionsleiste:** Einplanen und Einkaufen als Icon-Buttons (48 dp), „Jetzt kochen" mit Topf als
+  einziger Primär-Button; der letzte Inhalt endet 24 dp über der Leiste.
+- **Kopfleiste:** eingeklappt mit dem Rezeptnamen, sobald das Foto darunter verschwunden ist;
+  Schatten nur dann.
+- **Verwaltung** nur im Menü ⋯: Bearbeiten, Kategorien und Schlagwörter (mit der Art des
+  Gerichts), Bewerten, Mit KI überarbeiten, Teilen, Löschen. Das Bild ändert man im Bearbeiten.
+- **Ohne Foto** gibt es keinen Platzhalter (Abschnitt 7): Die Seite beginnt wie jede Detailseite
+  mit Zurück, Merken und ⋯ und dem Titel.
+
+Übergreifend dabei behoben:
+
+- Der Trennpunkt „ · " hat ein geschütztes Leerzeichen davor: Keine Zeile beginnt mit „·".
+- Schritttexte binden Zahl und Einheit mit U+202F („7 Minuten", „180 °C"), auch im Kochmodus.
+- Gekürzte Texte enden nach einem ganzen Wort mit „…" statt mitten im Wort.
+- Daten: `Recipe.yieldText` kommt aus dem vorhandenen DTO-Feld `recipeYield`; nur Anzeige,
+  API, DTO und Offline-Kopie bleiben unverändert.
+
+Geprüft mit `DesignScreenshotTest` (Testtexte aus Abschnitt 14: voll mit 30 Zutaten in vier
+Gruppen, nur ein Name, längster Titel mit „1 Blech"; hell und dunkel, 100, 130 und 200 %, auch als
+ganze Seite).
+
 ## Entscheidungen
 
 1. **Branch** `design/kochbuch`, wie im Auftrag.
@@ -219,13 +266,26 @@ und Grund (hell und dunkel). `TypeRolesTest` hält die Rollen deckungsgleich mit
 9. **Einkauf:** Einkaufsmodus, Listenwechsel und Listenverwaltung stehen im Menü ⋯; „Zutaten aus dem
    Wochenplan hinzufügen" übernimmt die Rezepte der nächsten sieben Tage, wie „Woche einkaufen"
    im Wochenplan.
-10. **Zutatenzeilen** sind 40 dp hoch, antippbare (Kochmodus) 48 dp, wegen der Touch-Ziele.
+10. **Zutatenzeilen** sind 40 dp hoch, im Kochmodus mit Abhak-Kreis 48 dp (siehe 15).
 11. **Widgets** folgen der neuen Palette (Papier, Tinte, Salbei; Button in Tinte), mit Material You
     nur im Akzent wie die App.
+12. **Lesebändchen im Hero:** sichtbar 52 dp lang unter der Statusleiste, dahinter reicht es bis an
+    die Fotokante; sonst bliebe es auf Geräten mit hoher Statusleiste ein Stummel. Sein Fuß steht
+    auf Höhe der Knöpfe.
+13. **Nur die Quelle ist in der Unterzeile antippbar** (6.1); Kategorie und Tags sind Angaben.
+    Sammlungen nach Kategorie oder Schlagwort öffnen sich über Rezepte → Filter.
+14. **Stepper ohne Ertragsangabe** zeigt den Faktor („Menge ×1") statt nur „Portionen": Ohne Zahl
+    sähe man nicht, wie stark skaliert ist.
+15. **Zutatenzeilen 40 dp**, auch wo sie zum Abhaken antippbar sind (Rezeptseite): Mit 48 dp wirkte
+    die Liste wie eine Einstellungsliste; die Ziele grenzen lückenlos aneinander und sind so breit wie
+    die Seite. Im Kochmodus, mit Abhak-Kreis, 48 dp.
+16. **Rezept ohne Foto:** kein Hero und kein Platzhalter, sondern der Kopf einer Detailseite (7).
 
 ## Abweichungen
 
 1. Icon-Buttons in der Kopfleiste 40 statt 48 dp (Entscheidung 5).
+2. Zutatenzeilen auf der Rezeptseite sind 40 dp hohe Touch-Ziele statt 48 dp (Entscheidung 15).
+3. Stepper ohne Ertragsangabe zeigt den Faktor statt „Portionen" (Entscheidung 14).
 
 ## Offene Punkte
 

@@ -76,7 +76,7 @@ fun RecipeActionsSheet(
             SheetAction(R.drawable.ic_calendar_add, stringResource(R.string.recipe_add_to_plan), onClick = { choose(onPlan) })
             SheetAction(R.drawable.ic_basket_add, stringResource(R.string.recipe_add_to_list), onClick = { choose(onShop) })
             SheetAction(
-                icon = if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite,
+                icon = if (isFavorite) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark,
                 label = stringResource(if (isFavorite) R.string.action_unfavorite else R.string.action_favorite),
                 onClick = { choose(onToggleFavorite) },
             )

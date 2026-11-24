@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -44,6 +46,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -63,8 +66,8 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -77,6 +80,7 @@ import app.aroma.core.format.Quantities
 import app.aroma.core.format.StepAmount
 import app.aroma.core.format.StepMeasures
 import app.aroma.core.format.StyledText
+import app.aroma.core.format.UnitSpacing
 import app.aroma.core.format.ingredientsByStep
 import app.aroma.core.format.stepAmounts
 import app.aroma.core.model.ImageSize
@@ -114,6 +118,7 @@ import app.aroma.ui.components.SEPARATOR
 import app.aroma.ui.components.SectionTitle
 import app.aroma.ui.components.Skeleton
 import app.aroma.ui.components.SkeletonLine
+import app.aroma.ui.components.StatusBarCover
 import app.aroma.ui.components.StatusBarOverPhoto
 import app.aroma.ui.components.Stepper
 import app.aroma.ui.components.Text
@@ -145,11 +150,6 @@ import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.tabular
 import java.net.URI
 import java.util.Locale
-import app.aroma.core.format.UnitSpacing
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextOverflow
-import app.aroma.ui.components.StatusBarCover
 
 /**
  * The recipe page's state. Mealie's AI may rework the recipe where the server has it ([aiAvailable]),
@@ -365,7 +365,14 @@ private fun Modifier.measure(): Modifier = widthIn(max = ContentMaxWidth).fillMa
  * the collapsed head every pushed screen has, with the recipe's name.
  */
 @Composable
-private fun RecipeHead(recipe: Recipe?, collapsed: Boolean, overPhoto: Boolean, saved: Boolean, actions: RecipeActions, menu: PageMenu) {
+private fun RecipeHead(
+    recipe: Recipe?,
+    collapsed: Boolean,
+    overPhoto: Boolean,
+    saved: Boolean,
+    actions: RecipeActions,
+    menu: PageMenu,
+) {
     // Without a photo, the page's own paper keeps the status bar clear until the head collapses.
     if (!collapsed && !overPhoto) StatusBarCover()
     AnimatedVisibility(visible = collapsed, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
@@ -460,7 +467,13 @@ private fun MoreMenu(actions: RecipeActions, menu: PageMenu, place: IconButtonPl
  * there is something to buy; cooking, where there are steps to cook by.
  */
 @Composable
-private fun RecipeActionBar(canShop: Boolean, canCook: Boolean, confirmed: QuickAction?, actions: RecipeActions, modifier: Modifier = Modifier) {
+private fun RecipeActionBar(
+    canShop: Boolean,
+    canCook: Boolean,
+    confirmed: QuickAction?,
+    actions: RecipeActions,
+    modifier: Modifier = Modifier,
+) {
     BottomActionBar(modifier) {
         IconButton(
             icon = R.drawable.ic_calendar_add,
@@ -540,7 +553,13 @@ private fun Hero(recipe: Recipe, saved: Boolean, onUnsave: () -> Unit) {
 /** Where the ribbon hangs from the right edge: centred where the save button stood, left of the menu's. */
 private val RibbonEnd = PageMargin - IconButtonReach + TouchTarget + (TouchTarget - RibbonSize.Hero.size.width) / 2
 
-private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actions: RecipeActions, steps: Steps, underPhoto: Boolean) {
+private fun LazyListScope.recipeBody(
+    recipe: Recipe,
+    state: RecipeUiState,
+    actions: RecipeActions,
+    steps: Steps,
+    underPhoto: Boolean,
+) {
     item(key = TITLE_KEY) {
         TitleBlock(
             recipe = recipe,
@@ -638,7 +657,13 @@ private fun LazyListScope.recipeBody(recipe: Recipe, state: RecipeUiState, actio
  * source's domain, which opens the original. Stars follow on a line of their own where it is rated.
  */
 @Composable
-private fun TitleBlock(recipe: Recipe, rating: Double?, isOffline: Boolean, onOpenUrl: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun TitleBlock(
+    recipe: Recipe,
+    rating: Double?,
+    isOffline: Boolean,
+    onOpenUrl: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier.padding(horizontal = PageMargin)) {
         Text(recipe.name, style = AromaTheme.type.recipeTitle, modifier = Modifier.semantics { heading() })
         Byline(recipe.categories, recipe.tags, recipe.sourceUrl, onOpenUrl, Modifier.padding(top = SubtitleGap))
@@ -652,7 +677,13 @@ private fun TitleBlock(recipe: Recipe, rating: Double?, isOffline: Boolean, onOp
  * that keeps its domain on one line and moves to the next as a whole.
  */
 @Composable
-private fun Byline(categories: List<Organizer>, tags: List<Organizer>, sourceUrl: String?, onOpenUrl: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun Byline(
+    categories: List<Organizer>,
+    tags: List<Organizer>,
+    sourceUrl: String?,
+    onOpenUrl: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val kinds = remember(categories, tags) { (categories.take(1) + tags.take(TAGS_SHOWN)).map { it.name } }
     val host = remember(sourceUrl) { sourceUrl?.let(::sourceHost) }
     if (kinds.isEmpty() && host == null) return
@@ -714,7 +745,11 @@ private fun Stars(rating: Double, modifier: Modifier = Modifier) {
 }
 
 /** One of the times in the box of figures: its glyph, the time and what it is. */
-private data class Fact(@param:DrawableRes val icon: Int, val value: String, val label: String)
+private data class Fact(
+    @param:DrawableRes val icon: Int,
+    val value: String,
+    val label: String,
+)
 
 /** Preparation, cooking or baking, and the total, side by side in a box; what is not known is left out, and with it all, the box. */
 @Composable
@@ -801,16 +836,18 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
 
 /** The tools the recipe needs, after the ingredients like a group of them. */
 @Composable
-private fun Tools(tools: List<Organizer>) {
-    Text(
-        text = stringResource(R.string.recipe_tools),
-        style = AromaTheme.type.groupLabel,
-        modifier =
-            Modifier
-                .padding(top = Space.s24, bottom = Space.s8)
-                .semantics { heading() },
-    )
-    Text(text = tools.joinToString(", ") { it.name }, style = AromaTheme.type.body)
+private fun Tools(tools: List<Organizer>, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(
+            text = stringResource(R.string.recipe_tools),
+            style = AromaTheme.type.groupLabel,
+            modifier =
+                Modifier
+                    .padding(top = Space.s24, bottom = Space.s8)
+                    .semantics { heading() },
+        )
+        Text(text = tools.joinToString(", ") { it.name }, style = AromaTheme.type.body)
+    }
 }
 
 /** Which measures the amounts show, "Units: as written", as a link in the line that opens the three choices on a sheet. */
@@ -887,7 +924,14 @@ fun servingsLabel(baseServings: Double, scale: Double, locale: Locale, unit: Str
 
 /** A step with its number in the gutter, level with its first line, and what it uses under it. */
 @Composable
-private fun StepItem(index: Int, step: Step, text: StyledText, amounts: List<StepAmount>, uses: List<String>, modifier: Modifier = Modifier) {
+private fun StepItem(
+    index: Int,
+    step: Step,
+    text: StyledText,
+    amounts: List<StepAmount>,
+    uses: List<String>,
+    modifier: Modifier = Modifier,
+) {
     val number = stringResource(R.string.editor_step, index + 1)
     Row(modifier.padding(horizontal = PageMargin)) {
         Text(
