@@ -32,10 +32,12 @@
     <string name="action_unfavorite">Aus Favoriten entfernen</string>
 
     <!-- Durations -->
-    <string name="duration_seconds">%1$d Sek.</string>
-    <string name="duration_minutes">%1$d Min.</string>
-    <string name="duration_hours">%1$d Std.</string>
-    <string name="duration_hours_minutes">%1$d Std. %2$d Min.</string>
+    <string name="duration_seconds">%1$d\u202FSek.</string>
+    <string name="duration_minutes">%1$d\u202FMin.</string>
+    <string name="duration_hours">%1$d\u202FStd.</string>
+    <string name="duration_hours_minutes">%1$d\u202FStd. %2$d\u202FMin.</string>
+    <string name="duration_minutes_span">%1$d–%2$d\u202FMin.</string>
+    <string name="duration_hours_span">%1$d–%2$d\u202FStd.</string>
 
     <!-- Errors -->
     <string name="error_offline_title">Keine Verbindung</string>
@@ -210,21 +212,9 @@
     <!-- Cooking mode -->
     <string name="cook_close">Kochmodus verlassen</string>
     <string name="cook_step_of">Schritt %1$d von %2$d</string>
-    <plurals name="cook_step_ingredient_count">
-        <item quantity="one">%1$d Zutat für diesen Schritt</item>
-        <item quantity="other">%1$d Zutaten für diesen Schritt</item>
-    </plurals>
-    <plurals name="cook_all_ingredient_count">
-        <item quantity="one">%1$d Zutat</item>
-        <item quantity="other">Alle %1$d Zutaten</item>
-    </plurals>
-    <string name="cook_step_no_ingredients">Keine Zutaten in diesem Schritt</string>
-    <plurals name="cook_ingredients_used">
-        <item quantity="one">%1$d von %2$d verwendet</item>
-        <item quantity="other">%1$d von %2$d verwendet</item>
-    </plurals>
-    <string name="cook_ingredients_expand">Aufklappen</string>
-    <string name="cook_ingredients_collapse">Zuklappen</string>
+    <string name="cook_for_this_step">Für diesen Schritt</string>
+    <string name="cook_all_ingredients">Alle Zutaten</string>
+    <string name="cook_ticked_of">%1$d von %2$d</string>
     <string name="cook_start_timer">Timer %1$s</string>
     <string name="cook_previous">Zurück</string>
     <string name="cook_next">Weiter</string>
@@ -434,8 +424,11 @@
     <string name="update_not_downloaded">Aroma %1$s konnte nicht geladen werden</string>
     <string name="update_not_aroma">Der Download ist kein Aroma und wurde nicht installiert</string>
     <string name="update_no_installer">Kein Installationsprogramm auf diesem Gerät gefunden</string>
-    <string name="measures_change">Maßeinheiten ändern</string>
     <string name="measures_title">Maßeinheiten</string>
+    <string name="measures_link">Einheiten: %1$s</string>
+    <string name="measures_short_as_written">wie im Rezept</string>
+    <string name="measures_short_metric">metrisch</string>
+    <string name="measures_short_us">US</string>
     <string name="measures_as_written">Wie im Rezept</string>
     <string name="measures_metric">Metrisch (g, ml)</string>
     <string name="measures_us">US (Cups, oz)</string>

@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -54,6 +53,7 @@ import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.SheetFooter
 import app.aroma.ui.components.Stepper
 import app.aroma.ui.components.SwitchRow
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel

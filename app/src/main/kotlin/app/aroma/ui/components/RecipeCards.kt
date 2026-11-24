@@ -19,12 +19,12 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -128,42 +128,26 @@ fun RecipeListItem(recipe: RecipeSummary, onClick: () -> Unit, modifier: Modifie
     }
 }
 
-/** Time and rating as one quiet line, "25 Min. · ★ 4,5"; keeps its height when there is nothing to say. */
+/**
+ * How long a recipe takes, "25 Min.", or else what kind of dish it is, as one quiet line; left out
+ * where there is neither, rather than shown empty.
+ */
 @Composable
 fun RecipeMeta(recipe: RecipeSummary, modifier: Modifier = Modifier) {
-    val time = recipeTimeText(recipe.totalTime) ?: recipeTimeText(recipe.cookTime) ?: recipeTimeText(recipe.prepTime)
-    val rating = recipe.rating?.takeIf { it > 0 }
-    val style = AromaType.Small.tabular()
-    if (time == null && rating == null) {
-        Spacer(modifier.height(with(androidx.compose.ui.platform.LocalDensity.current) { style.lineHeight.toDp() }))
-        return
-    }
-    val locale = currentLocale()
-    val text =
-        buildAnnotatedString {
-            if (time != null) append(time)
-            if (time != null && rating != null) append("  ·  ")
-            if (rating != null) {
-                appendInlineContent(STAR, "★")
-                append(" ")
-                append(String.format(locale, "%.1f", rating))
-            }
+    val resources = LocalResources.current
+    val time =
+        remember(recipe, resources) {
+            resources.recipeTimeText(totalTime(recipe.totalTime, recipe.prepTime, recipe.cookTime))
+                ?: resources.recipeTimeText(recipe.cookTime)
+                ?: resources.recipeTimeText(recipe.prepTime)
         }
-    val star =
-        mapOf(
-            STAR to
-                InlineTextContent(Placeholder(StarSize, StarSize, PlaceholderVerticalAlign.TextCenter)) {
-                    Icon(
-                        painterResource(R.drawable.ic_star_filled),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-        )
-    Text(text, style = style, color = MaterialTheme.colorScheme.onSurfaceVariant, inlineContent = star, maxLines = 1, modifier = modifier)
+    val text = time ?: recipe.categories.firstOrNull()?.name ?: return
+    Text(
+        text = text,
+        style = AromaType.Small.tabular(),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
 }
-
-private const val STAR = "star"
-
-/** The star in a meta line, a little smaller than its figures. */
-private val StarSize = 12.sp

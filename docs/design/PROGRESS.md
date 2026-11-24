@@ -6,7 +6,7 @@ Wird nach jedem Schritt aktualisiert.
 ## Phasen
 
 - [x] P0 Bestandsaufnahme, Vorher-Screenshots (`screenshots/vorher/`, 308 Bilder)
-- [ ] P1 Fehler beheben (Abschnitt 8)
+- [x] P1 Fehler beheben (Abschnitt 8)
 - [ ] P2 Grundlagen (4) und Komponenten (5), alte Varianten migriert und gelöscht
 - [ ] P3 Rezeptseite
 - [ ] P4 Start und Wochenplan
@@ -117,6 +117,34 @@ hell/dunkel, 411 × 891 dp, xxhdpi), `WidgetScreenshotTest`, `SampleData`, `TabF
 erzeugte Verläufe. Ausgabe: `app/build/outputs/roborazzi`, CI lädt sie als Artefakt hoch.
 Für `docs/design/screenshots/` werden die Bilder auf zwei Drittel verkleinert und als WebP
 gespeichert (gut lesbar, klein genug fürs Repository).
+
+## P1 – Fehler (erledigt)
+
+1. **Umbruch.** Ursache per Render-Experiment gefunden: Titel waren mit `LineBreak.Heading`
+   (ausgeglichener Umbruch) und `Hyphens.None` gesetzt. In dieser Kombination bricht Androids
+   Balanced-Breaker Wörter an beliebiger Stelle ohne Trennstrich, um Zeilen auszugleichen
+   („Zitronen-Baiser-Pl / ätzchen", „Aubergi / nen"). Zweite Ursache: Android trennt kein Wort, das
+   schon einen Bindestrich enthält; „Erdbeer-Streuselkuchenschnitten" brach deshalb ohne
+   Trennstrich. Behebung: alle Rollen mit `Hyphens.Auto`, Titel weiter ausgeglichen; eine eigene
+   `Text`-Komponente setzt nach jedem Bindestrich zwischen Buchstaben ein Null-Breiten-Leerzeichen
+   (U+200B), damit jedes Teilwort einzeln getrennt wird, und ersetzt U+2011 durch „-". Ein Umbruch
+   vor dem Bindestrich ist damit ausgeschlossen. Geprüft mit `StaticLayout` (Robolectric lädt die
+   echten Trennmuster) und Tests (`BreakableTest`).
+2. **Statusleiste.** Der Verlauf hinter der Statusleiste ist einer deckenden Fläche in `background`
+   gewichen (`StatusBarCover`); nichts läuft mehr sichtbar darunter durch.
+3. **Hero.** Scrim 120 dp, 45 % → 0 %; solange das Foto unter der Statusleiste liegt, sind ihre
+   Icons hell (`StatusBarOverPhoto`).
+4. **FABs entfernt.** Rezeptseite: Aktionsleiste mit Einplanen, Einkaufen und „Jetzt kochen";
+   Rezepte: „Rezept hinzufügen" als Icon im Kopf. `FloatingAction` gelöscht.
+5. **Kochmodus.** Das ziehbare Zutaten-Panel nahm geöffnet immer 60 % der Höhe ein. Ersetzt durch
+   eine Box im Schritt, nur so hoch wie ihr Inhalt, mit „Für diesen Schritt · 0 von 2".
+6. **Zeiten.** `TimeText` liest ISO 8601 und Freitext (Spannen, „ca.", Stunden und Minuten), die
+   Anzeige schreibt „45 Min.", „1 Std. 20 Min.", „10–15 Min." mit U+202F. Fehlt die Gesamtzeit,
+   ist sie die Summe aus Vorbereitung und Garzeit. „0 Min." und Leeres entfallen. Was zu Mealie geht
+   (Editor, KI-Überarbeitung), behält normale Leerzeichen.
+7. **Sterne** erscheinen nur bei einer Bewertung; „Rezept bewerten" steht im Menü ⋯. Karten zeigen
+   keine Bewertung mehr, sondern Zeit oder ersatzweise die Kategorie.
+8. **Maßeinheiten** als beschriftete Textaktion „Einheiten: wie im Rezept", die ein Sheet öffnet.
 
 ## Entscheidungen
 

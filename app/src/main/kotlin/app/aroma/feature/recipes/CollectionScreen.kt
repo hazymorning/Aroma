@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -34,6 +33,7 @@ import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.MessageState
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.RecipeGrid
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.largeTitleAlpha
 import app.aroma.ui.components.pageItem
 import app.aroma.ui.components.recipeGridPlaceholders

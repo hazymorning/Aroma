@@ -30,7 +30,11 @@ private val Sans =
 // Lines sit centred in their line height, so text and the boxes around it share one rhythm.
 private val centred = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
 
-/** Titles balance their lines and never hyphenate, so a two-line title never ends on a lone word. */
+/**
+ * Titles balance their lines and hyphenate. Balanced breaking without hyphenation broke words
+ * anywhere to even out the lines ("Zitronen-Baiser-Pl / ätzchen"); with it, they break after a
+ * hyphen or between syllables, with a hyphen.
+ */
 private fun title(
     family: FontFamily,
     size: Int,
@@ -45,7 +49,7 @@ private fun title(
     letterSpacing = tracking.em,
     lineHeightStyle = centred,
     lineBreak = LineBreak.Heading,
-    hyphens = Hyphens.None,
+    hyphens = Hyphens.Auto,
 )
 
 /** Running text breaks like a paragraph and hyphenates long words, which German has many of. */
@@ -75,14 +79,14 @@ object AromaType {
     /** A recipe's name on a card or in a row. */
     val Name = title(SerifText, 18, 24, FontWeight.Medium)
 
-    /** The step on screen in cook mode, read at arm's length; words stay whole at this size. */
-    val Reading = text(24, 34).copy(hyphens = Hyphens.None)
+    /** The step on screen in cook mode, read at arm's length. */
+    val Reading = text(24, 34)
 
     /** The time left on a cooking timer, read across the kitchen. */
     val Timer = text(28, 34, FontWeight.Medium).tabular()
 
     /** Items in shopping mode, read with the phone held low over the trolley. */
-    val Large = text(22, 28).copy(hyphens = Hyphens.None)
+    val Large = text(22, 28)
 
     /** Running text: ingredients, steps, descriptions, rows. */
     val Body = text(16, 24)

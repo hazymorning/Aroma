@@ -468,13 +468,11 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         }
     }
 
-    /** All ingredients with their sections, the panel opened by a tap. */
+    /** All ingredients with their sections, in the step's box. */
     @Test
     fun cookStepWithIngredients() {
         applyLocale()
-        snapshot("cook_ingredients_${variant.suffix}", variant.dark, interact = {
-            composeRule.onNodeWithText(if (variant.locale == "de") "Alle 9 Zutaten" else "All 9 ingredients").performClick()
-        }) {
+        snapshot("cook_ingredients_${variant.suffix}", variant.dark) {
             CookScreen(
                 state =
                     CookUiState(
@@ -521,54 +519,28 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
     }
 
     @Test
-    fun cookPanelTwo() = cookPanel("two", page = 0)
+    fun cookStepTwo() = cookStep("two", page = 0)
 
     @Test
-    fun cookPanelTwoOpen() = cookPanel("two_open", page = 0, open = true)
+    fun cookStepNine() = cookStep("nine", page = 1)
 
     @Test
-    fun cookPanelNine() = cookPanel("nine", page = 1)
+    fun cookStepNone() = cookStep("none", page = 2)
 
     @Test
-    fun cookPanelNineOpen() = cookPanel("nine_open", page = 1, open = true)
+    fun cookStepLargeText() = cookStep("large_text", page = 1) { org.robolectric.RuntimeEnvironment.setFontScale(2f) }
 
     @Test
-    fun cookPanelNone() = cookPanel("none", page = 2)
-
-    /** Opened on the step before, and still open after paging on to a step that uses nothing. */
-    @Test
-    fun cookPanelNoneOpen() = cookPanel("none_open", page = 1, open = true, pageOn = true)
-
-    @Test
-    fun cookPanelLargeText() = cookPanel("large_text", page = 1) { org.robolectric.RuntimeEnvironment.setFontScale(2f) }
-
-    @Test
-    fun cookPanelLandscape() =
-        cookPanel("landscape", page = 1, open = true) {
+    fun cookStepLandscape() =
+        cookStep("landscape", page = 1) {
             org.robolectric.RuntimeEnvironment.setQualifiers("+w891dp-h411dp-land")
         }
 
-    /** A step of the curry, whose steps use two, nine, none and two ingredients; the panel opened by a tap where [open]. */
-    private fun cookPanel(
-        name: String,
-        page: Int,
-        open: Boolean = false,
-        pageOn: Boolean = false,
-        configure: () -> Unit = {},
-    ) {
+    /** A step of the curry, whose steps use two, nine, none and two ingredients, each in the step's own box. */
+    private fun cookStep(name: String, page: Int, configure: () -> Unit = {}) {
         applyLocale()
         configure()
-        val german = variant.locale == "de"
-        snapshot("cook_panel_${name}_${variant.suffix}", variant.dark, interact = {
-            if (open) {
-                composeRule
-                    .onNodeWithText(
-                        if (german) "Zutaten für diesen Schritt" else "ingredients for this step",
-                        substring = true,
-                    ).performClick()
-            }
-            if (pageOn) composeRule.onNodeWithText(if (german) "Weiter" else "Next").performClick()
-        }) {
+        snapshot("cook_step_${name}_${variant.suffix}", variant.dark) {
             CookScreen(
                 state = CookUiState(recipe = sample.curry, isLoading = false, checkedIngredients = setOf(1, 6)),
                 actions = CookActions(),

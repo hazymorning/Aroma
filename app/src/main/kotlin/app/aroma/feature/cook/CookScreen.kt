@@ -40,7 +40,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -106,7 +105,9 @@ import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.TonalIconButton
+import app.aroma.ui.components.breakable
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatClock
 import app.aroma.ui.components.formatDuration
@@ -122,6 +123,8 @@ import app.aroma.ui.theme.Motion.Glide
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
+import app.aroma.ui.theme.extras
+import app.aroma.ui.theme.tabular
 import kotlinx.coroutines.launch
 
 data class CookTimerUi(
@@ -184,7 +187,6 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
         if (steps.isNotEmpty() && pager.settledPage == steps.size) actions.onFinished()
     }
     var showIngredients by rememberSaveable { mutableStateOf(false) }
-    val panel = rememberPanelState()
     val locale = currentLocale()
     val rows =
         remember(state.recipe, state.scale, state.measures, locale) {
@@ -238,47 +240,36 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
 
             else -> {
                 StepProgress(pager.currentPage, steps.size)
-                // Without a step that names an ingredient, the panel would only ever say there is none.
-                val hasPanel =
+                // Without a step that names an ingredient, every box would only ever say there is none.
+                val showsIngredients =
                     rows.isNotEmpty() &&
                         when (state.ingredientsInSteps) {
                             IngredientsInSteps.None -> false
                             IngredientsInSteps.Used -> byStep.any { it.isNotEmpty() }
                             IngredientsInSteps.All -> true
                         }
-                StepsWithPanel(
-                    panel = {
-                        if (hasPanel) {
-                            val step = pager.currentPage.coerceAtMost(steps.lastIndex)
-                            IngredientsPanel(
-                                ingredients =
-                                    remember(rows, byStep, step, state.ingredientsInSteps) {
-                                        stepIngredients(rows, byStep.getOrNull(step).orEmpty(), state.ingredientsInSteps)
-                                    },
-                                checked = state.checkedIngredients,
-                                onToggle = actions.onToggleIngredient,
-                                state = panel,
-                                pager = pager,
-                                visible = pager.currentPage < steps.size,
-                            )
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
-                        if (page < steps.size) {
-                            StepPage(
-                                index = page,
-                                count = steps.size,
-                                step = steps[page],
-                                text = texts.getOrNull(page) ?: StyledText(steps[page].text, emptyList()),
-                                amounts = amounts.getOrNull(page).orEmpty(),
-                                onStartTimer = actions.onStartTimer,
-                                modifier = if (hasPanel) Modifier.abovePanel(panel) else Modifier,
-                            )
-                        } else {
-                            DonePage(state, actions)
-                        }
+                HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
+                    if (page < steps.size) {
+                        StepPage(
+                            index = page,
+                            count = steps.size,
+                            step = steps[page],
+                            text = texts.getOrNull(page) ?: StyledText(steps[page].text, emptyList()),
+                            amounts = amounts.getOrNull(page).orEmpty(),
+                            onStartTimer = actions.onStartTimer,
+                            ingredients =
+                                if (showsIngredients) {
+                                    remember(rows, byStep, page, state.ingredientsInSteps) {
+                                        stepIngredients(rows, byStep.getOrNull(page).orEmpty(), state.ingredientsInSteps)
+                                    }
+                                } else {
+                                    null
+                                },
+                            checked = state.checkedIngredients,
+                            onToggle = actions.onToggleIngredient,
+                        )
+                    } else {
+                        DonePage(state, actions)
                     }
                 }
                 Timers(state.timers, actions)
@@ -361,6 +352,9 @@ private fun StepPage(
     text: StyledText,
     amounts: List<StepAmount>,
     onStartTimer: (Int, String) -> Unit,
+    ingredients: StepIngredients?,
+    checked: Set<Int>,
+    onToggle: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val resources = LocalResources.current
@@ -398,6 +392,45 @@ private fun StepPage(
                 }
             }
         }
+        if (ingredients != null && ingredients.rows.isNotEmpty()) {
+            StepIngredientsBox(ingredients, checked, onToggle, Modifier.padding(top = Space.l))
+        }
+    }
+}
+
+/**
+ * What the step uses, on a soft box as tall as its lines: how many of them are ticked off, then the
+ * lines to tick off, as the recipe's list ticks them off.
+ */
+@Composable
+private fun StepIngredientsBox(ingredients: StepIngredients, checked: Set<Int>, onToggle: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val count = ingredients.rows.size
+    val used = ingredients.indexes.count { it in checked }
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(extras.card)
+            .padding(horizontal = CardPadding, vertical = Space.s),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(if (ingredients.all) R.string.cook_all_ingredients else R.string.cook_for_this_step),
+                style = AromaType.Label,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = stringResource(R.string.cook_ticked_of, used, count),
+                style = AromaType.Small.tabular(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IngredientList(
+            rows = ingredients.rows,
+            checked = ingredients.indexes.indices.filterTo(mutableSetOf()) { ingredients.indexes[it] in checked },
+            onToggle = { onToggle(ingredients.indexes[it]) },
+            modifier = Modifier.padding(top = Space.xs),
+        )
     }
 }
 
@@ -411,13 +444,14 @@ private fun StepText(text: AnnotatedString) {
     val styled =
         remember(text, linkColor) {
             val quiet = TextLinkStyles(SpanStyle(color = linkColor))
-            text.mapAnnotations { range ->
-                when (val link = range.item) {
-                    is LinkAnnotation.Clickable -> AnnotatedString.Range(link.copy(styles = quiet), range.start, range.end)
-                    is LinkAnnotation.Url -> AnnotatedString.Range(link.copy(styles = quiet), range.start, range.end)
-                    else -> range
-                }
-            }
+            text
+                .mapAnnotations { range ->
+                    when (val link = range.item) {
+                        is LinkAnnotation.Clickable -> AnnotatedString.Range(link.copy(styles = quiet), range.start, range.end)
+                        is LinkAnnotation.Url -> AnnotatedString.Range(link.copy(styles = quiet), range.start, range.end)
+                        else -> range
+                    }
+                }.breakable()
         }
     val links = remember(styled) { styled.getLinkAnnotations(0, styled.length) }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }

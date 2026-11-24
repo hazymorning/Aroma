@@ -34,10 +34,12 @@
     <string name="action_unfavorite">Remove from favorites</string>
 
     <!-- Durations -->
-    <string name="duration_seconds">%1$d s</string>
-    <string name="duration_minutes">%1$d min</string>
-    <string name="duration_hours">%1$d h</string>
-    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_seconds">%1$d\u202Fs</string>
+    <string name="duration_minutes">%1$d\u202Fmin</string>
+    <string name="duration_hours">%1$d\u202Fh</string>
+    <string name="duration_hours_minutes">%1$d\u202Fh %2$d\u202Fmin</string>
+    <string name="duration_minutes_span">%1$d–%2$d\u202Fmin</string>
+    <string name="duration_hours_span">%1$d–%2$d\u202Fh</string>
 
     <!-- Errors -->
     <string name="error_offline_title">No connection</string>
@@ -213,21 +215,9 @@
     <!-- Cooking mode -->
     <string name="cook_close">Leave cooking mode</string>
     <string name="cook_step_of">Step %1$d of %2$d</string>
-    <plurals name="cook_step_ingredient_count">
-        <item quantity="one">%1$d ingredient for this step</item>
-        <item quantity="other">%1$d ingredients for this step</item>
-    </plurals>
-    <plurals name="cook_all_ingredient_count">
-        <item quantity="one">%1$d ingredient</item>
-        <item quantity="other">All %1$d ingredients</item>
-    </plurals>
-    <string name="cook_step_no_ingredients">No ingredients in this step</string>
-    <plurals name="cook_ingredients_used">
-        <item quantity="one">%1$d of %2$d used</item>
-        <item quantity="other">%1$d of %2$d used</item>
-    </plurals>
-    <string name="cook_ingredients_expand">Expand</string>
-    <string name="cook_ingredients_collapse">Collapse</string>
+    <string name="cook_for_this_step">For this step</string>
+    <string name="cook_all_ingredients">All ingredients</string>
+    <string name="cook_ticked_of">%1$d of %2$d</string>
     <string name="cook_start_timer">Timer %1$s</string>
     <string name="cook_previous">Back</string>
     <string name="cook_next">Next</string>
@@ -437,8 +427,11 @@
     <string name="update_not_downloaded">Aroma %1$s could not be downloaded</string>
     <string name="update_not_aroma">The download is not Aroma, so it was not installed</string>
     <string name="update_no_installer">No installer found on this device</string>
-    <string name="measures_change">Change measures</string>
     <string name="measures_title">Measures</string>
+    <string name="measures_link">Units: %1$s</string>
+    <string name="measures_short_as_written">as written</string>
+    <string name="measures_short_metric">metric</string>
+    <string name="measures_short_us">US</string>
     <string name="measures_as_written">As written</string>
     <string name="measures_metric">Metric (g, ml)</string>
     <string name="measures_us">US (cups, oz)</string>

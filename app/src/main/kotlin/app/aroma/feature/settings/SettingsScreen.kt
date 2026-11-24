@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +52,7 @@ import app.aroma.ui.components.InlineProgress
 import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SoftCard
 import app.aroma.ui.components.SwitchRow
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding

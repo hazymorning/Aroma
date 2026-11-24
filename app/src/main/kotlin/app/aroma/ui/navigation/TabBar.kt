@@ -19,7 +19,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -34,6 +33,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.ui.components.QuietPress
+import app.aroma.ui.components.Text
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.Glyph

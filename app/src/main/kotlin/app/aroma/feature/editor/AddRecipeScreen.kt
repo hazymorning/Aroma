@@ -40,7 +40,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -83,6 +82,7 @@ import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.LargeTitle
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.QuietLink
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.titleRes
 import app.aroma.ui.theme.AromaType

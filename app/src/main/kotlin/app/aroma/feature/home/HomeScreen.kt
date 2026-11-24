@@ -38,7 +38,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -79,7 +78,8 @@ import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SearchPill
 import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.components.SoftCard
-import app.aroma.ui.components.StatusBarScrim
+import app.aroma.ui.components.StatusBarCover
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.mealLabel
 import app.aroma.ui.components.mealTypeLabel
@@ -250,7 +250,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                 }
             }
         }
-        StatusBarScrim()
+        StatusBarCover()
     }
 }
 

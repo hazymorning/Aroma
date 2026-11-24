@@ -27,7 +27,6 @@ import androidx.compose.foundation.text.input.TextObfuscationMode
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,6 +60,7 @@ import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.fullBleed
 import app.aroma.ui.components.messageRes
 import app.aroma.ui.components.rememberSyncedTextFieldState

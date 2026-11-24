@@ -22,30 +22,39 @@ class RecipeQuickActionsTest {
     private val recipe = SampleData(german = false).recipe
 
     @Test
-    fun `plan and shop sit right under the title and open their sheets`() {
+    fun `plan and shop sit in the action bar beside cooking and open their sheets`() {
         val opened = mutableListOf<String>()
-        show(recipe, RecipeActions(onAddToMealPlan = { opened += "plan" }, onAddToShoppingList = { opened += "shop" }))
-        compose.onNodeWithText("Plan").performClick()
-        compose.onNodeWithText("Shop").performClick()
-        assertEquals(listOf("plan", "shop"), opened)
+        show(
+            recipe,
+            RecipeActions(
+                onAddToMealPlan = { opened += "plan" },
+                onAddToShoppingList = { opened += "shop" },
+                onStartCooking = { opened += "cook" },
+            ),
+        )
+        compose.onNodeWithContentDescription("Plan").performClick()
+        compose.onNodeWithContentDescription("Shop").performClick()
+        compose.onNodeWithText("Start cooking").performClick()
+        assertEquals(listOf("plan", "shop", "cook"), opened)
     }
 
     @Test
     fun `a recipe without ingredients offers planning only`() {
         show(recipe.copy(ingredients = emptyList()), RecipeActions())
-        compose.onNodeWithText("Plan").assertExists()
-        compose.onNodeWithText("Shop").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Plan").assertExists()
+        compose.onNodeWithContentDescription("Shop").assertDoesNotExist()
     }
 
     @Test
-    fun `both actions stay reachable from the menu once the row has scrolled away`() {
-        val opened = mutableListOf<String>()
-        show(recipe, RecipeActions(onAddToMealPlan = { opened += "plan" }, onAddToShoppingList = { opened += "shop" }))
+    fun `the menu holds what manages the recipe, rating included`() {
+        val chosen = mutableListOf<String>()
+        show(recipe.copy(rating = null), RecipeActions(onEdit = { chosen += "edit" }))
         compose.onNodeWithContentDescription("More options").performClick()
-        compose.onNodeWithText("Add to meal plan").performClick()
-        compose.onNodeWithContentDescription("More options").performClick()
-        compose.onNodeWithText("Add to shopping list").performClick()
-        assertEquals(listOf("plan", "shop"), opened)
+        compose.onNodeWithText("Rate this recipe").assertExists()
+        compose.onNodeWithText("Share").assertExists()
+        compose.onNodeWithText("Delete").assertExists()
+        compose.onNodeWithText("Edit").performClick()
+        assertEquals(listOf("edit"), chosen)
     }
 
     private fun show(recipe: app.aroma.core.model.Recipe, actions: RecipeActions) {

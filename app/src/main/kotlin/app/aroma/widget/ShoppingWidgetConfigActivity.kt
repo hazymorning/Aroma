@@ -23,7 +23,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -47,6 +46,7 @@ import app.aroma.data.settings.ThemeMode
 import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.Text
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding

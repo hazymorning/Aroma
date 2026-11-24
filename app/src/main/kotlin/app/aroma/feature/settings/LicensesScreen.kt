@@ -14,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +31,7 @@ import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.Text
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.Glyph

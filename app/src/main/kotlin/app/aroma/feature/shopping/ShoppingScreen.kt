@@ -33,7 +33,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -85,7 +84,8 @@ import app.aroma.ui.components.PlaceholderLine
 import app.aroma.ui.components.QuietPress
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SoftCard
-import app.aroma.ui.components.StatusBarScrim
+import app.aroma.ui.components.StatusBarCover
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
@@ -187,7 +187,7 @@ fun ShoppingScreen(
                 )
             }
         }
-        StatusBarScrim(Modifier.align(Alignment.TopCenter))
+        StatusBarCover(Modifier.align(Alignment.TopCenter))
         AromaSnackbarHost(
             snackbar,
             Modifier

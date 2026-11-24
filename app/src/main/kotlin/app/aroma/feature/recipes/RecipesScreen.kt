@@ -27,7 +27,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -59,8 +58,8 @@ import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.AromaPullToRefreshBox
+import app.aroma.ui.components.ChoiceRow
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.FloatingAction
 import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MessageState
@@ -71,7 +70,8 @@ import app.aroma.ui.components.PillTextField
 import app.aroma.ui.components.RecipeGrid
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SectionHeader
-import app.aroma.ui.components.StatusBarScrim
+import app.aroma.ui.components.StatusBarCover
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealLabel
 import app.aroma.ui.components.pageItem
@@ -182,8 +182,8 @@ private val CoverWidth = 160.dp
 
 /**
  * The library, for finding something to cook: a search, the meals and a few everyday filters, the
- * household's cookbooks while nothing is filtered, and every recipe below. Adding a recipe floats
- * at the bottom end, like the cook button on a recipe's page.
+ * household's cookbooks while nothing is filtered, and every recipe below. Adding a recipe is in
+ * the page's head, beside the order.
  */
 @Composable
 fun RecipesScreen(state: RecipesUiState, actions: RecipesActions, modifier: Modifier = Modifier, searchFocus: FocusRequester? = null) {
@@ -192,8 +192,6 @@ fun RecipesScreen(state: RecipesUiState, actions: RecipesActions, modifier: Modi
     // Kept out here, so the chips stay where they were scrolled while the head of the page is out of view.
     val chipRow = rememberLazyListState()
     ScrollToTopOnReselect(grid)
-    // Folded to its glyph while looking on down the library; whole again at the top or once the page heads back up.
-    val addUnfolded by remember(grid) { derivedStateOf { !grid.canScrollBackward || !grid.lastScrolledForward } }
     val barInset = LocalBottomBarInset.current
     Box(modifier.fillMaxSize()) {
         AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
@@ -206,27 +204,15 @@ fun RecipesScreen(state: RecipesUiState, actions: RecipesActions, modifier: Modi
                 canLoadMore = state.canLoadMore,
                 onLoadMore = actions.onLoadMore,
                 modifier = Modifier.fillMaxSize(),
-                // The last cards scroll clear above the add button.
-                contentPadding =
-                    PaddingValues(start = ScreenMargin, end = ScreenMargin, bottom = barInset + Space.m + ControlHeight + PageEndSpace),
+                contentPadding = PaddingValues(start = ScreenMargin, end = ScreenMargin, bottom = barInset + PageEndSpace),
                 header = {
                     pageItem("header") { Header(state, actions, chipRow, searchFocus) { sheet = it } }
                     if (state.showsCookbooks) cookbooks(state.cookbooks, actions.onOpenCookbook)
                     body(state, actions)
                 },
             )
-            StatusBarScrim(Modifier.align(Alignment.TopCenter))
+            StatusBarCover(Modifier.align(Alignment.TopCenter))
         }
-        FloatingAction(
-            text = stringResource(R.string.recipes_add),
-            icon = R.drawable.ic_add,
-            onClick = actions.onAddRecipe,
-            expanded = addUnfolded,
-            modifier =
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = ScreenMargin, bottom = barInset + Space.m),
-        )
     }
     when (val current = sheet) {
         is RecipesSheet.Organizers -> {
@@ -281,7 +267,7 @@ private fun LazyGridScope.body(state: RecipesUiState, actions: RecipesActions) {
             }
         }
 
-        // The add button below is the way in, so the message needs no button of its own.
+        // The add button in the head is the way in, so the message needs no button of its own.
         state.recipes.isEmpty() -> {
             pageItem("empty") {
                 MessageState(
@@ -307,6 +293,7 @@ private fun Header(
         PageHeader(title = stringResource(R.string.nav_recipes)) {
             val sortLabel = stringResource(R.string.sort_title) + ": " + stringResource(state.filter.sort.labelRes())
             HeaderAction(R.drawable.ic_sort, sortLabel, { openSheet(RecipesSheet.Sort) })
+            HeaderAction(R.drawable.ic_add, stringResource(R.string.recipes_add), actions.onAddRecipe)
         }
         PillTextField(
             value = state.filter.query,
@@ -468,37 +455,5 @@ private fun SortSheet(current: RecipeSort, onSelect: (RecipeSort) -> Unit, onDis
                 )
             }
         }
-    }
-}
-
-/** A 56 dp option on the sheet's margins; a sage check fades in at its end once it is chosen. */
-@Composable
-private fun ChoiceRow(label: String, chosen: Boolean, modifier: Modifier = Modifier) {
-    val check by animateFloatAsState(if (chosen) 1f else 0f, tween(Motion.STATE), label = "check")
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(RowHeight.oneLine)
-                .padding(horizontal = ScreenMargin),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            style = AromaType.Body,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(Space.m))
-        Icon(
-            painterResource(R.drawable.ic_check),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier =
-                Modifier
-                    .size(Glyph.m)
-                    .graphicsLayer { alpha = check },
-        )
     }
 }

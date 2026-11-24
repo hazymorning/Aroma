@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,8 +72,9 @@ import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SheetAction
 import app.aroma.ui.components.SoftCard
-import app.aroma.ui.components.StatusBarScrim
+import app.aroma.ui.components.StatusBarCover
 import app.aroma.ui.components.SwipeToRemove
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
@@ -156,7 +156,7 @@ fun MealPlanScreen(state: MealPlanUiState, actions: MealPlanActions, modifier: M
                 }
             }
         }
-        StatusBarScrim()
+        StatusBarCover()
     }
     val sheetEntry = state.entry(sheetEntryId)
     if (sheetEntry != null) {

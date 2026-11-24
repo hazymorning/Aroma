@@ -25,7 +25,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -101,56 +100,6 @@ fun PrimaryButton(
         }
     }
 }
-
-/**
- * The page's main action, floating at its bottom end over what scrolls beneath: a sage pill with a
- * glyph and a label, on the soft shadow of what floats. While not [expanded] it folds to a circle
- * around the glyph; the pill narrows towards its end, and the label has faded before the edge can
- * cut it off.
- */
-@Composable
-fun FloatingAction(
-    text: String,
-    @DrawableRes icon: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    expanded: Boolean = true,
-) {
-    val unfolded = animateFloatAsState(if (expanded) 1f else 0f, tween(Motion.EXPAND, easing = Motion.Glide), label = "unfold")
-    Row(
-        modifier =
-            modifier
-                // The width is read while measuring, so folding lays out the button alone and recomposes nothing.
-                .layout { measurable, constraints ->
-                    val height = ControlHeight.roundToPx()
-                    val width = lerp(height, measurable.maxIntrinsicWidth(height), unfolded.value).coerceAtMost(constraints.maxWidth)
-                    val placeable = measurable.measure(Constraints.fixed(width, height))
-                    layout(width, height) { placeable.place(0, 0) }
-                }.floatingShadow(CircleShape)
-                .clip(CircleShape)
-                .background(extras.cta)
-                .clickable(role = Role.Button, onClick = onClick)
-                .wrapContentWidth(Alignment.Start, unbounded = true)
-                .padding(start = FloatingActionInset, end = Space.l),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(painterResource(icon), contentDescription = null, tint = extras.onCta, modifier = Modifier.size(Glyph.m))
-        Spacer(Modifier.width(Space.xs))
-        Text(
-            text = text,
-            style = AromaType.Label,
-            color = extras.onCta,
-            maxLines = 1,
-            modifier = Modifier.graphicsLayer { alpha = ((unfolded.value - LABEL_SHOWN) / (1 - LABEL_SHOWN)).coerceIn(0f, 1f) },
-        )
-    }
-}
-
-/** Where the glyph of a [FloatingAction] starts, so that folded it stands in the middle of its circle. */
-private val FloatingActionInset = (ControlHeight - Glyph.m) / 2
-
-/** How far unfolded a [FloatingAction] is before its label starts to show. */
-private const val LABEL_SHOWN = 0.8f
 
 /**
  * A quiet action on the soft fill every control shares. [confirmed] turns the icon into a check for

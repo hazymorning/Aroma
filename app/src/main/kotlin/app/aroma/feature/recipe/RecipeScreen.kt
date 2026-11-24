@@ -34,10 +34,12 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -45,6 +47,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -87,14 +90,17 @@ import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.feature.editor.ReworkJob
 import app.aroma.feature.editor.WorkProgress
 import app.aroma.ui.components.AromaAlertDialog
+import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaDropdownMenu
 import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.AromaMenuItem
+import app.aroma.ui.components.BarIconButton
+import app.aroma.ui.components.BottomActionBar
 import app.aroma.ui.components.CardGroup
+import app.aroma.ui.components.ChoiceRow
 import app.aroma.ui.components.DetailTopBar
 import app.aroma.ui.components.DetailTopBarHeight
 import app.aroma.ui.components.ErrorState
-import app.aroma.ui.components.FloatingAction
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
 import app.aroma.ui.components.IconAction
@@ -105,6 +111,7 @@ import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.OnPhotoButton
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PlaceholderLine
+import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.QuietPress
 import app.aroma.ui.components.RatingStars
@@ -112,12 +119,18 @@ import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SectionHeader
 import app.aroma.ui.components.SoftCard
+import app.aroma.ui.components.StatusBarOverPhoto
 import app.aroma.ui.components.Stepper
+import app.aroma.ui.components.Text
+import app.aroma.ui.components.actionBarInset
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.ratingDescription
 import app.aroma.ui.components.recipeTimeText
+import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.components.rememberStepText
+import app.aroma.ui.components.totalTime
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.ChipHeight
@@ -184,8 +197,11 @@ private const val TITLE_KEY = "title"
 /** The plate that stands in for a missing photo at the head of the page. */
 private val HeroPlateSize = 48.dp
 
-/** Just enough shade at the top of the photo for the status bar and the buttons to read on it. */
-private val PhotoShadeHeight = 96.dp
+/** The shade at the top of the photo, so the status bar and the buttons read on light photos too. */
+private val PhotoShadeHeight = 120.dp
+
+/** How dark the shade starts at the top edge; it fades to nothing at [PhotoShadeHeight]. */
+private const val PHOTO_SHADE = 0.45f
 
 /** The glyph after the source, as small as the stars before it. */
 private val SourceGlyph = 14.dp
@@ -206,8 +222,6 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
         derivedStateOf { listState.bottomOf(TITLE_KEY)?.let { it <= barBottom } ?: (listState.firstVisibleItemIndex > 0) }
     }
     val canCook = recipe?.steps?.isNotEmpty() == true
-    // Folded to its glyph while reading on down the page; whole again at the top or once the page heads back up.
-    val cookUnfolded by remember(listState) { derivedStateOf { !listState.canScrollBackward || !listState.lastScrolledForward } }
     val locale = currentLocale()
     // What each step uses, scaled and in the chosen measures like the list above it.
     val stepUses =
@@ -242,7 +256,8 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
             recipe != null -> {
                 LazyColumn(
                     state = listState,
-                    contentPadding = PaddingValues(bottom = endSpace(canCook)),
+                    // The last section ends clear above the action bar.
+                    contentPadding = PaddingValues(bottom = actionBarInset() + Space.l),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     item(key = HERO_KEY) { Hero(recipe) }
@@ -274,22 +289,20 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
             actions = actions,
             // One rework at a time: the next only once the page showed how the last ended.
             onRework = { reworkOpen = true }.takeIf { state.aiAvailable && state.rework == null },
+            onRate = { rateOpen = true },
         )
-        // There with the recipe, from its first frame, and moving only with the page.
-        if (canCook) {
-            FloatingAction(
-                text = stringResource(R.string.recipe_start_cooking),
-                icon = R.drawable.ic_cooking,
-                onClick = actions.onStartCooking,
-                expanded = cookUnfolded,
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .navigationBarsPadding()
-                        .padding(end = ScreenMargin, bottom = Space.m),
+        if (recipe != null) {
+            RecipeActionBar(
+                canShop = recipe.ingredients.isNotEmpty(),
+                canCook = canCook,
+                confirmed = state.confirmed,
+                actions = actions,
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }
+    // Light icons on the photo's shade; the theme's own once the photo has gone beneath the bar.
+    StatusBarOverPhoto(overPhoto = if (recipe != null) barOverPhoto else state.isLoading)
     if (rateOpen && recipe != null) {
         RatingSheet(rating = state.userRating, onRate = actions.onRate, onDismiss = { rateOpen = false })
     }
@@ -300,11 +313,43 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
 
 private fun LazyListState.bottomOf(key: Any): Int? = layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.let { it.offset + it.size }
 
-/** Room below the last section, so it can scroll clear above the cook button when there is one. */
+/**
+ * Plan and shop as round buttons, the two things people do with a recipe besides cooking it, and
+ * cooking itself across the rest of the bar, the page's one main action. Shop is there where
+ * there is something to buy; cooking, where there are steps to cook by.
+ */
 @Composable
-private fun endSpace(canCook: Boolean) =
-    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-        if (canCook) ControlHeight + Space.m + Space.xl else Space.xl
+private fun RecipeActionBar(
+    canShop: Boolean,
+    canCook: Boolean,
+    confirmed: QuickAction?,
+    actions: RecipeActions,
+    modifier: Modifier = Modifier,
+) {
+    BottomActionBar(modifier) {
+        BarIconButton(
+            icon = R.drawable.ic_calendar_add,
+            contentDescription = stringResource(R.string.recipe_action_plan),
+            onClick = actions.onAddToMealPlan,
+            confirmed = confirmed == QuickAction.Plan,
+        )
+        if (canShop) {
+            BarIconButton(
+                icon = R.drawable.ic_basket,
+                contentDescription = stringResource(R.string.recipe_action_shop),
+                onClick = actions.onAddToShoppingList,
+                confirmed = confirmed == QuickAction.Shop,
+            )
+        }
+        PrimaryButton(
+            text = stringResource(R.string.recipe_start_cooking),
+            onClick = actions.onStartCooking,
+            leadingIcon = R.drawable.ic_cooking,
+            enabled = canCook,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
 
 @Composable
 private fun Hero(recipe: Recipe) {
@@ -325,7 +370,7 @@ private fun Hero(recipe: Recipe) {
             Modifier
                 .fillMaxWidth()
                 .height(PhotoShadeHeight)
-                .background(Brush.verticalGradient(listOf(scrim.copy(alpha = 0.28f), scrim.copy(alpha = 0f)))),
+                .background(Brush.verticalGradient(listOf(scrim.copy(alpha = PHOTO_SHADE), scrim.copy(alpha = 0f)))),
         )
     }
 }
@@ -343,6 +388,7 @@ private fun RecipeTopBar(
     isFavorite: Boolean,
     actions: RecipeActions,
     onRework: (() -> Unit)?,
+    onRate: () -> Unit,
 ) {
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     Box {
@@ -350,7 +396,7 @@ private fun RecipeTopBar(
             DetailTopBar(onBack = actions.onBack, title = recipe?.name, collapsed = titleGone) {
                 if (recipe != null) {
                     FavoriteButton(isFavorite, actions.onToggleFavorite, onPhoto = false)
-                    MoreMenu(recipe, actions, onRework, onDelete = { confirmDelete = true }, onPhoto = false)
+                    MoreMenu(recipe, actions, onRework, onRate, onDelete = { confirmDelete = true }, onPhoto = false)
                 }
             }
         }
@@ -366,7 +412,7 @@ private fun RecipeTopBar(
                 Spacer(Modifier.weight(1f))
                 if (recipe != null) {
                     FavoriteButton(isFavorite, actions.onToggleFavorite, onPhoto = true)
-                    MoreMenu(recipe, actions, onRework, onDelete = { confirmDelete = true }, onPhoto = true)
+                    MoreMenu(recipe, actions, onRework, onRate, onDelete = { confirmDelete = true }, onPhoto = true)
                 }
             }
         }
@@ -404,6 +450,7 @@ private fun MoreMenu(
     recipe: Recipe,
     actions: RecipeActions,
     onRework: (() -> Unit)?,
+    onRate: () -> Unit,
     onDelete: () -> Unit,
     onPhoto: Boolean,
 ) {
@@ -420,16 +467,8 @@ private fun MoreMenu(
             HeaderAction(R.drawable.ic_more_horiz, label, onClick = { open = true })
         }
         AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            AromaMenuItem(stringResource(R.string.recipe_add_to_plan), R.drawable.ic_calendar_add, { choose(actions.onAddToMealPlan) })
-            if (recipe.ingredients.isNotEmpty()) {
-                AromaMenuItem(
-                    stringResource(R.string.recipe_add_to_list),
-                    R.drawable.ic_basket_add,
-                    { choose(actions.onAddToShoppingList) },
-                )
-            }
-            Hairline(Modifier.padding(vertical = Space.xxs))
             AromaMenuItem(stringResource(R.string.action_edit), R.drawable.ic_edit, { choose(actions.onEdit) })
+            AromaMenuItem(stringResource(R.string.recipe_rate), R.drawable.ic_star, { choose(onRate) })
             onRework?.let { AromaMenuItem(stringResource(R.string.recipe_rework), R.drawable.ic_sparkle, { choose(it) }) }
             AromaMenuItem(stringResource(R.string.action_share), R.drawable.ic_share, { choose(actions.onShare) })
             recipe.sourceUrl?.let { url ->
@@ -457,15 +496,6 @@ private fun LazyListScope.recipeBody(
             sourceUrl = recipe.sourceUrl,
             onOpenRating = onOpenRating,
             onOpenUrl = actions.onOpenUrl,
-        )
-    }
-    item(key = "actions") {
-        RecipeQuickActions(
-            canShop = recipe.ingredients.isNotEmpty(),
-            confirmed = state.confirmed,
-            onPlan = actions.onAddToMealPlan,
-            onShop = actions.onAddToShoppingList,
-            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.l),
         )
     }
     state.rework?.takeIf { it.outcome == null }?.let { job ->
@@ -553,24 +583,28 @@ private fun Organizers(recipe: Recipe, onOpen: (OrganizerKind, Organizer) -> Uni
     }
 }
 
-/** Stars and the source on one quiet line: the stars open the rating sheet, the host the original page. */
+/**
+ * Stars and the source on one quiet line: the stars open the rating sheet, the host the original
+ * page. Stars show only once there is a rating; rating a recipe for the first time is in the menu.
+ */
 @Composable
 private fun Byline(rating: Double?, sourceUrl: String?, onOpenRating: () -> Unit, onOpenUrl: (String) -> Unit) {
     val locale = currentLocale()
     val host = remember(sourceUrl) { sourceUrl?.let { runCatching { URI(it).host?.removePrefix("www.") }.getOrNull() } }
     val meta = AromaType.Small
     val description = ratingDescription(rating)
+    if (rating == null && host == null) return
     Row(
         Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        QuietTarget(
-            onClick = onOpenRating,
-            onClickLabel = stringResource(R.string.recipe_rate),
-            modifier = Modifier.semantics { contentDescription = description },
-        ) {
-            RatingStars(rating, Modifier.clearAndSetSemantics {})
-            if (rating != null) {
+        if (rating != null) {
+            QuietTarget(
+                onClick = onOpenRating,
+                onClickLabel = stringResource(R.string.recipe_rate),
+                modifier = Modifier.semantics { contentDescription = description },
+            ) {
+                RatingStars(rating, Modifier.clearAndSetSemantics {})
                 Text(
                     text = remember(rating, locale) { "%.1f".format(locale, rating) },
                     style = meta.tabular(),
@@ -583,7 +617,7 @@ private fun Byline(rating: Double?, sourceUrl: String?, onOpenRating: () -> Unit
             }
         }
         if (host != null && sourceUrl != null) {
-            Dot(meta)
+            if (rating != null) Dot(meta)
             QuietTarget(onClick = { onOpenUrl(sourceUrl) }, modifier = Modifier.weight(1f, fill = false)) {
                 Text(
                     text = host,
@@ -635,41 +669,6 @@ private fun Dot(style: TextStyle) {
     Text("·", style = style, color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(horizontal = Space.xs))
 }
 
-/**
- * Plan and shop, the two things people do with a recipe besides cooking it, right under its name:
- * two even buttons across the column, or plan alone across it where there is nothing to buy. They
- * take the muted accent, which sets them above the page's quiet controls and below cooking.
- */
-@Composable
-private fun RecipeQuickActions(
-    canShop: Boolean,
-    confirmed: QuickAction?,
-    onPlan: () -> Unit,
-    onShop: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Space.s)) {
-        SecondaryButton(
-            icon = R.drawable.ic_calendar_add,
-            text = stringResource(R.string.recipe_action_plan),
-            onClick = onPlan,
-            confirmed = confirmed == QuickAction.Plan,
-            accented = true,
-            modifier = Modifier.weight(1f),
-        )
-        if (canShop) {
-            SecondaryButton(
-                icon = R.drawable.ic_basket_add,
-                text = stringResource(R.string.recipe_action_shop),
-                onClick = onShop,
-                confirmed = confirmed == QuickAction.Shop,
-                accented = true,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
 /** Prep, cook and total time on a soft card, each a value over its name. */
 @Composable
 private fun Facts(recipe: Recipe) {
@@ -677,7 +676,9 @@ private fun Facts(recipe: Recipe) {
         listOfNotNull(
             recipeTimeText(recipe.prepTime)?.let { stringResource(R.string.recipe_prep_time) to it },
             recipeTimeText(recipe.cookTime)?.let { stringResource(R.string.recipe_cook_time) to it },
-            recipeTimeText(recipe.totalTime)?.let { stringResource(R.string.recipe_total_time) to it },
+            recipeTimeText(totalTime(recipe.totalTime, recipe.prepTime, recipe.cookTime))?.let {
+                stringResource(R.string.recipe_total_time) to it
+            },
         )
     if (facts.isEmpty()) return
     SoftCard(Modifier.padding(top = Space.l)) {
@@ -730,7 +731,7 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
                 canDecrease = Servings.canDecrease(recipe.servings, state.scale),
             )
         }
-        MeasuresChip(state.measures, actions.onMeasures, Modifier.padding(start = ScreenMargin, top = Space.xs))
+        MeasuresLink(state.measures, actions.onMeasures, Modifier.padding(start = ScreenMargin))
         IngredientList(
             rows = rows,
             checked = state.checkedIngredients,
@@ -750,32 +751,52 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
     }
 }
 
-/** Which measures the amounts show, as a chip that opens the three choices; sage while they are converted. */
+/** Which measures the amounts show, "Units: as written", as a link that opens the three choices on a sheet. */
 @Composable
-private fun MeasuresChip(system: MeasureSystem, onSelect: (MeasureSystem) -> Unit, modifier: Modifier = Modifier) {
-    var open by remember { mutableStateOf(false) }
-    Box(modifier) {
-        MenuChip(
-            label = stringResource(system.labelRes()),
-            onClickLabel = stringResource(R.string.measures_change),
-            onClick = { open = true },
-            highlighted = system != MeasureSystem.AsWritten,
-        )
-        AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+private fun MeasuresLink(system: MeasureSystem, onSelect: (MeasureSystem) -> Unit, modifier: Modifier = Modifier) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    QuietLink(
+        text = stringResource(R.string.measures_link, stringResource(system.shortLabelRes())),
+        onClick = { open = true },
+        modifier = modifier,
+    )
+    if (open) MeasuresSheet(system, onSelect, onDismiss = { open = false })
+}
+
+/** The three choices of measures; choosing one applies it and lets the sheet slide away. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MeasuresSheet(current: MeasureSystem, onSelect: (MeasureSystem) -> Unit, onDismiss: () -> Unit) {
+    val sheetState = rememberFullSheetState()
+    val scope = rememberCoroutineScope()
+    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.measures_title), sheetState = sheetState) {
+        Column(
+            Modifier
+                .selectableGroup()
+                .padding(bottom = Space.m),
+        ) {
             MeasureSystem.entries.forEach { option ->
-                AromaMenuItem(
-                    text = stringResource(option.labelRes()),
-                    icon = null,
-                    onClick = {
-                        open = false
-                        onSelect(option)
-                    },
-                    selected = option == system,
+                ChoiceRow(
+                    label = stringResource(option.labelRes()),
+                    chosen = option == current,
+                    modifier =
+                        Modifier.selectable(selected = option == current, role = Role.RadioButton) {
+                            onSelect(option)
+                            scope.hideThen(sheetState, onDismiss)
+                        },
                 )
             }
         }
     }
 }
+
+/** The choice of measures within a sentence: "as written", "metric", "US". */
+private fun MeasureSystem.shortLabelRes(): Int =
+    when (this) {
+        MeasureSystem.AsWritten -> R.string.measures_short_as_written
+        MeasureSystem.Metric -> R.string.measures_short_metric
+        MeasureSystem.US -> R.string.measures_short_us
+    }
 
 /** The name of a choice of measures, as the chip and the setting show it. */
 fun MeasureSystem.labelRes(): Int =

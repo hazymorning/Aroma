@@ -97,7 +97,7 @@ import app.aroma.feature.shopping.ShoppingViewModel
 import app.aroma.ui.appContainer
 import app.aroma.ui.aromaViewModel
 import app.aroma.ui.components.currentLocale
-import app.aroma.ui.components.formatDuration
+import app.aroma.ui.components.formatDurationPlain
 import app.aroma.ui.components.titleRes
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -766,7 +766,7 @@ fun EditorDestination(slug: String, nav: NavController) {
         actions =
             EditorActions(
                 onBack = { nav.popBackStack() },
-                onSave = { vm.save { seconds -> resources.formatDuration(seconds) } },
+                onSave = { vm.save { seconds -> resources.formatDurationPlain(seconds) } },
                 onChange = vm::update,
                 onPickImage = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 onRetry = vm::load,

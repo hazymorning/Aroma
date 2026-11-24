@@ -25,7 +25,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +54,7 @@ import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RecipeListItem
 import app.aroma.ui.components.SegmentedControl
 import app.aroma.ui.components.SheetFooter
+import app.aroma.ui.components.Text
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel

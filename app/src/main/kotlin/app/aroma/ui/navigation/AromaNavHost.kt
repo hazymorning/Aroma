@@ -35,10 +35,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.aroma.ui.appContainer
+import app.aroma.ui.components.ActionBarHeight
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.LocalScrollToTop
-import app.aroma.ui.theme.ControlHeight
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Space
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -184,8 +184,8 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
             when {
                 showBar -> barInset + Space.xs
 
-                // Above the recipe's floating cook button.
-                destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + Space.m + ControlHeight + Space.xs
+                // Above the recipe's action bar.
+                destination?.hasRoute(RecipeRoute::class) == true -> navigationInset + ActionBarHeight + Space.xs
 
                 else -> navigationInset + Space.m
             },

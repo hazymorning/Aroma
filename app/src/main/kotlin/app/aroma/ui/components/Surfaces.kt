@@ -1,6 +1,8 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -25,16 +27,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -45,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.Glyph
+import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
@@ -294,5 +298,37 @@ fun SheetAction(
         )
         Spacer(Modifier.width(Space.m))
         Text(label, style = AromaType.Body, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** A 56 dp option on the sheet's margins; a sage check fades in at its end once it is chosen. */
+@Composable
+fun ChoiceRow(label: String, chosen: Boolean, modifier: Modifier = Modifier) {
+    val check by animateFloatAsState(if (chosen) 1f else 0f, tween(Motion.STATE), label = "check")
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(RowHeight.oneLine)
+                .padding(horizontal = ScreenMargin),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = AromaType.Body,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(Space.m))
+        Icon(
+            painterResource(R.drawable.ic_check),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier =
+                Modifier
+                    .size(Glyph.m)
+                    .graphicsLayer { alpha = check },
+        )
     }
 }
