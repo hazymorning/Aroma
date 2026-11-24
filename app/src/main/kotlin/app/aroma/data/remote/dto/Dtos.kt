@@ -201,16 +201,6 @@ data class CreateRecipeDto(val name: String)
 @Serializable
 data class LastMadeDto(val timestamp: String)
 
-/** An entry of Mealie's timeline: a recipe added, cooked or commented on. */
-@Serializable
-data class TimelineEventDto(
-    val id: String,
-    val recipeId: String,
-    val subject: String = "",
-    val eventMessage: String? = null,
-    val timestamp: String? = null,
-)
-
 @Serializable
 data class CreateTimelineEventDto(
     val recipeId: String,

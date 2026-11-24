@@ -87,7 +87,7 @@ class AppContainer(context: Context) {
     val auth = AuthRepository(clients, sessions, database, deviceName = Build.MODEL)
     val recipes = RecipeRepository(sessions, database.recipes(), cache, connection)
     val mealPlans = MealPlanRepository(sessions, cache)
-    val timeline = TimelineRepository(sessions, recipes, connection)
+    val timeline = TimelineRepository(sessions)
     val shopping: ShoppingRepository =
         ShoppingRepository(sessions, database.cache(), cache, database.pendingChanges(), connection, ::syncShopping)
     val timers = CookingTimers(appContext, scope)

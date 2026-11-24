@@ -21,7 +21,6 @@ import app.aroma.data.remote.dto.RatingsDto
 import app.aroma.data.remote.dto.RecipeDto
 import app.aroma.data.remote.dto.RecipeSummaryDto
 import app.aroma.data.remote.dto.ShoppingListSummaryDto
-import app.aroma.data.remote.dto.TimelineEventDto
 import app.aroma.data.remote.dto.TokenDto
 import app.aroma.data.remote.dto.UserDto
 import kotlinx.serialization.json.JsonObject
@@ -162,14 +161,6 @@ interface MealieApi {
         @Path("slug") slug: String,
         @Body body: LastMadeDto,
     )
-
-    @GET("api/recipes/timeline/events")
-    suspend fun timeline(
-        @Query("page") page: Int,
-        @Query("perPage") perPage: Int,
-        @Query("orderBy") orderBy: String = "timestamp",
-        @Query("orderDirection") orderDirection: String = "desc",
-    ): PageDto<TimelineEventDto>
 
     @POST("api/recipes/timeline/events")
     suspend fun createTimelineEvent(
