@@ -56,8 +56,9 @@ internal object Widgets {
     /**
      * For as long as the app runs, draws the widgets again after a change made here, by the app or a
      * widget: both kinds after a change of account or of the app's look, the shopping widgets after a
-     * change to a list, the Today widgets after one to the plan. All of it is done on a best effort:
-     * what fails waits for the next change or refresh and never reaches the app.
+     * change to a list, the Today widgets after one to the plan. When Mealie answers again after it
+     * was out of reach, both fetch what they show first. All of it is done on a best effort: what
+     * fails waits for the next change or refresh and never reaches the app.
      */
     fun follow(context: Context, container: AppContainer) {
         val account =
@@ -80,6 +81,12 @@ internal object Widgets {
             container.mealPlans.changes.settled().collect {
                 refreshPlan(context, container)
                 attempt { TodayWidget().updateAll(context) }
+            }
+        }
+        container.scope.launch {
+            container.connection.isReachable.drop(1).filter { it }.collect {
+                refresh(context, container)
+                attempt { updateAll(context) }
             }
         }
     }

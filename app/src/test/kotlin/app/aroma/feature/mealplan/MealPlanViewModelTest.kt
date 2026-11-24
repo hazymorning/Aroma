@@ -81,7 +81,14 @@ class MealPlanViewModelTest {
     @Test
     fun `a removed meal stays gone while the plan is read again from the copy on the phone and from the server`() {
         val plan =
-            MealPlanViewModel(env.mealPlans, env.recipes, env.shopping, settings, Clock.fixed(DAY.atStartOfDay(ZONE).toInstant(), ZONE))
+            MealPlanViewModel(
+                env.mealPlans,
+                env.recipes,
+                env.shopping,
+                settings,
+                env.connection,
+                Clock.fixed(DAY.atStartOfDay(ZONE).toInstant(), ZONE),
+            )
         until { plan.shown() == setOf(1, 2) }
         val removed =
             plan.state.value.days

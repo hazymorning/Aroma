@@ -191,9 +191,11 @@ private fun plannedStates(context: Context, container: AppContainer, clock: Cloc
             if (plan != null) {
                 emit(context.withPhotos(plan))
             } else {
-                // Nothing cached yet: fetch it once; the cached copy then comes through the plan above.
+                // Nothing cached yet: fetch it once; the cached copy then comes through the plan above. While
+                // Mealie is out of reach, the widget says so at once, and fetches again once Mealie answers.
                 emit(TodayState.Loading)
-                attempt { container.mealPlans.refreshUpcoming(LocalDate.now(clock)) }.onFailure { emit(TodayState.Unreachable) }
+                attempt { container.connection.whileReachable { container.mealPlans.refreshUpcoming(LocalDate.now(clock)) } }
+                    .onFailure { emit(TodayState.Unreachable) }
             }
         }
 

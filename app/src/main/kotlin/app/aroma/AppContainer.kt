@@ -11,6 +11,8 @@ import androidx.room.Room
 import app.aroma.data.JsonCache
 import app.aroma.data.attempt
 import app.aroma.data.local.AromaDatabase
+import app.aroma.data.network.ConnectivityNetworkMonitor
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.remote.MealieClientFactory
 import app.aroma.data.remote.SocialPosts
@@ -21,6 +23,7 @@ import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.repository.TimelineRepository
 import app.aroma.data.session.KeystoreCipher
 import app.aroma.data.session.SessionManager
+import app.aroma.data.session.SessionState
 import app.aroma.data.session.SessionStore
 import app.aroma.data.settings.AppSettings
 import app.aroma.data.settings.SettingsRepository
@@ -39,6 +42,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,7 +62,6 @@ class AppContainer(context: Context) {
             appContext.preferencesDataStoreFile("aroma")
         }
     private val database = Room.databaseBuilder(appContext, AromaDatabase::class.java, "aroma.db").build()
-    private val cache = JsonCache(database.cache())
 
     val settings = SettingsRepository(dataStore)
 
@@ -66,22 +72,24 @@ class AppContainer(context: Context) {
     /** How Aroma names itself: to Mealie, and to a platform whose embed shows a post only to apps, not to browsers. */
     private val appUserAgent = "Aroma/${BuildConfig.VERSION_NAME} (Android ${Build.VERSION.RELEASE})"
 
-    // The client reads the session only when it sends a request, after both exist.
+    // The client reads the session, and tells the connection what became of a request, only when it
+    // sends one, after all three exist.
     val clients: MealieClientFactory =
-        MealieClientFactory(appUserAgent) { sessions.credentials() }
+        MealieClientFactory(appUserAgent, answers = { if (it) connection.answered() else connection.unanswered() }) {
+            sessions.credentials()
+        }
     val sessions: SessionManager = SessionManager(SessionStore(dataStore, KeystoreCipher()), clients)
 
+    /** Whether Mealie answers, as the phone's networks and every request tell. */
+    val connection = ServerConnection(ConnectivityNetworkMonitor(appContext), scope) { sessions.api().about() }
+    private val cache = JsonCache(database.cache(), connection)
+
     val auth = AuthRepository(clients, sessions, database, deviceName = Build.MODEL)
-    val recipes = RecipeRepository(sessions, database.recipes(), cache)
+    val recipes = RecipeRepository(sessions, database.recipes(), cache, connection)
     val mealPlans = MealPlanRepository(sessions, cache)
-    val timeline = TimelineRepository(sessions, recipes)
+    val timeline = TimelineRepository(sessions, recipes, connection)
     val shopping: ShoppingRepository =
-        ShoppingRepository(sessions, database.cache(), cache, database.pendingChanges()) {
-            scope.launch {
-                val done = attempt { shopping.sync() }.getOrDefault(false)
-                if (!done) ShoppingSyncWorker.enqueue(appContext)
-            }
-        }
+        ShoppingRepository(sessions, database.cache(), cache, database.pendingChanges(), connection, ::syncShopping)
     val timers = CookingTimers(appContext, scope)
     val updates = Updates(clients.httpClient, BuildConfig.VERSION_NAME, appContext.cacheDir.resolve("update"), scope, appContext::isAroma)
 
@@ -105,6 +113,32 @@ class AppContainer(context: Context) {
         )
 
     val reworks = RecipeReworks(appContext, RecipeReworker(recipes, resources = { appContext.inAppLanguage().resources }))
+
+    init {
+        // Another account's server is taken to answer until a request finds otherwise.
+        scope.launch {
+            sessions.state
+                .map { (it as? SessionState.SignedIn)?.session?.serverUrl }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { connection.reset() }
+        }
+        // Changes made to a shopping list while Mealie was out of reach go out as soon as it answers.
+        scope.launch {
+            connection.isReachable
+                .drop(1)
+                .filter { it }
+                .collect { syncShopping() }
+        }
+    }
+
+    /** Sends the shopping list changes waiting for Mealie, or has Android send them once it answers. */
+    private fun syncShopping() {
+        scope.launch {
+            val done = attempt { shopping.sync() }.getOrDefault(false)
+            if (!done) ShoppingSyncWorker.enqueue(appContext)
+        }
+    }
 
     /**
      * Signs out and removes the account's traces from this device, as the sign-out dialog

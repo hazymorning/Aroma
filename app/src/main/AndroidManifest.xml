@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Whether the phone has a network, to show what is stored at once without one and refresh once one joins. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- An import keeps running, with a notification, after the user leaves its screen. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

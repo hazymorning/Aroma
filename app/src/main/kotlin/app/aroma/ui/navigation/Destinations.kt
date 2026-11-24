@@ -129,7 +129,7 @@ fun LoginDestination() {
 
 @Composable
 fun HomeDestination(nav: NavController, snackbar: SnackbarHostState, onSearch: () -> Unit) {
-    val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, sessions, auth, ratingReminder) }
+    val vm = aromaViewModel { HomeViewModel(recipes, mealPlans, sessions, auth, ratingReminder, connection) }
     val state by vm.state.collectAsStateWithLifecycle()
     val menu = remember { RecipeMenuState() }
     val favorites = stringResource(R.string.home_favorites)
@@ -162,7 +162,7 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
     if (focusSearch) section = RecipesSection.All
     when (section) {
         RecipesSection.All -> {
-            val vm = aromaViewModel { RecipesViewModel(recipes) }
+            val vm = aromaViewModel { RecipesViewModel(recipes, connection) }
             val state by vm.state.collectAsStateWithLifecycle()
             val focus = remember { FocusRequester() }
             val consumeFocusSearch by rememberUpdatedState(onFocusSearchConsume)
@@ -196,7 +196,7 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
         }
 
         RecipesSection.Cookbooks -> {
-            val vm = aromaViewModel { CookbookShelfViewModel(recipes) }
+            val vm = aromaViewModel { CookbookShelfViewModel(recipes, connection) }
             val state by vm.state.collectAsStateWithLifecycle()
             CookbookShelf(
                 state = state,
@@ -207,7 +207,7 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
         }
 
         RecipesSection.Timeline -> {
-            val vm = aromaViewModel { TimelineViewModel(timeline) }
+            val vm = aromaViewModel { TimelineViewModel(timeline, connection) }
             val state by vm.state.collectAsStateWithLifecycle()
             Timeline(
                 state = state,
@@ -227,11 +227,11 @@ fun CollectionDestination(route: CollectionRoute, nav: NavController, snackbar: 
         aromaViewModel {
             val organizer = setOf(Organizer(route.id, route.name, ""))
             when (route.kind) {
-                CollectionKind.Cookbook -> RecipesViewModel(recipes, cookbook = route.id)
-                CollectionKind.Favorites -> RecipesViewModel(recipes, RecipeFilter(favoritesOnly = true))
-                CollectionKind.Category -> RecipesViewModel(recipes, RecipeFilter(categories = organizer))
-                CollectionKind.Tag -> RecipesViewModel(recipes, RecipeFilter(tags = organizer))
-                CollectionKind.Tool -> RecipesViewModel(recipes, RecipeFilter(tools = organizer))
+                CollectionKind.Cookbook -> RecipesViewModel(recipes, connection, cookbook = route.id)
+                CollectionKind.Favorites -> RecipesViewModel(recipes, connection, RecipeFilter(favoritesOnly = true))
+                CollectionKind.Category -> RecipesViewModel(recipes, connection, RecipeFilter(categories = organizer))
+                CollectionKind.Tag -> RecipesViewModel(recipes, connection, RecipeFilter(tags = organizer))
+                CollectionKind.Tool -> RecipesViewModel(recipes, connection, RecipeFilter(tools = organizer))
             }
         }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -259,7 +259,7 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
     val target = menu.recipe ?: return
     val vm =
         aromaViewModel(key = "menu-${target.slug}") {
-            RecipeViewModel(target.slug, recipes, reworks, shopping, mealPlans, sessions, settings, it)
+            RecipeViewModel(target.slug, recipes, reworks, shopping, mealPlans, sessions, settings, connection, it)
         }
     val state by vm.state.collectAsStateWithLifecycle()
     val lists by vm.shoppingLists.collectAsStateWithLifecycle()
@@ -370,7 +370,7 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
 
 @Composable
 fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostState) {
-    val vm = aromaViewModel { RecipeViewModel(slug, recipes, reworks, shopping, mealPlans, sessions, settings, it) }
+    val vm = aromaViewModel { RecipeViewModel(slug, recipes, reworks, shopping, mealPlans, sessions, settings, connection, it) }
     val state by vm.state.collectAsStateWithLifecycle()
     val rework by vm.rework.collectAsStateWithLifecycle()
     val lists by vm.shoppingLists.collectAsStateWithLifecycle()
@@ -505,7 +505,7 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
 
 @Composable
 fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
-    val vm = aromaViewModel { MealPlanViewModel(mealPlans, recipes, shopping, settings) }
+    val vm = aromaViewModel { MealPlanViewModel(mealPlans, recipes, shopping, settings, connection) }
     val state by vm.state.collectAsStateWithLifecycle()
     val search by vm.search.collectAsStateWithLifecycle()
     val resources = LocalResources.current
@@ -583,7 +583,7 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState) {
 /** The shopping tab; [request] asks once for a widget's list, and with its "+" for the field that adds to it. */
 @Composable
 fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -> Unit) {
-    val vm = aromaViewModel { ShoppingViewModel(shopping, settings) }
+    val vm = aromaViewModel { ShoppingViewModel(shopping, settings, connection) }
     val state by vm.state.collectAsStateWithLifecycle()
     val resources = LocalResources.current
     val snackbar = remember { SnackbarHostState() }

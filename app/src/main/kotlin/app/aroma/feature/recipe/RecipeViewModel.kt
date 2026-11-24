@@ -8,6 +8,7 @@ import app.aroma.core.model.MealType
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.data.attempt
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.repository.ShoppingRepository
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -66,6 +68,7 @@ class RecipeViewModel(
     private val mealPlans: MealPlanRepository,
     private val sessions: SessionManager,
     private val settings: SettingsRepository,
+    private val connection: ServerConnection,
     private val saved: SavedStateHandle,
 ) : ViewModel() {
     /**
@@ -106,6 +109,12 @@ class RecipeViewModel(
 
     init {
         load()
+        viewModelScope.launch {
+            // Mealie answers again: load anew. Out of reach: what shows is the phone's copy.
+            connection.isReachable.drop(1).collect { reachable ->
+                if (reachable) load() else mutableState.update { it.copy(isOffline = true) }
+            }
+        }
         viewModelScope.launch {
             recipes.ratings.collect { ratings ->
                 mutableState.update { state ->

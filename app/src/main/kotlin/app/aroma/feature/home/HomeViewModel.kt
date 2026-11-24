@@ -8,6 +8,7 @@ import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
 import app.aroma.data.Loadable
 import app.aroma.data.isConnectivity
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.repository.AuthRepository
 import app.aroma.data.repository.MealPlanRepository
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -39,6 +41,7 @@ class HomeViewModel(
     private val sessions: SessionManager,
     private val auth: AuthRepository,
     private val reminder: RatingReminder,
+    private val connection: ServerConnection,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(HomeUiState(greeting = greetingFor(LocalTime.now(clock))))
@@ -51,6 +54,11 @@ class HomeViewModel(
         watchUser()
         watchReminder()
         viewModelScope.launch { recipes.changes.collect { load(refreshing = false) } }
+        viewModelScope.launch {
+            connection.isReachable.drop(1).collect { reachable ->
+                if (reachable) load(refreshing = false) else mutableState.update { it.copy(isOffline = true) }
+            }
+        }
     }
 
     private fun watchUser() {
@@ -132,24 +140,35 @@ class HomeViewModel(
                 greeting = greetingFor(LocalTime.now(clock)),
             )
         }
-        var pending = 5
-
-        fun finished() {
-            pending--
-            if (pending == 0) mutableState.update { it.copy(isLoading = false, isRefreshing = false) }
-        }
+        // The page shows as soon as every section has something to show, from the phone's copy or from
+        // Mealie; a pull to refresh ends once every section has heard from Mealie or found it out of reach.
+        val sections = Sections(count = 5)
         val meal = Meal.at(LocalTime.now(clock))
         loads =
             listOf(
                 viewModelScope.launch { refreshUser() },
-                collect(mealPlans.range(today, 1), ::finished) { copy(today = it) },
-                collect(suggestions(meal, today), ::finished) { (forMeal, list) ->
+                collect(mealPlans.range(today, 1), sections) { copy(today = it) },
+                collect(suggestions(meal, today), sections) { (forMeal, list) ->
                     copy(meal = meal, suggestionsForMeal = forMeal, suggestions = list)
                 },
-                collect(recipes.cookedLongAgo(since = today.minusWeeks(4), day = today), ::finished) { copy(cookedLongAgo = it) },
-                collect(recipes.recent(), ::finished) { copy(recent = it) },
-                collect(recipes.favorites(fresh = refreshing), ::finished) { copy(favorites = it) },
+                collect(recipes.cookedLongAgo(since = today.minusWeeks(4), day = today), sections) { copy(cookedLongAgo = it) },
+                collect(recipes.recent(), sections) { copy(recent = it) },
+                collect(recipes.favorites(fresh = refreshing), sections) { copy(favorites = it) },
             )
+    }
+
+    /** Counts down the sections of one load, all on the main thread. */
+    private inner class Sections(count: Int) {
+        private var unshown = count
+        private var unsettled = count
+
+        fun shown() {
+            if (--unshown == 0) mutableState.update { it.copy(isLoading = false) }
+        }
+
+        fun settled() {
+            if (--unsettled == 0) mutableState.update { it.copy(isRefreshing = false) }
+        }
     }
 
     /** Today's choice for [meal]; any recipes, and false, where the household has no category or tag for it. */
@@ -174,21 +193,27 @@ class HomeViewModel(
         }
     }
 
-    private fun <T> collect(source: Flow<Loadable<T>>, done: () -> Unit, apply: HomeUiState.(T) -> HomeUiState): Job =
+    private fun <T> collect(source: Flow<Loadable<T>>, sections: Sections, apply: HomeUiState.(T) -> HomeUiState): Job =
         viewModelScope.launch {
-            var reported = false
+            var shown = false
+            var settled = false
             source
                 .catch { error ->
                     val failure = error.toAromaError()
                     mutableState.update { it.copy(error = failure, isOffline = it.isOffline || failure.isConnectivity) }
                 }.collect { loadable ->
                     mutableState.update { it.apply(loadable.data).copy(isOffline = it.isOffline || loadable.isOffline) }
-                    if (!loadable.isRefreshing && !reported) {
-                        reported = true
-                        done()
+                    if (!shown) {
+                        shown = true
+                        sections.shown()
+                    }
+                    if (!loadable.isRefreshing && !settled) {
+                        settled = true
+                        sections.settled()
                     }
                 }
-            if (!reported) done()
+            if (!shown) sections.shown()
+            if (!settled) sections.settled()
         }
 
     companion object {

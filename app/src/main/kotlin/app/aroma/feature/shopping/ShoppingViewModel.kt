@@ -7,6 +7,7 @@ import app.aroma.core.model.ShoppingList
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.data.attempt
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
@@ -34,7 +36,8 @@ sealed interface ShoppingEvent {
     data class Failed(val error: AromaError) : ShoppingEvent
 }
 
-class ShoppingViewModel(private val shopping: ShoppingRepository, private val settings: SettingsRepository) : ViewModel() {
+class ShoppingViewModel(private val shopping: ShoppingRepository, private val settings: SettingsRepository, connection: ServerConnection) :
+    ViewModel() {
     private val mutableState = MutableStateFlow(ShoppingUiState())
     val state: StateFlow<ShoppingUiState> = mutableState.asStateFlow()
 
@@ -51,6 +54,17 @@ class ShoppingViewModel(private val shopping: ShoppingRepository, private val se
 
     init {
         loadLists()
+        viewModelScope.launch {
+            // Mealie answers again: the lists and the list shown load anew. Out of reach: what shows is the phone's copy.
+            connection.isReachable.drop(1).collect { reachable ->
+                if (reachable) {
+                    loadLists()
+                    selectedId?.let { refreshList(it) }
+                } else {
+                    mutableState.update { it.copy(isOffline = true) }
+                }
+            }
+        }
     }
 
     private fun loadLists() =

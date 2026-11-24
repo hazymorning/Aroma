@@ -64,7 +64,11 @@ data class RecipeSummaryDto(
     val rating: Double? = null,
     val recipeCategory: List<OrganizerDto> = emptyList(),
     val tags: List<OrganizerDto> = emptyList(),
+    /** Kept with the offline copy, like the two times below, so the copy filters and sorts as Mealie does. */
+    val tools: List<OrganizerDto> = emptyList(),
     val dateAdded: String? = null,
+    val createdAt: String? = null,
+    val lastMade: String? = null,
     /** When the recipe last changed, to refresh offline copies only when needed. */
     val updatedAt: String? = null,
 )

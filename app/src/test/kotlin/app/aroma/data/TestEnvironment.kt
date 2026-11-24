@@ -5,6 +5,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.aroma.data.local.AromaDatabase
+import app.aroma.data.network.NetworkMonitor
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.remote.MealieClientFactory
 import app.aroma.data.repository.AuthRepository
 import app.aroma.data.repository.MealPlanRepository
@@ -13,6 +15,11 @@ import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.session.SecretCipher
 import app.aroma.data.session.SessionManager
 import app.aroma.data.session.SessionStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
 import java.util.UUID
 
@@ -27,19 +34,35 @@ class TestEnvironment {
             .allowMainThreadQueries()
             .build()
 
-    val clients: MealieClientFactory = MealieClientFactory("Aroma-Test") { sessions.credentials() }
-    val sessions: SessionManager = SessionManager(SessionStore(PreferenceDataStoreFactory.create { dataStoreFile }, PlainCipher), clients)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val cache = JsonCache(database.cache())
+    /** The phone's network, on unless a test takes it away. */
+    val network = TestNetwork()
+
+    val clients: MealieClientFactory =
+        MealieClientFactory(
+            "Aroma-Test",
+            answers = { if (it) connection.answered() else connection.unanswered() },
+        ) { sessions.credentials() }
+    val sessions: SessionManager = SessionManager(SessionStore(PreferenceDataStoreFactory.create { dataStoreFile }, PlainCipher), clients)
+    val connection = ServerConnection(network, scope) { sessions.api().about() }
+
+    private val cache = JsonCache(database.cache(), connection)
     val auth = AuthRepository(clients, sessions, database, deviceName = "Test")
-    val recipes = RecipeRepository(sessions, database.recipes(), cache)
+    val recipes = RecipeRepository(sessions, database.recipes(), cache, connection)
     val mealPlans = MealPlanRepository(sessions, cache)
     var syncRequests = 0
-    val shopping = ShoppingRepository(sessions, database.cache(), cache, database.pendingChanges()) { syncRequests++ }
+    val shopping = ShoppingRepository(sessions, database.cache(), cache, database.pendingChanges(), connection) { syncRequests++ }
 
     fun close() {
+        scope.cancel()
         database.close()
         dataStoreFile.delete()
+    }
+
+    /** A network that is there or not as a test says; [online] set to true again counts as another one joining. */
+    class TestNetwork : NetworkMonitor {
+        override val isOnline = MutableStateFlow(true)
     }
 
     private object PlainCipher : SecretCipher {

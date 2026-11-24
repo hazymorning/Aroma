@@ -11,11 +11,13 @@ import app.aroma.core.model.UserRating
 import app.aroma.data.AromaError
 import app.aroma.data.JsonCache
 import app.aroma.data.Loadable
+import app.aroma.data.attempt
 import app.aroma.data.isConnectivity
 import app.aroma.data.local.RecipeDao
 import app.aroma.data.local.RecipeDetailEntity
 import app.aroma.data.local.RecipeSummaryEntity
 import app.aroma.data.mealieCall
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.remote.ImportStream
 import app.aroma.data.remote.MealieApi
 import app.aroma.data.remote.MealieJson
@@ -44,6 +46,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -52,6 +55,7 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -60,11 +64,18 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import retrofit2.HttpException
 import java.io.File
+import java.text.Collator
 import java.time.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
-class RecipeRepository(private val sessions: SessionManager, private val dao: RecipeDao, private val cache: JsonCache) {
+class RecipeRepository(
+    private val sessions: SessionManager,
+    private val dao: RecipeDao,
+    private val cache: JsonCache,
+    private val connection: ServerConnection,
+) {
     private val mutableRatings = MutableStateFlow<Map<String, UserRating>>(emptyMap())
 
     /** The signed-in user's ratings and favorites by recipe id. */
@@ -88,70 +99,120 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
 
     private fun changed() = changeCount.update { it + 1 }
 
+    /**
+     * A page of the recipes [query] asks for. While Mealie is out of reach, the first page holds all
+     * the stored recipes that match, at once; see [storedPage].
+     */
     suspend fun page(query: RecipeQuery, page: Int, perPage: Int = PAGE_SIZE): RecipePage {
         val server = sessions.requireServerUrl()
         return try {
-            val favoriteFilter =
-                if (query.favoritesOnly) {
-                    val ids = loadRatings().filterValues { it.isFavorite }.keys
-                    if (ids.isEmpty()) return RecipePage(emptyList(), 0, page, hasMore = false, isOffline = false)
-                    idsFilter(ids)
-                } else {
-                    null
-                }
-            val (orderBy, direction) =
-                when (query.sort) {
-                    RecipeSort.Newest -> "created_at" to "desc"
-                    RecipeSort.Name -> "name" to "asc"
-                    RecipeSort.Rating -> "rating" to "desc"
-                    RecipeSort.LastMade -> "last_made" to "desc"
-                    RecipeSort.Random -> "random" to "asc"
-                }
-            val result =
-                sessions.api().recipes(
-                    page = page,
-                    perPage = perPage,
-                    orderBy = orderBy,
-                    orderDirection = direction,
-                    search = query.search.trim().ifEmpty { null },
-                    categories = query.categories.ifEmpty { null },
-                    tags = query.tags.ifEmpty { null },
-                    tools = query.tools.ifEmpty { null },
-                    cookbook = query.cookbook,
-                    queryFilter =
-                        listOfNotNull(favoriteFilter, query.mealNames.takeIf { it.isNotEmpty() }?.let(::namesFilter))
-                            .takeIf { it.isNotEmpty() }
-                            ?.joinToString(" AND ") { "($it)" },
-                    paginationSeed = query.seed.takeIf { query.sort == RecipeSort.Random },
-                )
-            // Screens ask from the main thread; encoding the offline copy and mapping are not for it.
-            val (entities, items) =
-                withContext(Dispatchers.Default) {
-                    result.items.map { it.toEntity() } to
-                        result.items.map { it.toModel(server) }
-                }
-            dao.upsertSummaries(entities)
-            RecipePage(items, result.total, page, page < result.totalPages, isOffline = false)
+            connection.whileReachable { serverPage(query, page, perPage, server) }
         } catch (error: Throwable) {
             val failure = error.toAromaError()
-            // The stored summaries know neither cookbooks nor tools, so those cannot be answered offline.
-            if (!failure.isConnectivity || page > 1 || query.cookbook != null || query.tools.isNotEmpty()) throw failure
-            offlinePage(query, server)
+            if (!failure.isConnectivity || page > 1) throw failure
+            storedPage(query) ?: throw failure
         }
     }
 
-    private suspend fun offlinePage(query: RecipeQuery, server: String): RecipePage {
-        val stored = dao.search(query.search.trim(), limit = 500)
-        val local = withContext(Dispatchers.Default) { stored.map { decodeSummary(it).toModel(server) } }
-        val favorites = ratings.value.filterValues { it.isFavorite }.keys
-        val filtered =
-            local.filter { recipe ->
-                (!query.favoritesOnly || recipe.id in favorites) &&
-                    (query.mealNames.isEmpty() || (recipe.categories + recipe.tags).any { it.name in query.mealNames }) &&
-                    query.categories.all { slug -> recipe.categories.any { it.slug == slug || it.id == slug } } &&
-                    query.tags.all { slug -> recipe.tags.any { it.slug == slug || it.id == slug } }
+    private suspend fun serverPage(query: RecipeQuery, page: Int, perPage: Int, server: String): RecipePage {
+        val favoriteFilter =
+            if (query.favoritesOnly) {
+                val ids = loadRatings().filterValues { it.isFavorite }.keys
+                if (ids.isEmpty()) return RecipePage(emptyList(), 0, page, hasMore = false, isOffline = false)
+                idsFilter(ids)
+            } else {
+                null
             }
-        return RecipePage(filtered, filtered.size, 1, hasMore = false, isOffline = true)
+        val (orderBy, direction) =
+            when (query.sort) {
+                RecipeSort.Newest -> "created_at" to "desc"
+                RecipeSort.Name -> "name" to "asc"
+                RecipeSort.Rating -> "rating" to "desc"
+                RecipeSort.LastMade -> "last_made" to "desc"
+                RecipeSort.Random -> "random" to "asc"
+            }
+        val result =
+            sessions.api().recipes(
+                page = page,
+                perPage = perPage,
+                orderBy = orderBy,
+                orderDirection = direction,
+                search = query.search.trim().ifEmpty { null },
+                categories = query.categories.ifEmpty { null },
+                tags = query.tags.ifEmpty { null },
+                tools = query.tools.ifEmpty { null },
+                cookbook = query.cookbook,
+                queryFilter =
+                    listOfNotNull(favoriteFilter, query.mealNames.takeIf { it.isNotEmpty() }?.let(::namesFilter))
+                        .takeIf { it.isNotEmpty() }
+                        ?.joinToString(" AND ") { "($it)" },
+                paginationSeed = query.seed.takeIf { query.sort == RecipeSort.Random },
+            )
+        // Screens ask from the main thread; encoding the offline copy and mapping are not for it.
+        val (entities, items) =
+            withContext(Dispatchers.Default) {
+                result.items.map { it.toEntity() } to
+                    result.items.map { it.toModel(server) }
+            }
+        dao.upsertSummaries(entities)
+        if (query.cookbook != null && query.isWholeCollection) {
+            rememberCookbook(query.cookbook, result.items.map { it.id }, whole = page == 1 && result.totalPages <= 1)
+        }
+        return RecipePage(items, result.total, page, page < result.totalPages, isOffline = false)
+    }
+
+    /**
+     * All the stored recipes [query] asks for, filtered and sorted on the phone as Mealie would, or
+     * null for a cookbook the phone does not know the recipes of. It never waits for Mealie.
+     */
+    suspend fun storedPage(query: RecipeQuery): RecipePage? {
+        val server = sessions.requireServerUrl()
+        val cookbook = query.cookbook?.let { id -> cache.read(cookbookKey(id), IdsSerializer)?.toSet() ?: return null }
+        val favorites =
+            if (query.favoritesOnly) {
+                attempt { loadRatings() }.getOrDefault(ratings.value).filterValues { it.isFavorite }.keys
+            } else {
+                emptySet()
+            }
+        val stored = dao.search(query.search.trim(), limit = STORED_LIMIT)
+        val items =
+            withContext(Dispatchers.Default) {
+                stored
+                    .map(::decodeSummary)
+                    .filter { recipe ->
+                        (cookbook == null || recipe.id in cookbook) &&
+                            (!query.favoritesOnly || recipe.id in favorites) &&
+                            (query.mealNames.isEmpty() || (recipe.recipeCategory + recipe.tags).any { it.name in query.mealNames }) &&
+                            query.categories.all { wanted -> recipe.recipeCategory.any { it.slug == wanted || it.id == wanted } } &&
+                            query.tags.all { wanted -> recipe.tags.any { it.slug == wanted || it.id == wanted } } &&
+                            query.tools.all { wanted -> recipe.tools.any { it.slug == wanted || it.id == wanted } }
+                    }.sortedFor(query)
+                    .map { it.toModel(server) }
+            }
+        return RecipePage(items, items.size, 1, hasMore = false, isOffline = true)
+    }
+
+    /** Mealie's order for [query]; Mealie's random order cannot be known here, so the copy shuffles by the same seed. */
+    private fun List<RecipeSummaryDto>.sortedFor(query: RecipeQuery): List<RecipeSummaryDto> =
+        when (query.sort) {
+            RecipeSort.Newest -> sortedByDescending { it.createdAt ?: it.dateAdded }
+            RecipeSort.Name -> sortedWith(compareBy(Collator.getInstance()) { it.name })
+            RecipeSort.Rating -> sortedByDescending { it.rating ?: 0.0 }
+            RecipeSort.LastMade -> sortedByDescending { it.lastMade }
+            RecipeSort.Random -> shuffled(Random(query.seed.hashCode()))
+        }
+
+    /** Whether [this] asks for a whole cookbook, not for some of its recipes. */
+    private val RecipeQuery.isWholeCollection: Boolean
+        get() = search.isBlank() && !favoritesOnly && categories.isEmpty() && tags.isEmpty() && tools.isEmpty() && mealNames.isEmpty()
+
+    /**
+     * Notes which recipes a cookbook holds, for the stored copy to show it offline. A page of a
+     * larger cookbook only adds to what is noted; the offline download notes every cookbook whole.
+     */
+    private suspend fun rememberCookbook(id: String, recipeIds: List<String>, whole: Boolean) {
+        val noted = if (whole) emptyList() else cache.read(cookbookKey(id), IdsSerializer).orEmpty()
+        cache.write(cookbookKey(id), IdsSerializer, (noted + recipeIds).distinct())
     }
 
     fun recent(limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
@@ -242,15 +303,18 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
             }.map { loadable -> Loadable(loadable.data.map { it.toModel(server) }, loadable.isRefreshing, loadable.error) }
     }
 
-    /** Cached copy first, then the server's. Keeps working offline for recipes opened before. */
+    /**
+     * Cached copy first, then the server's. Keeps working offline for recipes opened before, and
+     * shows the cached copy alone, at once, while Mealie is out of reach.
+     */
     fun recipe(slug: String): Flow<Loadable<Recipe>> =
         flow {
             val server = sessions.requireServerUrl()
             val cached = dao.detail(slug)?.let { decodeRecipe(it.json)?.toModel(server) }
-            if (cached != null) emit(Loadable(cached, isRefreshing = true))
+            if (cached != null && connection.isReachable.value) emit(Loadable(cached, isRefreshing = true))
             val fresh =
                 try {
-                    fetchAndStore(slug)
+                    connection.whileReachable { fetchAndStore(slug) }
                 } catch (error: Throwable) {
                     val failure = error.toAromaError()
                     if (cached == null) throw failure
@@ -274,14 +338,14 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
     /**
      * The user's ratings and favorites, fetched once a session: Mealie sends them all in one answer,
      * and changes made here keep them current. [fresh] fetches them again, for a pull to refresh.
+     * Ratings from the phone's copy, kept while Mealie was out of reach, are asked for again next time.
      */
     suspend fun loadRatings(fresh: Boolean = false): Map<String, UserRating> {
         val session = sessions.current
         if (!fresh && session != null && session == ratingsSession) return ratings.value
-        var latest: List<RatingDto> = emptyList()
-        cache.stream("ratings", ListSerializer(RatingDto.serializer())) { sessions.api().ratings().ratings }.collect { latest = it.data }
-        ratingsSession = session
-        return latest
+        val latest = cache.stream("ratings", ListSerializer(RatingDto.serializer())) { sessions.api().ratings().ratings }.last()
+        if (latest.error == null) ratingsSession = session
+        return latest.data
             .associate { it.recipeId to UserRating(it.rating?.takeIf { r -> r > 0 }, it.isFavorite) }
             .also { mutableRatings.value = it }
     }
@@ -541,7 +605,8 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
 
     /**
      * Keeps a copy of every recipe for offline use: fetches new and changed ones a few at a time
-     * and forgets the ones deleted or renamed on the server. Returns how many are stored.
+     * and forgets the ones deleted or renamed on the server. Notes which recipes each cookbook holds,
+     * so cookbooks open offline too.
      */
     suspend fun downloadAll() {
         val listing = mealieCall { sessions.api().recipes(page = 1, perPage = -1, orderBy = "name", orderDirection = "asc") }.items
@@ -572,6 +637,13 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
                 }
             }
         }
+        // The next run tries again; the recipes are kept all the same.
+        attempt {
+            val api = sessions.api()
+            api.cookbooks().items.forEach { book ->
+                rememberCookbook(book.id, api.recipes(page = 1, perPage = -1, cookbook = book.id).items.map { it.id }, whole = true)
+            }
+        }
     }
 
     fun offlineCount(): Flow<Int> = dao.detailCount()
@@ -591,6 +663,13 @@ class RecipeRepository(private val sessions: SessionManager, private val dao: Re
 
     companion object {
         const val PAGE_SIZE = 30
+
+        /** More recipes than a household keeps, so the stored copy shows them all. */
+        private const val STORED_LIMIT = 10_000
+
+        private val IdsSerializer = ListSerializer(String.serializer())
+
+        private fun cookbookKey(id: String) = "cookbook-recipes:$id"
 
         private const val PARALLEL_DOWNLOADS = 4
 

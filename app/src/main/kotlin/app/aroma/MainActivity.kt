@@ -15,7 +15,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.aroma.data.session.SessionState
 import app.aroma.data.settings.ThemeMode
 import app.aroma.ui.navigation.AromaNavHost
@@ -25,6 +28,7 @@ import app.aroma.ui.navigation.Shortcut
 import app.aroma.ui.theme.AromaTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private val launch = MutableStateFlow<LaunchRequest?>(null)
@@ -41,6 +45,8 @@ class MainActivity : AppCompatActivity() {
                 .first()
                 .checkUpdatesAtStart
         }
+        // Only while the app is in view does Aroma keep asking a server out of reach whether it answers again.
+        lifecycleScope.launch { repeatOnLifecycle(Lifecycle.State.STARTED) { container.connection.askWhileInView() } }
 
         setContent {
             val settings = container.appSettings.collectAsStateWithLifecycle().value ?: return@setContent

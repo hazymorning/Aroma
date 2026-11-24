@@ -9,6 +9,7 @@ import app.aroma.core.model.RecipeSummary
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.data.attempt
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.repository.MealPlanRepository
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.repository.ShoppingRepository
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -52,6 +54,7 @@ class MealPlanViewModel(
     private val recipes: RecipeRepository,
     private val shopping: ShoppingRepository,
     private val settings: SettingsRepository,
+    private val connection: ServerConnection,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val today get() = LocalDate.now(clock)
@@ -78,6 +81,12 @@ class MealPlanViewModel(
     init {
         load(refreshing = false)
         observeSearch()
+        viewModelScope.launch {
+            // Mealie answers again: load anew. Out of reach: what shows is the phone's copy.
+            connection.isReachable.drop(1).collect { reachable ->
+                if (reachable) load(refreshing = false) else mutableState.update { it.copy(isOffline = true) }
+            }
+        }
     }
 
     fun previousWeek() = showWeek(state.value.weekStart.minusDays(7))

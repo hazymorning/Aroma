@@ -8,6 +8,7 @@ import app.aroma.core.model.OrganizerKind
 import app.aroma.core.model.Organizers
 import app.aroma.core.model.RecipeQuery
 import app.aroma.core.model.RecipeSort
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.FlowPreview
@@ -26,6 +27,7 @@ import java.util.UUID
 /** Search and filters for the recipe library. [initial] lets other screens open it pre-filtered. */
 class RecipesViewModel(
     private val recipes: RecipeRepository,
+    private val connection: ServerConnection,
     initial: RecipeFilter = RecipeFilter(),
     private val cookbook: String? = null,
 ) : ViewModel() {
@@ -42,6 +44,12 @@ class RecipesViewModel(
         loadOrganizers()
         observeQuery()
         viewModelScope.launch { recipes.changes.collect { reload() } }
+        viewModelScope.launch {
+            // Mealie answers again: load anew. Out of reach: what shows is the phone's copy.
+            connection.isReachable.drop(1).collect { reachable ->
+                if (reachable) reload() else mutableState.update { it.copy(isOffline = true) }
+            }
+        }
     }
 
     @OptIn(FlowPreview::class)

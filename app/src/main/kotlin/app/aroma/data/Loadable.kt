@@ -2,6 +2,7 @@ package app.aroma.data
 
 import app.aroma.data.local.CacheDao
 import app.aroma.data.local.CacheEntity
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.remote.MealieJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +18,7 @@ data class Loadable<T>(val data: T, val isRefreshing: Boolean = false, val error
 }
 
 /** Stores server responses as JSON so screens have something to show without a connection. */
-class JsonCache(private val dao: CacheDao) {
+class JsonCache(private val dao: CacheDao, private val connection: ServerConnection) {
     suspend fun <T> read(key: String, serializer: KSerializer<T>): T? =
         dao.get(key)?.let { entry ->
             runCatching { MealieJson.decodeFromString(serializer, entry.json) }.getOrNull()
@@ -37,15 +38,16 @@ class JsonCache(private val dao: CacheDao) {
 
     /**
      * Emits the cached copy first (if any), then the fresh one. Fails only when there is nothing
-     * to show. Decoding runs off the main thread, so screens stay smooth while lists arrive.
+     * to show. While Mealie is out of reach, the cached copy is all there is, at once and marked
+     * offline. Decoding runs off the main thread, so screens stay smooth while lists arrive.
      */
     fun <T> stream(key: String, serializer: KSerializer<T>, fetch: suspend () -> T): Flow<Loadable<T>> =
         flow<Loadable<T>> {
             val cached = read(key, serializer)
-            if (cached != null) emit(Loadable(cached, isRefreshing = true))
+            if (cached != null && connection.isReachable.value) emit(Loadable(cached, isRefreshing = true))
             val fresh =
                 try {
-                    fetch()
+                    connection.whileReachable { fetch() }
                 } catch (error: Throwable) {
                     val failure = error.toAromaError()
                     if (cached == null) throw failure

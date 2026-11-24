@@ -45,7 +45,7 @@ class LiveHouseholdTest {
     fun setUp() {
         assumeTrue("MEALIE_TEST_URL is not set", !url.isNullOrBlank())
         env = TestEnvironment()
-        timeline = TimelineRepository(env.sessions, env.recipes)
+        timeline = TimelineRepository(env.sessions, env.recipes, env.connection)
         runBlocking {
             val server = env.auth.probe(url!!.removePrefix("http://").removePrefix("https://"))
             env.auth.signIn(server, System.getenv("MEALIE_TEST_USER")!!, System.getenv("MEALIE_TEST_PASSWORD")!!)

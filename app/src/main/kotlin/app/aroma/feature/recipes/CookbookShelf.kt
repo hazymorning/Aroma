@@ -23,6 +23,7 @@ import app.aroma.R
 import app.aroma.core.model.Cookbook
 import app.aroma.core.model.CookbookCover
 import app.aroma.data.AromaError
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.toAromaError
 import app.aroma.ui.components.ErrorState
@@ -46,11 +47,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class CookbookShelfUiState(
     val cookbooks: List<CookbookCover> = emptyList(),
@@ -59,8 +64,18 @@ data class CookbookShelfUiState(
     val error: AromaError? = null,
 )
 
-class CookbookShelfViewModel(recipes: RecipeRepository) : ViewModel() {
+class CookbookShelfViewModel(recipes: RecipeRepository, connection: ServerConnection) : ViewModel() {
     private val reloads = MutableStateFlow(0)
+
+    init {
+        // Mealie answers again: the covers load anew.
+        viewModelScope.launch {
+            connection.isReachable
+                .drop(1)
+                .filter { it }
+                .collect { reload() }
+        }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val state: StateFlow<CookbookShelfUiState> =
@@ -71,6 +86,10 @@ class CookbookShelfViewModel(recipes: RecipeRepository) : ViewModel() {
                     .map { CookbookShelfUiState(it.data, isLoading = false, isOffline = it.isOffline) }
                     .onStart { emit(CookbookShelfUiState()) }
                     .catch { emit(CookbookShelfUiState(isLoading = false, error = it.toAromaError())) }
+            }
+            // Out of reach, the covers shown are the phone's copy.
+            .combine(connection.isReachable) { shelf, reachable ->
+                if (reachable || shelf.cookbooks.isEmpty()) shelf else shelf.copy(isOffline = true)
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CookbookShelfUiState())
 
     fun reload() = reloads.update { it + 1 }

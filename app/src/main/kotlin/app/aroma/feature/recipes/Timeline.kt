@@ -33,6 +33,7 @@ import app.aroma.core.model.ImageSize
 import app.aroma.core.model.RecipeSummary
 import app.aroma.core.model.TimelineEvent
 import app.aroma.data.AromaError
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.repository.TimelineRepository
 import app.aroma.ui.components.CardPart
 import app.aroma.ui.components.DayHeader
@@ -59,6 +60,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -74,7 +77,7 @@ data class TimelineUiState(
     val error: AromaError? = null,
 )
 
-class TimelineViewModel(private val timeline: TimelineRepository) : ViewModel() {
+class TimelineViewModel(private val timeline: TimelineRepository, connection: ServerConnection) : ViewModel() {
     private val mutableState = MutableStateFlow(TimelineUiState())
     val state: StateFlow<TimelineUiState> = mutableState.asStateFlow()
 
@@ -84,6 +87,13 @@ class TimelineViewModel(private val timeline: TimelineRepository) : ViewModel() 
     init {
         reload()
         viewModelScope.launch { timeline.changes.collect { reload() } }
+        // The timeline has no copy on the phone; one that could not load does once Mealie answers again.
+        viewModelScope.launch {
+            connection.isReachable
+                .drop(1)
+                .filter { it }
+                .collect { if (state.value.error != null) reload() }
+        }
     }
 
     fun reload() {

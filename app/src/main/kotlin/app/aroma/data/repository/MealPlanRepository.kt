@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -34,14 +35,19 @@ class MealPlanRepository(private val sessions: SessionManager, private val cache
         val server = sessions.requireServerUrl()
         val end = start.plusDays(days - 1)
         return cache
-            .stream("mealplan:$days", EntriesSerializer) {
-                sessions.api().mealPlans(start.toString(), end.toString()).items
+            .stream("mealplan:$days", PlanCopy.serializer()) {
+                PlanCopy(start.toString(), end.toString(), sessions.api().mealPlans(start.toString(), end.toString()).items)
             }.map { loadable ->
-                val entries = loadable.data.toEntries(server).filter { it.date in start..end }
-                Loadable(entries, loadable.isRefreshing, loadable.error)
+                val entries =
+                    loadable.data.entries
+                        .toEntries(server)
+                        .filter { it.date in start..end }
+                Loadable(entries, loadable.isRefreshing, loadable.error) to loadable.data.covers(start, end)
             }
-            // A copy of other days has nothing here and would only flash an empty plan before the answer.
-            .filterNot { it.isRefreshing && it.data.isEmpty() }
+            // A copy of other days has nothing here and would only flash an empty plan before the answer;
+            // a copy of these very days with nothing planned is the plan as it is.
+            .filterNot { (plan, covered) -> plan.isRefreshing && plan.data.isEmpty() && !covered }
+            .map { (plan, _) -> plan }
     }
 
     /**
@@ -95,6 +101,12 @@ class MealPlanRepository(private val sessions: SessionManager, private val cache
         }.also { changed() }
 
     private fun changed() = changeCount.update { it + 1 }
+
+    /** The plan for the days from [start] to [end] as Mealie had it. */
+    @Serializable
+    private data class PlanCopy(val start: String, val end: String, val entries: List<MealPlanEntryDto>) {
+        fun covers(from: LocalDate, to: LocalDate): Boolean = LocalDate.parse(start) <= from && to <= LocalDate.parse(end)
+    }
 
     private companion object {
         const val UPCOMING_KEY = "mealplan:upcoming"

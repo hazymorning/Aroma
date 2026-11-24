@@ -1,5 +1,7 @@
 package app.aroma.data.remote
 
+import app.aroma.data.isConnectivity
+import app.aroma.data.toAromaError
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
@@ -8,6 +10,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Response
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -22,15 +25,27 @@ val MealieJson =
 /** Server and token of the signed-in account. */
 data class Credentials(val server: HttpUrl, val token: String)
 
-/** Holds the app's HTTP client and creates Mealie APIs on it. Credentials are read on every request. */
-class MealieClientFactory(private val userAgent: String, private val credentials: () -> Credentials?) {
-    /** Shared client, also used by the image loader so both honor user-installed certificates. */
+/**
+ * Holds the app's HTTP client and creates Mealie APIs on it. Credentials are read on every request,
+ * and [answers] learns of every request to the signed-in server whether Mealie answered it.
+ */
+class MealieClientFactory(
+    private val userAgent: String,
+    private val answers: (Boolean) -> Unit = {},
+    private val credentials: () -> Credentials?,
+) {
+    /**
+     * Shared client, also used by the image loader so both honor user-installed certificates. A
+     * server that answers at all opens a connection within seconds, even over a slow mobile network;
+     * on a network that cannot reach it, a request gives up after the connect timeout.
+     */
     val httpClient: OkHttpClient =
         OkHttpClient
             .Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
+            .addInterceptor(AnswerInterceptor())
             .addInterceptor(HeadersInterceptor())
             .addInterceptor(ImportTimeouts)
             .build()
@@ -43,6 +58,24 @@ class MealieClientFactory(private val userAgent: String, private val credentials
             .addConverterFactory(MealieJson.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(MealieApi::class.java)
+
+    /** A request called off here, as its screen went away, tells nothing about Mealie. */
+    private inner class AnswerInterceptor : Interceptor {
+        override fun intercept(chain: Interceptor.Chain): Response {
+            val request = chain.request()
+            val server = credentials()?.server
+            if (server == null || !request.url.belongsTo(server)) return chain.proceed(request)
+            val response =
+                try {
+                    chain.proceed(request)
+                } catch (error: IOException) {
+                    if (!chain.call().isCanceled() && error.toAromaError().isConnectivity) answers(false)
+                    throw error
+                }
+            answers(true)
+            return response
+        }
+    }
 
     private inner class HeadersInterceptor : Interceptor {
         override fun intercept(chain: Interceptor.Chain): Response {

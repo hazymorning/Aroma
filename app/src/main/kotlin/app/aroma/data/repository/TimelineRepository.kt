@@ -2,6 +2,7 @@ package app.aroma.data.repository
 
 import app.aroma.core.model.TimelinePage
 import app.aroma.data.mealieCall
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.remote.dto.CreateTimelineEventDto
 import app.aroma.data.remote.dto.LastMadeDto
 import app.aroma.data.remote.toModel
@@ -14,16 +15,23 @@ import kotlinx.coroutines.flow.update
 import java.time.Instant
 
 /** What happened to the household's recipes, as Mealie's timeline keeps it. */
-class TimelineRepository(private val sessions: SessionManager, private val recipes: RecipeRepository) {
+class TimelineRepository(
+    private val sessions: SessionManager,
+    private val recipes: RecipeRepository,
+    private val connection: ServerConnection,
+) {
     private val changeCount = MutableStateFlow(0)
 
     /** Fires once an entry was written here, so the timeline loads again. */
     val changes: Flow<Unit> = changeCount.drop(1).map { }
 
-    /** One page of events, newest first; events of recipes Aroma cannot see are left out. */
+    /**
+     * One page of events, newest first; events of recipes Aroma cannot see are left out. The phone
+     * keeps no copy, so while Mealie is out of reach it fails at once.
+     */
     suspend fun page(page: Int): TimelinePage =
         mealieCall {
-            val result = sessions.api().timeline(page = page, perPage = PAGE_SIZE)
+            val result = connection.whileReachable { sessions.api().timeline(page = page, perPage = PAGE_SIZE) }
             val byId = recipes.summaries(result.items.mapTo(mutableSetOf()) { it.recipeId })
             TimelinePage(
                 events = result.items.mapNotNull { event -> byId[event.recipeId]?.let(event::toModel) },

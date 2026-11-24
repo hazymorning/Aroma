@@ -13,6 +13,7 @@ import app.aroma.data.local.CacheEntity
 import app.aroma.data.local.PendingChangeDao
 import app.aroma.data.local.PendingChangeEntity
 import app.aroma.data.mealieCall
+import app.aroma.data.network.ServerConnection
 import app.aroma.data.remote.MealieJson
 import app.aroma.data.remote.dto.AddRecipeToListDto
 import app.aroma.data.remote.dto.CreateShoppingListDto
@@ -59,6 +60,7 @@ class ShoppingRepository(
     private val cacheDao: CacheDao,
     private val cache: JsonCache,
     private val pending: PendingChangeDao,
+    private val connection: ServerConnection,
     private val requestSync: () -> Unit,
 ) {
     private val editLock = Mutex()
@@ -82,11 +84,15 @@ class ShoppingRepository(
 
     fun pendingCount(listId: String): Flow<Int> = pending.countFor(listId)
 
-    /** Pushes queued changes, then loads the server's version unless changes are still waiting. */
-    suspend fun refresh(listId: String) {
-        sync()
-        storeIfSettled(listId, mealieCall { sessions.api().shoppingList(listId) })
-    }
+    /**
+     * Pushes queued changes, then loads the server's version unless changes are still waiting.
+     * While Mealie is out of reach, it fails at once: the cached list is all there is.
+     */
+    suspend fun refresh(listId: String) =
+        connection.whileReachable {
+            sync()
+            storeIfSettled(listId, mealieCall { sessions.api().shoppingList(listId) })
+        }
 
     suspend fun add(listId: String, text: String) =
         edit(listId) { list ->
