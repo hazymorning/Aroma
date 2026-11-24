@@ -1,0 +1,42 @@
+name: Prune releases
+
+# Started by hand (Actions > Prune releases > Run workflow): deletes every release but the newest
+# few, so the releases page and the update check only offer what is current. Their tags stay, so
+# an old version can still be found and published again.
+on:
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: How many of the newest releases to keep
+        required: true
+        default: "3"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Delete older releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: ${{ inputs.keep }}
+        run: |
+          if ! [[ "$KEEP" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::Keep at least one release, as a whole number."
+            exit 1
+          fi
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | .[].tagName' |
+            tail -n +"$((KEEP + 1))" |
+            while read -r tag; do
+              echo "Deleting the release $tag"
+              gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes
+            done
