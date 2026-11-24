@@ -60,6 +60,7 @@ import app.aroma.core.model.MealType
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
+import app.aroma.data.settings.HomeSection
 import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.BoxHeader
 import app.aroma.ui.components.ErrorState
@@ -146,6 +147,8 @@ data class HomeUiState(
     val recent: List<RecipeSummary> = emptyList(),
     /** What is still to buy on the shopping list in use. */
     val openItems: Int = 0,
+    /** What Home shows, as chosen in the settings. */
+    val sections: Set<HomeSection> = HomeSection.SHOWN_BY_DEFAULT,
     val toRate: RateReminder? = null,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -201,13 +204,13 @@ private val Meal.hour: Int
 /**
  * The start page: the greeting, today's meal as a box to cook from, the week at a glance, the
  * shopping list where something is still to buy, and inspiration in three formats below, each
- * recipe only once on the page.
+ * recipe only once on the page; the settings choose which of them it shows.
  */
 @Composable
 fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
     ScrollToTopOnReselect(listState)
-    val inspiration = remember(state.week, state.date, state.suggestions, state.quick, state.recent) { state.inspiration() }
+    val inspiration = remember(state.week, state.date, state.suggestions, state.quick, state.recent, state.sections) { state.inspiration() }
     AromaPullToRefreshBox(
         isRefreshing = state.isRefreshing,
         onRefresh = actions.onRefresh,
@@ -230,30 +233,38 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                 }
 
                 else -> {
-                    item(key = "today") {
-                        TodayBox(
-                            state = state,
-                            suggestions = inspiration.forToday,
-                            actions = actions,
-                            modifier =
-                                Modifier
-                                    .animateRow(this)
-                                    .measure()
-                                    .padding(horizontal = PageMargin),
-                        )
+                    val sections = state.sections
+                    // Boxes stand 12 dp apart; the first under the head needs no more than the head leaves.
+                    val today = HomeSection.Today in sections
+                    val week = HomeSection.Week in sections
+                    if (today) {
+                        item(key = "today") {
+                            TodayBox(
+                                state = state,
+                                suggestions = inspiration.forToday,
+                                actions = actions,
+                                modifier =
+                                    Modifier
+                                        .animateRow(this)
+                                        .measure()
+                                        .padding(horizontal = PageMargin),
+                            )
+                        }
                     }
-                    item(key = "week") {
-                        WeekBox(
-                            state = state,
-                            onOpenPlan = actions.onOpenPlan,
-                            modifier =
-                                Modifier
-                                    .animateRow(this)
-                                    .measure()
-                                    .padding(start = PageMargin, end = PageMargin, top = BoxGap),
-                        )
+                    if (week) {
+                        item(key = "week") {
+                            WeekBox(
+                                state = state,
+                                onOpenPlan = actions.onOpenPlan,
+                                modifier =
+                                    Modifier
+                                        .animateRow(this)
+                                        .measure()
+                                        .padding(start = PageMargin, end = PageMargin, top = if (today) BoxGap else 0.dp),
+                            )
+                        }
                     }
-                    if (state.openItems > 0) {
+                    if (HomeSection.Shopping in sections && state.openItems > 0) {
                         item(key = "shopping") {
                             ShoppingBox(
                                 open = state.openItems,
@@ -262,7 +273,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                                     Modifier
                                         .animateRow(this)
                                         .measure()
-                                        .padding(start = PageMargin, end = PageMargin, top = BoxGap),
+                                        .padding(start = PageMargin, end = PageMargin, top = if (today || week) BoxGap else 0.dp),
                             )
                         }
                     }
@@ -339,7 +350,7 @@ internal data class Inspiration(
  * and the large one needs one. Today's planned meals come first and are shown in their box.
  */
 internal fun HomeUiState.inspiration(): Inspiration {
-    val seen = todays.mapNotNull { it.recipe?.id }.toMutableSet()
+    val seen = if (HomeSection.Today in sections) todays.mapNotNull { it.recipe?.id }.toMutableSet() else mutableSetOf()
 
     fun pick(from: List<RecipeSummary>, most: Int, least: Int): List<RecipeSummary> {
         val picked = from.filter { it.id !in seen }.distinctBy { it.id }.take(most)
@@ -347,10 +358,11 @@ internal fun HomeUiState.inspiration(): Inspiration {
         seen += picked.map { it.id }
         return picked
     }
-    val forToday = if (todays.isEmpty()) pick(suggestions, TODAY_SUGGESTIONS, 1) else emptyList()
-    val ideas = pick(suggestions, IDEAS, SECTION_LEAST)
-    val quick = pick(quick, QUICK_ROWS, SECTION_LEAST)
-    val newest = pick(recent, 1, 1).firstOrNull()
+    // A section left out of Home leaves its recipes to the others.
+    val forToday = if (HomeSection.Today in sections && todays.isEmpty()) pick(suggestions, TODAY_SUGGESTIONS, 1) else emptyList()
+    val ideas = if (HomeSection.Ideas in sections) pick(suggestions, IDEAS, SECTION_LEAST) else emptyList()
+    val quick = if (HomeSection.Quick in sections) pick(quick, QUICK_ROWS, SECTION_LEAST) else emptyList()
+    val newest = if (HomeSection.Newest in sections) pick(recent, 1, 1).firstOrNull() else null
     return Inspiration(forToday, ideas, quick, newest)
 }
 

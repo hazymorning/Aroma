@@ -1,4 +1,6 @@
-<img src="docs/readme/hero-2.webp" alt="Aroma, good enough to eat">
+<p align="center">
+  <img src="docs/assets/aroma-hero.png" alt="Aroma – Good enough to eat" width="100%">
+</p>
 
 <br>
 

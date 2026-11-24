@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -35,6 +36,7 @@ import app.aroma.core.format.MeasureSystem
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.User
 import app.aroma.data.settings.AppLanguage
+import app.aroma.data.settings.HomeSection
 import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.data.settings.ThemeMode
 import app.aroma.data.update.UpdateState
@@ -66,6 +68,7 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.System,
     val dynamicColor: Boolean = false,
     val dynamicColorAvailable: Boolean = false,
+    val homeSections: Set<HomeSection> = HomeSection.SHOWN_BY_DEFAULT,
     val language: AppLanguage = AppLanguage.System,
     val keepScreenOn: Boolean = true,
     val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
@@ -82,6 +85,7 @@ data class SettingsActions(
     val onBack: () -> Unit = {},
     val onThemeMode: (ThemeMode) -> Unit = {},
     val onDynamicColor: (Boolean) -> Unit = {},
+    val onHomeSection: (HomeSection, Boolean) -> Unit = { _, _ -> },
     val onLanguage: (AppLanguage) -> Unit = {},
     val onKeepScreenOn: (Boolean) -> Unit = {},
     val onIngredientsInSteps: (IngredientsInSteps) -> Unit = {},
@@ -96,7 +100,7 @@ data class SettingsActions(
 )
 
 /** A setting with a few values, chosen on a sheet. */
-private enum class SettingsChoice { Theme, Language, Measures, IngredientsInSteps }
+private enum class SettingsChoice { Theme, HomeSections, Language, Measures, IngredientsInSteps }
 
 @Composable
 fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: Modifier = Modifier) {
@@ -122,6 +126,14 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                         onClick = { actions.onDynamicColor(!state.dynamicColor) },
                     )
                 }
+                Separator(start = SettingsTextEdge)
+                SettingsRow(
+                    title = stringResource(R.string.settings_home),
+                    icon = R.drawable.ic_home,
+                    description = stringResource(R.string.settings_home_description),
+                    value = stringResource(R.string.settings_home_shown, state.homeSections.size, HomeSection.entries.size),
+                    onClick = { choice = SettingsChoice.HomeSections },
+                )
             }
             Group(stringResource(R.string.settings_language)) {
                 SettingsRow(
@@ -213,6 +225,10 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             }, actions.onThemeMode) {
                 choice = null
             }
+        }
+
+        SettingsChoice.HomeSections -> {
+            HomeSectionsSheet(state.homeSections, actions.onHomeSection) { choice = null }
         }
 
         SettingsChoice.Language -> {
@@ -323,6 +339,34 @@ private fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
     GroupHead(title, Modifier.padding(top = SectionGap, bottom = Space.s12))
     TonalBox(contentPadding = PaddingValues(), content = content)
 }
+
+/** What Home shows, each part ticked on or off; the sheet stays open until it is put away. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeSectionsSheet(shown: Set<HomeSection>, onToggle: (HomeSection, Boolean) -> Unit, onDismiss: () -> Unit) {
+    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.settings_home), sheetState = rememberFullSheetState()) {
+        Column(Modifier.padding(bottom = Space.s16)) {
+            HomeSection.entries.forEach { section ->
+                val on = section in shown
+                ChoiceRow(
+                    label = stringResource(section.labelRes()),
+                    chosen = on,
+                    modifier = Modifier.toggleable(value = on, role = Role.Checkbox) { onToggle(section, it) },
+                )
+            }
+        }
+    }
+}
+
+private fun HomeSection.labelRes(): Int =
+    when (this) {
+        HomeSection.Today -> R.string.home_today
+        HomeSection.Week -> R.string.home_this_week
+        HomeSection.Shopping -> R.string.home_shopping_list
+        HomeSection.Ideas -> R.string.home_ideas
+        HomeSection.Quick -> R.string.home_quick
+        HomeSection.Newest -> R.string.home_newest
+    }
 
 /** The values of a setting on a sheet; choosing one applies it and lets the sheet slide away. */
 @OptIn(ExperimentalMaterial3Api::class)

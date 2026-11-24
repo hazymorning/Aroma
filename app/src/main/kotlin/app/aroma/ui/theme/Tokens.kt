@@ -56,9 +56,6 @@ val EyebrowGap: Dp = Space.s8
 /** From a page's head to its content. */
 val HeaderGap: Dp = Space.s24
 
-/** How far a highlighted row's fill reaches beyond the column; its content stays on the column. */
-val HighlightReach: Dp = Space.s12
-
 /** Scrolling content ends this far above any bar. */
 val EndSpace: Dp = Space.s24
 

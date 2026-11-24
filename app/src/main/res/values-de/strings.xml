@@ -257,6 +257,7 @@
     <string name="plan_week_numbers">KW %1$d–%2$d</string>
     <string name="plan_add_for">Mahlzeit für %1$s planen</string>
     <string name="plan_dish">Gericht planen</string>
+    <string name="plan_nothing_planned">Nichts geplant</string>
     <string name="plan_show_past">Vergangene Tage zeigen</string>
     <string name="plan_remove">Aus dem Plan entfernen</string>
     <string name="plan_removed">Aus dem Plan entfernt</string>
@@ -402,6 +403,9 @@
     <string name="settings_theme_dark">Dunkel</string>
     <string name="settings_dynamic_color">Farben vom Hintergrundbild</string>
     <string name="settings_dynamic_color_hint">Färbt Akzente passend zu deinem Hintergrundbild.</string>
+    <string name="settings_home">Startseite</string>
+    <string name="settings_home_description">Was die Startseite zeigt</string>
+    <string name="settings_home_shown">%1$d von %2$d</string>
     <string name="settings_language">Sprache</string>
     <string name="settings_app_language">Sprache der App</string>
     <string name="settings_language_system">System</string>

@@ -18,7 +18,8 @@ spacing, text at least 4.5 : 1 and meaningful shapes at least 3 : 1 against thei
   title 16, title to subtitle 4, head to content 24, back button row to title 16, eyebrow to title 8.
   Recipe grid: 2 columns, 16 apart, rows 28 apart. Touch targets at least 48.
 - **Edges.** Text, boxes, fields and the first pill of a selection row all start on the page
-  margin. Only today's row in the meal plan reaches 12 dp past it with its fill.
+  margin, with nothing reaching past it. Today is marked by a dark circle behind its date, on Home
+  and in the meal plan alike.
 - **Surfaces.** On the page's paper stand boxes in `surface`; inside a box, `surfaceInBox`. No
   borders. The one line is `separator`, inset to the text, between rows of a grouped list in a box.
   Bottom bars and sheets cast a soft warm shadow, twice as dense in the dark, and have no line.

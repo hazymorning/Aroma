@@ -15,7 +15,6 @@ import app.aroma.ui.theme.GridColumnGap
 import app.aroma.ui.theme.GridRowGap
 import app.aroma.ui.theme.HeaderGap
 import app.aroma.ui.theme.HeaderTop
-import app.aroma.ui.theme.HighlightReach
 import app.aroma.ui.theme.LightColors
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.SectionGap
@@ -77,7 +76,6 @@ class DesignRulesTest {
                 HeaderTop,
                 SubtitleGap,
                 HeaderGap,
-                HighlightReach,
                 EndSpace,
                 GridColumnGap,
             )

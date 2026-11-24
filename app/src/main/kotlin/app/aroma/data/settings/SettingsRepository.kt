@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.aroma.core.format.MeasureSystem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -34,7 +35,23 @@ data class AppSettings(
     val translateImports: Boolean = false,
     val checkUpdatesAtStart: Boolean = false,
     val measureSystem: MeasureSystem = MeasureSystem.AsWritten,
+    val homeSections: Set<HomeSection> = HomeSection.SHOWN_BY_DEFAULT,
 )
+
+/** What Home can show, in its order. The shopping list is left out until someone asks for it. */
+enum class HomeSection {
+    Today,
+    Week,
+    Shopping,
+    Ideas,
+    Quick,
+    Newest,
+    ;
+
+    companion object {
+        val SHOWN_BY_DEFAULT: Set<HomeSection> = entries.toSet() - Shopping
+    }
+}
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     private object Keys {
@@ -52,6 +69,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val translateImports = booleanPreferencesKey("translate_imports")
         val checkUpdatesAtStart = booleanPreferencesKey("check_updates_at_start")
         val measureSystem = stringPreferencesKey("measure_system")
+        val homeSections = stringSetPreferencesKey("home_sections")
     }
 
     val settings: Flow<AppSettings> =
@@ -70,6 +88,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 translateImports = prefs[Keys.translateImports] ?: false,
                 checkUpdatesAtStart = prefs[Keys.checkUpdatesAtStart] ?: false,
                 measureSystem = MeasureSystem.entries.firstOrNull { it.name == prefs[Keys.measureSystem] } ?: MeasureSystem.AsWritten,
+                homeSections = homeSections(prefs),
             )
         }
 
@@ -88,6 +107,16 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setCheckUpdatesAtStart(enabled: Boolean) = dataStore.edit { it[Keys.checkUpdatesAtStart] = enabled }
 
     suspend fun setMeasureSystem(system: MeasureSystem) = dataStore.edit { it[Keys.measureSystem] = system.name }
+
+    suspend fun setHomeSection(section: HomeSection, shown: Boolean) =
+        dataStore.edit { prefs ->
+            val sections = homeSections(prefs).let { if (shown) it + section else it - section }
+            prefs[Keys.homeSections] = sections.map { it.name }.toSet()
+        }
+
+    private fun homeSections(prefs: Preferences): Set<HomeSection> =
+        prefs[Keys.homeSections]?.mapNotNull { name -> HomeSection.entries.firstOrNull { it.name == name } }?.toSet()
+            ?: HomeSection.SHOWN_BY_DEFAULT
 
     /** Forgets what belonged to the signed-out account; look and feel stay as they are. */
     suspend fun forgetAccount() =

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.0 – 2026-11-24
+
+**New**
+- A new logo and app icon.
+- Tap an ingredient where a step names it to tick it off, as in the list.
+- Choose in the settings what Home shows; the shopping list is no longer on it unless you add it.
+
+**Better**
+- The meal plan is calmer: days line up, their dates sit in the middle, today wears a dark circle, and past days no longer offer to plan a dish.
+- "Back to this week" has a line of its own under the week, and the head no longer juts out while you scroll.
+
+**Fixed**
+- Search on Home now lands right in the search field.
+
 ## 0.7.0 – 2026-11-24
 
 **New**
