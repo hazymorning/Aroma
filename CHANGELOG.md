@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.0 – 2026-11-24
+
+**New**
+- Say what kind of dish a recipe is, and pick or create categories and tags, in the editor or right on the recipe page.
+- Home inspires: ideas for the time of day, dishes ready in 30 minutes, new and favourite recipes.
+
+**Better**
+- The Recipes tab helps you find something to cook: filter by meal, quick dishes or favourites, and add a recipe with a clear button.
+- Pull down to refresh on every page, a calm tab bar across the bottom, and plan and shop stand out on a recipe.
+- Amounts show in every step, where the recipe first names an ingredient.
+
+**Fixed**
+- Tap your star again to take a rating back.
+
 ## 0.5.0 – 2026-11-24
 
 **New**
