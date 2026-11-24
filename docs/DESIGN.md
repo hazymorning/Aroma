@@ -18,7 +18,7 @@ pieces in `ui/components`. Screens under `feature/` are built from those two onl
    to their text. Nothing is outlined, and a card never holds another card.
 3. **One accent.** Sage marks the one filled action of a screen, what is chosen (a chip, a tab,
    a check, a switch, today), links (every link is sage), group labels and step numbers, amounts in
-   ingredient and shopping lists, and the brand: the wordmark and the name in the greeting. It is
+   ingredient and shopping lists and those written into steps, and the brand: the wordmark and the name in the greeting. It is
    never decoration.
 4. **Two typefaces, seven sizes.** Newsreader names things; Figtree carries everything that is
    read or tapped. Nothing is set in capitals or tracked out.

@@ -394,6 +394,8 @@
     <string name="ingredients_in_steps_none">Keine</string>
     <string name="ingredients_in_steps_used">Benötigte</string>
     <string name="ingredients_in_steps_all">Alle</string>
+    <string name="settings_amounts_in_steps">Mengen in den Schritten</string>
+    <string name="settings_amounts_in_steps_hint">Ein Schritt nennt eine Zutat mit ihrer Menge, etwa „75 g Couscous kochen“, wo sicher alles davon gemeint ist.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_all">Alle Rezepte auf diesem Gerät speichern</string>
     <string name="settings_offline_all_hint">Geöffnete Rezepte werden immer gespeichert. Damit lädst du auch alle anderen.</string>

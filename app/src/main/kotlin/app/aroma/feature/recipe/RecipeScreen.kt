@@ -65,10 +65,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.format.IngredientFormatter
+import app.aroma.core.format.Markdown
 import app.aroma.core.format.MeasureSystem
 import app.aroma.core.format.Quantities
+import app.aroma.core.format.StepAmount
 import app.aroma.core.format.StepMeasures
+import app.aroma.core.format.StyledText
 import app.aroma.core.format.ingredientsByStep
+import app.aroma.core.format.stepAmounts
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.NutritionKind
 import app.aroma.core.model.NutritionValue
@@ -110,6 +114,7 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.ratingDescription
 import app.aroma.ui.components.recipeTimeText
 import app.aroma.ui.components.rememberRichText
+import app.aroma.ui.components.rememberStepText
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.ChipHeight
@@ -133,6 +138,7 @@ data class RecipeUiState(
     val scale: Double = 1.0,
     val measures: MeasureSystem = MeasureSystem.AsWritten,
     val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
+    val amountsInSteps: Boolean = false,
     val checkedIngredients: Set<Int> = emptySet(),
     val isFavorite: Boolean = false,
     val userRating: Double? = null,
@@ -213,6 +219,19 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
                 }
             recipe.ingredientsByStep(locale).map { used -> used.mapNotNull(lines::getOrNull) }
         }
+    // The steps as they read: temperatures and pan sizes in the chosen measures, and the amounts written in where chosen.
+    val stepTexts =
+        remember(recipe, state.measures, locale) {
+            recipe?.steps.orEmpty().map { Markdown.parse(StepMeasures.convert(it.text, state.measures, locale)) }
+        }
+    val stepAmounts =
+        remember(recipe, stepTexts, state.scale, state.measures, locale, state.amountsInSteps) {
+            if (recipe == null || !state.amountsInSteps) {
+                emptyList()
+            } else {
+                recipe.stepAmounts(stepTexts.map { it.text }, state.scale, locale, state.measures)
+            }
+        }
     Box(modifier.fillMaxSize()) {
         when {
             recipe != null -> {
@@ -222,7 +241,7 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     item(key = HERO_KEY) { Hero(recipe) }
-                    recipeBody(recipe, state, actions, stepUses, onOpenRating = { rateOpen = true })
+                    recipeBody(recipe, state, actions, Steps(stepTexts, stepAmounts, stepUses), onOpenRating = { rateOpen = true })
                 }
             }
 
@@ -416,11 +435,14 @@ private fun MoreMenu(
     }
 }
 
+/** The steps' [texts] as they read, the [amounts] written into them and the ingredients each [uses], as the list shows them. */
+private class Steps(val texts: List<StyledText>, val amounts: List<List<StepAmount>>, val uses: List<List<String>>)
+
 private fun LazyListScope.recipeBody(
     recipe: Recipe,
     state: RecipeUiState,
     actions: RecipeActions,
-    stepUses: List<List<String>>,
+    steps: Steps,
     onOpenRating: () -> Unit,
 ) {
     item(key = TITLE_KEY) { TitleBlock(recipe, state.isOffline) }
@@ -477,8 +499,9 @@ private fun LazyListScope.recipeBody(
             StepItem(
                 index = index,
                 step = step,
-                uses = if (state.ingredientsInSteps == IngredientsInSteps.None) emptyList() else stepUses.getOrNull(index).orEmpty(),
-                measures = state.measures,
+                text = steps.texts.getOrNull(index) ?: StyledText(step.text, emptyList()),
+                amounts = steps.amounts.getOrNull(index).orEmpty(),
+                uses = if (state.ingredientsInSteps == IngredientsInSteps.None) emptyList() else steps.uses.getOrNull(index).orEmpty(),
                 modifier = Modifier.padding(top = if (index == 0) Space.xs else Space.l),
             )
         }
@@ -764,12 +787,11 @@ fun servingsLabel(baseServings: Double, scale: Double, locale: Locale): String {
 private fun StepItem(
     index: Int,
     step: Step,
+    text: StyledText,
+    amounts: List<StepAmount>,
     uses: List<String>,
-    measures: MeasureSystem,
     modifier: Modifier = Modifier,
 ) {
-    val locale = currentLocale()
-    val text = remember(step.text, measures, locale) { StepMeasures.convert(step.text, measures, locale) }
     Row(modifier.padding(horizontal = ScreenMargin)) {
         Text(
             text = (index + 1).toString(),
@@ -788,7 +810,7 @@ private fun StepItem(
             if (!step.title.isNullOrBlank()) {
                 Text(step.title, style = AromaType.BodyStrong, modifier = Modifier.padding(bottom = Space.xxs))
             }
-            Text(text = rememberRichText(text), style = AromaType.Body)
+            Text(text = rememberStepText(text, amounts), style = AromaType.Body)
             // The ingredients the step uses, as the recipe's list shows them, so the step reads on its own.
             if (uses.isNotEmpty()) {
                 Text(

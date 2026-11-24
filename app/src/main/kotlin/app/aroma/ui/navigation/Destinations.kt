@@ -752,6 +752,7 @@ fun SettingsDestination(nav: NavController) {
                 onLanguage = vm::setLanguage,
                 onKeepScreenOn = { vm.setKeepScreenOn(it) },
                 onIngredientsInSteps = { vm.setIngredientsInSteps(it) },
+                onAmountsInSteps = { vm.setAmountsInSteps(it) },
                 onMeasures = { vm.setMeasures(it) },
                 onOfflineRecipes = { vm.setOfflineRecipes(it) },
                 onCheckForUpdates = vm::checkForUpdates,

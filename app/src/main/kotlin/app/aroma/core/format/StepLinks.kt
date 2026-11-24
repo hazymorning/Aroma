@@ -13,29 +13,81 @@ object StepLinks {
     /** For each of [steps], the indexes into [ingredients] it mentions, in ingredient order. */
     fun of(ingredients: List<String>, steps: List<String>): List<List<Int>> {
         val names = ingredients.map(::nameWords)
-        val known = names.flatten().map(::stem).toSet()
-        return steps.map { step ->
-            val words = words(step)
-            val stems = words.map(::stem).toSet()
-            // A word that names an ingredient exactly is not read as part of another one's compound.
-            val loose = words.filter { stem(it) !in known }
-            names.indices.filter { index -> names[index].any { name -> stem(name) in stems || loose.any { compound(it, name) } } }
-        }
+        return steps.map { step -> mentions(names, step).map { it.ingredient }.distinct().sorted() }
     }
 
-    /** The words that name the food of an ingredient line. */
-    private fun nameWords(line: String): List<String> {
+    /** How a word of a step names a word of an ingredient. */
+    enum class Match {
+        /** The same word, whatever its ending: "Zwiebeln" for "Zwiebel". */
+        Same,
+
+        /** The food more broadly, a word the ingredient's ends with: "Spinat" for "Blattspinat". */
+        Broader,
+
+        /** A word built on the ingredient's, for a part of it, something made of it or a kind of it: "Knoblauchzehen", "Hefewasser". */
+        Built,
+    }
+
+    /** A word of a step, at [range], that names the [name]th name word of ingredient [ingredient]. */
+    class Mention(
+        val ingredient: Int,
+        val name: Int,
+        val range: IntRange,
+        val match: Match,
+    )
+
+    /** Every word of [step] that names one of the ingredients whose name words are [names], in the order of the step. */
+    fun mentions(names: List<List<String>>, step: String): List<Mention> {
+        val known = names.flatten().map(::stem).toSet()
+        return Word
+            .findAll(step)
+            .flatMap { found ->
+                val word = found.value.lowercase(Locale.ROOT)
+                val stem = stem(word)
+                names.flatMapIndexed { ingredient, words ->
+                    words.mapIndexedNotNull { index, name ->
+                        val match =
+                            when {
+                                stem(name) == stem -> Match.Same
+
+                                // A word that names an ingredient exactly is not read as part of another one's compound.
+                                stem in known -> null
+
+                                else -> compound(word, name)
+                            }
+                        match?.let { Mention(ingredient, index, found.range, it) }
+                    }
+                }
+            }.toList()
+    }
+
+    /** The words that name the food of an ingredient line, in lower case. */
+    fun nameWords(line: String): List<String> = words(namePart(line)).filter(::names)
+
+    /** The part of an ingredient line that names its food: without its amount, what follows a comma or stands in brackets. */
+    private fun namePart(line: String): String {
         val text = line.withoutPictographs()
         val rest = LeadingQuantityParser.parse(text)?.rest ?: text
-        return words(rest.substringBefore(',').substringBefore('('))
-            .filter { it.length >= MIN_WORD && it !in IngredientFormatter.KNOWN_UNITS && stem(it) !in Fillers }
+        return rest.substringBefore(',').substringBefore('(')
     }
 
-    /** A German compound and the food it is built on, either way round: "knoblauchzehe" and "knoblauch", "tomaten" and "kirschtomaten". */
-    private fun compound(word: String, name: String): Boolean =
-        word != name &&
-            minOf(word.length, name.length) >= MIN_COMPOUND &&
-            (word.startsWith(name) || word.endsWith(name) || name.endsWith(word))
+    /** Whether [word], in lower case, names food rather than measuring or describing it. */
+    fun names(word: String): Boolean = word.length >= MIN_WORD && word !in IngredientFormatter.KNOWN_UNITS && !describes(word)
+
+    /** Whether [word], in lower case, describes an ingredient rather than names it, as "fresh" and "gehackt" do. */
+    fun describes(word: String): Boolean = stem(word) in Fillers
+
+    /**
+     * A German compound and the food it is built on, either way round: "knoblauchzehe" and "knoblauch", "tomaten" and
+     * "kirschtomaten", "spinat" and "blattspinat".
+     */
+    private fun compound(word: String, name: String): Match? =
+        when {
+            word == name || minOf(word.length, name.length) < MIN_COMPOUND -> null
+            name.endsWith(word) -> Match.Broader
+            word.startsWith(name) || word.endsWith(name) -> Match.Built
+            else -> null
+        }
 
     private fun words(text: String): List<String> = Word.findAll(text).map { it.value.lowercase(Locale.ROOT) }.toList()
 
@@ -44,7 +96,7 @@ object StepLinks {
      * "Zwiebeln" and "geriebener" meet "eggplant", "Zwiebel" and "gerieben". Both sides of a
      * comparison go through it, so a stem only has to be the same, not a word.
      */
-    private fun stem(word: String): String {
+    fun stem(word: String): String {
         if (word.endsWith("ies") && word.length - 3 >= MIN_STEM) return word.dropLast(3) + "y"
         var stem = word
         repeat(2) {
@@ -54,7 +106,7 @@ object StepLinks {
         return stem
     }
 
-    private val Word = Regex("""\p{L}+""")
+    val Word = Regex("""\p{L}+""")
 
     /** Longest first, so "es" goes before "s". */
     private val Endings = listOf("es", "en", "er", "e", "s", "n")
@@ -75,6 +127,7 @@ object StepLinks {
             "for",
             "with",
             "into",
+            "without",
             "about",
             "some",
             "few",
@@ -118,10 +171,21 @@ object StepLinks {
             "und",
             "oder",
             "mit",
+            "ohne",
             "für",
+            "aus",
+            "von",
             "zum",
             "zur",
             "vom",
+            "der",
+            "die",
+            "das",
+            "den",
+            "dem",
+            "des",
+            "ein",
+            "einem",
             "etwa",
             "etwas",
             "einige",

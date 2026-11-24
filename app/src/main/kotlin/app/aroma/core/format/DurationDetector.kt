@@ -49,6 +49,9 @@ object DurationDetector {
             "thirty" to 30.0,
         )
 
+    /** Numbers written as words, "a" and "eine" among them. */
+    val numberWords: Set<String> = words.keys
+
     fun detect(text: String): List<DetectedDuration> {
         val parts = single.findAll(text).mapNotNull { match -> toDuration(match) }.toList()
         if (parts.isEmpty()) return emptyList()

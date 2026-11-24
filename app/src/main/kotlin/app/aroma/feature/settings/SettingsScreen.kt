@@ -72,6 +72,7 @@ data class SettingsUiState(
     val language: AppLanguage = AppLanguage.System,
     val keepScreenOn: Boolean = true,
     val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
+    val amountsInSteps: Boolean = false,
     val measures: MeasureSystem = MeasureSystem.AsWritten,
     val offlineRecipes: Boolean = false,
     val offlineCount: Int = 0,
@@ -87,6 +88,7 @@ data class SettingsActions(
     val onLanguage: (AppLanguage) -> Unit = {},
     val onKeepScreenOn: (Boolean) -> Unit = {},
     val onIngredientsInSteps: (IngredientsInSteps) -> Unit = {},
+    val onAmountsInSteps: (Boolean) -> Unit = {},
     val onMeasures: (MeasureSystem) -> Unit = {},
     val onOfflineRecipes: (Boolean) -> Unit = {},
     val onCheckForUpdates: () -> Unit = {},
@@ -152,6 +154,13 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                 selected = state.ingredientsInSteps,
                 optionLabel = { stringResource(it.labelRes()) },
                 onSelect = actions.onIngredientsInSteps,
+            )
+            RowDivider()
+            SwitchRow(
+                title = stringResource(R.string.settings_amounts_in_steps),
+                subtitle = stringResource(R.string.settings_amounts_in_steps_hint),
+                checked = state.amountsInSteps,
+                onChange = actions.onAmountsInSteps,
             )
         }
         Group(stringResource(R.string.settings_offline)) {

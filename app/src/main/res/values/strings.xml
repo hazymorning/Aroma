@@ -397,6 +397,8 @@
     <string name="ingredients_in_steps_none">None</string>
     <string name="ingredients_in_steps_used">Used</string>
     <string name="ingredients_in_steps_all">All</string>
+    <string name="settings_amounts_in_steps">Amounts in the steps</string>
+    <string name="settings_amounts_in_steps_hint">A step names an ingredient with its amount, as in “Cook 75 g couscous”, where that is surely all of it.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_all">Keep all recipes on this device</string>
     <string name="settings_offline_all_hint">Recipes you open are always saved. This also downloads the rest.</string>

@@ -121,6 +121,7 @@ class RecipeViewModel(
                     it.copy(
                         measures = prefs.measureSystem,
                         ingredientsInSteps = prefs.ingredientsInSteps,
+                        amountsInSteps = prefs.amountsInSteps,
                         translate = prefs.translateImports,
                     )
                 }

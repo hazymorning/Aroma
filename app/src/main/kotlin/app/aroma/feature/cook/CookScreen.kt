@@ -75,9 +75,13 @@ import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.format.DurationDetector
 import app.aroma.core.format.IngredientFormatter
+import app.aroma.core.format.Markdown
 import app.aroma.core.format.MeasureSystem
+import app.aroma.core.format.StepAmount
 import app.aroma.core.format.StepMeasures
+import app.aroma.core.format.StyledText
 import app.aroma.core.format.ingredientsByStep
+import app.aroma.core.format.stepAmounts
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.Step
@@ -107,7 +111,7 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatClock
 import app.aroma.ui.components.formatDuration
 import app.aroma.ui.components.ratingTouchInset
-import app.aroma.ui.components.rememberRichText
+import app.aroma.ui.components.rememberStepText
 import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.ContentMaxWidth
@@ -139,6 +143,7 @@ data class CookUiState(
     val markFailed: Boolean = false,
     val exactAlarmHint: Boolean = false,
     val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
+    val amountsInSteps: Boolean = false,
     val measures: MeasureSystem = MeasureSystem.AsWritten,
     val checkedIngredients: Set<Int> = emptySet(),
     val isLoading: Boolean = true,
@@ -190,6 +195,22 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
         }
     // Ingredients are ticked off by their place in the recipe, wherever they show.
     val byStep = remember(state.recipe, locale) { state.recipe?.ingredientsByStep(locale).orEmpty() }
+    // The steps as they read: temperatures and pan sizes in the chosen measures, and the amounts written in where chosen.
+    val texts =
+        remember(state.recipe, state.measures, locale) {
+            steps.map { Markdown.parse(StepMeasures.convert(it.text, state.measures, locale)) }
+        }
+    val amounts =
+        remember(state.recipe, texts, state.scale, state.measures, locale, state.amountsInSteps) {
+            val recipe = state.recipe
+            if (recipe == null ||
+                !state.amountsInSteps
+            ) {
+                emptyList()
+            } else {
+                recipe.stepAmounts(texts.map { it.text }, state.scale, locale, state.measures)
+            }
+        }
     Column(
         modifier
             .fillMaxSize()
@@ -250,7 +271,8 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                                 index = page,
                                 count = steps.size,
                                 step = steps[page],
-                                measures = state.measures,
+                                text = texts.getOrNull(page) ?: StyledText(steps[page].text, emptyList()),
+                                amounts = amounts.getOrNull(page).orEmpty(),
                                 onStartTimer = actions.onStartTimer,
                                 modifier = if (hasPanel) Modifier.abovePanel(panel) else Modifier,
                             )
@@ -336,14 +358,13 @@ private fun StepPage(
     index: Int,
     count: Int,
     step: Step,
-    measures: MeasureSystem,
+    text: StyledText,
+    amounts: List<StepAmount>,
     onStartTimer: (Int, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val resources = LocalResources.current
     val stepLabel = stringResource(R.string.cook_step_of, index + 1, count)
-    val locale = currentLocale()
-    val text = remember(step.text, measures, locale) { StepMeasures.convert(step.text, measures, locale) }
     val durations =
         remember(step) {
             (DurationDetector.detect(step.text).map { it.seconds } + listOfNotNull(step.durationSeconds?.takeIf { it > 0 })).distinct()
@@ -360,7 +381,7 @@ private fun StepPage(
             Text(step.title, style = AromaType.SectionTitle)
             Spacer(Modifier.height(Space.xs))
         }
-        StepText(rememberRichText(text, onDuration = { onStartTimer(it.seconds, stepLabel) }))
+        StepText(rememberStepText(text, amounts, onDuration = { onStartTimer(it.seconds, stepLabel) }))
         if (durations.isNotEmpty()) {
             FlowRow(
                 modifier = Modifier.padding(top = Space.l),

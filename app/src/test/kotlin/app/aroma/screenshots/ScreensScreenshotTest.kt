@@ -196,6 +196,22 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         }
     }
 
+    /** The steps with the amounts written in, at six servings instead of four: "375 g Mehl", "¾ Banane". */
+    @Test
+    fun recipeStepsWithAmounts() {
+        applyLocale()
+        snapshot(
+            "recipe_steps_amounts_${variant.suffix}",
+            variant.dark,
+            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHeader") },
+        ) {
+            RecipeScreen(
+                state = RecipeUiState(recipe = sample.recipe, isLoading = false, scale = 1.5, amountsInSteps = true),
+                actions = RecipeActions(),
+            )
+        }
+    }
+
     /** What a rework with Mealie's AI does, over the recipe it is opened from. */
     @Test
     fun recipeRework() {
@@ -382,6 +398,25 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                         isLoading = false,
                         ingredientsInSteps = IngredientsInSteps.All,
                         checkedIngredients = setOf(0, 2),
+                    ),
+                actions = CookActions(),
+                initialPage = 1,
+            )
+        }
+    }
+
+    /** The curry's step of nine ingredients with their amounts in the text, next to its timer. */
+    @Test
+    fun cookStepWithAmounts() {
+        applyLocale()
+        snapshot("cook_amounts_${variant.suffix}", variant.dark) {
+            CookScreen(
+                state =
+                    CookUiState(
+                        recipe = sample.curry,
+                        isLoading = false,
+                        amountsInSteps = true,
+                        ingredientsInSteps = IngredientsInSteps.None,
                     ),
                 actions = CookActions(),
                 initialPage = 1,

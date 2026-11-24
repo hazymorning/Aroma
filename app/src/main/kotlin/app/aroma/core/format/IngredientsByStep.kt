@@ -8,15 +8,19 @@ import java.util.Locale
  * where the recipe has links, otherwise as the step names them.
  */
 fun Recipe.ingredientsByStep(locale: Locale): List<List<Int>> {
-    if (steps.any { it.ingredientReferences.isNotEmpty() }) {
-        val byReference = ingredients.mapIndexedNotNull { index, ingredient -> ingredient.referenceId?.let { it to index } }.toMap()
-        return steps.map { step ->
-            step.ingredientReferences
-                .mapNotNull { byReference[it] }
-                .distinct()
-                .sorted()
-        }
-    }
+    linkedIngredients()?.let { return it }
     val lines = ingredients.map { IngredientFormatter.format(it, 1.0, locale).toPlainText() }
     return StepLinks.of(lines, steps.map { it.text })
+}
+
+/** For each of the recipe's steps, the indexes of the ingredients Mealie links to it, or null where the recipe links none. */
+fun Recipe.linkedIngredients(): List<List<Int>>? {
+    if (steps.none { it.ingredientReferences.isNotEmpty() }) return null
+    val byReference = ingredients.mapIndexedNotNull { index, ingredient -> ingredient.referenceId?.let { it to index } }.toMap()
+    return steps.map { step ->
+        step.ingredientReferences
+            .mapNotNull { byReference[it] }
+            .distinct()
+            .sorted()
+    }
 }

@@ -51,6 +51,7 @@ class SettingsViewModel(
                 language = lang,
                 keepScreenOn = app.keepScreenOn,
                 ingredientsInSteps = app.ingredientsInSteps,
+                amountsInSteps = app.amountsInSteps,
                 measures = app.measureSystem,
                 offlineRecipes = app.offlineRecipes,
                 offlineCount = offline,
@@ -67,6 +68,8 @@ class SettingsViewModel(
     fun setKeepScreenOn(enabled: Boolean) = viewModelScope.launch { settings.setKeepScreenOn(enabled) }
 
     fun setIngredientsInSteps(shown: IngredientsInSteps) = viewModelScope.launch { settings.setIngredientsInSteps(shown) }
+
+    fun setAmountsInSteps(enabled: Boolean) = viewModelScope.launch { settings.setAmountsInSteps(enabled) }
 
     fun setMeasures(system: MeasureSystem) = viewModelScope.launch { settings.setMeasureSystem(system) }
 

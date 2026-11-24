@@ -27,6 +27,7 @@ data class AppSettings(
     val dynamicColor: Boolean = false,
     val keepScreenOn: Boolean = true,
     val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
+    val amountsInSteps: Boolean = false,
     val offlineRecipes: Boolean = false,
     val lastShoppingList: String? = null,
     val importWithAi: Boolean = true,
@@ -44,6 +45,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
         /** The switch that showed all ingredients under every step, before there was a choice. */
         val allIngredientsInSteps = booleanPreferencesKey("ingredients_in_steps")
+        val amountsInSteps = booleanPreferencesKey("amounts_in_steps")
         val offlineRecipes = booleanPreferencesKey("offline_recipes")
         val lastShoppingList = stringPreferencesKey("last_shopping_list")
         val importWithAi = booleanPreferencesKey("import_with_ai")
@@ -61,6 +63,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 ingredientsInSteps =
                     IngredientsInSteps.entries.firstOrNull { it.name == prefs[Keys.ingredientsInSteps] }
                         ?: if (prefs[Keys.allIngredientsInSteps] == true) IngredientsInSteps.All else IngredientsInSteps.Used,
+                amountsInSteps = prefs[Keys.amountsInSteps] ?: false,
                 offlineRecipes = prefs[Keys.offlineRecipes] ?: false,
                 lastShoppingList = prefs[Keys.lastShoppingList],
                 importWithAi = prefs[Keys.importWithAi] ?: true,
@@ -77,6 +80,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setKeepScreenOn(enabled: Boolean) = dataStore.edit { it[Keys.keepScreenOn] = enabled }
 
     suspend fun setIngredientsInSteps(shown: IngredientsInSteps) = dataStore.edit { it[Keys.ingredientsInSteps] = shown.name }
+
+    suspend fun setAmountsInSteps(enabled: Boolean) = dataStore.edit { it[Keys.amountsInSteps] = enabled }
 
     suspend fun setOfflineRecipes(enabled: Boolean) = dataStore.edit { it[Keys.offlineRecipes] = enabled }
 
