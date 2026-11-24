@@ -1,20 +1,17 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/header-dark.svg">
-  <img src="docs/readme/header-light.svg" alt="Aroma, a cookbook for Mealie">
-</picture>
+<img src="docs/readme/hero.webp" alt="Aroma, good enough to eat">
 
 <br>
 <br>
 
-Aroma is a recipe app for Mealie, made for Android. It comes in light and dark, and in English and German.
+Aroma is a Mealie client for Android, available in English and German.
 
-<br>
+It grew out of a need for an app that is pleasant to use every day and looks as good as the food in it. Years of using self-hosted recipe managers showed that such software only works, at least in this household, when it feels like real help rather than one more chore.
 
-**The ideas behind it:**
+The ideas behind it:
 
-- Calm design that reads like a cookbook
-- Recipes from any link, post or text in one tap
-- Cooking, planning and shopping that work in the kitchen, even offline
+- A tasteful, uncluttered design, like a good cookbook
+- Features shaped by everyday cooking
+- Love for the small details, because they make the difference
 
 <br>
 
@@ -23,7 +20,7 @@ Aroma is a recipe app for Mealie, made for Android. It comes in light and dark, 
 
 <br>
 
-Android 8.0 or newer and a Mealie server, version 2.0 or newer. Importing with AI needs Mealie 3.23 or newer with an AI provider set up.
+Android 8.0 or newer and Mealie 2.0 or newer. AI imports need Mealie 3.23 or newer and a configured AI provider.
 
 </details>
 <details>
@@ -31,6 +28,6 @@ Android 8.0 or newer and a Mealie server, version 2.0 or newer. Importing with A
 
 <br>
 
-Aroma talks to your Mealie server and nothing else, with two exceptions you start yourself: importing a social media post reads its preview from the platform, the way a messenger does when you share a link, and looking for updates asks GitHub for the latest release. Aroma collects no data and has no ads or trackers.
+Aroma connects only to the configured Mealie server. There are two exceptions, both started manually: importing a social media post reads its preview from the platform, and the update check asks GitHub for the latest release. No analytics, no ads, no tracking.
 
 </details>
