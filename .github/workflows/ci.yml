@@ -19,7 +19,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
 
     services:
       mealie:
@@ -53,30 +53,24 @@ jobs:
           done
           exit 1
 
-      - name: Formatting
-        run: ./gradlew spotlessCheck
-
-      - name: Lint
-        run: ./gradlew :app:lintDebug
-
-      # Runs all unit tests, records the screenshots and exercises the API against the Mealie container.
-      - name: Tests and screenshots
-        run: ./gradlew :app:recordRoborazziDebug
+      # One Gradle run, so formatting, lint, the tests and the APK build share one compile and run
+      # side by side. The tests exercise the API against the Mealie container. Screenshots are not
+      # rendered here: the Screenshots workflow renders them for a design review, by hand.
+      - name: Checks, tests and APK
+        run: ./gradlew spotlessCheck :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
         env:
           MEALIE_TEST_URL: http://localhost:9000
           MEALIE_TEST_USER: changeme@example.com
           MEALIE_TEST_PASSWORD: MyPassword
-
-      - name: Build APK
-        run: ./gradlew :app:assembleDebug
 
       - uses: actions/upload-artifact@v7
         with:
           name: aroma-debug-apk
           path: app/build/outputs/apk/debug/*.apk
 
+      # Which test failed, and why, without reading the whole log.
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: failure()
         with:
-          name: screenshots
-          path: app/build/outputs/roborazzi
+          name: test-reports
+          path: app/build/reports/tests

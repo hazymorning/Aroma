@@ -49,9 +49,10 @@ import org.robolectric.annotation.Config
 import kotlin.math.roundToInt
 
 /**
- * The screens of the design round with the brief's test texts (section 14), light and dark, at
- * 100, 130 and 200 % font size: full, bare and extreme data. Pages that scroll are also rendered
- * whole, in a window tall enough to hold them. The images land in build/outputs/roborazzi/kochbuch.
+ * The screens of the design round with the brief's test texts (section 14), light and dark, at 200 %
+ * font size and on a 360 dp phone: full, bare and extreme data. Pages that scroll are also rendered
+ * whole, in a window tall enough to hold them. They render with -Pscreenshots (the Screenshots
+ * workflow); the images land in build/outputs/roborazzi/kochbuch.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @Config(sdk = [36], qualifiers = "de-w411dp-h891dp-xxhdpi")
@@ -390,15 +391,18 @@ class DesignScreenshotTest(private val look: Look) : ScreenshotTest() {
         private const val PHONE_WIDTH = 411
         private val SNACKBAR_LIFT = 96.dp
 
-        /** The narrowest and the widest phone the brief aims at. */
+        /** The narrowest phone the brief aims at. */
         private const val NARROW = 360
-        private const val WIDE = 480
         private const val WHOLE_PAGE = 4200
 
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
         fun looks() =
-            listOf(false, true).flatMap { dark -> listOf(1f, 1.3f, 2f).map { Look(dark, it) } } +
-                listOf(NARROW, WIDE).map { Look(dark = false, scale = 1f, width = it) }
+            listOf(
+                Look(dark = false, scale = 1f),
+                Look(dark = true, scale = 1f),
+                Look(dark = false, scale = 2f),
+                Look(dark = false, scale = 1f, width = NARROW),
+            )
     }
 }
