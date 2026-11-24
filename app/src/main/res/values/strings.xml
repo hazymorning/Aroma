@@ -373,6 +373,15 @@
     <string name="editor_add_step">Add step</string>
     <string name="editor_pick_photo">Choose a photo</string>
     <string name="editor_change_photo">Change photo</string>
+    <string name="organizers_meal">Type of dish</string>
+    <string name="organizers_meal_hint">Mealie keeps it as a category. That’s how Home knows what suits the time of day.</string>
+    <string name="organizers_title">Categories and tags</string>
+    <string name="organizers_choose_meal">Choose type of dish</string>
+    <string name="organizers_change">Change categories and tags</string>
+    <string name="organizers_new_category">New category</string>
+    <string name="organizers_new_tag">New tag</string>
+    <string name="organizers_add">Add %1$s</string>
+    <string name="organizers_offline">Categories and tags can be changed once Mealie answers again.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

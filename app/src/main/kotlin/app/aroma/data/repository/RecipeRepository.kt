@@ -1,6 +1,9 @@
 package app.aroma.data.repository
 
 import app.aroma.core.model.CookbookCover
+import app.aroma.core.model.Filing
+import app.aroma.core.model.Organizer
+import app.aroma.core.model.OrganizerKind
 import app.aroma.core.model.Organizers
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.RecipePage
@@ -22,6 +25,7 @@ import app.aroma.data.remote.ImportStream
 import app.aroma.data.remote.MealieApi
 import app.aroma.data.remote.MealieJson
 import app.aroma.data.remote.dto.CookbookDto
+import app.aroma.data.remote.dto.CreateOrganizerDto
 import app.aroma.data.remote.dto.CreateRecipeDto
 import app.aroma.data.remote.dto.ImportRecipeDto
 import app.aroma.data.remote.dto.OrganizerDto
@@ -56,7 +60,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -65,6 +71,7 @@ import okhttp3.ResponseBody
 import retrofit2.HttpException
 import java.io.File
 import java.text.Collator
+import java.text.Normalizer
 import java.time.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
@@ -552,7 +559,7 @@ class RecipeRepository(
 
     fun organizers(): Flow<Loadable<Organizers>> =
         cache
-            .stream("organizers", OrganizersDto.serializer()) {
+            .stream(ORGANIZERS, OrganizersDto.serializer()) {
                 val api = sessions.api()
                 coroutineScope {
                     val categories = async { api.categories().items }
@@ -568,6 +575,67 @@ class RecipeRepository(
                     loadable.error,
                 )
             }
+
+    /**
+     * Files the recipe at [slug] under [filing]'s categories and tags, making the ones the user just
+     * named first (see [ensureCategories]). Returns the filing as Mealie keeps it.
+     */
+    suspend fun file(slug: String, filing: Filing): Filing {
+        val saved = Filing(ensureCategories(filing.categories), ensureTags(filing.tags))
+        update(
+            slug,
+            buildJsonObject {
+                put("recipeCategory", organizerJson(saved.categories))
+                put("tags", organizerJson(saved.tags))
+            },
+        )
+        return saved
+    }
+
+    /**
+     * [wanted] as the group's categories: one the user just named ([Organizer.isNew]) is made in
+     * Mealie, unless the group has one of that name by now, which is taken instead.
+     */
+    suspend fun ensureCategories(wanted: List<Organizer>): List<Organizer> = ensure(wanted, OrganizerKind.Category)
+
+    /** [wanted] as the group's tags, made where needed as [ensureCategories] does. */
+    suspend fun ensureTags(wanted: List<Organizer>): List<Organizer> = ensure(wanted, OrganizerKind.Tag)
+
+    private suspend fun ensure(wanted: List<Organizer>, kind: OrganizerKind): List<Organizer> {
+        if (wanted.none { it.isNew }) return wanted
+        val made = mutableListOf<OrganizerDto>()
+        val result =
+            mealieCall {
+                val api = sessions.api()
+                val existing = if (kind == OrganizerKind.Tag) api.tags().items else api.categories().items
+                wanted
+                    .map { organizer ->
+                        if (!organizer.isNew) return@map organizer
+                        // Mealie keeps one of each slug, which drops case, accents and punctuation: a name
+                        // that comes to the same slug is the one the group has.
+                        val found = (existing + made).firstOrNull { it.name.slugKey() == organizer.name.slugKey() }
+                        val body = CreateOrganizerDto(organizer.name.trim())
+                        val organizerDto =
+                            found ?: (if (kind == OrganizerKind.Tag) api.createTag(body) else api.createCategory(body)).also { made += it }
+                        organizerDto.toModel()
+                    }.distinctBy { it.id }
+            }
+        if (made.isNotEmpty()) {
+            // Lists offer them at once, also while Mealie is out of reach.
+            cache.read(ORGANIZERS, OrganizersDto.serializer())?.let { stored ->
+                val updated =
+                    when (kind) {
+                        OrganizerKind.Tag -> stored.copy(tags = stored.tags + made)
+                        else -> stored.copy(categories = stored.categories + made)
+                    }
+                cache.write(ORGANIZERS, OrganizersDto.serializer(), updated)
+            }
+        }
+        return result
+    }
+
+    private fun organizerJson(items: List<Organizer>): JsonElement =
+        MealieJson.encodeToJsonElement(ListSerializer(OrganizerDto.serializer()), items.map { OrganizerDto(it.id, it.name, it.slug) })
 
     /** The household's cookbooks, each with its number of recipes and the photo of its newest one. */
     fun cookbooks(): Flow<Loadable<List<CookbookCover>>> {
@@ -670,6 +738,14 @@ class RecipeRepository(
         private val IdsSerializer = ListSerializer(String.serializer())
 
         private fun cookbookKey(id: String) = "cookbook-recipes:$id"
+
+        private const val ORGANIZERS = "organizers"
+
+        /** Close to Mealie's slug of a name: without case, accents, spaces or punctuation. */
+        private fun String.slugKey(): String =
+            Normalizer
+                .normalize(trim().lowercase(), Normalizer.Form.NFKD)
+                .filter { it.isLetterOrDigit() }
 
         private const val PARALLEL_DOWNLOADS = 4
 

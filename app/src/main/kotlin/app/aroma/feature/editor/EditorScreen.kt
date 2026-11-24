@@ -8,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -53,10 +52,9 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.core.model.Filing
 import app.aroma.core.model.ImageSize
-import app.aroma.core.model.Organizer
 import app.aroma.core.model.RecipeImage
-import app.aroma.ui.components.AromaFilterChip
 import app.aroma.ui.components.CardActionPadding
 import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.ErrorState
@@ -166,6 +164,19 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
         )
         Spacer(Modifier.height(Space.l))
         Basics(form, change)
+        SectionHeader(stringResource(R.string.organizers_meal))
+        Text(
+            text = stringResource(R.string.organizers_meal_hint),
+            style = AromaType.Small,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.s),
+        )
+        MealChips(
+            chosen = Filing(form.categories, form.tags).meals,
+            onToggle = { meal, label ->
+                change { it.filedAs(Filing(it.categories, it.tags).toggle(meal, state.allCategories, label)) }
+            },
+        )
         SectionHeader(stringResource(R.string.recipe_ingredients))
         Text(
             text = stringResource(R.string.editor_ingredients_hint),
@@ -191,12 +202,22 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
             removeLabel = R.string.editor_remove_step,
             numbered = true,
         )
-        OrganizerPicker(stringResource(R.string.recipes_categories), state.allCategories, form.categories) { picked ->
-            change { it.copy(categories = picked) }
-        }
-        OrganizerPicker(stringResource(R.string.recipes_tags), state.allTags, form.tags) { picked ->
-            change { it.copy(tags = picked) }
-        }
+        SectionHeader(stringResource(R.string.recipes_categories))
+        OrganizerChips(
+            options = state.allCategories,
+            selected = form.categories,
+            onChange = { picked -> change { it.copy(categories = picked) } },
+            newLabel = stringResource(R.string.organizers_new_category),
+            modifier = Modifier.padding(top = Space.xs),
+        )
+        SectionHeader(stringResource(R.string.recipes_tags))
+        OrganizerChips(
+            options = state.allTags,
+            selected = form.tags,
+            onChange = { picked -> change { it.copy(tags = picked) } },
+            newLabel = stringResource(R.string.organizers_new_tag),
+            modifier = Modifier.padding(top = Space.xs),
+        )
     }
 }
 
@@ -492,27 +513,5 @@ private fun RowScope.StepNumber(number: Int) {
 
 /** The gutter a step's number stands in, as on the recipe page. */
 private val StepNumberWidth = 40.dp
-
-@Composable
-private fun OrganizerPicker(title: String, options: List<Organizer>, selected: List<Organizer>, onChange: (List<Organizer>) -> Unit) {
-    if (options.isEmpty()) return
-    Column {
-        SectionHeader(title)
-        FlowRow(
-            modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.xs),
-            horizontalArrangement = Arrangement.spacedBy(Space.xs),
-            verticalArrangement = Arrangement.spacedBy(Space.xs),
-        ) {
-            options.forEach { option ->
-                val isSelected = selected.any { it.id == option.id }
-                AromaFilterChip(
-                    selected = isSelected,
-                    label = option.name,
-                    onClick = { onChange(if (isSelected) selected.filterNot { it.id == option.id } else selected + option) },
-                )
-            }
-        }
-    }
-}
 
 private const val PHOTO_RATIO = 4f / 3f

@@ -4,6 +4,7 @@ package app.aroma.feature.editor
 
 import app.aroma.core.format.DurationDetector
 import app.aroma.core.format.IngredientFormatter
+import app.aroma.core.model.Filing
 import app.aroma.core.model.Organizer
 import app.aroma.data.remote.MealieJson
 import app.aroma.data.remote.dto.IngredientDto
@@ -45,6 +46,9 @@ data class EditorForm(
     val categories: List<Organizer> = emptyList(),
     val tags: List<Organizer> = emptyList(),
 )
+
+/** The form filed under [filing]'s categories and tags. */
+fun EditorForm.filedAs(filing: Filing): EditorForm = copy(categories = filing.categories, tags = filing.tags)
 
 /** Saves a form's categories and tags as Mealie's JSON for them, so the model itself stays plain. */
 private object OrganizerSerializer : KSerializer<Organizer> {

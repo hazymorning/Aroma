@@ -6,6 +6,7 @@ import app.aroma.data.remote.dto.ApiTokenDto
 import app.aroma.data.remote.dto.ApiTokenRequest
 import app.aroma.data.remote.dto.CookbookDto
 import app.aroma.data.remote.dto.CreateMealPlanDto
+import app.aroma.data.remote.dto.CreateOrganizerDto
 import app.aroma.data.remote.dto.CreateRecipeDto
 import app.aroma.data.remote.dto.CreateShoppingListDto
 import app.aroma.data.remote.dto.CreateTimelineEventDto
@@ -190,10 +191,20 @@ interface MealieApi {
         @Query("perPage") perPage: Int = -1,
     ): PageDto<OrganizerDto>
 
+    @POST("api/organizers/categories")
+    suspend fun createCategory(
+        @Body body: CreateOrganizerDto,
+    ): OrganizerDto
+
     @GET("api/organizers/tags")
     suspend fun tags(
         @Query("perPage") perPage: Int = -1,
     ): PageDto<OrganizerDto>
+
+    @POST("api/organizers/tags")
+    suspend fun createTag(
+        @Body body: CreateOrganizerDto,
+    ): OrganizerDto
 
     @GET("api/organizers/tools")
     suspend fun tools(

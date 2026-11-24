@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import app.aroma.R
+import app.aroma.core.model.Filing
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.OrganizerKind
 import app.aroma.feature.cook.CookActions
@@ -68,6 +69,7 @@ import app.aroma.feature.mealplan.MealPlanEvent
 import app.aroma.feature.mealplan.MealPlanScreen
 import app.aroma.feature.mealplan.MealPlanViewModel
 import app.aroma.feature.recipe.AddToListSheet
+import app.aroma.feature.recipe.OrganizerSheet
 import app.aroma.feature.recipe.PlanSheet
 import app.aroma.feature.recipe.RecipeActions
 import app.aroma.feature.recipe.RecipeActionsSheet
@@ -377,8 +379,13 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
     val preferredList by vm.preferredListId.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var sheet by rememberSaveable { mutableStateOf<RecipeMenuSheet?>(null) }
+    var organizing by rememberSaveable { mutableStateOf(false) }
+    val organizers by vm.organizers.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    val resources = LocalResources.current
     RecipeFeedback(vm, snackbar, onDelete = { nav.popBackStack() })
     LaunchedEffect(sheet) { if (sheet == RecipeMenuSheet.Shop) vm.loadShoppingLists() }
+    LaunchedEffect(organizing) { if (organizing) vm.loadOrganizers() }
     val reworked = rework?.outcome
     LaunchedEffect(reworked) { if (reworked != null) vm.onReworkShown(reworked) }
     // A rework may outlast the page; a notification then says how it ended.
@@ -419,12 +426,29 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                         }
                     nav.navigate(CollectionRoute(collection, organizer.name, organizer.id))
                 },
+                onOrganize = {
+                    // Filing is saved in Mealie as it is chosen, so it waits for Mealie to answer.
+                    if (state.isOffline) {
+                        scope.launch { snackbar.showSnackbar(resources.getString(R.string.organizers_offline)) }
+                    } else {
+                        organizing = true
+                    }
+                },
                 onRetry = vm::load,
             ),
     )
     val recipe = state.recipe
     when {
         recipe == null -> {}
+
+        organizing -> {
+            OrganizerSheet(
+                filing = Filing(recipe.categories, recipe.tags),
+                organizers = organizers,
+                onFile = vm::file,
+                onDismiss = { organizing = false },
+            )
+        }
 
         sheet == RecipeMenuSheet.Shop -> {
             AddToListSheet(

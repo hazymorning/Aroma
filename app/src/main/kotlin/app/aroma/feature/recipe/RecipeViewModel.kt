@@ -4,7 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.format.MeasureSystem
+import app.aroma.core.model.Filing
 import app.aroma.core.model.MealType
+import app.aroma.core.model.Organizer
+import app.aroma.core.model.Organizers
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.data.attempt
@@ -20,6 +23,7 @@ import app.aroma.feature.editor.ReworkJob
 import app.aroma.feature.editor.ReworkOutcome
 import app.aroma.feature.editor.ReworkRequest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +39,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -107,6 +112,13 @@ class RecipeViewModel(
     private val mutablePreferredList = MutableStateFlow<String?>(null)
     val preferredListId: StateFlow<String?> = mutablePreferredList.asStateFlow()
 
+    /** The group's categories and tags to file the recipe under; null until asked for. */
+    private val mutableOrganizers = MutableStateFlow<Organizers?>(null)
+    val organizers: StateFlow<Organizers?> = mutableOrganizers.asStateFlow()
+
+    /** Says the filing on the page changed; Mealie gets the latest, one save at a time. */
+    private val filings = Channel<Unit>(Channel.CONFLATED)
+
     init {
         load()
         viewModelScope.launch {
@@ -136,6 +148,7 @@ class RecipeViewModel(
                 }
             }
         }
+        viewModelScope.launch { filings.receiveAsFlow().collect { saveFiling() } }
         viewModelScope.launch {
             val aiAvailable = recipes.canImportWithAi()
             mutableState.update { it.copy(aiAvailable = aiAvailable) }
@@ -224,6 +237,48 @@ class RecipeViewModel(
             mutableEvents.emit(RecipeEvent.Planned(date))
             confirm(QuickAction.Plan)
         }
+
+    fun loadOrganizers() =
+        viewModelScope.launch {
+            recipes.organizers().catch { }.collect { loadable -> mutableOrganizers.value = loadable.data }
+        }
+
+    /** Files the recipe under [filing]: the page shows it at once, Mealie gets it a moment later. */
+    fun file(filing: Filing) {
+        val recipe = state.value.recipe ?: return
+        mutableState.update { it.copy(recipe = recipe.copy(categories = filing.categories, tags = filing.tags)) }
+        filings.trySend(Unit)
+    }
+
+    /**
+     * Saves the filing the page shows. Ones just named come back with their ids, unless they were taken
+     * off meanwhile; if Mealie does not take it, the page shows Mealie's again.
+     */
+    private suspend fun saveFiling() {
+        val recipe = state.value.recipe ?: return
+        val saved =
+            try {
+                recipes.file(recipe.slug, Filing(recipe.categories, recipe.tags))
+            } catch (error: AromaError) {
+                mutableEvents.emit(RecipeEvent.Failed(error))
+                load()
+                return
+            }
+        val named = (recipe.categories + recipe.tags).filter { it.isNew }
+        val made = (saved.categories + saved.tags).filter { organizer -> named.any(organizer::sameAs) }
+        if (made.isEmpty()) return
+        val withIds = { list: List<Organizer> -> list.map { organizer -> made.firstOrNull(organizer::sameAs) ?: organizer } }
+        mutableState.update { state ->
+            val now = state.recipe ?: return@update state
+            state.copy(recipe = now.copy(categories = withIds(now.categories), tags = withIds(now.tags)))
+        }
+        mutableOrganizers.update { organizers ->
+            organizers?.copy(
+                categories = organizers.categories + saved.categories.filter { it in made && organizers.categories.none(it::sameAs) },
+                tags = organizers.tags + saved.tags.filter { it in made && organizers.tags.none(it::sameAs) },
+            )
+        }
+    }
 
     /** Shows a check on the action's button for a moment. */
     private suspend fun confirm(action: QuickAction) {

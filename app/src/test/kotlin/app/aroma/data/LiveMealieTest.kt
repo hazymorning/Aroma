@@ -1,6 +1,9 @@
 package app.aroma.data
 
+import app.aroma.core.model.Filing
+import app.aroma.core.model.Meal
 import app.aroma.core.model.MealType
+import app.aroma.core.model.Organizer
 import app.aroma.core.model.RecipeQuery
 import app.aroma.core.model.RecipeSort
 import app.aroma.feature.editor.RecipeDraft
@@ -20,6 +23,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.net.HttpURLConnection
+import java.net.URI
 import java.time.LocalDate
 import java.util.Locale
 import java.util.UUID
@@ -112,6 +117,67 @@ class LiveMealieTest {
                     .data
             assertNotNull(organizers)
         }
+
+    @Test
+    fun `a recipe is filed under a kind of dish, a new category and a new tag, each made only once`() =
+        runBlocking {
+            val before =
+                env.recipes
+                    .organizers()
+                    .first { !it.isRefreshing }
+                    .data
+            val suffix = UUID.randomUUID().toString().take(6)
+            val category = Organizer.new("Aromatestkategorie $suffix")
+            val tag = Organizer.new("Aromatestschlagwort $suffix")
+            try {
+                val filing = Filing(listOf(category), listOf(tag)).toggle(Meal.Dessert, before.categories, "Nachtisch")
+                val saved = env.recipes.file(recipeSlug, filing)
+                assertTrue((saved.categories + saved.tags).none { it.isNew })
+
+                val recipe =
+                    env.recipes
+                        .recipe(recipeSlug)
+                        .first { !it.isRefreshing }
+                        .data
+                assertEquals(setOf(Meal.Dessert), Filing(recipe.categories, recipe.tags).meals)
+                assertEquals(saved.categories.map { it.id }.toSet(), recipe.categories.map { it.id }.toSet())
+                assertEquals(listOf(tag.name), recipe.tags.map { it.name })
+
+                // The home and recipes tabs find it by the kind of dish.
+                val organizers =
+                    env.recipes
+                        .organizers()
+                        .first { !it.isRefreshing }
+                        .data
+                val desserts = env.recipes.page(RecipeQuery(mealNames = Meal.Dessert.namesIn(organizers)), page = 1, perPage = -1)
+                assertTrue(desserts.items.any { it.slug == recipeSlug })
+
+                // Named again in other letters, it is the category made before; taking the kind of dish off keeps it.
+                val again = Filing(recipe.categories + Organizer.new(category.name.uppercase()), recipe.tags)
+                val refiled = env.recipes.file(recipeSlug, again.toggle(Meal.Dessert, organizers.categories, "Nachtisch"))
+                assertEquals(listOf(saved.categories.single { it.name == category.name }.id), refiled.categories.map { it.id })
+                val form = RecipeDraft.formFrom(env.recipes.recipeJson(recipeSlug), Locale.GERMANY)
+                assertEquals(listOf(category.name), form.categories.map { it.name })
+                assertEquals(listOf(tag.name), form.tags.map { it.name })
+            } finally {
+                // Only what this test made goes again.
+                val after =
+                    env.recipes
+                        .organizers()
+                        .first { !it.isRefreshing }
+                        .data
+                (after.categories - before.categories.toSet()).forEach { deleteOrganizer("categories", it.id) }
+                (after.tags - before.tags.toSet()).forEach { deleteOrganizer("tags", it.id) }
+            }
+        }
+
+    private fun deleteOrganizer(kind: String, id: String) {
+        val connection = URI("${url!!.trimEnd('/')}/api/organizers/$kind/$id").toURL().openConnection() as HttpURLConnection
+        connection.requestMethod = "DELETE"
+        connection.setRequestProperty("Authorization", "Bearer ${env.sessions.current!!.token}")
+        assertEquals(200, connection.responseCode)
+        connection.disconnect()
+    }
 
     @Test
     fun `search finds a recipe by name`() =

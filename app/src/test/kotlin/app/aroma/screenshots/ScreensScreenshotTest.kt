@@ -12,7 +12,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
 import androidx.test.core.app.ApplicationProvider
 import app.aroma.core.format.MeasureSystem
+import app.aroma.core.model.Filing
 import app.aroma.core.model.Meal
+import app.aroma.core.model.Organizer
+import app.aroma.core.model.Organizers
 import app.aroma.core.model.ServerInfo
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.core.model.User
@@ -52,6 +55,7 @@ import app.aroma.feature.mealplan.MealPlanActions
 import app.aroma.feature.mealplan.MealPlanDay
 import app.aroma.feature.mealplan.MealPlanScreen
 import app.aroma.feature.mealplan.MealPlanUiState
+import app.aroma.feature.recipe.OrganizerSheet
 import app.aroma.feature.recipe.RecipeActions
 import app.aroma.feature.recipe.RecipeActionsSheet
 import app.aroma.feature.recipe.RecipeScreen
@@ -182,6 +186,50 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
             )
         }
     }
+
+    /** Nothing says yet what kind of dish it is: a link after the chips asks for it. */
+    @Test
+    fun recipeWithoutMeal() {
+        applyLocale()
+        snapshot(
+            "recipe_no_meal_${variant.suffix}",
+            variant.dark,
+            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("facts") },
+        ) {
+            RecipeScreen(
+                state = RecipeUiState(recipe = sample.recipe.copy(categories = emptyList()), isLoading = false),
+                actions = RecipeActions(),
+            )
+        }
+    }
+
+    /** What the recipe is filed under, changed right on its page: the kind of dish first. */
+    @Test
+    fun recipeOrganizers() {
+        applyLocale()
+        val recipe = sample.recipe
+        val german = variant.locale == "de"
+
+        fun organizer(name: String) = Organizer(name.lowercase(), name, name.lowercase())
+        val group =
+            Organizers(
+                categories =
+                    recipe.categories +
+                        listOf("Italienisch", "Backen", "Suppen").map { if (german) it else it.translated() }.map(::organizer),
+                tags = recipe.tags + organizer(if (german) "Ofen" else "Oven"),
+            )
+        snapshot("recipe_organizers_${variant.suffix}", variant.dark) {
+            RecipeScreen(state = RecipeUiState(recipe = recipe, isLoading = false), actions = RecipeActions())
+            OrganizerSheet(
+                filing = Filing(recipe.categories + group.categories[1], recipe.tags),
+                organizers = group,
+                onFile = {},
+                onDismiss = {},
+            )
+        }
+    }
+
+    private fun String.translated() = mapOf("Italienisch" to "Italian", "Backen" to "Baking", "Suppen" to "Soups").getValue(this)
 
     /** The steps, each with the ingredients it uses under it. */
     @Test
@@ -753,6 +801,34 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
             "editor_rows_${variant.suffix}",
             variant.dark,
             interact = { composeRule.onNodeWithText(firstStep).performScrollTo() },
+        ) {
+            EditorScreen(state = editorState(), actions = EditorActions())
+        }
+    }
+
+    /** The kind of dish under the recipe's facts, as Mealie keeps it: a category. */
+    @Test
+    fun editorMeal() {
+        applyLocale()
+        val ingredients = if (variant.locale == "de") "Zutaten" else "Ingredients"
+        snapshot(
+            "editor_meal_${variant.suffix}",
+            variant.dark,
+            interact = { composeRule.onNodeWithText(ingredients).performScrollTo() },
+        ) {
+            EditorScreen(state = editorState(), actions = EditorActions())
+        }
+    }
+
+    /** Categories and tags at the end of the editor, each with a field to name a new one. */
+    @Test
+    fun editorOrganizers() {
+        applyLocale()
+        val newTag = if (variant.locale == "de") "Neues Schlagwort" else "New tag"
+        snapshot(
+            "editor_organizers_${variant.suffix}",
+            variant.dark,
+            interact = { composeRule.onNodeWithText(newTag).performScrollTo() },
         ) {
             EditorScreen(state = editorState(), actions = EditorActions())
         }

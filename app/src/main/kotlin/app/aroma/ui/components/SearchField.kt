@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.ui.theme.AromaType
@@ -49,6 +50,7 @@ fun PillTextField(
     imeAction: ImeAction = ImeAction.Search,
     onSubmit: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     val focusManager = LocalFocusManager.current
@@ -83,7 +85,7 @@ fun PillTextField(
                     lineLimits = TextFieldLineLimits.SingleLine,
                     textStyle = AromaType.Body.copy(color = MaterialTheme.colorScheme.onSurface),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    keyboardOptions = KeyboardOptions(imeAction = imeAction),
+                    keyboardOptions = KeyboardOptions(capitalization = capitalization, imeAction = imeAction),
                     interactionSource = interaction,
                     onKeyboardAction = {
                         onSubmit?.invoke()

@@ -324,6 +324,9 @@ private fun Meal.labelRes() =
         Meal.Lunch -> R.string.meal_lunch
         Meal.Snack -> R.string.meal_snack
         Meal.Dinner -> R.string.meal_dinner
+        Meal.Dessert -> R.string.meal_dessert
+        Meal.Side -> R.string.meal_side
+        Meal.Drink -> R.string.meal_drink
     }
 
 private fun OrganizerKind.labelRes() =

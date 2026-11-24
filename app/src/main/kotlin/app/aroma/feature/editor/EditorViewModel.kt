@@ -100,7 +100,13 @@ class EditorViewModel(
         viewModelScope.launch {
             mutableState.update { it.copy(isSaving = true, error = null) }
             attempt {
-                val patch = RecipeDraft.patch(json, state.value.form, locale, durationText)
+                val form =
+                    state.value.form.let { form ->
+                        form.copy(categories = recipes.ensureCategories(form.categories), tags = recipes.ensureTags(form.tags))
+                    }
+                // Made once: a retry after a failure further on finds them with their ids.
+                if (form != state.value.form) update { form }
+                val patch = RecipeDraft.patch(json, form, locale, durationText)
                 if (patch.isNotEmpty()) {
                     slug = recipes.update(slug, patch)
                     // Saved even if the photo fails next: a retry starts from here, under the new slug.

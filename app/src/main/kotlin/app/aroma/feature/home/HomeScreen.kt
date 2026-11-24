@@ -578,7 +578,13 @@ private fun SectionTitlePlaceholder() {
 private fun Meal.titleRes(): Int =
     when (this) {
         Meal.Breakfast -> R.string.home_for_breakfast
+
         Meal.Lunch -> R.string.home_for_lunch
+
         Meal.Snack -> R.string.home_for_snack
+
         Meal.Dinner -> R.string.home_for_dinner
+
+        // No time of day calls for these (see Meal.at).
+        Meal.Dessert, Meal.Side, Meal.Drink -> R.string.home_ideas
     }

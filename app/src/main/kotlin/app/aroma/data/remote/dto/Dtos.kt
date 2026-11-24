@@ -43,6 +43,10 @@ data class PageDto<T>(
 @Serializable
 data class OrganizerDto(val id: String, val name: String = "", val slug: String = "")
 
+/** A new category or tag: Mealie gives it its id and slug. */
+@Serializable
+data class CreateOrganizerDto(val name: String)
+
 @Serializable
 data class RecipeSummaryDto(
     val id: String,

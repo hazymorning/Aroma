@@ -73,6 +73,7 @@ import app.aroma.core.format.StepMeasures
 import app.aroma.core.format.StyledText
 import app.aroma.core.format.ingredientsByStep
 import app.aroma.core.format.stepAmounts
+import app.aroma.core.model.Filing
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.NutritionKind
 import app.aroma.core.model.NutritionValue
@@ -96,6 +97,7 @@ import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.FloatingAction
 import app.aroma.ui.components.Hairline
 import app.aroma.ui.components.HeaderAction
+import app.aroma.ui.components.IconAction
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
 import app.aroma.ui.components.MenuChip
@@ -103,6 +105,7 @@ import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.OnPhotoButton
 import app.aroma.ui.components.Placeholder
 import app.aroma.ui.components.PlaceholderLine
+import app.aroma.ui.components.QuietLink
 import app.aroma.ui.components.QuietPress
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
@@ -119,6 +122,7 @@ import app.aroma.ui.theme.AromaType
 import app.aroma.ui.theme.CardPadding
 import app.aroma.ui.theme.ChipHeight
 import app.aroma.ui.theme.ControlHeight
+import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.SectionSpace
@@ -170,6 +174,7 @@ data class RecipeActions(
     val onDelete: () -> Unit = {},
     val onRework: (translate: Boolean) -> Unit = {},
     val onOpenOrganizer: (OrganizerKind, Organizer) -> Unit = { _, _ -> },
+    val onOrganize: () -> Unit = {},
     val onRetry: () -> Unit = {},
 )
 
@@ -487,9 +492,7 @@ private fun LazyListScope.recipeBody(
         }
     }
     item(key = "facts") { Facts(recipe) }
-    if (recipe.categories.isNotEmpty() || recipe.tags.isNotEmpty()) {
-        item(key = "organizers") { Organizers(recipe, actions.onOpenOrganizer) }
-    }
+    item(key = "organizers") { Organizers(recipe, actions.onOpenOrganizer, actions.onOrganize) }
     if (recipe.ingredients.isNotEmpty()) {
         item(key = "ingredients") { Ingredients(recipe, state, actions) }
     }
@@ -522,20 +525,30 @@ private fun TitleBlock(recipe: Recipe, isOffline: Boolean) {
     }
 }
 
-/** Categories and tags as soft chips; each opens the recipes it names. */
+/**
+ * Categories and tags as soft chips; each opens the recipes it names. After them, a pencil to change
+ * them, or, while nothing says what kind of dish it is, a link to choose that.
+ */
 @Composable
-private fun Organizers(recipe: Recipe, onOpen: (OrganizerKind, Organizer) -> Unit) {
+private fun Organizers(recipe: Recipe, onOpen: (OrganizerKind, Organizer) -> Unit, onOrganize: () -> Unit) {
     val organizers =
         remember(recipe.categories, recipe.tags) {
             recipe.categories.map { OrganizerKind.Category to it } + recipe.tags.map { OrganizerKind.Tag to it }
         }
+    val hasMeal = remember(recipe.categories, recipe.tags) { Filing(recipe.categories, recipe.tags).meals.isNotEmpty() }
     FlowRow(
         modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, top = Space.m),
         horizontalArrangement = Arrangement.spacedBy(Space.xs),
         verticalArrangement = Arrangement.spacedBy(Space.xs),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         organizers.forEach { (kind, organizer) ->
             AromaFilterChip(selected = false, label = organizer.name, onClick = { onOpen(kind, organizer) })
+        }
+        if (hasMeal) {
+            IconAction(R.drawable.ic_edit, stringResource(R.string.organizers_change), onOrganize, glyphSize = Glyph.s)
+        } else {
+            QuietLink(stringResource(R.string.organizers_choose_meal), onOrganize, leadingIcon = R.drawable.ic_add)
         }
     }
 }

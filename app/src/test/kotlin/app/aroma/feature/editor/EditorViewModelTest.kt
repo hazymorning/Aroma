@@ -3,6 +3,8 @@ package app.aroma.feature.editor
 import android.net.Uri
 import android.os.Looper
 import androidx.lifecycle.SavedStateHandle
+import app.aroma.core.model.Filing
+import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
 import app.aroma.data.TestEnvironment
 import app.aroma.data.session.Session
@@ -16,6 +18,7 @@ import mockwebserver3.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
@@ -55,6 +58,22 @@ class EditorViewModelTest {
                         path == "/api/recipes/gnocchi" && !renamed && request.method == "PATCH" -> {
                             renamed = true
                             json(recipe("tomaten-gnocchi", "Tomaten-Gnocchi"))
+                        }
+
+                        path == "/api/organizers/categories" && request.method == "GET" -> {
+                            json("""{"items":[{"id":"c1","name":"Abendessen","slug":"abendessen"}]}""")
+                        }
+
+                        path == "/api/organizers/categories" && request.method == "POST" -> {
+                            json("""{"id":"c2","name":"Nachtisch","slug":"nachtisch"}""")
+                        }
+
+                        path == "/api/organizers/tags" && request.method == "POST" -> {
+                            json("""{"id":"t2","name":"Schnell","slug":"schnell"}""")
+                        }
+
+                        path == "/api/organizers/tags" || path == "/api/organizers/tools" -> {
+                            json("""{"items":[]}""")
                         }
 
                         path == "/api/recipes/tomaten-gnocchi/image" -> {
@@ -107,6 +126,36 @@ class EditorViewModelTest {
         val restored = open(saved)
 
         assertEquals(editor.state.value.form, restored.state.value.form)
+    }
+
+    @Test
+    fun `a kind of dish and new names are made in Mealie once, and what the group has is taken as it is`() {
+        val editor = open(SavedStateHandle())
+        until {
+            editor.state.value.allCategories
+                .isNotEmpty()
+        }
+        editor.update { form ->
+            form
+                .filedAs(Filing(form.categories, form.tags).toggle(Meal.Dessert, editor.state.value.allCategories, "Nachtisch"))
+                .let { it.copy(categories = it.categories + Organizer.new("abendessen"), tags = listOf(Organizer.new("Schnell"))) }
+        }
+        editor.save { "" }
+        until { !editor.state.value.isSaving }
+
+        val made = requests.filter { it.method == "POST" }.map { it.url.encodedPath to it.body!!.utf8() }
+        assertEquals(
+            listOf("/api/organizers/categories" to """{"name":"Nachtisch"}""", "/api/organizers/tags" to """{"name":"Schnell"}"""),
+            made,
+        )
+        val patch = requests.single { it.method == "PATCH" }.body!!.utf8()
+        assertTrue(patch, patch.contains(""""recipeCategory":[{"id":"c2","name":"Nachtisch","slug":"nachtisch"},{"id":"c1",""""))
+        assertTrue(patch, patch.contains(""""tags":[{"id":"t2","""))
+        assertEquals(
+            listOf("c2", "c1"),
+            editor.state.value.form.categories
+                .map { it.id },
+        )
     }
 
     private fun open(saved: SavedStateHandle): EditorViewModel {

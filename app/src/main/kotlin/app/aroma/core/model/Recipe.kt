@@ -19,7 +19,18 @@ data class RecipeTime(val seconds: Int?, val text: String?) {
     val isEmpty: Boolean get() = (seconds ?: 0) <= 0 && text.isNullOrBlank()
 }
 
-data class Organizer(val id: String, val name: String, val slug: String)
+/** A category, tag or tool. One the user just named has no id yet: Mealie makes it when the recipe is saved. */
+data class Organizer(val id: String, val name: String, val slug: String) {
+    val isNew: Boolean get() = id.isEmpty()
+
+    /** The same organizer: by id, or by name while one of them is not made yet. */
+    fun sameAs(other: Organizer): Boolean =
+        if (isNew || other.isNew) name.trim().equals(other.name.trim(), ignoreCase = true) else id == other.id
+
+    companion object {
+        fun new(name: String) = Organizer(id = "", name = name.trim(), slug = "")
+    }
+}
 
 data class RecipeSummary(
     val id: String,

@@ -370,6 +370,15 @@
     <string name="editor_add_step">Schritt hinzufügen</string>
     <string name="editor_pick_photo">Foto wählen</string>
     <string name="editor_change_photo">Foto ändern</string>
+    <string name="organizers_meal">Art des Gerichts</string>
+    <string name="organizers_meal_hint">Mealie speichert sie als Kategorie. So weiß die Startseite, was zu welcher Tageszeit passt.</string>
+    <string name="organizers_title">Kategorien und Schlagwörter</string>
+    <string name="organizers_choose_meal">Art des Gerichts wählen</string>
+    <string name="organizers_change">Kategorien und Schlagwörter ändern</string>
+    <string name="organizers_new_category">Neue Kategorie</string>
+    <string name="organizers_new_tag">Neues Schlagwort</string>
+    <string name="organizers_add">%1$s hinzufügen</string>
+    <string name="organizers_offline">Kategorien und Schlagwörter lassen sich ändern, sobald Mealie wieder antwortet.</string>
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
