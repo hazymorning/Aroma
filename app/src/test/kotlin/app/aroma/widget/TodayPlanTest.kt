@@ -84,13 +84,49 @@ class TodayPlanTest {
     }
 
     @Test
-    fun `a layout for every size`() {
-        assertEquals(TodayLayout.Line, TodayLayout.at(DpSize(150.dp, 60.dp)))
-        assertEquals(TodayLayout.Photo, TodayLayout.at(DpSize(130.dp, 102.dp)))
-        assertEquals(TodayLayout.Photo, TodayLayout.at(DpSize(150.dp, 220.dp)))
-        assertEquals(TodayLayout.PhotoAndDay, TodayLayout.at(DpSize(276.dp, 220.dp)))
-        assertEquals(TodayLayout.PhotoAndDay, TodayLayout.at(DpSize(554.dp, 117.dp)))
-        assertEquals(TodayLayout.Week, TodayLayout.at(DpSize(130.dp, 337.dp)))
-        assertEquals(TodayLayout.Week, TodayLayout.at(DpSize(276.dp, 455.dp)))
+    fun `each number of cells has its layout, in portrait and in landscape`() {
+        val expected =
+            mapOf(
+                // One cell, and one cell wide however high, is the photo alone.
+                cells(1, 1) to TodayLayout.Tile,
+                cells(1, 1, landscape = true) to TodayLayout.Tile,
+                cells(1, 2) to TodayLayout.Tile,
+                cells(1, 3) to TodayLayout.Tile,
+                // Two by one is the name on the darkened photo.
+                cells(2, 1) to TodayLayout.Banner,
+                cells(2, 1, landscape = true) to TodayLayout.Banner,
+                cells(3, 1) to TodayLayout.Banner,
+                // Four by one: the photo beside the day in portrait, the thumbnail beside the name in landscape.
+                cells(4, 1) to TodayLayout.PhotoAndDay,
+                cells(4, 1, landscape = true) to TodayLayout.Line,
+                cells(5, 1, landscape = true) to TodayLayout.Line,
+                // Two by two is the photo with the name on it; in landscape it is wide and low.
+                cells(2, 2) to TodayLayout.Cover,
+                cells(3, 2) to TodayLayout.Cover,
+                cells(2, 2, landscape = true) to TodayLayout.PhotoAndDay,
+                cells(4, 2) to TodayLayout.PhotoAndDay,
+                cells(4, 2, landscape = true) to TodayLayout.PhotoAndDay,
+                cells(4, 4, landscape = true) to TodayLayout.PhotoAndDay,
+                cells(2, 3) to TodayLayout.Week,
+                cells(4, 3) to TodayLayout.Week,
+                cells(4, 4) to TodayLayout.Week,
+            )
+        expected.forEach { (size, layout) ->
+            assertEquals("$size", layout, TodayLayout.at(size))
+            assertEquals("$size from Android 12", layout, TodayLayout.at(TodayLayout.sizes.shownAt(size)))
+            assertEquals("$size before Android 12", layout, TodayLayout.at(TodayLayout.sizes.shownBefore12At(size)))
+        }
+    }
+
+    @Test
+    fun `the launcher shows the layout for the widget's own size, from one cell to a tablet`() {
+        for (width in 40..900 step 3) {
+            for (height in 40..600 step 3) {
+                val size = DpSize(width.dp, height.dp)
+                val layout = TodayLayout.at(size)
+                assertEquals("$size from Android 12", layout, TodayLayout.at(TodayLayout.sizes.shownAt(size)))
+                assertEquals("$size before Android 12", layout, TodayLayout.at(TodayLayout.sizes.shownBefore12At(size)))
+            }
+        }
     }
 }

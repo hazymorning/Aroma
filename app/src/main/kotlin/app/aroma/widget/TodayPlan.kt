@@ -1,6 +1,7 @@
 package app.aroma.widget
 
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import app.aroma.core.model.MealPlanEntry
 import app.aroma.core.model.MealType
 import java.time.Duration
@@ -63,13 +64,24 @@ private val ByTimeOfDay = compareBy<MealPlanEntry>({ it.type.over }, { it.type.o
 /** The day the widget looks at and the six after it: a week, which the cached plan always covers. */
 private const val SHOWN_DAYS = 7
 
-/** How the Today widget arranges itself at a size. */
+/**
+ * How the Today widget arranges itself at a size. A cell of a phone is 57 to about 100 dp wide and
+ * about 100 to 120 dp high in portrait, and 127 to about 200 dp wide and 51 to about 70 dp high in
+ * landscape (the least are those of Android's guide to widget sizes), so the layouts change where
+ * one number of cells gives way to the next, in both.
+ */
 internal enum class TodayLayout {
-    /** One row: the next meal's name. */
+    /** One cell: the next meal's photo and nothing else. */
+    Tile,
+
+    /** About two by one: the next meal's name on its photo, darkened. */
+    Banner,
+
+    /** Four cells in a row in landscape: the next meal's name beside its thumbnail. */
     Line,
 
-    /** About two by two: the next meal's photo, its name on it. */
-    Photo,
+    /** About two by two: the next meal's photo filling the widget, its name set at its foot. */
+    Cover,
 
     /** Wide: the next meal's photo beside the day's meals. */
     PhotoAndDay,
@@ -79,23 +91,49 @@ internal enum class TodayLayout {
     ;
 
     companion object {
-        /** The sizes laid out for; the launcher shows the closest that fits. */
+        /**
+         * From here a widget is a row in portrait, about 100 dp high or more, with room for a meal's
+         * kind over three lines of its name; lower, it is a row in landscape.
+         */
+        val PortraitRow = 90.dp
+
+        /** From here a row in landscape is four cells long, too long and thin for a photo behind its words. */
+        private val LongRow = 440.dp
+
+        /** From here a widget about two cells wide has room for the photo above the name set on it. */
+        private val CoverHeight = 170.dp
+
+        /**
+         * The sizes laid out for, each at the corner of the sizes its layout takes. From Android 12
+         * the launcher shows the largest that fits and Glance before it the closest that fits, so
+         * the corners form a grid wherever one layout meets another: then both pick the layout [at]
+         * gives for the widget's own size. A widget smaller than all of them shows the first.
+         */
         val sizes: Set<DpSize> =
             setOf(
-                DpSize(WidgetSizes.Narrow, WidgetSizes.Smallest),
+                DpSize(WidgetSizes.Smallest, WidgetSizes.Smallest),
                 DpSize(WidgetSizes.Wide, WidgetSizes.Smallest),
-                DpSize(WidgetSizes.Narrow, WidgetSizes.Low),
-                DpSize(WidgetSizes.Wide, WidgetSizes.Low),
+                DpSize(LongRow, WidgetSizes.Smallest),
+                DpSize(WidgetSizes.Narrow, PortraitRow),
+                DpSize(WidgetSizes.Wide, PortraitRow),
+                DpSize(LongRow, PortraitRow),
+                DpSize(WidgetSizes.Narrow, CoverHeight),
+                DpSize(WidgetSizes.Wide, CoverHeight),
                 DpSize(WidgetSizes.Narrow, WidgetSizes.Tall),
                 DpSize(WidgetSizes.Wide, WidgetSizes.Tall),
+                DpSize(LongRow, WidgetSizes.Tall),
             )
 
         fun at(size: DpSize): TodayLayout =
             when {
+                size.width < WidgetSizes.Narrow -> Tile
+                size.height < PortraitRow && size.width < WidgetSizes.Wide -> Tile
+                size.height < PortraitRow && size.width < LongRow -> Banner
+                size.height < PortraitRow -> Line
                 size.height >= WidgetSizes.Tall -> Week
-                size.height < WidgetSizes.Low -> Line
                 size.width >= WidgetSizes.Wide -> PhotoAndDay
-                else -> Photo
+                size.height >= CoverHeight -> Cover
+                else -> Banner
             }
     }
 }

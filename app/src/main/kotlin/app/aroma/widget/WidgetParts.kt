@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.os.Build
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.glance.ColorFilter
@@ -56,19 +55,24 @@ internal suspend fun <T> Flow<T>.firstShown(loading: T): T =
 
 private val FIRST_FRAME = 3.seconds
 
-/** A widget's paper, with the system's corners, and the view Android opens the app from. */
+/**
+ * A widget's paper, or [color] in its place, with the system's corners, and the view Android opens
+ * the app from. From Android 12 the corners also clip what it holds, such as a photo filling it.
+ */
 @Composable
-internal fun WidgetSurface(modifier: GlanceModifier = GlanceModifier, content: @Composable () -> Unit) {
-    Box(modifier.fillMaxSize().appWidgetBackground().then(paper()), content = content)
+internal fun WidgetSurface(
+    modifier: GlanceModifier = GlanceModifier,
+    color: ColorProvider = WidgetColors.background,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier.fillMaxSize().appWidgetBackground().then(paper(color)), content = content)
 }
 
-@Composable
-@ReadOnlyComposable
-private fun paper(): GlanceModifier =
+private fun paper(color: ColorProvider): GlanceModifier =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        GlanceModifier.background(WidgetColors.background).cornerRadius(android.R.dimen.system_app_widget_background_radius)
+        GlanceModifier.background(color).cornerRadius(android.R.dimen.system_app_widget_background_radius)
     } else {
-        GlanceModifier.background(ImageProvider(R.drawable.widget_paper), colorFilter = ColorFilter.tint(WidgetColors.background))
+        GlanceModifier.background(ImageProvider(R.drawable.widget_paper), colorFilter = ColorFilter.tint(color))
     }
 
 /** One of the app's line glyphs in [color]. */

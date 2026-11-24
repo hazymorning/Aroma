@@ -19,11 +19,15 @@ import app.aroma.core.model.MealPlanEntry
 import app.aroma.core.model.MealType
 import app.aroma.data.settings.ThemeMode
 import app.aroma.widget.ShoppingContent
+import app.aroma.widget.ShoppingLayout
 import app.aroma.widget.ShoppingState
 import app.aroma.widget.TodayContent
+import app.aroma.widget.TodayLayout
 import app.aroma.widget.TodayState
 import app.aroma.widget.WidgetLook
 import app.aroma.widget.WidgetTheme
+import app.aroma.widget.cells
+import app.aroma.widget.shownAt
 import app.aroma.widget.todayPlan
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.runBlocking
@@ -38,7 +42,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.roundToInt
 
-/** The widgets as a launcher draws them, through RemoteViews, at sizes phones give them in portrait and landscape. */
+/**
+ * The widgets as a launcher draws them, through RemoteViews, at sizes phones give them in portrait
+ * and landscape: each laid out for the declared size the launcher picks, then stretched to its own.
+ */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @Config(sdk = [36])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -78,47 +85,81 @@ class WidgetScreenshotTest(private val variant: Variant) {
                 ),
                 photos,
             )
-        TODAY_SIZES.forEach { (name, size) -> capture("today_$name", size) { TodayContent(ready, onRetry = {}) } }
-        capture("today_no_photo", SQUARE) { TodayContent(ready.copy(hero = null), onRetry = {}) }
-        capture("today_tomorrow", WIDE) {
-            TodayContent(ready.copy(plan = todayPlan(entries, sample.today.atTime(21, 30)), hero = photo("pancakes", HERO)), onRetry = {})
-        }
+        TODAY_SIZES.forEach { (name, size) -> today(name, size) { TodayContent(ready, onRetry = {}) } }
+
+        // Without a photo; and on a bright one, a white plate on a pale table, where the scrim does the most.
+        val noPhoto = ready.copy(hero = null)
+        val bright = ready.copy(hero = brightPhoto(HERO))
+        today("tile_no_photo", TILE) { TodayContent(noPhoto, onRetry = {}) }
+        today("banner_no_photo", BANNER) { TodayContent(noPhoto, onRetry = {}) }
+        today("cover_no_photo", COVER) { TodayContent(noPhoto, onRetry = {}) }
+        today("banner_bright", BANNER) { TodayContent(bright, onRetry = {}) }
+        today("banner_landscape_bright", cells(2, 1, landscape = true)) { TodayContent(bright, onRetry = {}) }
+        today("cover_bright", COVER) { TodayContent(bright, onRetry = {}) }
+
+        // After dinner the widget looks at tomorrow, which starts with a long name.
+        val tomorrow = ready.copy(plan = todayPlan(entries, sample.today.atTime(21, 30)), hero = photo("pancakes", HERO))
+        today("tomorrow", WIDE) { TodayContent(tomorrow, onRetry = {}) }
+        today("banner_tomorrow", BANNER) { TodayContent(tomorrow, onRetry = {}) }
+        today("cover_tomorrow", COVER) { TodayContent(tomorrow, onRetry = {}) }
+
+        // A note in place of a recipe has no photo.
+        val note = ready.copy(plan = todayPlan(entries, sample.today.plusDays(3).atTime(18, 0)), hero = null)
+        today("tile_note", TILE) { TodayContent(note, onRetry = {}) }
+        today("cover_note", COVER) { TodayContent(note, onRetry = {}) }
+
         val nothingToday = ready.copy(plan = todayPlan(entries.filter { it.date != sample.today }, sample.today.atTime(9, 0)))
-        capture("today_empty", WIDE) { TodayContent(nothingToday, onRetry = {}) }
-        capture("today_week_empty", TALL) { TodayContent(nothingToday, onRetry = {}) }
-        capture("today_signed_out", SQUARE) { TodayContent(TodayState.SignedOut, onRetry = {}) }
-        capture("today_unreachable", WIDE) { TodayContent(TodayState.Unreachable, onRetry = {}) }
-        capture("today_unreachable_row", ROW) { TodayContent(TodayState.Unreachable, onRetry = {}) }
-        capture("today_loading", WIDE) { TodayContent(TodayState.Loading, onRetry = {}) }
+        today("empty_tile", TILE) { TodayContent(nothingToday, onRetry = {}) }
+        today("empty_banner", BANNER) { TodayContent(nothingToday, onRetry = {}) }
+        today("empty_cover", COVER) { TodayContent(nothingToday, onRetry = {}) }
+        today("empty", WIDE) { TodayContent(nothingToday, onRetry = {}) }
+        today("week_empty", cells(4, 3)) { TodayContent(nothingToday, onRetry = {}) }
+        today("signed_out_tile", TILE) { TodayContent(TodayState.SignedOut, onRetry = {}) }
+        today("signed_out_cover", COVER) { TodayContent(TodayState.SignedOut, onRetry = {}) }
+        today("signed_out", WIDE) { TodayContent(TodayState.SignedOut, onRetry = {}) }
+        today("unreachable_tile", TILE) { TodayContent(TodayState.Unreachable, onRetry = {}) }
+        today("unreachable_banner", BANNER) { TodayContent(TodayState.Unreachable, onRetry = {}) }
+        today("unreachable", WIDE) { TodayContent(TodayState.Unreachable, onRetry = {}) }
+        today("loading_tile", TILE) { TodayContent(TodayState.Loading, onRetry = {}) }
+        today("loading", WIDE) { TodayContent(TodayState.Loading, onRetry = {}) }
     }
 
     @Test
     fun shopping() {
         val ready = ShoppingState.Ready(sample.shoppingList)
         SHOPPING_SIZES.forEach { (name, size) ->
-            capture("shopping_$name", size) { ShoppingContent(ready, emptySet(), onToggle = {}, onRetry = {}) }
+            shopping(name, size) { ShoppingContent(ready, emptySet(), onToggle = {}, onRetry = {}) }
         }
         val justChecked = sample.shoppingList.items[1].id
         val items = sample.shoppingList.items.map { it.copy(checked = it.id == justChecked) }
         val lingering = ShoppingState.Ready(sample.shoppingList.copy(items = items))
-        capture("shopping_lingering", TALL) { ShoppingContent(lingering, setOf(justChecked), onToggle = {}, onRetry = {}) }
+        shopping("lingering", TALL) { ShoppingContent(lingering, setOf(justChecked), onToggle = {}, onRetry = {}) }
         val done = ShoppingState.Ready(sample.shoppingList.copy(items = sample.shoppingList.items.map { it.copy(checked = true) }))
-        capture("shopping_done", SQUARE) { ShoppingContent(done, emptySet(), onToggle = {}, onRetry = {}) }
+        shopping("done", SQUARE) { ShoppingContent(done, emptySet(), onToggle = {}, onRetry = {}) }
         val empty = ShoppingState.Ready(sample.shoppingList.copy(items = emptyList()))
-        capture("shopping_empty", SQUARE) { ShoppingContent(empty, emptySet(), onToggle = {}, onRetry = {}) }
-        capture("shopping_signed_out", SQUARE) { ShoppingContent(ShoppingState.SignedOut, emptySet(), onToggle = {}, onRetry = {}) }
-        capture("shopping_signed_out_tall", TALL) { ShoppingContent(ShoppingState.SignedOut, emptySet(), onToggle = {}, onRetry = {}) }
-        capture("shopping_no_lists", BAR) { ShoppingContent(ShoppingState.NoLists, emptySet(), onToggle = {}, onRetry = {}) }
+        shopping("empty", SQUARE) { ShoppingContent(empty, emptySet(), onToggle = {}, onRetry = {}) }
+        shopping("signed_out", SQUARE) { ShoppingContent(ShoppingState.SignedOut, emptySet(), onToggle = {}, onRetry = {}) }
+        shopping("signed_out_tall", TALL) { ShoppingContent(ShoppingState.SignedOut, emptySet(), onToggle = {}, onRetry = {}) }
+        shopping("no_lists", BAR) { ShoppingContent(ShoppingState.NoLists, emptySet(), onToggle = {}, onRetry = {}) }
     }
 
-    /** Renders [content] at [size] on a plain wallpaper, with room around it to show the widget's corners. */
+    private fun today(name: String, size: DpSize, content: @Composable () -> Unit) =
+        capture("today_$name", size, TodayLayout.sizes, content)
+
+    private fun shopping(name: String, size: DpSize, content: @Composable () -> Unit) =
+        capture("shopping_$name", size, ShoppingLayout.sizes, content)
+
+    /**
+     * Renders [content] on a plain wallpaper, with room around it to show the widget's corners, as a
+     * launcher shows a widget of [size] that declares [sizes].
+     */
     @OptIn(ExperimentalGlanceRemoteViewsApi::class)
-    private fun capture(name: String, size: DpSize, content: @Composable () -> Unit) {
+    private fun capture(name: String, size: DpSize, sizes: Set<DpSize>, content: @Composable () -> Unit) {
         val activity = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
         val views =
             runBlocking {
                 GlanceRemoteViews()
-                    .compose(activity, size) { WidgetTheme(WidgetLook(ThemeMode.System, wallpaperColors = false), content) }
+                    .compose(activity, sizes.shownAt(size)) { WidgetTheme(WidgetLook(ThemeMode.System, wallpaperColors = false), content) }
                     .remoteViews
             }
         val density = activity.resources.displayMetrics.density
@@ -154,6 +195,18 @@ class WidgetScreenshotTest(private val variant: Variant) {
         return bitmap
     }
 
+    /** A white plate on a pale table, the brightest a recipe photo gets. */
+    private fun brightPhoto(size: Int): Bitmap {
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(0xFFF1EDE4.toInt())
+        val plate = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+        canvas.drawCircle(size * 0.5f, size * 0.55f, size * 0.46f, plate)
+        val food = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF3D9A4.toInt() }
+        canvas.drawCircle(size * 0.5f, size * 0.42f, size * 0.16f, food)
+        return bitmap
+    }
+
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
@@ -166,23 +219,34 @@ class WidgetScreenshotTest(private val variant: Variant) {
         private const val THUMBNAIL = 120
 
         private val SQUARE = DpSize(150.dp, 190.dp)
-        private val WIDE = DpSize(300.dp, 190.dp)
         private val BAR = DpSize(260.dp, 60.dp)
         private val TALL = DpSize(300.dp, 400.dp)
-        private val ROW = DpSize(290.dp, 102.dp)
 
-        /** Sizes from Android's guide to widget sizes, for a phone in portrait and in landscape. */
+        private val TILE = cells(1, 1)
+        private val BANNER = cells(2, 1)
+        private val COVER = cells(2, 2)
+        private val WIDE = cells(4, 2)
+
+        /** Every number of cells with a layout of its own, in portrait and landscape, and the cells of a roomier grid. */
         private val TODAY_SIZES =
             listOf(
-                "line" to DpSize(150.dp, 60.dp),
-                "line_wide" to DpSize(290.dp, 60.dp),
-                "small" to DpSize(130.dp, 102.dp),
-                "row" to ROW,
-                "square" to SQUARE,
+                "tile" to TILE,
+                "tile_landscape" to cells(1, 1, landscape = true),
+                "tile_roomy" to DpSize(90.dp, 120.dp),
+                "banner" to BANNER,
+                "banner_landscape" to cells(2, 1, landscape = true),
+                "banner_three" to cells(3, 1),
+                "banner_roomy" to DpSize(196.dp, 120.dp),
+                "row" to cells(4, 1),
+                "line" to cells(4, 1, landscape = true),
+                "cover" to COVER,
+                "cover_three" to cells(3, 2),
+                "cover_roomy" to DpSize(196.dp, 256.dp),
                 "wide" to WIDE,
-                "landscape" to DpSize(520.dp, 110.dp),
-                "week" to TALL,
-                "week_narrow" to DpSize(150.dp, 400.dp),
+                "landscape_square" to cells(2, 2, landscape = true),
+                "landscape" to cells(4, 2, landscape = true),
+                "week" to cells(4, 3),
+                "week_narrow" to cells(2, 3),
             )
 
         private val SHOPPING_SIZES =

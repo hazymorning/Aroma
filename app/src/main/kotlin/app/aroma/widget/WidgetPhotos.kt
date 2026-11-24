@@ -18,16 +18,16 @@ import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Mealie's small rendition of a recipe photo at [size], through the app's image loader and its
- * cache, so a photo seen in the app shows offline too. Software bitmaps without alpha, the
- * lightest a launcher can be handed; null when it does not arrive in time.
+ * A recipe photo at [size] in Mealie's [rendition], its small one unless asked, through the app's
+ * image loader and its cache, so a photo seen in the app shows offline too. Software bitmaps
+ * without alpha, the lightest a launcher can be handed; null when it does not arrive in time.
  */
-internal suspend fun Context.recipePhoto(image: RecipeImage, size: Dp): Bitmap? =
+internal suspend fun Context.recipePhoto(image: RecipeImage, size: Dp, rendition: ImageSize = ImageSize.Thumbnail): Bitmap? =
     withTimeoutOrNull(PHOTO_PATIENCE) {
         val request =
             ImageRequest
                 .Builder(this@recipePhoto)
-                .data(image.url(ImageSize.Thumbnail))
+                .data(image.url(rendition))
                 .size((size.value * resources.displayMetrics.density).roundToInt())
                 .scale(Scale.FILL)
                 .precision(Precision.INEXACT)

@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Four by two at first; from two by one, the next meal's name, to a week. -->
+<!--
+    Four by two at first; from one cell, the next meal's photo, to a week. A cell is at least 57 dp
+    wide in portrait and 51 dp high in landscape, so the least size lets it shrink to one cell.
+-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:description="@string/widget_today_description"
     android:initialLayout="@layout/widget_loading"
     android:minWidth="250dp"
     android:minHeight="110dp"
-    android:minResizeWidth="110dp"
+    android:minResizeWidth="40dp"
     android:minResizeHeight="40dp"
     android:previewImage="@drawable/widget_today_preview"
     android:previewLayout="@layout/widget_today_preview"
