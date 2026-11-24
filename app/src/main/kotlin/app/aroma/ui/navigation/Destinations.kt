@@ -25,8 +25,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -168,19 +166,10 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
     val menu = remember { RecipeMenuState() }
     val vm = aromaViewModel { RecipesViewModel(recipes, connection, withCookbooks = true) }
     val state by vm.state.collectAsStateWithLifecycle()
-    val focus = remember { FocusRequester() }
-    val consumeFocusSearch by rememberUpdatedState(onFocusSearchConsume)
-    LaunchedEffect(focusSearch) {
-        if (focusSearch) {
-            consumeFocusSearch()
-            // The search field is part of the grid's first item, laid out a frame after this effect starts.
-            withFrameNanos {}
-            runCatching { focus.requestFocus() }
-        }
-    }
     RecipesScreen(
         state = state,
-        searchFocus = focus,
+        focusSearch = focusSearch,
+        onFocusSearchConsume = onFocusSearchConsume,
         actions =
             RecipesActions(
                 onQueryChange = vm::onQueryChange,
@@ -815,6 +804,7 @@ fun SettingsDestination(nav: NavController) {
                 onBack = { nav.popBackStack() },
                 onThemeMode = { vm.setThemeMode(it) },
                 onDynamicColor = { vm.setDynamicColor(it) },
+                onHomeSection = { section, shown -> vm.setHomeSection(section, shown) },
                 onLanguage = vm::setLanguage,
                 onKeepScreenOn = { vm.setKeepScreenOn(it) },
                 onIngredientsInSteps = { vm.setIngredientsInSteps(it) },

@@ -80,10 +80,12 @@ import app.aroma.core.format.Markdown
 import app.aroma.core.format.MeasureSystem
 import app.aroma.core.format.StepAmount
 import app.aroma.core.format.StepMeasures
+import app.aroma.core.format.StepMention
 import app.aroma.core.format.StyledText
 import app.aroma.core.format.UnitSpacing
 import app.aroma.core.format.ingredientsByStep
 import app.aroma.core.format.stepAmounts
+import app.aroma.core.format.stepMentions
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.Step
@@ -96,6 +98,7 @@ import app.aroma.ui.components.BoxHeader
 import app.aroma.ui.components.EmptyState
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.GroupHead
+import app.aroma.ui.components.INGREDIENT_TAG
 import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.IconButtonPlace
 import app.aroma.ui.components.IconCircle
@@ -228,6 +231,8 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                 recipe.stepAmounts(texts.map { it.text }, state.scale, locale, state.measures)
             }
         }
+    // The words in the steps that tick off an ingredient with a tap.
+    val mentions = remember(state.recipe, texts, locale) { state.recipe?.stepMentions(texts.map { it.text }, locale).orEmpty() }
     Column(
         modifier
             .fillMaxSize()
@@ -274,6 +279,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                                 step = steps[page],
                                 text = texts.getOrNull(page) ?: StyledText(steps[page].text, emptyList()),
                                 amounts = amounts.getOrNull(page).orEmpty(),
+                                mentions = mentions.getOrNull(page).orEmpty(),
                                 next = steps.getOrNull(page + 1),
                                 onStartTimer = actions.onStartTimer,
                                 ingredients =
@@ -361,6 +367,7 @@ private fun StepPage(
     step: Step,
     text: StyledText,
     amounts: List<StepAmount>,
+    mentions: List<StepMention>,
     next: Step?,
     onStartTimer: (Int, String) -> Unit,
     ingredients: StepIngredients?,
@@ -369,6 +376,7 @@ private fun StepPage(
     modifier: Modifier = Modifier,
 ) {
     val resources = LocalResources.current
+    val haptics = LocalHapticFeedback.current
     val stepLabel = stringResource(R.string.cook_step_of, index + 1, count)
     val durations =
         remember(step) {
@@ -390,7 +398,19 @@ private fun StepPage(
         if (!step.title.isNullOrBlank()) {
             Text(step.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = EyebrowGap))
         }
-        StepText(rememberStepText(text, amounts, onDuration = { onStartTimer(it.seconds, stepLabel) }))
+        StepText(
+            rememberStepText(
+                text,
+                amounts,
+                onDuration = { onStartTimer(it.seconds, stepLabel) },
+                mentions = mentions,
+                checked = checked,
+                onIngredient = { ingredient ->
+                    haptics.performHapticFeedback(if (ingredient in checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
+                    onToggle(ingredient)
+                },
+            ),
+        )
         if (durations.isNotEmpty()) {
             FlowRow(
                 modifier = Modifier.padding(top = Space.s16),
@@ -465,13 +485,21 @@ private fun StepText(text: AnnotatedString) {
             text
                 .mapAnnotations { range ->
                     when (val link = range.item) {
+                        // An ingredient's word keeps its own look: ink, faded once ticked off.
+                        is LinkAnnotation.Clickable if link.tag == INGREDIENT_TAG -> range
+
                         is LinkAnnotation.Clickable -> AnnotatedString.Range(link.copy(styles = quiet), range.start, range.end)
+
                         is LinkAnnotation.Url -> AnnotatedString.Range(link.copy(styles = quiet), range.start, range.end)
+
                         else -> range
                     }
                 }.breakable()
         }
-    val links = remember(styled) { styled.getLinkAnnotations(0, styled.length) }
+    val links =
+        remember(styled) {
+            styled.getLinkAnnotations(0, styled.length).filterNot { (it.item as? LinkAnnotation.Clickable)?.tag == INGREDIENT_TAG }
+        }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         text = styled,

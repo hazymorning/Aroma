@@ -17,12 +17,17 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -167,11 +172,33 @@ private val MealsOfTheDay: Set<Meal> = (0..23).mapTo(mutableSetOf()) { Meal.at(L
  * is in the head.
  */
 @Composable
-fun RecipesScreen(state: RecipesUiState, actions: RecipesActions, modifier: Modifier = Modifier, searchFocus: FocusRequester? = null) {
+fun RecipesScreen(
+    state: RecipesUiState,
+    actions: RecipesActions,
+    modifier: Modifier = Modifier,
+    focusSearch: Boolean = false,
+    onFocusSearchConsume: () -> Unit = {},
+) {
     var filtering by rememberSaveable { mutableStateOf(false) }
     var organizers by rememberSaveable { mutableStateOf<OrganizerKind?>(null) }
     val list = rememberLazyListState()
     ScrollToTopOnReselect(list)
+    val searchFocus = remember { FocusRequester() }
+    val consumeFocusSearch by rememberUpdatedState(onFocusSearchConsume)
+    // Search on Home lands in the search field, with the keyboard up: the field is in the list's
+    // first item, so the list goes back to its top, and the field is asked until it is laid out.
+    LaunchedEffect(focusSearch) {
+        if (!focusSearch) return@LaunchedEffect
+        list.scrollToItem(0)
+        repeat(FOCUS_FRAMES) {
+            withFrameNanos {}
+            if (runCatching { searchFocus.requestFocus(FocusDirection.Enter) }.getOrDefault(false)) {
+                consumeFocusSearch()
+                return@LaunchedEffect
+            }
+        }
+        consumeFocusSearch()
+    }
     val header = rememberHeaderState()
     val barInset = LocalBottomBarInset.current
     val headActions: @Composable () -> Unit = {
@@ -423,3 +450,6 @@ private fun OrganizerSheet(
         }
     }
 }
+
+/** How many frames the search field is asked for focus while the page settles. */
+private const val FOCUS_FRAMES = 10

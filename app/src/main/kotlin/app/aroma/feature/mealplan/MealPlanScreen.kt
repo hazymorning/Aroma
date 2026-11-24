@@ -14,7 +14,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -93,12 +92,10 @@ import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.weekday
 import app.aroma.ui.components.weekdayShort
 import app.aroma.ui.theme.AromaTheme
-import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.HeaderGap
-import app.aroma.ui.theme.HighlightReach
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.SectionGap
@@ -359,17 +356,10 @@ private fun Header(state: MealPlanUiState, actions: MealPlanActions, modifier: M
         LargeHeader(
             title = stringResource(R.string.nav_meal_plan),
             subtitle = {
-                FlowRow(itemVerticalAlignment = Alignment.CenterVertically) {
-                    Subtitle(range + SEPARATOR + week + if (state.showsToday) "" else SEPARATOR)
-                    if (!state.showsToday) {
-                        TextAction(
-                            stringResource(R.string.plan_this_week),
-                            actions.onToday,
-                            inline = true,
-                            // In the subtitle's size, so the line keeps one size throughout.
-                            lineStyle = AromaTheme.type.subtitle.copy(fontWeight = FontWeight.Medium),
-                        )
-                    }
+                Column {
+                    Subtitle(range + SEPARATOR + week)
+                    // Away from the week under way, the way back stands on a line of its own.
+                    if (!state.showsToday) TextAction(stringResource(R.string.plan_this_week), actions.onToday)
                 }
             },
         ) { WeekSwitcher(actions.onPreviousWeek, actions.onNextWeek) }
@@ -465,9 +455,10 @@ private fun LazyListScope.agenda(days: List<MealPlanDay>, today: LocalDate, acti
 }
 
 /**
- * A day: its short name over its figure in a column of 44 dp, and its meals beside it, with a
- * plus for one more; an empty day offers to plan a dish and is never taller than 56 dp. Today
- * stands on a soft surface that reaches 12 dp past the column; past days fade.
+ * A day: its short name over its figure in a column of 44 dp, level with its first meal, and its
+ * meals beside it, with a plus for one more level with the first. Every day stands alike; today
+ * has its figure in an ink circle and "Heute" over it. An empty day offers to plan a dish and is no
+ * taller than 56 dp. A day gone by fades and offers nothing more to plan.
  */
 @Composable
 private fun DayRow(
@@ -480,54 +471,58 @@ private fun DayRow(
     val locale = currentLocale()
     val isToday = day.date == today
     val past = day.date < today
-    val content =
-        @Composable {
-            Row(Modifier.fillMaxWidth()) {
-                DayMark(day.date, isToday, past, locale)
-                Column(Modifier.weight(1f)) {
-                    if (day.entries.isEmpty()) {
-                        Box(Modifier.heightIn(min = EmptyDayHeight), contentAlignment = Alignment.CenterStart) {
-                            TextAction(stringResource(R.string.plan_dish), { actions.onAdd(day.date) }, icon = R.drawable.ic_add)
-                        }
+    val markWidth = DayColumn * LocalDensity.current.fontScale.coerceAtLeast(1f)
+    val addLabel = stringResource(R.string.plan_add_for, remember(day.date, locale) { weekday(day.date, locale) })
+    Column(modifier.padding(horizontal = PageMargin), verticalArrangement = Arrangement.spacedBy(MealGap)) {
+        if (day.entries.isEmpty()) {
+            Row(Modifier.heightIn(min = EmptyDayHeight), verticalAlignment = Alignment.CenterVertically) {
+                DayMark(day.date, isToday, past, locale, Modifier.width(markWidth))
+                Spacer(Modifier.width(MarkGap))
+                if (past) {
+                    Text(stringResource(R.string.plan_nothing_planned), style = AromaTheme.type.meta, color = AromaTheme.colors.inkTertiary)
+                } else {
+                    TextAction(stringResource(R.string.plan_dish), { actions.onAdd(day.date) }, icon = R.drawable.ic_add)
+                }
+            }
+        }
+        day.entries.forEachIndexed { index, entry ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (index == 0) DayMark(day.date, isToday, past, locale, Modifier.width(markWidth)) else Spacer(Modifier.width(markWidth))
+                Spacer(Modifier.width(MarkGap))
+                Box(Modifier.weight(1f)) { EntryRow(entry, past, actions, onMore) }
+                if (!past) {
+                    if (index == 0) {
+                        IconButton(R.drawable.ic_add, addLabel, { actions.onAdd(day.date) })
                     } else {
-                        Row {
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MealGap)) {
-                                day.entries.forEach { entry -> EntryRow(entry, past, actions, onMore) }
-                            }
-                            val addLabel = stringResource(R.string.plan_add_for, remember(day.date, locale) { weekday(day.date, locale) })
-                            // Level with the first meal's thumbnail.
-                            IconButton(R.drawable.ic_add, addLabel, { actions.onAdd(day.date) }, Modifier.padding(top = Space.s4))
-                        }
+                        Spacer(Modifier.width(TouchTarget))
                     }
                 }
             }
         }
-    if (isToday) {
-        TonalBox(
-            modifier.padding(horizontal = PageMargin - HighlightReach),
-            // On the column at the sides; above and below, a box's own air.
-            contentPadding = PaddingValues(horizontal = HighlightReach, vertical = BoxPadding),
-        ) { content() }
-    } else {
-        Box(modifier.padding(horizontal = PageMargin)) { content() }
     }
 }
 
-/** A day's short name over its figure: "Heute" in sage on today, past days in tertiary ink. The figure orients, it does not head. */
+/**
+ * A day's short name over its figure, centred in their column. Today: "Heute" in sage over the figure
+ * in an ink circle, as the week on Home marks it. Past days in tertiary ink. The figure orients, it
+ * does not head.
+ */
 @Composable
-private fun DayMark(date: LocalDate, isToday: Boolean, past: Boolean, locale: Locale) {
+private fun DayMark(
+    date: LocalDate,
+    isToday: Boolean,
+    past: Boolean,
+    locale: Locale,
+    modifier: Modifier = Modifier,
+) {
     val colors = AromaTheme.colors
     val name = remember(date, locale) { weekdayShort(date, locale) }
     val full = remember(date, locale) { weekday(date, locale) }
-    // The column grows with the font size, so "Heute" is never cut.
-    val width = DayColumn * LocalDensity.current.fontScale.coerceAtLeast(1f)
     Column(
-        Modifier
-            .width(width)
-            .semantics(mergeDescendants = true) { heading() },
+        modifier.semantics(mergeDescendants = true) { heading() },
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (isToday) {
-            // "Heute" stands where the short name does, in its size, in sage and medium weight (6.3).
             Text(
                 stringResource(R.string.home_today),
                 style = AromaTheme.type.meta.copy(fontWeight = FontWeight.Medium),
@@ -537,22 +532,33 @@ private fun DayMark(date: LocalDate, isToday: Boolean, past: Boolean, locale: Lo
         } else {
             Text(name, style = AromaTheme.type.meta, color = if (past) colors.inkTertiary else colors.inkSecondary, maxLines = 1)
         }
-        Text(
-            text = date.dayOfMonth.toString(),
-            style = AromaTheme.type.numeral,
-            color =
-                when {
-                    isToday -> colors.ink
-                    past -> colors.inkTertiary
-                    else -> colors.inkSecondary
-                },
-            modifier = Modifier.semantics { this.contentDescription = "$full ${date.dayOfMonth}." },
-        )
+        val figure = date.dayOfMonth.toString()
+        val described = Modifier.semantics { this.contentDescription = "$full ${date.dayOfMonth}." }
+        if (isToday) {
+            Box(
+                described
+                    .padding(top = Space.s4)
+                    .size(TodayCircle * LocalDensity.current.fontScale.coerceAtLeast(1f))
+                    .background(colors.ink, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Text(figure, style = AromaTheme.type.numeral, color = colors.onInk) }
+        } else {
+            Text(
+                figure,
+                style = AromaTheme.type.numeral,
+                color = if (past) colors.inkTertiary else colors.inkSecondary,
+                modifier = described,
+            )
+        }
     }
 }
 
-/** The column a day's name and figure stand in; an empty day's row is no taller than a row of one line. */
+/** The column a day's name and figure stand in, the room between it and the meals, and today's circle. */
 private val DayColumn = 44.dp
+private val MarkGap = Space.s12
+private val TodayCircle = 44.dp
+
+/** An empty day's row is no taller than a row of one line. */
 private val EmptyDayHeight = 56.dp
 
 /** Between two days, and between the meals of one day, as between recipe rows anywhere. */

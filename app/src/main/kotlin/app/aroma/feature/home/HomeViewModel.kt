@@ -73,6 +73,7 @@ class HomeViewModel(
         load(refreshing = false)
         watchUser()
         watchReminder()
+        watchSections()
         viewModelScope.launch { recipes.changes.collect { load(refreshing = false) } }
         viewModelScope.launch {
             connection.isReachable.drop(1).collect { reachable ->
@@ -86,6 +87,14 @@ class HomeViewModel(
             sessions.state.collect { session ->
                 val user = (session as? SessionState.SignedIn)?.session ?: return@collect
                 mutableState.update { it.copy(firstName = user.fullName.ifBlank { user.username }.substringBefore(' ')) }
+            }
+        }
+    }
+
+    private fun watchSections() {
+        viewModelScope.launch {
+            settings.settings.map { it.homeSections }.distinctUntilChanged().collect { sections ->
+                mutableState.update { it.copy(sections = sections) }
             }
         }
     }

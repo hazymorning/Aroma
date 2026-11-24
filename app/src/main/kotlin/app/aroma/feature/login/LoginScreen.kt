@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -99,9 +98,8 @@ private const val TOP_SPACE_FRACTION = 0.18f
 private val FormWidth = 460.dp
 private val TaglineWidth = 320.dp
 
-/** Aroma's mark over the name; its book starts this far inside its box, which sets the book on the margin. */
-private val LogoSize = 88.dp
-private val LogoInset = 11.dp
+/** The logo's height: its bowl as large as a page title is tall, the wordmark beside it. */
+private val LogoHeight = 64.dp
 
 @Composable
 fun LoginScreen(state: LoginUiState, actions: LoginActions, modifier: Modifier = Modifier) {
@@ -124,21 +122,17 @@ fun LoginScreen(state: LoginUiState, actions: LoginActions, modifier: Modifier =
                     .widthIn(max = FormWidth)
                     .fillMaxWidth(),
             ) {
+                // The logo, mark and wordmark; on a dark ground its version for dark grounds.
+                val appName = stringResource(R.string.app_name)
                 Image(
-                    painter = painterResource(R.drawable.ic_mark),
-                    contentDescription = null,
+                    painter = painterResource(if (AromaTheme.colors.isDark) R.drawable.aroma_logo_on_dark else R.drawable.aroma_logo),
+                    contentDescription = appName,
                     modifier =
                         Modifier
-                            .offset(x = -LogoInset)
-                            .size(LogoSize),
+                            .height(LogoHeight)
+                            .semantics { heading() },
                 )
                 Spacer(Modifier.height(Space.s16))
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = AromaTheme.type.display,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Spacer(Modifier.height(Space.s12))
                 Text(
                     text = stringResource(R.string.login_tagline),
                     style = AromaTheme.type.body,

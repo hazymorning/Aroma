@@ -260,6 +260,7 @@
     <string name="plan_week_numbers">Weeks %1$d–%2$d</string>
     <string name="plan_add_for">Plan a meal for %1$s</string>
     <string name="plan_dish">Plan a dish</string>
+    <string name="plan_nothing_planned">Nothing planned</string>
     <string name="plan_show_past">Show past days</string>
     <string name="plan_remove">Remove from plan</string>
     <string name="plan_removed">Removed from the plan</string>
@@ -405,6 +406,9 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_dynamic_color">Colors from your wallpaper</string>
     <string name="settings_dynamic_color_hint">Tints the accents to match your wallpaper.</string>
+    <string name="settings_home">Home</string>
+    <string name="settings_home_description">What Home shows</string>
+    <string name="settings_home_shown">%1$d of %2$d</string>
     <string name="settings_language">Language</string>
     <string name="settings_app_language">App language</string>
     <string name="settings_language_system">System</string>

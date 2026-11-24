@@ -12,6 +12,7 @@ import app.aroma.data.network.ServerConnection
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.session.SessionManager
 import app.aroma.data.settings.AppLanguage
+import app.aroma.data.settings.HomeSection
 import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.settings.ThemeMode
@@ -58,6 +59,7 @@ class SettingsViewModel(
                 themeMode = app.themeMode,
                 dynamicColor = app.dynamicColor,
                 dynamicColorAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+                homeSections = app.homeSections,
                 language = lang,
                 keepScreenOn = app.keepScreenOn,
                 ingredientsInSteps = app.ingredientsInSteps,
@@ -74,6 +76,8 @@ class SettingsViewModel(
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { settings.setThemeMode(mode) }
 
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { settings.setDynamicColor(enabled) }
+
+    fun setHomeSection(section: HomeSection, shown: Boolean) = viewModelScope.launch { settings.setHomeSection(section, shown) }
 
     fun setKeepScreenOn(enabled: Boolean) = viewModelScope.launch { settings.setKeepScreenOn(enabled) }
 

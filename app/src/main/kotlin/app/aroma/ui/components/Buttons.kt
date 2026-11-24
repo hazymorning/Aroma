@@ -28,7 +28,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -196,8 +195,7 @@ fun ButtonProgress(color: Color, modifier: Modifier = Modifier) {
 /**
  * A text action in sage, with no fill: "Alle", "Einplanen", "Erneut versuchen". Its text, or the
  * [icon] before it, stands on the edge; the touch area grows away from it to 48 dp. An [inline]
- * action stands within a line of text, in that line's size: in the meta role unless [lineStyle]
- * names the line's own.
+ * action stands within a line of meta text, in its size.
  */
 @Composable
 fun TextAction(
@@ -207,7 +205,6 @@ fun TextAction(
     @DrawableRes icon: Int? = null,
     enabled: Boolean = true,
     inline: Boolean = false,
-    lineStyle: TextStyle = AromaTheme.type.meta,
 ) {
     val accent = AromaTheme.colors.accent
     val interaction = remember { MutableInteractionSource() }
@@ -235,7 +232,7 @@ fun TextAction(
             }
             Text(
                 text,
-                style = if (inline) lineStyle else AromaTheme.type.label,
+                style = if (inline) AromaTheme.type.meta else AromaTheme.type.label,
                 color = accent,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

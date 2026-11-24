@@ -69,10 +69,12 @@ import app.aroma.core.format.MeasureSystem
 import app.aroma.core.format.Quantities
 import app.aroma.core.format.StepAmount
 import app.aroma.core.format.StepMeasures
+import app.aroma.core.format.StepMention
 import app.aroma.core.format.StyledText
 import app.aroma.core.format.UnitSpacing
 import app.aroma.core.format.ingredientsByStep
 import app.aroma.core.format.stepAmounts
+import app.aroma.core.format.stepMentions
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.NutritionKind
 import app.aroma.core.model.NutritionValue
@@ -311,8 +313,16 @@ private fun LazyListState.bottomOf(key: Any): Int? = layoutInfo.visibleItemsInfo
 /** What the menu opens on the page itself: a rework where Mealie's AI is there, the rating and the question before deleting. */
 private class PageMenu(val onRework: (() -> Unit)?, val onRate: () -> Unit, val onDelete: () -> Unit)
 
-/** The steps' [texts] as they read, the [amounts] written into them and the ingredients each [uses], as the list shows them. */
-private class Steps(val texts: List<StyledText>, val amounts: List<List<StepAmount>>, val uses: List<List<String>>)
+/**
+ * The steps' [texts] as they read, the [amounts] written into them, the ingredients each [uses], as
+ * the list shows them, and the words in them that tick an ingredient off ([mentions]).
+ */
+private class Steps(
+    val texts: List<StyledText>,
+    val amounts: List<List<StepAmount>>,
+    val uses: List<List<String>>,
+    val mentions: List<List<StepMention>>,
+)
 
 @Composable
 private fun rememberSteps(recipe: Recipe?, state: RecipeUiState): Steps {
@@ -345,7 +355,8 @@ private fun rememberSteps(recipe: Recipe?, state: RecipeUiState): Steps {
                 recipe.stepAmounts(texts.map { it.text }, state.scale, locale, state.measures)
             }
         }
-    return remember(texts, amounts, uses) { Steps(texts, amounts, uses) }
+    val mentions = remember(recipe, texts, locale) { recipe?.stepMentions(texts.map { it.text }, locale).orEmpty() }
+    return remember(texts, amounts, uses, mentions) { Steps(texts, amounts, uses, mentions) }
 }
 
 /** The page's text keeps a reading measure on wide screens, centred under the photo. */
@@ -629,6 +640,9 @@ private fun LazyListScope.recipeBody(
                 text = steps.texts.getOrNull(index) ?: StyledText(step.text, emptyList()),
                 amounts = steps.amounts.getOrNull(index).orEmpty(),
                 uses = if (state.ingredientsInSteps == IngredientsInSteps.None) emptyList() else steps.uses.getOrNull(index).orEmpty(),
+                mentions = steps.mentions.getOrNull(index).orEmpty(),
+                checked = state.checkedIngredients,
+                onToggle = actions.onToggleIngredient,
                 modifier =
                     Modifier
                         .measure()
@@ -918,7 +932,10 @@ fun servingsLabel(baseServings: Double, scale: Double, locale: Locale, unit: Str
     return if (unit != null) "$text$NARROW_NO_BREAK_SPACE$unit" else pluralStringResource(R.plurals.servings, count, text)
 }
 
-/** A step with its number in the gutter, level with its first line, and what it uses under it. */
+/**
+ * A step with its number in the gutter, level with its first line, and what it uses under it. A tap
+ * on a word that names an ingredient ticks it off, as a tap on its line does.
+ */
 @Composable
 private fun StepItem(
     index: Int,
@@ -926,9 +943,13 @@ private fun StepItem(
     text: StyledText,
     amounts: List<StepAmount>,
     uses: List<String>,
+    mentions: List<StepMention>,
+    checked: Set<Int>,
+    onToggle: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val number = stringResource(R.string.editor_step, index + 1)
+    val haptics = LocalHapticFeedback.current
     Row(modifier.padding(horizontal = PageMargin)) {
         Text(
             text = (index + 1).toString(),
@@ -948,7 +969,28 @@ private fun StepItem(
             if (!step.title.isNullOrBlank()) {
                 Text(step.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = EyebrowGap))
             }
-            Text(text = rememberStepText(text, amounts), style = AromaTheme.type.body)
+            Text(
+                text =
+                    rememberStepText(
+                        text,
+                        amounts,
+                        mentions = mentions,
+                        checked = checked,
+                        onIngredient = { ingredient ->
+                            haptics.performHapticFeedback(
+                                if (ingredient in
+                                    checked
+                                ) {
+                                    HapticFeedbackType.ToggleOff
+                                } else {
+                                    HapticFeedbackType.ToggleOn
+                                },
+                            )
+                            onToggle(ingredient)
+                        },
+                    ),
+                style = AromaTheme.type.body,
+            )
             // The ingredients the step uses, as the list shows them, so the step reads on its own.
             if (uses.isNotEmpty()) {
                 Text(text = uses.joinToString(SEPARATOR), style = AromaTheme.type.meta, modifier = Modifier.padding(top = Space.s8))

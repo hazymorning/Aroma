@@ -16,6 +16,7 @@ import app.aroma.core.format.DetectedDuration
 import app.aroma.core.format.DurationDetector
 import app.aroma.core.format.Markdown
 import app.aroma.core.format.StepAmount
+import app.aroma.core.format.StepMention
 import app.aroma.core.format.StyledText
 import app.aroma.ui.theme.AromaTheme
 
@@ -33,7 +34,9 @@ fun rememberRichText(
 /**
  * A step's [text], as Markdown reads it, with [amounts] written in and set as the ingredient list sets amounts:
  * in sage, in its weight, with tabular figures and real fractions. Durations become timer links where
- * [onDuration] is set; an amount never does.
+ * [onDuration] is set; an amount never does. Where [onIngredient] is set, a word that names an
+ * ingredient ([mentions]) ticks it off with a tap, with the amount written in before it; a word of an
+ * ingredient already ticked off ([checked]) fades like its line in the list.
  */
 @Composable
 fun rememberStepText(
@@ -41,14 +44,45 @@ fun rememberStepText(
     amounts: List<StepAmount>,
     onDuration: ((DetectedDuration) -> Unit)? = null,
     linkColor: Color = AromaTheme.colors.accent,
+    mentions: List<StepMention> = emptyList(),
+    checked: Set<Int> = emptySet(),
+    onIngredient: ((Int) -> Unit)? = null,
 ): AnnotatedString {
+    val colors = AromaTheme.colors
     val linkStyles =
         TextLinkStyles(
             style = SpanStyle(color = linkColor, fontWeight = FontWeight.Medium, textDecoration = TextDecoration.Underline),
         )
-    val amountStyle = SpanStyle(color = AromaTheme.colors.accent, fontWeight = FontWeight.Medium)
-    return remember(text, amounts, onDuration, linkStyles, amountStyle) { richText(text, amounts, onDuration, linkStyles, amountStyle) }
+    val amountStyle = SpanStyle(color = colors.accent, fontWeight = FontWeight.Medium)
+    val ingredients =
+        remember(mentions, checked, onIngredient, colors) {
+            onIngredient?.let { toggle ->
+                val pressed = SpanStyle(background = colors.ink.copy(alpha = PRESSED_TINT))
+                IngredientTaps(
+                    mentions = mentions,
+                    checked = checked,
+                    open = TextLinkStyles(pressedStyle = pressed),
+                    done = TextLinkStyles(style = SpanStyle(color = colors.inkTertiary), pressedStyle = pressed),
+                    onToggle = toggle,
+                )
+            }
+        }
+    return remember(text, amounts, onDuration, linkStyles, amountStyle, ingredients) {
+        richText(text, amounts, onDuration, linkStyles, amountStyle, ingredients)
+    }
 }
+
+/** The words of a step that tick off ingredients, and how they look open, ticked off and pressed. */
+private class IngredientTaps(
+    val mentions: List<StepMention>,
+    val checked: Set<Int>,
+    val open: TextLinkStyles,
+    val done: TextLinkStyles,
+    val onToggle: (Int) -> Unit,
+)
+
+/** Ink at 6 % under a word while it is pressed, as everything else that takes a tap is tinted. */
+private const val PRESSED_TINT = 0.06f
 
 private fun richText(
     styled: StyledText,
@@ -56,6 +90,7 @@ private fun richText(
     onDuration: ((DetectedDuration) -> Unit)?,
     linkStyles: TextLinkStyles,
     amountStyle: SpanStyle,
+    ingredients: IngredientTaps?,
 ): AnnotatedString {
     val links = styled.spans.filterIsInstance<StyledText.Span.Link>()
     // No amount goes into the text of a link.
@@ -96,20 +131,41 @@ private fun richText(
                 is StyledText.Span.Link -> addLink(LinkAnnotation.Url(span.url, linkStyles), start, end)
             }
         }
+        val linked = links.map { moved(it.start, end = false) until moved(it.end, end = true) }
+        val timed = mutableListOf<IntRange>()
         if (onDuration != null) {
-            val taken =
-                links.map { moved(it.start, end = false) until moved(it.end, end = true) } +
-                    moves.map { (_, start, after) -> start until after }
+            val taken = linked + moves.map { (_, start, after) -> start until after }
             DurationDetector
                 .detect(toAnnotatedString().text)
                 .filter { duration -> taken.none { duration.start <= it.last && it.first < duration.end } }
                 .forEach { duration ->
+                    timed += duration.start until duration.end
                     addLink(
-                        LinkAnnotation.Clickable(tag = "timer", styles = linkStyles) { onDuration(duration) },
+                        LinkAnnotation.Clickable(tag = TIMER_TAG, styles = linkStyles) { onDuration(duration) },
                         duration.start,
                         duration.end,
                     )
                 }
         }
+        ingredients?.mentions?.forEach { mention ->
+            val end = moved(mention.end, end = true)
+            // The amount written in just before the word is part of the tap: "75 g Couscous".
+            val start =
+                moves
+                    .firstOrNull { (edit, _, after) -> edit.ingredient == mention.ingredient && after == moved(mention.start, end = false) }
+                    ?.second ?: moved(mention.start, end = false)
+            if (end > start && (linked + timed).none { start <= it.last && it.first < end }) {
+                val styles = if (mention.ingredient in ingredients.checked) ingredients.done else ingredients.open
+                addLink(
+                    LinkAnnotation.Clickable(tag = INGREDIENT_TAG, styles = styles) { ingredients.onToggle(mention.ingredient) },
+                    start,
+                    end,
+                )
+            }
+        }
     }
 }
+
+/** What a link in a step does: start a timer, or tick off an ingredient. */
+const val TIMER_TAG = "timer"
+const val INGREDIENT_TAG = "ingredient"
