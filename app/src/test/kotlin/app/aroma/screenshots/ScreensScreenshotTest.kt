@@ -183,7 +183,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         }
     }
 
-    /** Nothing says yet what kind of dish it is: a link after the chips asks for it. */
+    /** Nothing says yet what kind of dish it is: the line under the title names its tags alone. */
     @Test
     fun recipeWithoutMeal() {
         applyLocale()
@@ -234,7 +234,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "recipe_steps_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHeader") },
+            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHead") },
         ) {
             RecipeScreen(state = RecipeUiState(recipe = sample.recipe, isLoading = false), actions = RecipeActions())
         }
@@ -247,7 +247,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         snapshot(
             "recipe_steps_amounts_${variant.suffix}",
             variant.dark,
-            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHeader") },
+            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey("stepsHead") },
         ) {
             RecipeScreen(
                 state = RecipeUiState(recipe = sample.recipe, isLoading = false, scale = 1.5, amountsInSteps = true),

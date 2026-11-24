@@ -38,5 +38,8 @@ fun MetaLine(
     }
 }
 
-/** What parts the facts of a meta line, and the parts of a subtitle. */
-const val SEPARATOR = " · "
+/**
+ * What parts the facts of a meta line, and the parts of a subtitle: a middle dot with a no-break
+ * space before it, so a line may end after the dot but never start with one.
+ */
+const val SEPARATOR = "\u00A0· "

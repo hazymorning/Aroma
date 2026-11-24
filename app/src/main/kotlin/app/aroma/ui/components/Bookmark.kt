@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -14,10 +15,16 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import app.aroma.R
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Motion
 
@@ -51,11 +58,36 @@ enum class RibbonSize(val size: DpSize) {
 /**
  * The bookmark ribbon of a saved recipe, in sage, hanging from the top edge of its photo. It
  * replaces the heart everywhere. Where it comes and goes in view ([animated]), it slides down from
- * the edge as the recipe is saved, and back up as it is let go.
+ * the edge as the recipe is saved, and back up as it is let go. On a photo under the status bar it
+ * reaches up behind it by [hang], so its own length shows below; with [onClick], a tap lets it go.
  */
 @Composable
-fun Ribbon(saved: Boolean, modifier: Modifier = Modifier, size: RibbonSize = RibbonSize.Card, animated: Boolean = false) {
-    val strip = @Composable { Box(Modifier.size(size.size).background(AromaTheme.colors.accent, RibbonShape)) }
+fun Ribbon(
+    saved: Boolean,
+    modifier: Modifier = Modifier,
+    size: RibbonSize = RibbonSize.Card,
+    animated: Boolean = false,
+    hang: Dp = 0.dp,
+    onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
+) {
+    val savedLabel = stringResource(R.string.recipes_saved)
+    val tap =
+        if (onClick != null) {
+            Modifier.clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
+        } else {
+            Modifier
+        }
+    val strip =
+        @Composable {
+            Box(
+                Modifier
+                    .size(size.size.width, size.size.height + hang)
+                    .background(AromaTheme.colors.accent, RibbonShape)
+                    .then(tap)
+                    .semantics { contentDescription = savedLabel },
+            )
+        }
     if (!animated) {
         if (saved) Box(modifier) { strip() }
         return
@@ -63,7 +95,7 @@ fun Ribbon(saved: Boolean, modifier: Modifier = Modifier, size: RibbonSize = Rib
     AnimatedVisibility(
         visible = saved,
         modifier = modifier,
-        enter = slideInVertically(tween(Motion.STATE, easing = Motion.Decelerate)) { -it },
-        exit = slideOutVertically(tween(Motion.STATE, easing = Motion.Decelerate)) { -it },
+        enter = slideInVertically(Motion.state()) { -it },
+        exit = slideOutVertically(Motion.state()) { -it },
     ) { strip() }
 }

@@ -107,6 +107,7 @@ fun RecipeDto.toModel(serverUrl: String) =
                 if (text.isEmpty() && note.title.isNullOrBlank()) null else RecipeNote(note.title.orEmpty().trim(), text)
             },
         nutrition = if (settings?.showNutrition == true) nutrition?.toModel().orEmpty() else emptyList(),
+        yieldText = recipeYield?.trim()?.takeIf { it.isNotEmpty() },
     )
 
 fun IngredientDto.toModel() =

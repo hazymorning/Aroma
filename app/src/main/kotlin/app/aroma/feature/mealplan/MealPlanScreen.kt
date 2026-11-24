@@ -66,6 +66,7 @@ import app.aroma.ui.components.LargeHeader
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.RecipeImage
+import app.aroma.ui.components.SEPARATOR
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.Separator
 import app.aroma.ui.components.SheetAction
@@ -481,7 +482,7 @@ private fun EntrySheet(
         sheetState = sheetState,
         meta = {
             Text(
-                text = "${weekday(entry.date, locale)} · ${mealTypeLabel(entry.type)}",
+                text = "${weekday(entry.date, locale)}$SEPARATOR${mealTypeLabel(entry.type)}",
                 style = AromaTheme.type.bodySmall,
                 color = AromaTheme.colors.inkSecondary,
             )

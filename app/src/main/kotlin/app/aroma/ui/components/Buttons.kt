@@ -203,13 +203,15 @@ fun TextAction(
     modifier: Modifier = Modifier,
     @DrawableRes icon: Int? = null,
     enabled: Boolean = true,
+    inline: Boolean = false,
 ) {
     val accent = AromaTheme.colors.accent
     val interaction = remember { MutableInteractionSource() }
     Row(
         modifier =
             modifier
-                .heightIn(min = TouchTarget)
+                // Within a line, the target reaches past it without pushing the lines apart.
+                .then(if (inline) Modifier else Modifier.heightIn(min = TouchTarget))
                 .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
                 .alpha(if (enabled) 1f else DISABLED),
         verticalAlignment = Alignment.CenterVertically,
@@ -227,7 +229,13 @@ fun TextAction(
                 Icon(painterResource(it), contentDescription = null, tint = accent, modifier = Modifier.size(Glyph.control))
                 Spacer(Modifier.width(Space.s4))
             }
-            Text(text, style = AromaTheme.type.label, color = accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                text,
+                style = if (inline) AromaTheme.type.meta else AromaTheme.type.label,
+                color = accent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

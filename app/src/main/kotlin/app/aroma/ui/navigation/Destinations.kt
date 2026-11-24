@@ -346,6 +346,18 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
                     leave()
                 }
 
+                RecipeEvent.Unsaved -> {
+                    launch {
+                        val result =
+                            snackbar.showSnackbar(
+                                message = resources.getString(R.string.recipe_unsaved),
+                                actionLabel = resources.getString(R.string.action_undo),
+                                duration = SnackbarDuration.Long,
+                            )
+                        if (result == SnackbarResult.ActionPerformed) vm.toggleFavorite()
+                    }
+                }
+
                 is RecipeEvent.Failed -> {
                     launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
                 }
@@ -429,15 +441,6 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                             !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                     if (needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     vm.rework(translate)
-                },
-                onOpenOrganizer = { kind, organizer ->
-                    val collection =
-                        when (kind) {
-                            OrganizerKind.Category -> CollectionKind.Category
-                            OrganizerKind.Tag -> CollectionKind.Tag
-                            OrganizerKind.Tool -> CollectionKind.Tool
-                        }
-                    nav.navigate(CollectionRoute(collection, organizer.name, organizer.id))
                 },
                 onOrganize = {
                     // Filing is saved in Mealie as it is chosen, so it waits for Mealie to answer.

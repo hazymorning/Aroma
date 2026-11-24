@@ -23,7 +23,7 @@
     <string name="action_delete">Delete</string>
     <string name="action_done">Done</string>
     <string name="action_edit">Edit</string>
-    <string name="action_favorite">Add to favorites</string>
+    <string name="action_favorite">Save</string>
     <string name="action_increase">More</string>
     <string name="action_more">More options</string>
     <string name="action_plan">Plan</string>
@@ -31,7 +31,7 @@
     <string name="action_save">Save</string>
     <string name="action_share">Share</string>
     <string name="action_show_all">Show all</string>
-    <string name="action_unfavorite">Remove from favorites</string>
+    <string name="action_unfavorite">Remove from saved</string>
 
     <!-- Durations -->
     <string name="duration_seconds">%1$d\u202Fs</string>
@@ -120,7 +120,8 @@
     <string name="recipe_notes">Notes</string>
     <string name="recipe_nutrition">Nutrition</string>
     <string name="recipe_prep_time">Prep</string>
-    <string name="recipe_cook_time">Cook</string>
+    <string name="recipe_cook_time">Cooking</string>
+    <string name="recipe_bake_time">Baking</string>
     <string name="recipe_total_time">Total</string>
     <string name="recipe_add_to_list">Add to shopping list</string>
     <string name="recipe_tools">Equipment</string>
@@ -153,6 +154,7 @@
 
     <string name="action_clear">Clear</string>
     <string name="action_undo">Undo</string>
+    <string name="recipe_unsaved">Removed from saved</string>
     <string name="select_all">Select all</string>
     <string name="select_none">Select none</string>
     <string name="share_import_label">Add to Aroma</string>
@@ -373,8 +375,6 @@
     <string name="organizers_meal">Type of dish</string>
     <string name="organizers_meal_hint">Mealie keeps it as a category. That’s how Home knows what suits the time of day.</string>
     <string name="organizers_title">Categories and tags</string>
-    <string name="organizers_choose_meal">Choose type of dish</string>
-    <string name="organizers_change">Change categories and tags</string>
     <string name="organizers_new_category">New category</string>
     <string name="organizers_new_tag">New tag</string>
     <string name="organizers_add">Add %1$s</string>
@@ -382,8 +382,8 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
-    <string name="settings_server_connected">Connected · Mealie %1$s</string>
-    <string name="settings_server_offline">Not connected · Mealie %1$s</string>
+    <string name="settings_server_connected">Connected\u00A0· Mealie %1$s</string>
+    <string name="settings_server_offline">Not connected\u00A0· Mealie %1$s</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">System</string>
@@ -452,7 +452,7 @@
     <string name="widget_meal_plan">Meal plan</string>
     <string name="widget_today">Today</string>
     <string name="widget_tomorrow">Tomorrow</string>
-    <string name="widget_tomorrow_meal">Tomorrow · %1$s</string>
+    <string name="widget_tomorrow_meal">Tomorrow\u00A0· %1$s</string>
     <string name="widget_today_empty">Nothing planned for today</string>
     <string name="widget_tomorrow_empty">Nothing planned for tomorrow</string>
     <string name="widget_day_empty">Nothing planned</string>

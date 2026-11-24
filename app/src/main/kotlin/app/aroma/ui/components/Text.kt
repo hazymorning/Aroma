@@ -3,7 +3,10 @@ package app.aroma.ui.components
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
@@ -17,7 +20,8 @@ import androidx.compose.ui.text.withStyle
 
 /**
  * Text as Aroma sets it, so German compounds break as a typesetter would break them (see
- * [breakable]). Screens use this instead of Material's `Text`, with the same parameters.
+ * [breakable]), and text that is shortened ends after a whole word with "…" (see [ellipsis]).
+ * Screens use this instead of Material's `Text`, with the same parameters.
  */
 @Composable
 fun Text(
@@ -32,17 +36,17 @@ fun Text(
     minLines: Int = 1,
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
 ) {
-    androidx.compose.material3.Text(
-        text = remember(text) { text.breakable() },
+    Text(
+        text = remember(text) { AnnotatedString(text) },
         modifier = modifier,
         color = color,
+        style = style,
         textAlign = textAlign,
         overflow = overflow,
         softWrap = softWrap,
         maxLines = maxLines,
         minLines = minLines,
         onTextLayout = onTextLayout,
-        style = style,
     )
 }
 
@@ -61,20 +65,64 @@ fun Text(
     inlineContent: Map<String, InlineTextContent> = emptyMap(),
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
 ) {
+    val prepared = remember(text) { text.breakable() }
+    val shortens = overflow == TextOverflow.Ellipsis && maxLines != Int.MAX_VALUE
+    // Where the text was cut after a whole word, and at what width; measured once it overflows.
+    var cut by remember(prepared, maxLines, shortens) { mutableStateOf<Cut?>(null) }
+    val shown = cut?.at?.let { prepared.ellipsis(it) } ?: prepared
     androidx.compose.material3.Text(
-        text = remember(text) { text.breakable() },
+        text = shown,
         modifier = modifier,
         color = color,
         textAlign = textAlign,
-        overflow = overflow,
+        // Until it is measured, the text is clipped, so the cut is found in what fits.
+        overflow = if (shortens && cut == null) TextOverflow.Clip else overflow,
         softWrap = softWrap,
         maxLines = maxLines,
         minLines = minLines,
         inlineContent = inlineContent,
-        onTextLayout = onTextLayout ?: {},
+        onTextLayout = { result ->
+            if (shortens) {
+                val width = result.layoutInput.constraints.maxWidth
+                val current = cut
+                when {
+                    current == null && result.hasVisualOverflow -> cut = Cut(wordEnd(prepared.text, result), width)
+                    current != null && current.width != width -> cut = null
+                }
+            }
+            onTextLayout?.invoke(result)
+        },
         style = style,
     )
 }
+
+/** A cut of a shortened text: before character [at], or nowhere where its last line holds one long word, measured at [width]. */
+private data class Cut(val at: Int?, val width: Int)
+
+/**
+ * Where to end text that overflows [layout]: after the last whole word of its last line, without
+ * the space or the comma after it; null where that line holds no space to end at.
+ */
+private fun wordEnd(text: String, layout: TextLayoutResult): Int? {
+    val line = layout.lineCount - 1
+    val start = layout.getLineStart(line)
+    val end = layout.getLineEnd(line, visibleEnd = true)
+    var at = (end - 1 downTo start + 1).firstOrNull { text[it].isWhitespace() } ?: return null
+    while (at > start && (text[at - 1].isWhitespace() || text[at - 1] in Trailing)) at--
+    return at
+}
+
+/** What a shortened text drops before its "…": "Teig, …" reads as "Teig…". */
+private const val Trailing = ",;:–-"
+
+/** The text up to [end], and "…" after it, in the style of the last character kept. */
+fun AnnotatedString.ellipsis(end: Int): AnnotatedString =
+    buildAnnotatedString {
+        append(this@ellipsis.subSequence(0, end))
+        withStyle(this@ellipsis.spanStyleAt((end - 1).coerceAtLeast(0))) { append(ELLIPSIS) }
+    }
+
+private const val ELLIPSIS = '…'
 
 /** A space of no width: a place a line may break that shows nothing. */
 private const val ZERO_WIDTH_SPACE = '\u200B'

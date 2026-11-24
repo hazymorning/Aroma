@@ -45,7 +45,7 @@ data class IngredientRow(val section: String?, val line: IngredientLine)
  * in a column of their own, right-aligned in sage with tabular figures, as wide as the widest amount
  * and at least 56 dp; the names follow 16 dp after it. An ingredient without an amount stands in the
  * names' column. A group's name, in sage italics, stands 24 dp above its first line and 8 dp above
- * it. A tap ticks a line off ([onToggle]): it fades to tertiary ink and is struck through. With
+ * it. A tap ticks a line off ([onToggle]): it fades to tertiary ink. With
  * [checks], a tick stands before each line, as in cook mode.
  */
 @Composable
@@ -114,14 +114,13 @@ private fun IngredientLineRow(
         } else {
             Modifier
         }
-    val decoration = if (checked && !check) TextDecoration.LineThrough else TextDecoration.None
     val amountColor by animateColorAsState(if (checked) colors.inkTertiary else colors.accent, Motion.state(), label = "amount")
     val textColor by animateColorAsState(if (checked) colors.inkTertiary else colors.ink, Motion.state(), label = "ingredient")
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = if (onToggle != null) RowTarget else RowHeight)
+                .heightIn(min = if (check) RowTarget else RowHeight)
                 .then(tap)
                 .padding(vertical = Space.s8),
         verticalAlignment = if (check) Alignment.CenterVertically else Alignment.Top,
@@ -133,10 +132,7 @@ private fun IngredientLineRow(
         if (amountWidth > 0.dp) {
             Text(
                 text = amount,
-                style =
-                    AromaTheme.type.body
-                        .tabular()
-                        .copy(textDecoration = decoration),
+                style = AromaTheme.type.body.tabular(),
                 color = amountColor,
                 textAlign = TextAlign.End,
                 modifier = Modifier.width(amountWidth),
@@ -145,14 +141,14 @@ private fun IngredientLineRow(
         }
         Text(
             text = ingredientText(row, colors.inkSecondary.takeIf { !checked } ?: colors.inkTertiary),
-            style = AromaTheme.type.body.copy(textDecoration = decoration),
+            style = AromaTheme.type.body,
             color = textColor,
             modifier = Modifier.weight(1f),
         )
     }
 }
 
-/** A line is at least 40 dp tall, and 48 dp where it takes a tap. */
+/** A line is at least 40 dp tall, as a cookbook sets its list; with a tick before it, as tall as the tick's target. */
 private val RowHeight = 40.dp
 private val RowTarget = 48.dp
 

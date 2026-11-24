@@ -74,6 +74,7 @@ import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MetaLine
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PillField
+import app.aroma.ui.components.SEPARATOR
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.Skeleton
 import app.aroma.ui.components.SkeletonLine
@@ -373,7 +374,7 @@ private fun Header(
                         Subtitle(
                             when {
                                 shoppingMode -> stringResource(R.string.shopping_mode_hint)
-                                state.lists.size > 1 -> "${list.name} · $count"
+                                state.lists.size > 1 -> "${list.name}$SEPARATOR$count"
                                 else -> count
                             },
                         )

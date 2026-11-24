@@ -66,6 +66,8 @@ data class Recipe(
     val steps: List<Step>,
     val notes: List<RecipeNote>,
     val nutrition: List<NutritionValue>,
+    /** The yield as Mealie writes it ("1 Blech", "ca. 24 Stück"), only for showing it. */
+    val yieldText: String? = null,
 )
 
 /**
