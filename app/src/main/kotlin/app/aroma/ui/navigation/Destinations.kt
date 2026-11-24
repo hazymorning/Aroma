@@ -365,6 +365,18 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
                     val reason = event.error.reworkReason(resources)
                     launch { snackbar.showSnackbar(resources.getString(R.string.recipe_rework_failed_because, reason)) }
                 }
+
+                is RecipeEvent.Unrated -> {
+                    launch {
+                        val result =
+                            snackbar.showSnackbar(
+                                message = resources.getString(R.string.rating_removed),
+                                actionLabel = resources.getString(R.string.action_undo),
+                                duration = SnackbarDuration.Long,
+                            )
+                        if (result == SnackbarResult.ActionPerformed) vm.rate(event.stars)
+                    }
+                }
             }
         }
     }

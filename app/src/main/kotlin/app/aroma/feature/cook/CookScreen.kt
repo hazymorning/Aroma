@@ -476,7 +476,7 @@ private fun DonePage(state: CookUiState, actions: CookActions) {
         )
         // The stars' touch targets reach beyond the glyphs; the gaps are measured to the glyphs.
         Spacer(Modifier.height(Space.m - ratingTouchInset(DONE_STAR_SIZE)))
-        RatingStars(state.rating, starSize = DONE_STAR_SIZE, onRate = actions.onRate)
+        RatingStars(state.rating, starSize = DONE_STAR_SIZE, onRate = actions.onRate, clearable = true)
         Spacer(Modifier.height(Space.xl - ratingTouchInset(DONE_STAR_SIZE)))
         MarkCooked(state.markedCooked, state.markFailed, actions.onMarkCooked)
         Spacer(Modifier.weight(2f))

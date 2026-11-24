@@ -286,7 +286,8 @@ private fun ChipGroup(label: String, modifier: Modifier = Modifier, chips: LazyL
 
 /**
  * Five large stars to rate the recipe. Once a star is tapped, the sheet waits for the stars to
- * fill in, then closes by itself.
+ * fill in, then closes by itself. Tapping the star already chosen takes the rating back, which a
+ * line under the stars says while there is a rating to take back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -294,6 +295,8 @@ internal fun RatingSheet(rating: Double?, onRate: (Int) -> Unit, onDismiss: () -
     val sheetState = rememberFullSheetState()
     val scope = rememberCoroutineScope()
     var chosen by remember { mutableStateOf(rating) }
+    // The line that says how to take a rating back stands under the stars, in the room they leave below.
+    val below = if (rating == null) Space.l else Space.xxs
     AromaBottomSheet(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.recipe_rate),
@@ -303,8 +306,9 @@ internal fun RatingSheet(rating: Double?, onRate: (Int) -> Unit, onDismiss: () -
         RatingStars(
             rating = chosen,
             starSize = STAR_SIZE,
+            clearable = true,
             onRate = { stars ->
-                chosen = stars.toDouble()
+                chosen = stars.takeIf { it > 0 }?.toDouble()
                 onRate(stars)
                 scope
                     .launch {
@@ -312,8 +316,16 @@ internal fun RatingSheet(rating: Double?, onRate: (Int) -> Unit, onDismiss: () -
                         sheetState.hide()
                     }.invokeOnCompletion { onDismiss() }
             },
-            modifier = Modifier.padding(start = ScreenMargin - ratingTouchInset(STAR_SIZE), bottom = Space.l),
+            modifier = Modifier.padding(start = ScreenMargin - ratingTouchInset(STAR_SIZE), bottom = below),
         )
+        if (rating != null) {
+            Text(
+                text = stringResource(R.string.rating_remove_hint),
+                style = AromaType.Small,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = ScreenMargin, end = ScreenMargin, bottom = Space.l),
+            )
+        }
     }
 }
 

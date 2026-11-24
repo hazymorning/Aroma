@@ -360,8 +360,20 @@ class RecipeRepository(
     suspend fun setFavorite(recipeId: String, slug: String, favorite: Boolean) =
         changeRating(recipeId, slug, RatingUpdateDto(isFavorite = favorite)) { it.copy(isFavorite = favorite) }
 
-    suspend fun rate(recipeId: String, slug: String, rating: Int) =
-        changeRating(recipeId, slug, RatingUpdateDto(rating = rating.toDouble())) { it.copy(rating = rating.toDouble()) }
+    /**
+     * Rates the recipe [stars] out of five, or with 0 takes the rating back: Mealie ignores a rating
+     * of null, but leaves ratings of 0 out of the recipe's average and reads them as none.
+     */
+    suspend fun rate(recipeId: String, slug: String, stars: Int) =
+        changeRating(recipeId, slug, RatingUpdateDto(rating = stars.toDouble())) {
+            it.copy(
+                rating =
+                    stars
+                        .takeIf { s ->
+                            s > 0
+                        }?.toDouble(),
+            )
+        }
 
     /**
      * Shows [change] at once and sends [body]. If Mealie does not take it, the fields [body] sets

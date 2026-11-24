@@ -56,6 +56,7 @@ import app.aroma.feature.mealplan.MealPlanDay
 import app.aroma.feature.mealplan.MealPlanScreen
 import app.aroma.feature.mealplan.MealPlanUiState
 import app.aroma.feature.recipe.OrganizerSheet
+import app.aroma.feature.recipe.RatingSheet
 import app.aroma.feature.recipe.RecipeActions
 import app.aroma.feature.recipe.RecipeActionsSheet
 import app.aroma.feature.recipe.RecipeScreen
@@ -257,6 +258,16 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                 state = RecipeUiState(recipe = sample.recipe, isLoading = false, scale = 1.5, amountsInSteps = true),
                 actions = RecipeActions(),
             )
+        }
+    }
+
+    /** The stars of a recipe rated before, with the line that says how to take the rating back. */
+    @Test
+    fun recipeRating() {
+        applyLocale()
+        snapshot("recipe_rating_${variant.suffix}", variant.dark) {
+            RecipeScreen(state = RecipeUiState(recipe = sample.recipe, isLoading = false, userRating = 4.0), actions = RecipeActions())
+            RatingSheet(rating = 4.0, onRate = {}, onDismiss = {})
         }
     }
 

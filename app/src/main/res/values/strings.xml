@@ -130,6 +130,9 @@
 
     <string name="rating_description">Rated %1$.1f out of 5</string>
     <string name="rating_none">Not rated yet</string>
+    <string name="rating_remove">Remove rating</string>
+    <string name="rating_removed">Rating removed</string>
+    <string name="rating_remove_hint">Tap the same star again to remove your rating.</string>
     <plurals name="rating_set">
         <item quantity="one">Rate %1$d star</item>
         <item quantity="other">Rate %1$d stars</item>

@@ -175,17 +175,24 @@ private val StepperValueWidth = 80.dp
 /**
  * Five stars. Without [onRate] they show a rating in ink; with it they are 48 dp targets that
  * fill in sage up to the tapped star, one after another. Where five targets do not fit, they
- * share the width, so the fifth star never falls off the edge.
+ * share the width, so the fifth star never falls off the edge. Where [clearable], a tap on the
+ * star already chosen takes the rating back, and [onRate] hears 0.
  */
 @Composable
-fun RatingStars(rating: Double?, modifier: Modifier = Modifier, starSize: Int = 14, onRate: ((Int) -> Unit)? = null) {
+fun RatingStars(
+    rating: Double?,
+    modifier: Modifier = Modifier,
+    starSize: Int = 14,
+    onRate: ((Int) -> Unit)? = null,
+    clearable: Boolean = false,
+) {
     if (onRate == null) {
-        Stars(rating, starSize, onRate = null, target = 0.dp, modifier)
+        Stars(rating, starSize, onRate = null, target = 0.dp, clearable = false, modifier)
         return
     }
     BoxWithConstraints(modifier) {
         val target = if (constraints.hasBoundedWidth) minOf(TouchTarget, maxWidth / 5).coerceAtLeast(starSize.dp) else TouchTarget
-        Stars(rating, starSize, onRate, target)
+        Stars(rating, starSize, onRate, target, clearable)
     }
 }
 
@@ -195,6 +202,7 @@ private fun Stars(
     starSize: Int,
     onRate: ((Int) -> Unit)?,
     target: Dp,
+    clearable: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val value = rating ?: 0.0
@@ -225,6 +233,8 @@ private fun Stars(
                     else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
                 }
             if (onRate != null) {
+                // Tapping the chosen star again is the natural way to take a rating back.
+                val clears = clearable && star == chosen
                 // Stars up to the tapped one fill in turn. The wait belongs to the animation, so with animations off there is none.
                 val fill = remember(star) { Animatable(1f) }
                 LaunchedEffect(lit) {
@@ -238,14 +248,15 @@ private fun Stars(
                         Modifier
                             .size(target)
                             .selectable(selected = star == chosen, role = Role.RadioButton, onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                                onRate(star)
+                                haptics.performHapticFeedback(if (clears) HapticFeedbackType.ToggleOff else HapticFeedbackType.Confirm)
+                                onRate(if (clears) 0 else star)
                             }),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(icon),
-                        contentDescription = pluralStringResource(R.plurals.rating_set, star, star),
+                        contentDescription =
+                            if (clears) stringResource(R.string.rating_remove) else pluralStringResource(R.plurals.rating_set, star, star),
                         tint = tint,
                         modifier =
                             Modifier

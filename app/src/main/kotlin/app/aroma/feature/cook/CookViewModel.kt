@@ -93,16 +93,16 @@ class CookViewModel(
 
     fun dismissTimer(id: Long) = timers.dismiss(id)
 
-    /** Only a saved rating ends the reminder; otherwise Home still asks later. */
+    /** Only a saved rating ends the reminder; otherwise Home still asks later. 0 takes the rating back. */
     fun rate(stars: Int) {
         val recipe = base.value.recipe ?: return
         val previous = base.value.rating
-        base.update { it.copy(rating = stars.toDouble()) }
+        base.update { it.copy(rating = stars.takeIf { s -> s > 0 }?.toDouble()) }
         viewModelScope.launch {
             try {
                 recipes.rate(recipe.id, recipe.slug, stars)
-                base.update { it.copy(ratedHere = true) }
-                reminder.clear(recipe.id)
+                base.update { it.copy(ratedHere = stars > 0) }
+                if (stars > 0) reminder.clear(recipe.id)
             } catch (_: AromaError) {
                 base.update { it.copy(rating = previous) }
             }

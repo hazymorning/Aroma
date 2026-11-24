@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -48,6 +49,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.time.LocalDate
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /** One-off feedback shown as a snackbar. */
 sealed interface RecipeEvent {
@@ -63,6 +65,9 @@ sealed interface RecipeEvent {
     data class Reworked(val reworked: ReworkOutcome.Reworked) : RecipeEvent
 
     data class ReworkFailed(val error: AromaError) : RecipeEvent
+
+    /** The user took back their rating of [stars], which they may put back. */
+    data class Unrated(val stars: Int) : RecipeEvent
 }
 
 class RecipeViewModel(
@@ -131,7 +136,11 @@ class RecipeViewModel(
             recipes.ratings.collect { ratings ->
                 mutableState.update { state ->
                     val rating = state.recipe?.let { ratings[it.id] }
-                    state.copy(isFavorite = rating?.isFavorite ?: state.isFavorite, userRating = rating?.rating ?: state.userRating)
+                    // A rating taken back is null: only a recipe Mealie sent nothing for keeps what it showed.
+                    state.copy(
+                        isFavorite = rating?.isFavorite ?: state.isFavorite,
+                        userRating = if (rating != null) rating.rating else state.userRating,
+                    )
                 }
             }
         }
@@ -169,7 +178,7 @@ class RecipeViewModel(
                             isLoading = false,
                             isOffline = loadable.isOffline,
                             isFavorite = rating?.isFavorite ?: it.isFavorite,
-                            userRating = rating?.rating ?: it.userRating,
+                            userRating = if (rating != null) rating.rating else it.userRating,
                         )
                     }
                 }
@@ -202,7 +211,20 @@ class RecipeViewModel(
 
     fun toggleFavorite() = act { recipe -> recipes.setFavorite(recipe.id, recipe.slug, !state.value.isFavorite) }
 
-    fun rate(stars: Int) = act { recipe -> recipes.rate(recipe.id, recipe.slug, stars) }
+    /** Rates the recipe [stars] out of five, or with 0 takes the rating back and offers to put it back. */
+    fun rate(stars: Int) {
+        val before = state.value.userRating
+        // The recipe's average still counts the rating taken back, so until Mealie has worked it out again it shows none.
+        if (stars == 0) mutableState.update { it.copy(recipe = it.recipe?.copy(rating = null)) }
+        act { recipe ->
+            recipes.rate(recipe.id, recipe.slug, stars)
+            if (stars > 0) return@act
+            before?.let { mutableEvents.emit(RecipeEvent.Unrated(it.roundToInt())) }
+            attempt { recipes.recipe(recipe.slug).last() }.onSuccess { fresh ->
+                if (fresh.error == null) mutableState.update { it.copy(recipe = fresh.data) }
+            }
+        }
+    }
 
     fun loadShoppingLists() =
         viewModelScope.launch {

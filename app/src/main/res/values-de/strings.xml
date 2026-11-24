@@ -128,6 +128,9 @@
 
     <string name="rating_description">Bewertet mit %1$.1f von 5</string>
     <string name="rating_none">Noch nicht bewertet</string>
+    <string name="rating_remove">Bewertung entfernen</string>
+    <string name="rating_removed">Bewertung entfernt</string>
+    <string name="rating_remove_hint">Tippe noch einmal auf denselben Stern, um deine Bewertung zu entfernen.</string>
     <plurals name="rating_set">
         <item quantity="one">Mit %1$d Stern bewerten</item>
         <item quantity="other">Mit %1$d Sternen bewerten</item>
