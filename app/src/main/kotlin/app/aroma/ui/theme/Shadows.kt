@@ -6,6 +6,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.shadow.Shadow
@@ -23,7 +24,7 @@ val isDarkScheme: Boolean
  * faint and tinted with the green-black ink instead of grey. Draw shadows before background and clip.
  */
 
-/** The bottom bar, the cooking button and the snackbar: a wide soft lift plus a tight grounding edge. */
+/** The cooking button and the snackbar: a wide soft lift plus a tight grounding edge. */
 @Composable
 @ReadOnlyComposable
 fun Modifier.floatingShadow(shape: Shape): Modifier {
@@ -34,6 +35,22 @@ fun Modifier.floatingShadow(shape: Shape): Modifier {
     } else {
         dropShadow(shape, Shadow(radius = 32.dp, spread = (-6).dp, color = ink.copy(alpha = 0.16f), offset = DpOffset(0.dp, 14.dp)))
             .dropShadow(shape, Shadow(radius = 3.dp, color = ink.copy(alpha = 0.06f), offset = DpOffset(0.dp, 1.dp)))
+    }
+}
+
+/**
+ * The tab bar, which rests on the bottom edge across the whole width: its shadow falls up onto the
+ * page, wide and soft, with a tight edge where the two meet.
+ */
+@Composable
+@ReadOnlyComposable
+fun Modifier.barShadow(): Modifier {
+    val ink = extras.shadowInk
+    return if (isDarkScheme) {
+        dropShadow(RectangleShape, Shadow(radius = 24.dp, color = ink.copy(alpha = 0.5f), offset = DpOffset(0.dp, (-6).dp)))
+    } else {
+        dropShadow(RectangleShape, Shadow(radius = 24.dp, color = ink.copy(alpha = 0.1f), offset = DpOffset(0.dp, (-6).dp)))
+            .dropShadow(RectangleShape, Shadow(radius = 3.dp, color = ink.copy(alpha = 0.05f), offset = DpOffset(0.dp, (-1).dp)))
     }
 }
 

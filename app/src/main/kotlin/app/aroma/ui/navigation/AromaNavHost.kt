@@ -3,22 +3,17 @@ package app.aroma.ui.navigation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -29,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
@@ -46,7 +40,6 @@ import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.LocalScrollToTop
 import app.aroma.ui.theme.ControlHeight
 import app.aroma.ui.theme.Motion
-import app.aroma.ui.theme.ScreenMargin
 import app.aroma.ui.theme.Space
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
@@ -116,10 +109,10 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
         launchConsume()
     }
 
-    // The bar floats over the page instead of taking space from it, so showing and hiding it never
+    // The bar lies over the page instead of taking space from it, so showing and hiding it never
     // resizes the screen underneath, and tab pages scroll on below it.
     val navigationInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val barInset = FloatingBarHeight + FloatingBarGap + navigationInset
+    val barInset = TabBarHeight + navigationInset
     // A phone on its side has its navigation bar or cutout at a side edge. Keeping clear of them once,
     // here, keeps every page's actions and margins out from under them.
     Box(
@@ -171,29 +164,17 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
             composable<SettingsRoute> { SettingsDestination(nav) }
             composable<LicensesRoute> { LicensesDestination(nav) }
         }
-        // Content dissolves into the paper before it reaches the bar, instead of running into its edge.
-        // Both come and go in step with the tab pages they belong to.
-        AnimatedVisibility(
-            visible = showBar,
-            enter = Transitions.arrive,
-            exit = Transitions.leave,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        ) {
-            BarFade(barInset)
-        }
+        // The bar comes and goes in step with the tab pages it belongs to.
         AnimatedVisibility(
             visible = showBar,
             enter = Transitions.barEnter,
             exit = Transitions.barExit,
-            modifier =
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(start = ScreenMargin, end = ScreenMargin, bottom = FloatingBarGap),
+            modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            FloatingBar(
+            TabBar(
                 selected = Tab.entries.firstOrNull { destination?.isTab(it) == true },
                 onSelect = nav::navigateToTab,
+                navigationInset = navigationInset,
                 onReselect = { reselected.tryEmit(it) },
             )
         }

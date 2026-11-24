@@ -10,8 +10,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
 /**
- * How much of the bottom of a tab screen the floating navigation bar covers, system navigation
- * included. Tab screens keep this much space free below their content; 0 where there is no bar.
+ * How much of the bottom of a tab screen the tab bar covers, system navigation included. Tab
+ * screens keep this much space free below their content; 0 where there is no bar.
  */
 val LocalBottomBarInset = staticCompositionLocalOf { 0.dp }
 

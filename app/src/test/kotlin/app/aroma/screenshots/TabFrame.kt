@@ -2,32 +2,29 @@ package app.aroma.screenshots
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.aroma.ui.components.LocalBottomBarInset
-import app.aroma.ui.navigation.BarFade
-import app.aroma.ui.navigation.FloatingBar
-import app.aroma.ui.navigation.FloatingBarGap
-import app.aroma.ui.navigation.FloatingBarHeight
 import app.aroma.ui.navigation.Tab
+import app.aroma.ui.navigation.TabBar
+import app.aroma.ui.navigation.TabBarHeight
 
-/** A tab page as the app shows it: with the floating bar over its bottom edge. */
+/** The gesture navigation of a typical phone, which the tab bar reaches down over. */
+private val GestureNavigation = 24.dp
+
+/** A tab page as the app shows it: with the tab bar across its bottom edge. */
 @Composable
 fun TabFrame(tab: Tab, modifier: Modifier = Modifier, page: @Composable () -> Unit) {
     Box(modifier.fillMaxSize()) {
-        CompositionLocalProvider(LocalBottomBarInset provides FloatingBarHeight + FloatingBarGap, content = page)
-        BarFade(FloatingBarHeight + FloatingBarGap, Modifier.align(Alignment.BottomCenter))
-        FloatingBar(
+        CompositionLocalProvider(LocalBottomBarInset provides TabBarHeight + GestureNavigation, content = page)
+        TabBar(
             selected = tab,
             onSelect = {},
-            modifier =
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(start = 24.dp, end = 24.dp, bottom = FloatingBarGap),
+            navigationInset = GestureNavigation,
+            modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
 }

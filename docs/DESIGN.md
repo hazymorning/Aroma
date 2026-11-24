@@ -72,7 +72,7 @@ tokens or named constants only *(checked)*.
 | `extras.card` | #EEEFE7 | #1E211D | Cards, fields, chips, quiet buttons |
 | `extras.selected` / `onSelected` | #DCE7D4 | #2E3D2B | The chosen chip, segment, today |
 | `extras.cta` / `onCta` | #486447 | #3A5638 | The one filled action |
-| `extras.raised` | #FFFFFF | #2C2F2A | The tab bar, sheets, menus |
+| `extras.raised` | #FFFFFF | #2C2F2A | Sheets, menus; the tab bar, a step darker in the dark |
 | `primary` | #486447 | #AECDA5 | Links, checks, group labels, step numbers, amounts, the brand |
 | `onSurface` / `onSurfaceVariant` | ink / soft ink | | Text and glyphs |
 | `error` | | | Removing and failing, nothing else |
@@ -83,9 +83,13 @@ come from Material You.
 ## Shape and depth
 
 Photos and cards 16 dp, thumbnails 12 dp, sheets and dialogs 28 dp, controls fully round; shapes come
-from the theme *(checked)*. The page is flat. Only what floats over it casts the one soft shadow: the
+from the theme *(checked)*. The page is flat. Only what lies over it casts the one soft shadow: the
 tab bar, the cook button, buttons on a photo, menus, sheets and the snackbar. Nothing on the page is
 outlined *(checked)*; a field shows a sage ring only while it has the cursor.
+
+The tab bar is a sheet of paper across the bottom edge, not a floating pill: it runs from side to
+side and down over the system navigation, and its shadow falls up onto the page scrolling below it.
+Its four tabs stand far apart, with 20 dp of air above the glyphs and below the labels.
 
 ## Pieces
 
