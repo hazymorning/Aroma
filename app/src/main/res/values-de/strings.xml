@@ -69,12 +69,18 @@
     <string name="offline_notice">Offline. Du siehst deine gespeicherte Kopie.</string>
 
     <!-- Home -->
-    <string name="greeting_morning">Guten Morgen</string>
-    <string name="greeting_afternoon">Guten Tag</string>
-    <string name="greeting_evening">Guten Abend</string>
     <string name="greeting_morning_name">Guten Morgen,\n%1$s</string>
     <string name="greeting_afternoon_name">Guten Tag,\n%1$s</string>
     <string name="greeting_evening_name">Guten Abend,\n%1$s</string>
+    <!-- Kitchen nicknames Home greets with, one a day: for everyone, whoever they are, and long enough to balance the greeting. -->
+    <string-array name="greeting_nicknames">
+        <item>Küchengenie</item>
+        <item>Kochtalent</item>
+        <item>Genussmensch</item>
+        <item>Gourmet</item>
+        <item>Naschkatze</item>
+        <item>Schleckermaul</item>
+    </string-array>
     <string name="home_open_profile">Profil und Einstellungen</string>
     <string name="home_today">Heute</string>
     <string name="home_today_breakfast">Heute Morgen</string>
@@ -414,6 +420,8 @@
     <string name="settings_cooking">Kochen</string>
     <string name="settings_keep_screen_on">Bildschirm anlassen</string>
     <string name="settings_keep_screen_on_hint">Solange der Kochmodus geöffnet ist.</string>
+    <string name="settings_next_step">Nächsten Schritt zeigen</string>
+    <string name="settings_next_step_hint">Im Kochmodus unter jedem Schritt.</string>
     <string name="settings_ingredients_in_steps">Zutaten bei den Schritten</string>
     <string name="settings_ingredients_in_steps_hint">Im Kochmodus und auf der Rezeptseite. Was ein Schritt braucht, findet Aroma dort, wo er es nennt.</string>
     <string name="ingredients_in_steps_none">Keine</string>
@@ -519,9 +527,9 @@
         <item quantity="one">%1$d\u00A0Artikel offen</item>
         <item quantity="other">%1$d\u00A0Artikel offen</item>
     </plurals>
-    <plurals name="plan_week_from">
-        <item quantity="one">aus %1$d\u00A0Gericht</item>
-        <item quantity="other">aus %1$d\u00A0Gerichten</item>
+    <plurals name="plan_week_dishes">
+        <item quantity="one">%1$d\u00A0Gericht</item>
+        <item quantity="other">%1$d\u00A0Gerichte</item>
     </plurals>
     <plurals name="plan_week_items">
         <item quantity="one">%1$d\u00A0Artikel</item>

@@ -71,6 +71,7 @@ data class SettingsUiState(
     val homeSections: Set<HomeSection> = HomeSection.SHOWN_BY_DEFAULT,
     val language: AppLanguage = AppLanguage.System,
     val keepScreenOn: Boolean = true,
+    val showNextStep: Boolean = true,
     val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
     val amountsInSteps: Boolean = false,
     val measures: MeasureSystem = MeasureSystem.AsWritten,
@@ -88,6 +89,7 @@ data class SettingsActions(
     val onHomeSection: (HomeSection, Boolean) -> Unit = { _, _ -> },
     val onLanguage: (AppLanguage) -> Unit = {},
     val onKeepScreenOn: (Boolean) -> Unit = {},
+    val onShowNextStep: (Boolean) -> Unit = {},
     val onIngredientsInSteps: (IngredientsInSteps) -> Unit = {},
     val onAmountsInSteps: (Boolean) -> Unit = {},
     val onMeasures: (MeasureSystem) -> Unit = {},
@@ -158,6 +160,14 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     description = stringResource(R.string.settings_keep_screen_on_hint),
                     checked = state.keepScreenOn,
                     onClick = { actions.onKeepScreenOn(!state.keepScreenOn) },
+                )
+                Separator(start = SettingsTextEdge)
+                SettingsRow(
+                    title = stringResource(R.string.settings_next_step),
+                    icon = R.drawable.ic_arrow_forward,
+                    description = stringResource(R.string.settings_next_step_hint),
+                    checked = state.showNextStep,
+                    onClick = { actions.onShowNextStep(!state.showNextStep) },
                 )
                 Separator(start = SettingsTextEdge)
                 SettingsRow(

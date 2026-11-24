@@ -62,6 +62,7 @@ class SettingsViewModel(
                 homeSections = app.homeSections,
                 language = lang,
                 keepScreenOn = app.keepScreenOn,
+                showNextStep = app.showNextStep,
                 ingredientsInSteps = app.ingredientsInSteps,
                 amountsInSteps = app.amountsInSteps,
                 measures = app.measureSystem,
@@ -80,6 +81,8 @@ class SettingsViewModel(
     fun setHomeSection(section: HomeSection, shown: Boolean) = viewModelScope.launch { settings.setHomeSection(section, shown) }
 
     fun setKeepScreenOn(enabled: Boolean) = viewModelScope.launch { settings.setKeepScreenOn(enabled) }
+
+    fun setShowNextStep(shown: Boolean) = viewModelScope.launch { settings.setShowNextStep(shown) }
 
     fun setIngredientsInSteps(shown: IngredientsInSteps) = viewModelScope.launch { settings.setIngredientsInSteps(shown) }
 

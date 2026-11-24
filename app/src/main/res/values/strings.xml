@@ -71,12 +71,18 @@
     <string name="offline_notice">Offline. Showing your saved copy.</string>
 
     <!-- Home -->
-    <string name="greeting_morning">Good morning</string>
-    <string name="greeting_afternoon">Good afternoon</string>
-    <string name="greeting_evening">Good evening</string>
     <string name="greeting_morning_name">Good morning,\n%1$s</string>
     <string name="greeting_afternoon_name">Good afternoon,\n%1$s</string>
     <string name="greeting_evening_name">Good evening,\n%1$s</string>
+    <!-- Kitchen nicknames Home greets with, one a day: for everyone, whoever they are, and long enough to balance the greeting. -->
+    <string-array name="greeting_nicknames">
+        <item>Kitchen genius</item>
+        <item>Home cook</item>
+        <item>Food lover</item>
+        <item>Gourmet</item>
+        <item>Sweet tooth</item>
+        <item>Kitchen hero</item>
+    </string-array>
     <string name="home_open_profile">Profile and settings</string>
     <string name="home_today">Today</string>
     <string name="home_today_breakfast">This morning</string>
@@ -417,6 +423,8 @@
     <string name="settings_cooking">Cooking</string>
     <string name="settings_keep_screen_on">Keep the screen on</string>
     <string name="settings_keep_screen_on_hint">While cooking mode is open.</string>
+    <string name="settings_next_step">Show the next step</string>
+    <string name="settings_next_step_hint">In cooking mode, under each step.</string>
     <string name="settings_ingredients_in_steps">Ingredients with the steps</string>
     <string name="settings_ingredients_in_steps_hint">In cooking mode and on the recipe page. Aroma finds what a step uses where the step names it.</string>
     <string name="ingredients_in_steps_none">None</string>
@@ -522,9 +530,9 @@
         <item quantity="one">%1$d\u00A0item to buy</item>
         <item quantity="other">%1$d\u00A0items to buy</item>
     </plurals>
-    <plurals name="plan_week_from">
-        <item quantity="one">from %1$d\u00A0dish</item>
-        <item quantity="other">from %1$d\u00A0dishes</item>
+    <plurals name="plan_week_dishes">
+        <item quantity="one">%1$d\u00A0dish</item>
+        <item quantity="other">%1$d\u00A0dishes</item>
     </plurals>
     <plurals name="plan_week_items">
         <item quantity="one">%1$d\u00A0item</item>

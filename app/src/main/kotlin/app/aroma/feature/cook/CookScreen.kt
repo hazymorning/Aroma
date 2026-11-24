@@ -153,6 +153,8 @@ data class CookUiState(
     val exactAlarmHint: Boolean = false,
     val ingredientsInSteps: IngredientsInSteps = IngredientsInSteps.Used,
     val amountsInSteps: Boolean = false,
+    /** Whether the next step stands under the current one, as the settings choose. */
+    val showNextStep: Boolean = true,
     val measures: MeasureSystem = MeasureSystem.AsWritten,
     val checkedIngredients: Set<Int> = emptySet(),
     val isLoading: Boolean = true,
@@ -280,7 +282,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                                 text = texts.getOrNull(page) ?: StyledText(steps[page].text, emptyList()),
                                 amounts = amounts.getOrNull(page).orEmpty(),
                                 mentions = mentions.getOrNull(page).orEmpty(),
-                                next = steps.getOrNull(page + 1),
+                                next = if (state.showNextStep) steps.getOrNull(page + 1) else null,
                                 onStartTimer = actions.onStartTimer,
                                 ingredients =
                                     if (showsIngredients) {
