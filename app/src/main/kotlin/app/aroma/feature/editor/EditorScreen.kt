@@ -232,7 +232,8 @@ private fun Basics(form: EditorForm, change: ((EditorForm) -> EditorForm) -> Uni
             singleLine = false,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.s16)) {
+        // A label that takes two lines at a large font leaves the fields side by side on one line.
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.s16), verticalAlignment = Alignment.Bottom) {
             NumberField(
                 label = stringResource(R.string.editor_servings),
                 value = form.servings,
@@ -246,7 +247,8 @@ private fun Basics(form: EditorForm, change: ((EditorForm) -> EditorForm) -> Uni
                 modifier = Modifier.weight(1f),
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.s16)) {
+        // A label that takes two lines at a large font leaves the fields side by side on one line.
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.s16), verticalAlignment = Alignment.Bottom) {
             NumberField(
                 label = stringResource(R.string.editor_cook_minutes),
                 value = form.cookMinutes,

@@ -1,6 +1,7 @@
 package app.aroma.feature.recipes
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -54,6 +55,7 @@ import app.aroma.ui.components.RecipeGrid
 import app.aroma.ui.components.RecipeRow
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.Segment
+import app.aroma.ui.components.SegmentGap
 import app.aroma.ui.components.SegmentInset
 import app.aroma.ui.components.SelectionRow
 import app.aroma.ui.components.Subtitle
@@ -189,6 +191,8 @@ fun RecipesScreen(state: RecipesUiState, actions: RecipesActions, modifier: Modi
                 canLoadMore = state.canLoadMore,
                 onLoadMore = actions.onLoadMore,
                 saved = state.saved,
+                // What is searched for reads best as a list of names.
+                asRows = state.filter.query.isNotBlank(),
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = barInset + EndSpace),
                 header = {
@@ -330,7 +334,10 @@ private fun FilterSheet(state: RecipesUiState, actions: RecipesActions, onOrgani
                 onSelect = { actions.onSortChange(RecipeSort.entries[it]) },
             )
             GroupHead(stringResource(R.string.recipes_narrow), Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16))
-            FlowRow(Modifier.padding(start = PageMargin - SegmentInset, end = PageMargin)) {
+            FlowRow(
+                Modifier.padding(start = PageMargin - SegmentInset, end = PageMargin),
+                horizontalArrangement = Arrangement.spacedBy(SegmentGap),
+            ) {
                 Segment(stringResource(R.string.recipes_quick), state.filter.quick, actions.onToggleQuick)
                 Segment(stringResource(R.string.recipes_saved), state.filter.favoritesOnly, actions.onToggleFavorites)
                 Segment(stringResource(R.string.recipes_long_ago), state.filter.longAgo, actions.onToggleLongAgo)

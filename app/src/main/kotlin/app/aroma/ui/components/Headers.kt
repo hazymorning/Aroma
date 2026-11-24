@@ -58,6 +58,7 @@ import app.aroma.ui.theme.HeaderGap
 import app.aroma.ui.theme.HeaderTop
 import app.aroma.ui.theme.LocalTonalFill
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.NavigationGap
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.SubtitleGap
@@ -100,7 +101,8 @@ fun Modifier.collapsesInto(state: HeaderState): Modifier =
  * The large head of a page: its title in display type, a [subtitle] line under it where there is
  * one, and up to two icon buttons on the right, centred on the title's first line. It stands 16 dp
  * below the status bar on the page's own paper; [navigation], a back button, stands above it on a
- * pushed page. The content starts 24 dp below it.
+ * pushed page, in the row the collapsed head will have, 16 dp above the title. The content starts
+ * 24 dp below it.
  */
 @Composable
 fun LargeHeader(
@@ -128,6 +130,7 @@ fun LargeHeader(
                     .padding(start = PageMargin - (TouchTarget - IconCircle) / 2),
                 contentAlignment = Alignment.CenterStart,
             ) { navigation() }
+            Spacer(Modifier.height(NavigationGap))
         } else {
             Spacer(Modifier.height(HeaderTop))
         }

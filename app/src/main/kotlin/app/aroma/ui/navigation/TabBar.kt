@@ -19,6 +19,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,10 +28,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.ui.components.Text
@@ -41,12 +44,21 @@ import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.layeredShadow
 
-/** The height of the navigation bar above the system navigation, which it reaches down over. */
-internal val TabBarHeight = 64.dp
-
 /** The pill behind the chosen destination's glyph. */
 private val PillWidth = 56.dp
 private val PillHeight = 32.dp
+
+/** The line a destination's label takes. */
+private val LabelHeight = 16.dp
+
+/** The air above the pill, so the glyphs never sit pressed against the bar's top edge. */
+private val TopSpace = Space.s16
+
+/** The air under the label, above the system navigation, which adds its own below. */
+private val BottomSpace = Space.s12
+
+/** The height of the navigation bar above the system navigation, which it reaches down over. */
+internal val TabBarHeight = TopSpace + PillHeight + Space.s4 + LabelHeight + BottomSpace
 
 /**
  * The navigation bar: four destinations on the bars' paper across the bottom edge, down over the
@@ -83,10 +95,9 @@ internal fun TabBar(
                     if (index < 0) return@drawBehind
                     val slot = size.width / Tab.entries.size
                     val pill = Size(PillWidth.toPx(), PillHeight.toPx())
-                    val top = (size.height - (PillHeight + Space.s4).toPx() - LabelHeight.toPx()) / 2
                     drawRoundRect(
                         colors.accentSoft,
-                        Offset(slot * (pillAt + 0.5f) - pill.width / 2, top),
+                        Offset(slot * (pillAt + 0.5f) - pill.width / 2, TopSpace.toPx()),
                         pill,
                         CornerRadius(pill.height / 2),
                     )
@@ -97,9 +108,6 @@ internal fun TabBar(
         }
     }
 }
-
-/** The line a destination's label takes. */
-private val LabelHeight = 16.dp
 
 @Composable
 private fun BarItem(
@@ -122,9 +130,8 @@ private fun BarItem(
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                     onSelect(tab)
                 }
-            },
+            }.padding(top = TopSpace),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
         Box(Modifier.size(PillWidth, PillHeight), contentAlignment = Alignment.Center) {
             Crossfade(selected, animationSpec = Motion.state(), label = "navGlyph") { on ->
@@ -137,12 +144,19 @@ private fun BarItem(
             }
         }
         Spacer(Modifier.height(Space.s4))
-        Text(
-            text = stringResource(tab.label),
-            style = if (selected) AromaTheme.type.navSelected else AromaTheme.type.nav,
-            color = ink,
-            maxLines = 1,
-            softWrap = false,
-        )
+        // The four names share the bar's width: they grow with the font up to 130 %, so none is cut.
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale.coerceAtMost(MAX_LABEL_SCALE))) {
+            Text(
+                text = stringResource(tab.label),
+                style = if (selected) AromaTheme.type.navSelected else AromaTheme.type.nav,
+                color = ink,
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
     }
 }
+
+/** How far the tab names grow with the system's font size. */
+private const val MAX_LABEL_SCALE = 1.3f

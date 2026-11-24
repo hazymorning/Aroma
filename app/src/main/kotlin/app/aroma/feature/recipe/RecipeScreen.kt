@@ -141,6 +141,7 @@ import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.HeaderTop
 import app.aroma.ui.theme.Motion
+import app.aroma.ui.theme.NavigationGap
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.SectionGap
 import app.aroma.ui.theme.SectionTitleGap
@@ -570,7 +571,7 @@ private fun LazyListScope.recipeBody(
                 Modifier
                     .measure()
                     // 24 dp under the photo; without one, right under the buttons, as on any pushed page.
-                    .padding(top = if (underPhoto) Space.s24 else 0.dp),
+                    .padding(top = if (underPhoto) Space.s24 else NavigationGap),
         )
     }
     state.rework?.takeIf { it.outcome == null }?.let { job ->

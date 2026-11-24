@@ -434,7 +434,7 @@ internal fun formatRange(start: LocalDate, end: LocalDate, locale: Locale): Stri
     }
 }
 
-/** The days, 8 dp apart. */
+/** The days, 24 dp apart: a day's meals stand closer together than the days do. */
 private fun LazyListScope.agenda(days: List<MealPlanDay>, today: LocalDate, actions: MealPlanActions, onMore: (MealPlanEntry) -> Unit) {
     days.forEachIndexed { index, day ->
         item(key = "day-${day.date}") {
@@ -447,7 +447,7 @@ private fun LazyListScope.agenda(days: List<MealPlanDay>, today: LocalDate, acti
                     Modifier
                         .animateRow(this)
                         .measure()
-                        .padding(top = if (index == 0) 0.dp else Space.s8),
+                        .padding(top = if (index == 0) 0.dp else DayGap),
             )
         }
     }
@@ -480,7 +480,7 @@ private fun DayRow(
                         }
                     } else {
                         Row {
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.s8)) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MealGap)) {
                                 day.entries.forEach { entry -> EntryRow(entry, past, actions, onMore) }
                             }
                             val addLabel = stringResource(R.string.plan_add_for, remember(day.date, locale) { weekday(day.date, locale) })
@@ -542,6 +542,10 @@ private fun DayMark(date: LocalDate, isToday: Boolean, past: Boolean, locale: Lo
 /** The column a day's name and figure stand in; an empty day's row is no taller than a row of one line. */
 private val DayColumn = 44.dp
 private val EmptyDayHeight = 56.dp
+
+/** Between two days, and between the meals of one day, as between recipe rows anywhere. */
+private val DayGap = Space.s24
+private val MealGap = Space.s12
 
 /**
  * A planned meal as a recipe row, "Abendessen · 45 Min." under its name. A tap opens the recipe, a

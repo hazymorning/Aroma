@@ -10,7 +10,7 @@ Wird nach jedem Schritt aktualisiert.
 - [x] P2 Grundlagen (4) und Komponenten (5), alte Varianten migriert und gelöscht
 - [x] P3 Rezeptseite
 - [x] P4 Start und Wochenplan
-- [ ] P5 Rezepte, Kochmodus, Einkauf, Einstellungen, übrige Screens, Sheets, Dialoge, Zustände
+- [x] P5 Rezepte, Kochmodus, Einkauf, Einstellungen, übrige Screens, Sheets, Dialoge, Zustände
 - [ ] P6 Dark Mode, Bewegung, Haptik, Barrierefreiheit
 - [ ] P7 Art-Director-Review, `BERICHT.md`
 - [ ] P8 Release-Draft
@@ -272,8 +272,9 @@ ganze Seite).
   KW 48", über den Monatswechsel „30. Nov.–6. Dez. · KW 49", außerhalb der aktuellen Woche mit
   „Zur aktuellen Woche". Wochenwechsler als Pill 40 dp mit ‹ und ›; Wischen wechselt die Woche,
   die neue schiebt sich von ihrer Seite herein.
-- Agenda ohne Linien, 8 dp zwischen den Tagen; links 44 dp mit Kürzel (`meta`) über der Ziffer
-  (`numeral`, `inkSecondary`); rechts Rezeptzeilen mit „Abendessen · 45 Min.", 8 dp untereinander,
+- Agenda ohne Linien, 8 dp zwischen den Tagen (in P5 auf 24 dp erweitert); links 44 dp mit Kürzel
+  (`meta`) über der Ziffer (`numeral`, `inkSecondary`); rechts Rezeptzeilen mit „Abendessen ·
+  45 Min.", 8 dp untereinander (in P5 12 dp),
   und ein Plus für eine weitere Mahlzeit. Leere Tage: „Gericht planen", höchstens 56 dp.
 - Heute auf `surface` (Radius 20), 12 dp über die Spalte hinaus, „Heute" in `accent` (500), Ziffer
   in Tinte. Vergangene Tage in `inkTertiary`, Bilder mit 60 %; ab zwei vergangenen Tagen eine
@@ -289,6 +290,56 @@ deiner Sammlung" und Rezepte (Sortierung „Neueste"); „In 30 Minuten fertig" 
 und Rezepte, Filter „Schnell"; „Lange nicht gekocht" → Rezepte, Filter „Lange nicht gekocht"
 (neu im Filter-Sheet, gleiche Abfrage wie vorher). Im Wochenplan: Wischen zum Entfernen → „Entfernen"
 im Sheet (Wischen wechselt jetzt die Woche); Korb im Kopf → Box „Zutaten der Woche".
+
+## P5 – Übrige Screens, Sheets, Dialoge, Zustände (erledigt)
+
+**Rezepte (6.4).** Kopf, Suchfeld und Kategorien wie in P2 angelegt; eine Suche zeigt ihre
+Ergebnisse als Rezeptzeilen statt als Raster (6.8). Findet die Suche nichts oder ist eine Kategorie
+leer, steht „Filter zurücksetzen" im Leerzustand. Das Filter-Sheet hat „Lange nicht gekocht" (P4).
+
+**Kochmodus (6.5).** Wie in P1 und P2 umgebaut; die laufenden Timer enden 24 dp über der Leiste,
+die Leiste hat ringsum 16 dp (mit den 56-dp-Buttons 88 dp hoch).
+
+**Einkauf (6.6).** Gruppen als Boxen mit Kopf in `label`, „Erledigt (n)" eingeklappt, Menü ⋯ für
+Einkaufsmodus und Listen (Entscheidung 9). Der Leerzustand setzt die lange Textaktion „Zutaten aus
+dem Wochenplan hinzufügen" unter seinen Text, statt ihn zu quetschen.
+
+**Einstellungen (6.7).** Profil-Box mit Initiale, Name, E-Mail und Serverzeile; Gruppen mit Kopf in
+`label`. Wert oder Schalter stehen jetzt auf der Titelzeile, die Beschreibung läuft darunter über die
+ganze Breite (Entscheidung 24).
+
+**Übrige Screens (6.8).** Rezept hinzufügen (alle Zustände: leer, Link, Text, Fotos, Fotos nicht
+lesbar, Import läuft, Fehler), Bearbeiten (Felder, Zeilen, Art des Gerichts, Kategorien und
+Schlagwörter), Anmeldung (Server, Zugangsdaten), Sammlungen, Lizenzen, die Sheets (Menü ⋯,
+Kategorien und Schlagwörter, Bewerten, Mit KI überarbeiten, Filter, Einkaufen, Einplanen) und die
+Lade- und Fehlerzustände folgen denselben Komponenten. Dabei korrigiert:
+
+- Icon-Buttons in Feldern (Passwort zeigen) stehen auf `surfaceInBox`, sonst verschwand ihr Kreis
+  auf der Feldfläche.
+- Der Schriftzug „Aroma" bei der Anmeldung steht in Tinte wie jeder Seitentitel (Entscheidung 28).
+- Zahlenfelder im Bearbeiten stehen auf einer Linie, auch wenn ein Label bei großer Schrift zwei
+  Zeilen braucht.
+- Zwischen Auswahlsegmenten liegen 4 dp; zwei gewählte Schlagwörter stießen sonst aneinander.
+
+**Leisten.** Auf Rückmeldung: Über den Icons der Navigationsleiste war zu wenig Luft (6 dp über der
+Pill). Die Leiste ist jetzt 80 dp hoch, mit 16 dp über der Pill und 12 dp unter der Beschriftung
+(Entscheidung 21). Alle Aktionsleisten haben ringsum 16 dp (Entscheidung 22).
+
+**Luft im Kopf und im Wochenplan.** Ebenfalls auf Rückmeldung: Unter dem Zurück-Kreis blieben bis
+zum Titel knapp 12 dp; jetzt folgt der Titel 16 dp unter der Zeile des Zurück-Buttons (sichtbar rund
+28 dp), auf jeder Detailseite und auf der Rezeptseite ohne Foto (Entscheidung 29). Im Wochenplan
+liefen die Tage mit 8 dp ineinander; Tage stehen jetzt 24 dp auseinander, die Gerichte eines Tages
+12 dp wie Rezeptzeilen überall (Entscheidung 30). Danach alle Screens in doppelter Größe gezielt auf
+Abstände durchgesehen: Kopf, Abschnitte, Boxen, Listen, Sheets und Leisten.
+
+**Große Schrift.** Bei 200 % wurden Beschriftungen der Navigation abgeschnitten („Wochenp…"); sie
+wachsen jetzt bis 130 % mit (Entscheidung 23). Bei großer Schrift steht „Einplanen" in der leeren
+Heute-Box unter der Metazeile, statt die Namen auf eine schmale Spalte zu drücken (Entscheidung 26).
+
+Geprüft mit `DesignScreenshotTest` (Rezepte voll, Suche und leer; Einkauf voll, ganz und leer;
+Kochmodus mit und ohne Zutaten; Einstellungen, auch ganz; je hell und dunkel, 100, 130 und 200 %)
+und `ScreensScreenshotTest`, der alle Screens, Sheets und Zustände jetzt auch mit 130 % Schrift in
+hell und dunkel rendert.
 
 ## Entscheidungen
 
@@ -335,12 +386,38 @@ im Sheet (Wischen wechselt jetzt die Woche); Korb im Kopf → Box „Zutaten der
     man bewusst aufruft, steht offen.
 20. **„Heute" in `meta`-Größe** (500, Salbei): als Kürzelersatz in der 44-dp-Spalte; in `label`
     stieß es ans Bild.
+21. **Navigationsleiste 80 dp** statt 64 dp: 16 dp über der Pill, 12 dp unter der Beschriftung, der
+    Systemrand kommt darunter. Mit 64 dp blieben über der Pill 6 dp; die Icons stießen fast an die
+    Kante (Rückmeldung während der Runde).
+22. **Aktionsleisten mit 16 dp ringsum**, wie 5.17 den Innenabstand nennt: 80 dp mit 48-dp-Buttons
+    statt 72 dp, im Kochmodus 88 dp mit 56-dp-Buttons. Mit 72 dp blieben über den Buttons 12 dp,
+    im Kochmodus 8 dp.
+23. **Beschriftungen der Navigation wachsen bis 130 %** mit der Systemschrift. Vier Ziele teilen sich
+    die Breite; mit 200 % wurde „Wochenplan" abgeschnitten.
+24. **Einstellungszeilen:** Wert mit Chevron oder Schalter auf der Titelzeile, die Beschreibung
+    darunter über die volle Breite, das Icon auf Höhe des Titels. Neben „Wie im Rezept" wurden lange
+    Beschreibungen sonst zu schmalen Spalten voller Trennungen.
+25. **Leerzustand:** Passen Text und Textaktion nicht in eine Zeile, steht die Aktion darunter.
+26. **Aktion einer Rezeptzeile** steht ab Androids Schriftgröße „Groß" (115 %) unter der Metazeile.
+27. **4 dp zwischen Auswahlsegmenten**, in Auswahlreihen und bei Mehrfachauswahl.
+28. **„Aroma" bei der Anmeldung in Tinte**: ein Seitentitel wie die anderen; Salbei bleibt Auswahl
+    und Aktionen vorbehalten.
+29. **Vom Zurück-Button zum Titel 16 dp:** Der Button steht in der 56-dp-Zeile der eingeklappten
+    Kopfleiste (er springt beim Einklappen nicht), der Titel folgt 16 dp darunter. Ohne diesen
+    Abstand saß der Kreis fast auf dem Titel.
+30. **Wochenplan: 24 dp zwischen den Tagen, 12 dp zwischen den Gerichten eines Tages** statt je
+    8 dp (6.3). Mit 8 dp waren Tage und Gerichte nicht zu unterscheiden; 12 dp gelten auch sonst
+    für Rezeptzeilen (5.9).
 
 ## Abweichungen
 
 1. Icon-Buttons in der Kopfleiste 40 statt 48 dp (Entscheidung 5).
 2. Zutatenzeilen auf der Rezeptseite sind 40 dp hohe Touch-Ziele statt 48 dp (Entscheidung 15).
 3. Stepper ohne Ertragsangabe zeigt den Faktor statt „Portionen" (Entscheidung 14).
+4. Navigationsleiste 80 statt 64 dp (Entscheidung 21).
+5. Aktionsleiste 80 statt 72 dp, im Kochmodus 88 dp (Entscheidung 22).
+6. Beschriftungen der Navigation wachsen nur bis 130 % (Entscheidung 23).
+7. Wochenplan mit 24 dp zwischen den Tagen und 12 dp zwischen Gerichten statt 8 dp (Entscheidung 30).
 
 ## Offene Punkte
 

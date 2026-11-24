@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,7 +46,8 @@ import app.aroma.ui.theme.Space
 
 /**
  * Emptiness, said quietly: one line in the description role and one text action, no picture, never
- * taller than 56 dp and never larger than the content it stands for.
+ * taller than 56 dp and never larger than the content it stands for. Where the two do not fit on
+ * one line, the action moves under the words instead of squeezing them.
  */
 @Composable
 fun EmptyState(
@@ -55,19 +57,17 @@ fun EmptyState(
     onAction: (() -> Unit)? = null,
     edge: Dp = PageMargin,
 ) {
-    Row(
+    FlowRow(
         modifier =
             modifier
                 .fillMaxWidth()
                 .heightIn(min = EmptyHeight)
                 .padding(horizontal = edge),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Space.s12),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, style = AromaTheme.type.bodySmall, maxLines = 2, modifier = Modifier.weight(1f, fill = false))
-        if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.width(Space.s12))
-            TextAction(actionLabel, onAction)
-        }
+        Text(text, style = AromaTheme.type.bodySmall)
+        if (actionLabel != null && onAction != null) TextAction(actionLabel, onAction)
     }
 }
 

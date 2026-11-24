@@ -44,6 +44,9 @@ val SectionTitleGap: Dp = Space.s12
 /** From the status bar to a page's title. */
 val HeaderTop: Dp = Space.s16
 
+/** From the row of a pushed page's back button to its title, so the circle never sits on the title. */
+val NavigationGap: Dp = Space.s16
+
 /** From a title to the line under it. */
 val SubtitleGap: Dp = Space.s4
 

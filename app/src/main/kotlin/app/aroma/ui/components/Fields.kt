@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldLabelPosition
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.LocalTonalFill
 import app.aroma.ui.theme.Space
 
 /**
@@ -151,7 +153,12 @@ fun LabeledTextField(
                     interactionSource = interaction,
                     isError = isError,
                     placeholder = placeholder?.let { { Text(it, style = AromaTheme.type.body) } },
-                    trailingIcon = trailingIcon,
+                    trailingIcon =
+                        trailingIcon?.let { icon ->
+                            {
+                                CompositionLocalProvider(LocalTonalFill provides AromaTheme.colors.surfaceInBox) { icon() }
+                            }
+                        },
                     colors = colors,
                     contentPadding = FieldPadding,
                     container = {
@@ -211,7 +218,12 @@ fun LabeledSecureTextField(
                     outputTransformation = null,
                     interactionSource = interaction,
                     labelPosition = TextFieldLabelPosition.Attached(),
-                    trailingIcon = trailingIcon,
+                    trailingIcon =
+                        trailingIcon?.let { icon ->
+                            {
+                                CompositionLocalProvider(LocalTonalFill provides AromaTheme.colors.surfaceInBox) { icon() }
+                            }
+                        },
                     isError = isError,
                     colors = colors,
                     contentPadding = FieldPadding,

@@ -53,6 +53,7 @@ fun RecipeGrid(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
     saved: Set<String> = emptySet(),
+    asRows: Boolean = false,
     header: LazyListScope.() -> Unit,
 ) {
     val nearEnd by remember(state) {
@@ -75,28 +76,46 @@ fun RecipeGrid(
         val rows = remember(recipes, columns) { recipes.chunked(columns) }
         LazyColumn(state = state, contentPadding = contentPadding, horizontalAlignment = Alignment.CenterHorizontally) {
             header()
-            itemsIndexed(rows, key = { _, row -> row.first().id }) { index, row ->
-                val lines = rememberTitleLines(row.map { it.name }, cardWidth)
-                Row(
-                    Modifier
-                        .widthIn(max = ContentMaxWidth)
-                        .fillMaxWidth()
-                        .padding(horizontal = PageMargin)
-                        .padding(top = if (index == 0) 0.dp else GridRowGap)
-                        .animateRow(this),
-                    horizontalArrangement = Arrangement.spacedBy(GridColumnGap),
-                ) {
-                    row.forEach { recipe ->
-                        RecipeCard(
-                            recipe = recipe,
-                            onClick = { onOpen(recipe) },
-                            onLongClick = { onLongPress(recipe) },
-                            saved = recipe.id in saved,
-                            titleLines = lines,
-                            modifier = Modifier.weight(1f),
-                        )
+            if (asRows) {
+                itemsIndexed(recipes, key = { _, recipe -> recipe.id }) { index, recipe ->
+                    RecipeRow(
+                        recipe = recipe,
+                        onClick = { onOpen(recipe) },
+                        onLongClick = { onLongPress(recipe) },
+                        modifier =
+                            Modifier
+                                .widthIn(max = ContentMaxWidth)
+                                .fillMaxWidth()
+                                .padding(horizontal = PageMargin)
+                                .padding(top = if (index == 0) 0.dp else Space.s12)
+                                .animateRow(this),
+                    )
+                }
+            }
+            if (!asRows) {
+                itemsIndexed(rows, key = { _, row -> row.first().id }) { index, row ->
+                    val lines = rememberTitleLines(row.map { it.name }, cardWidth)
+                    Row(
+                        Modifier
+                            .widthIn(max = ContentMaxWidth)
+                            .fillMaxWidth()
+                            .padding(horizontal = PageMargin)
+                            .padding(top = if (index == 0) 0.dp else GridRowGap)
+                            .animateRow(this),
+                        horizontalArrangement = Arrangement.spacedBy(GridColumnGap),
+                    ) {
+                        row.forEach { recipe ->
+                            RecipeCard(
+                                recipe = recipe,
+                                onClick = { onOpen(recipe) },
+                                onLongClick = { onLongPress(recipe) },
+                                saved = recipe.id in saved,
+                                titleLines = lines,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                     }
-                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
             if (isLoadingMore) {

@@ -24,6 +24,7 @@ import app.aroma.core.model.Organizer
 import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.PillField
 import app.aroma.ui.components.Segment
+import app.aroma.ui.components.SegmentGap
 import app.aroma.ui.components.SegmentInset
 import app.aroma.ui.components.mealLabel
 import app.aroma.ui.theme.PageMargin
@@ -38,6 +39,7 @@ fun MealChips(chosen: Set<Meal>, onToggle: (Meal, String) -> Unit, modifier: Mod
     LazyRow(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = PageMargin - SegmentInset),
+        horizontalArrangement = Arrangement.spacedBy(SegmentGap),
     ) {
         items(Meal.entries) { meal ->
             val label = mealLabel(meal)
@@ -76,7 +78,10 @@ fun OrganizerChips(
     }
     Column(modifier.padding(horizontal = PageMargin)) {
         if (shown.isNotEmpty()) {
-            FlowRow(modifier = Modifier.padding(bottom = Space.s8).offset(x = -SegmentInset)) {
+            FlowRow(
+                modifier = Modifier.padding(bottom = Space.s8).offset(x = -SegmentInset),
+                horizontalArrangement = Arrangement.spacedBy(SegmentGap),
+            ) {
                 shown.forEach { option ->
                     val isSelected = selected.any(option::sameAs)
                     Segment(

@@ -92,12 +92,14 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.File
 import java.util.UUID
+import kotlin.math.roundToInt
 
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @Config(sdk = [36], qualifiers = "w411dp-h891dp-xxhdpi")
 open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest() {
-    data class Variant(val locale: String, val dark: Boolean) {
-        val suffix = "${if (dark) "dark" else "light"}_$locale"
+    /** A language and theme; [scale] is the system font size, named in the file from 130 % on. */
+    data class Variant(val locale: String, val dark: Boolean, val scale: Float = 1f) {
+        val suffix = "${if (dark) "dark" else "light"}_$locale" + if (scale == 1f) "" else "_${(scale * PERCENT).roundToInt()}"
 
         override fun toString() = suffix
     }
@@ -922,9 +924,12 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
 
     private fun applyLocale() {
         org.robolectric.RuntimeEnvironment.setQualifiers("${variant.locale}-w411dp-h${screenHeightDp}dp-xxhdpi")
+        org.robolectric.RuntimeEnvironment.setFontScale(variant.scale)
     }
 
     companion object {
+        private const val PERCENT = 100
+
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
         fun variants() =
@@ -933,6 +938,8 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                 Variant("de", dark = true),
                 Variant("en", dark = false),
                 Variant("en", dark = true),
+                Variant("de", dark = false, scale = 1.3f),
+                Variant("de", dark = true, scale = 1.3f),
             )
     }
 }

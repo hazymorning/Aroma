@@ -124,7 +124,8 @@ fun rememberTitleLines(names: List<String>, width: Dp): Int {
 /**
  * A recipe as a row: a 56 dp thumbnail with 12 dp corners, the name beside it in at most two lines
  * and a meta line under it. Rows stand 12 dp apart. A [dimmed] row is past: its words in tertiary
- * ink and its photo faded.
+ * ink and its photo faded. A [trailing] action stands on the right; with large text it moves under
+ * the meta line, so the name keeps its width instead of breaking into a narrow column.
  */
 @Composable
 fun RecipeRow(
@@ -155,13 +156,14 @@ fun RecipeRow(
         } else {
             Modifier
         }
+    val actionBelow = trailing != null && LocalDensity.current.fontScale > LARGE_TEXT
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
                 .heightIn(min = ThumbnailSize)
                 .then(tap),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = if (actionBelow) Alignment.Top else Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Space.s16),
     ) {
         RecipeImage(
@@ -192,8 +194,9 @@ fun RecipeRow(
                 maxLines = ROW_META_LINES,
                 modifier = Modifier.padding(top = Space.s4),
             )
+            if (actionBelow && trailing != null) Row(content = trailing)
         }
-        trailing?.invoke(this)
+        if (!actionBelow) trailing?.invoke(this)
     }
 }
 
@@ -248,3 +251,6 @@ private const val DIMMED_PHOTO = 0.6f
 
 /** How many lines a row's meta line may take. */
 private const val ROW_META_LINES = 2
+
+/** From Android's "large" font size on, a row's action moves under its words. */
+private const val LARGE_TEXT = 1.1f

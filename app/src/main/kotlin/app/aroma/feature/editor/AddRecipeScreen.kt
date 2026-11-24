@@ -80,6 +80,7 @@ import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.Segment
+import app.aroma.ui.components.SegmentGap
 import app.aroma.ui.components.SegmentInset
 import app.aroma.ui.components.Separator
 import app.aroma.ui.components.SettingsRow
@@ -328,7 +329,7 @@ private fun AiOptions(state: AddRecipeUiState, actions: AddRecipeActions) {
     FlowRow(
         // The pills' words stand on the field's text edge; their tint reaches past it.
         Modifier.padding(start = PageMargin + FieldInset - SegmentInset, end = PageMargin, top = Space.s12),
-        horizontalArrangement = Arrangement.spacedBy(Space.s4),
+        horizontalArrangement = Arrangement.spacedBy(SegmentGap),
     ) {
         if (state.photos.isEmpty()) {
             Segment(

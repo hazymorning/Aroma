@@ -211,6 +211,7 @@ fun SelectionRow(
                         )
                     }
                 }.selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(SegmentGap),
     ) {
         options.forEachIndexed { index, option ->
             SegmentWord(
@@ -276,6 +277,9 @@ private val SegmentPadding = Space.s12
 
 /** How far a segment's word stands inside the segment: rows of segments start this much before the edge, so the words stand on it. */
 val SegmentInset: Dp = SegmentPadding
+
+/** The air between two segments, so two chosen pills side by side never touch. */
+val SegmentGap: Dp = Space.s4
 
 /**
  * The tick of a list to tick off: a ring on the tonal fill that fills with sage and draws its check
@@ -346,8 +350,10 @@ private fun AromaSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?,
 
 /**
  * A row of settings in a box: a 20 dp glyph in second ink, the title, and a [description] under
- * it; on the right the current [value] with a chevron, or a switch where [checked] is set. The whole
- * row takes the tap. Rows of one group stand in one box, a separator between each two.
+ * it; on the right of the title the current [value] with a chevron, or a switch where [checked] is
+ * set. The description runs on under the value or the switch, so a long one keeps the box's width
+ * instead of a narrow column. A [trailing] control stands beside the whole row. The whole row takes
+ * the tap. Rows of one group stand in one box, a separator between each two.
  */
 @Composable
 fun SettingsRow(
@@ -378,43 +384,50 @@ fun SettingsRow(
                 .padding(horizontal = BoxPadding, vertical = Space.s12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) {
-            Icon(
-                painterResource(icon),
-                contentDescription = null,
-                tint = if (titleColor == colors.error) colors.error else colors.inkSecondary,
-                modifier = Modifier.size(Glyph.control),
-            )
-            Spacer(Modifier.width(Space.s16))
-        }
         Column(Modifier.weight(1f)) {
-            Text(title, style = AromaTheme.type.body, color = titleColor)
-            if (description != null) Text(description, style = AromaTheme.type.bodySmall)
-        }
-        if (value != null) {
-            Spacer(Modifier.width(Space.s16))
-            Text(value, style = AromaTheme.type.meta, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End)
-        }
-        when {
-            checked != null -> {
-                Spacer(Modifier.width(Space.s16))
-                AromaSwitch(checked = checked, onCheckedChange = null)
-            }
+            Row(Modifier.heightIn(min = TitleLine), verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) {
+                    Icon(
+                        painterResource(icon),
+                        contentDescription = null,
+                        tint = if (titleColor == colors.error) colors.error else colors.inkSecondary,
+                        modifier = Modifier.size(Glyph.control),
+                    )
+                    Spacer(Modifier.width(Space.s16))
+                }
+                Text(title, style = AromaTheme.type.body, color = titleColor, modifier = Modifier.weight(1f))
+                if (value != null) {
+                    Spacer(Modifier.width(Space.s16))
+                    Text(value, style = AromaTheme.type.meta, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End)
+                }
+                when {
+                    checked != null -> {
+                        Spacer(Modifier.width(Space.s16))
+                        AromaSwitch(checked = checked, onCheckedChange = null)
+                    }
 
-            trailing != null -> {
-                Spacer(Modifier.width(Space.s16))
-                trailing()
+                    chevron && trailing == null -> {
+                        Spacer(Modifier.width(Space.s4))
+                        Icon(
+                            painterResource(R.drawable.ic_chevron_right),
+                            contentDescription = null,
+                            tint = colors.inkSecondary,
+                            modifier = Modifier.size(Glyph.control),
+                        )
+                    }
+                }
             }
-
-            chevron -> {
-                Spacer(Modifier.width(Space.s4))
-                Icon(
-                    painterResource(R.drawable.ic_chevron_right),
-                    contentDescription = null,
-                    tint = colors.inkSecondary,
-                    modifier = Modifier.size(Glyph.control),
+            if (description != null) {
+                Text(
+                    description,
+                    style = AromaTheme.type.bodySmall,
+                    modifier = Modifier.padding(start = if (icon != null) Glyph.control + Space.s16 else 0.dp),
                 )
             }
+        }
+        if (trailing != null && checked == null) {
+            Spacer(Modifier.width(Space.s16))
+            trailing()
         }
     }
 }
@@ -423,6 +436,9 @@ fun SettingsRow(
 val SettingsTextEdge: Dp = BoxPadding + Glyph.control + Space.s16
 
 private val SettingsRowHeight = 56.dp
+
+/** The title's line in a settings row, as tall as a switch, so every row's description starts alike. */
+private val TitleLine = 32.dp
 
 /**
  * Five stars. Without [onRate] they show a rating in sage, small, where there is one. With it they

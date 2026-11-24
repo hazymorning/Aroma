@@ -143,7 +143,6 @@ fun LoginScreen(state: LoginUiState, actions: LoginActions, modifier: Modifier =
                 Text(
                     text = stringResource(R.string.app_name),
                     style = AromaTheme.type.display,
-                    color = AromaTheme.colors.accent,
                     modifier = Modifier.semantics { heading() },
                 )
                 Spacer(Modifier.height(Space.s12))

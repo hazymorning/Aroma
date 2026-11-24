@@ -120,6 +120,7 @@ import app.aroma.ui.components.rememberStepText
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.ContentMaxWidth
+import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.PageMargin
@@ -575,7 +576,7 @@ private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
 @Composable
 private fun Timers(timers: List<CookTimerUi>, actions: CookActions) {
     if (timers.isEmpty()) return
-    TonalBox(Modifier.padding(start = PageMargin, end = PageMargin, bottom = Space.s12), contentPadding = PaddingValues()) {
+    TonalBox(Modifier.padding(start = PageMargin, end = PageMargin, bottom = EndSpace), contentPadding = PaddingValues()) {
         timers.forEachIndexed { index, timer ->
             if (index > 0) Separator(start = BoxPadding + Glyph.control + Space.s12)
             TimerRow(timer, onToggle = { actions.onToggleTimer(timer.id) }, onDismiss = { actions.onDismissTimer(timer.id) })
