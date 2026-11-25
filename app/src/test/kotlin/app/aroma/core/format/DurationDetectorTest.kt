@@ -29,7 +29,11 @@ class DurationDetectorTest {
             // Temperatures and amounts are no times.
             "Bei 180 Grad backen, 200 g Mehl dazugeben." to emptyList(),
             "Add 2 minced garlic cloves." to emptyList(),
-        ).forEach { (text, timers) -> assertEquals(text, timers, timers(text)) }
+        ).forEach { (text, timers) ->
+            assertEquals(text, timers, timers(text))
+            // A step binds each number to its unit with a narrow no-break space, which keeps every timer where it is.
+            assertEquals(text, DurationDetector.detect(text), DurationDetector.detect(UnitSpacing.apply(text)))
+        }
 
     @Test
     fun `a range starts at its lower end`() {

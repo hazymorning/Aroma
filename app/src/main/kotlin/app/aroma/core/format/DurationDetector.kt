@@ -57,7 +57,10 @@ object DurationDetector {
     val numberWords: Set<String> = words.keys
 
     fun detect(text: String): List<DetectedDuration> {
-        val parts = single.findAll(text).mapNotNull { match -> toDuration(match) }.toList()
+        // Steps bind a number to its unit with a narrow no-break space (see UnitSpacing), which not every regex engine
+        // counts as `\s`. Read as plain spaces, of the same length, no-break spaces leave every duration where it is.
+        val spaced = text.replace(NO_BREAK_SPACE, ' ').replace(NARROW_NO_BREAK_SPACE, ' ')
+        val parts = single.findAll(spaced).mapNotNull { match -> toDuration(match) }.toList()
         if (parts.isEmpty()) return emptyList()
         val merged = mutableListOf<DetectedDuration>()
         for (part in parts) {
@@ -67,7 +70,7 @@ object DurationDetector {
                     previous.upperSeconds == null &&
                     part.upperSeconds == null &&
                     previous.seconds > part.seconds &&
-                    joiner.matches(text.substring(previous.end, part.start))
+                    joiner.matches(spaced.substring(previous.end, part.start))
             if (canMerge) {
                 merged[merged.lastIndex] = previous.copy(end = part.end, seconds = previous.seconds + part.seconds)
             } else {
@@ -111,4 +114,7 @@ object DurationDetector {
             else -> null
         }
     }
+
+    private const val NO_BREAK_SPACE = '\u00A0'
+    private const val NARROW_NO_BREAK_SPACE = '\u202F'
 }
