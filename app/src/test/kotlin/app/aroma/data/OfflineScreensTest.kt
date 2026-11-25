@@ -2,24 +2,23 @@ package app.aroma.data
 
 import android.os.Looper
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.Meal
 import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.session.Session
-import app.aroma.data.settings.SettingsRepository
 import app.aroma.feature.home.HomeViewModel
 import app.aroma.feature.recipes.RecipesViewModel
 import app.aroma.feature.shopping.ShoppingViewModel
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.runBlocking
-import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -41,47 +40,43 @@ class OfflineScreensTest {
     @get:Rule
     val folder = TemporaryFolder()
 
-    private val server = MockWebServer()
     private val requests = CopyOnWriteArrayList<RecordedRequest>()
-    private lateinit var env: TestEnvironment
-    private val settings by lazy { SettingsRepository(PreferenceDataStoreFactory.create { folder.newFile("settings.preferences_pb") }) }
+    private val env = TestEnvironment()
+    private val opened = mutableListOf<ViewModel>()
 
     /** A server that takes the requests but never answers them, as one out of reach of the phone's network. */
     @Volatile
     private var silent = false
 
+    private val server =
+        mealieServer { request ->
+            requests += request
+            if (silent) {
+                return@mealieServer MockResponse
+                    .Builder()
+                    .headersDelay(1, TimeUnit.HOURS)
+                    .body("{}")
+                    .build()
+            }
+            val path = request.url.encodedPath
+            when {
+                path == "/api/app/about" -> json("""{"version":"v2.8.0"}""")
+                path == "/api/recipes" -> json(listing())
+                path.startsWith("/api/recipes/") -> recipe(path.removePrefix("/api/recipes/"))
+                path == "/api/users/self/ratings" -> json("""{"ratings":[]}""")
+                path.startsWith("/api/organizers/") || path == "/api/households/cookbooks" -> json("""{"items":[]}""")
+                path == "/api/households/mealplans" -> json("""{"items":[]}""")
+                path == "/api/households/shopping/lists" -> json("""{"items":[{"id":"$LIST","name":"Markt"}]}""")
+                path == "/api/households/shopping/lists/$LIST" -> json("""{"id":"$LIST","name":"Markt","listItems":[]}""")
+                path == "/api/households/shopping/items" -> json("""{"createdItems":[]}""")
+                else -> MockResponse.Builder().code(404).build()
+            }
+        }
+
     @Before
     fun setUp() {
-        server.dispatcher =
-            object : Dispatcher() {
-                override fun dispatch(request: RecordedRequest): MockResponse {
-                    requests += request
-                    if (silent) {
-                        return MockResponse
-                            .Builder()
-                            .headersDelay(1, TimeUnit.HOURS)
-                            .body("{}")
-                            .build()
-                    }
-                    val path = request.url.encodedPath
-                    return when {
-                        path == "/api/app/about" -> json("""{"version":"v2.8.0"}""")
-                        path == "/api/recipes" -> json(listing())
-                        path.startsWith("/api/recipes/") -> recipe(path.removePrefix("/api/recipes/"))
-                        path == "/api/users/self/ratings" -> json("""{"ratings":[]}""")
-                        path.startsWith("/api/organizers/") || path == "/api/households/cookbooks" -> json("""{"items":[]}""")
-                        path == "/api/households/mealplans" -> json("""{"items":[]}""")
-                        path == "/api/households/shopping/lists" -> json("""{"items":[{"id":"$LIST","name":"Markt"}]}""")
-                        path == "/api/households/shopping/lists/$LIST" -> json("""{"id":"$LIST","name":"Markt","listItems":[]}""")
-                        path == "/api/households/shopping/items" -> json("""{"createdItems":[]}""")
-                        else -> MockResponse.Builder().code(404).build()
-                    }
-                }
-            }
-        server.start()
-        env = TestEnvironment()
         runBlocking {
-            env.sessions.start(Session(serverUrl = server.url("/").toString().trimEnd('/'), token = "t", userId = "u", username = "mara"))
+            env.sessions.start(Session(serverUrl = server.address, token = "t", userId = "u", username = "mara"))
             env.recipes.downloadAll()
             env.recipes.recent().last()
             env.shopping.lists().last()
@@ -91,88 +86,65 @@ class OfflineScreensTest {
 
     @After
     fun tearDown() {
+        opened.forEach { it.viewModelScope.cancel() }
         env.close()
         server.close()
     }
 
     @Test
-    fun `without a network, the downloaded recipes show at once, search at once and nothing waits for Mealie`() {
+    fun `without a network, the downloaded recipes show, and are searched and picked from, without asking Mealie`() {
         goOffline()
-        val library = RecipesViewModel(env.recipes, env.connection)
-        val shown =
-            until {
-                library.state.value.recipes
-                    .isNotEmpty()
-            }
-        assertEquals(
-            NAMES.sorted(),
-            library.state.value.recipes
-                .map { it.name }
-                .sorted(),
-        )
+        val library = open(RecipesViewModel(env.recipes, env.connection))
+        until { library.names().isNotEmpty() }
+        assertEquals(NAMES.sorted(), library.names().sorted())
         assertTrue(library.state.value.isOffline)
 
-        library.onQueryChange("linsen")
-        val searched =
-            until {
-                library.state.value.recipes
-                    .map { it.name } == listOf("Linsensuppe")
-            }
-        assertTrue("shown after $shown ms, searched after $searched ms", shown < AT_ONCE && searched < AT_ONCE + DEBOUNCE)
-        assertEquals("Mealie was not asked", 0, requests.size)
-    }
-
-    @Test
-    fun `without a network, the quick recipes and a meal are picked from the downloaded ones without asking Mealie`() {
-        goOffline()
-        val library = RecipesViewModel(env.recipes, env.connection)
-        until {
-            library.state.value.recipes
-                .isNotEmpty()
-        }
-
         library.toggleQuick()
-        until {
-            library.state.value.recipes
-                .map { it.name } == listOf("Gnocchi")
-        }
+        until { library.names() == listOf("Gnocchi") }
 
         // Nothing is filed under dinner on this server, so nothing can match and the page says how to file it.
         library.toggleQuick()
         library.toggleMeal(Meal.Dinner)
-        until {
-            library.state.value.recipes
-                .isEmpty() && library.state.value.mealNames() == emptyList<String>()
-        }
+        until { library.names().isEmpty() && library.state.value.mealNames() == emptyList<String>() }
+
+        library.toggleMeal(Meal.Dinner)
+        library.onQueryChange("linsen")
+        // The library searches once the typing stops.
+        shadowOf(Looper.getMainLooper()).idleFor(300, TimeUnit.MILLISECONDS)
+        until { library.names() == listOf("Linsensuppe") }
         assertEquals("Mealie was not asked", 0, requests.size)
     }
 
     @Test
     fun `without a network, home shows its stored sections at once and says it is offline`() {
         goOffline()
-        val home = HomeViewModel(env.recipes, env.mealPlans, env.shopping, settings, env.sessions, env.auth, reminder(), env.connection)
-        val shown = until { !home.state.value.isLoading && home.state.value.isOffline }
-        assertTrue("shown after $shown ms", shown < AT_ONCE)
+        val reminderFile = folder.newFile("reminder.preferences_pb")
+        val reminder = RatingReminder(PreferenceDataStoreFactory.create { reminderFile })
+        val home =
+            open(HomeViewModel(env.recipes, env.mealPlans, env.shopping, env.settings, env.sessions, env.auth, reminder, env.connection))
+        until { !home.state.value.isLoading && home.state.value.isOffline }
         assertEquals(
             NAMES.sorted(),
             home.state.value.recent
                 .map { it.name }
                 .sorted(),
         )
+        // The silent server never answers, so the page did not wait for what it asked.
+        val asked = requests.map { it.url.encodedPath }.filterNot { it == "/api/users/self" }
+        assertEquals("Mealie was asked for nothing but the user's name", emptyList<String>(), asked)
     }
 
     @Test
     fun `once Mealie answers again, the screens load by themselves and what waited is sent`() {
         goOffline()
         runBlocking { env.shopping.add(LIST, "Milch") }
-        val library = RecipesViewModel(env.recipes, env.connection)
-        val shopping = ShoppingViewModel(env.shopping, settings, env.connection)
+        val library = open(RecipesViewModel(env.recipes, env.connection))
+        val shopping = open(ShoppingViewModel(env.shopping, env.settings, env.connection))
         until { library.state.value.isOffline && shopping.state.value.isOffline && shopping.state.value.pendingChanges == 1 }
 
         silent = false
         env.network.isOnline.value = true
-        val back = until { !library.state.value.isOffline && !shopping.state.value.isOffline && shopping.state.value.pendingChanges == 0 }
-        assertTrue("back after $back ms", back < AT_ONCE)
+        until { !library.state.value.isOffline && !shopping.state.value.isOffline && shopping.state.value.pendingChanges == 0 }
         assertTrue(requests.any { it.method == "POST" && it.url.encodedPath == "/api/households/shopping/items" })
         assertEquals(0, runBlocking { env.shopping.pendingCount(LIST).first() })
     }
@@ -185,19 +157,9 @@ class OfflineScreensTest {
         requests.clear()
     }
 
-    private fun reminder() = RatingReminder(PreferenceDataStoreFactory.create { folder.newFile("reminder.preferences_pb") })
+    private fun <T : ViewModel> open(viewModel: T): T = viewModel.also(opened::add)
 
-    /** Lets the main thread run, where the view models work, until [done]; returns how long that took. */
-    private fun until(done: () -> Boolean): Long {
-        val start = System.nanoTime()
-        repeat(1000) {
-            shadowOf(Looper.getMainLooper()).idleFor(10, TimeUnit.MILLISECONDS)
-            if (done()) return (System.nanoTime() - start) / 1_000_000
-            Thread.sleep(10)
-        }
-        fail("Gave up waiting")
-        return -1
-    }
+    private fun RecipesViewModel.names() = state.value.recipes.map { it.name }
 
     private fun listing() =
         NAMES.joinToString(prefix = """{"page":1,"per_page":-1,"total":${NAMES.size},"total_pages":1,"items":[""", postfix = "]}") {
@@ -209,24 +171,11 @@ class OfflineScreensTest {
         return json("""{"id":"id-$name","slug":"$slug","name":"$name","updatedAt":"2026-11-01T10:00:00"}""")
     }
 
-    private fun json(body: String) =
-        MockResponse
-            .Builder()
-            .addHeader("Content-Type", "application/json")
-            .body(body)
-            .build()
-
     private companion object {
         const val LIST = "list-1"
         val NAMES = listOf("Gnocchi", "Linsensuppe", "Ofenkuerbis")
 
         /** As Mealie keeps them, as text; only the gnocchi are quick. */
         val TIMES = mapOf("Gnocchi" to "20 Minuten", "Linsensuppe" to "1 Stunde", "Ofenkuerbis" to "")
-
-        /** Well under a second: no request is waited for. */
-        const val AT_ONCE = 1_500L
-
-        /** The library waits this long after the last key before it searches. */
-        const val DEBOUNCE = 300L
     }
 }

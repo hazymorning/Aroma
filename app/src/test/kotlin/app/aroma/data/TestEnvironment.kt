@@ -15,6 +15,7 @@ import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.session.SecretCipher
 import app.aroma.data.session.SessionManager
 import app.aroma.data.session.SessionStore
+import app.aroma.data.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,10 +55,14 @@ class TestEnvironment {
     var syncRequests = 0
     val shopping = ShoppingRepository(sessions, database.cache(), cache, database.pendingChanges(), connection) { syncRequests++ }
 
+    private val settingsFile = File(context.cacheDir, "settings-${UUID.randomUUID()}.preferences_pb")
+    val settings = SettingsRepository(PreferenceDataStoreFactory.create { settingsFile })
+
     fun close() {
         scope.cancel()
         database.close()
         dataStoreFile.delete()
+        settingsFile.delete()
     }
 
     /** A network that is there or not as a test says; [online] set to true again counts as another one joining. */

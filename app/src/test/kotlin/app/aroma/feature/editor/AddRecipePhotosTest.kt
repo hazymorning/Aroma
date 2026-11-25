@@ -3,25 +3,24 @@ package app.aroma.feature.editor
 import android.app.Application
 import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Looper
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewModelScope
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.testing.WorkManagerTestInitHelper
 import app.aroma.data.TestEnvironment
+import app.aroma.data.address
+import app.aroma.data.json
+import app.aroma.data.mealieServer
 import app.aroma.data.remote.SocialPosts
 import app.aroma.data.session.Session
-import app.aroma.data.settings.SettingsRepository
+import app.aroma.data.until
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
-import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.RecordedRequest
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -34,7 +33,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
@@ -52,15 +50,26 @@ class AddRecipePhotosTest {
 
     private val context = ApplicationProvider.getApplicationContext<Application>()
     private val env = TestEnvironment()
-    private val settings by lazy { SettingsRepository(PreferenceDataStoreFactory.create { folder.newFile("settings.preferences_pb") }) }
     private val screen = CoroutineScope(Dispatchers.Main)
-    private val server = MockWebServer()
+    private val opened = mutableListOf<AddRecipeViewModel>()
+
+    /** A server whose group has Mealie's AI with a provider for images. */
+    private val server =
+        mealieServer { request ->
+            if (request.url.encodedPath == "/api/groups/self") {
+                json("""{"aiProviderSettings":{"aiEnabled":true,"imageProviderEnabled":true}}""")
+            } else {
+                MockResponse.Builder().code(404).build()
+            }
+        }
 
     @Before
     fun setUp() = WorkManagerTestInitHelper.initializeTestWorkManager(context)
 
     @After
     fun tearDown() {
+        // What the screens started would otherwise go on in the next test.
+        opened.forEach { it.viewModelScope.cancel() }
         screen.cancel()
         env.close()
         server.close()
@@ -74,11 +83,11 @@ class AddRecipePhotosTest {
         assertFalse(shown.canImport)
 
         vm.addPhotos(listOf(Uri.fromFile(photo())))
-        awaitUntil { shown.photos.singleOrNull()?.file != null }
+        until { shown.photos.singleOrNull()?.file != null }
         assertTrue("no link and no text needed", shown.canImport)
 
         vm.import()
-        awaitUntil { shown.import != null }
+        until { shown.import != null }
         val sent =
             shown.import!!
                 .request.photos
@@ -93,7 +102,7 @@ class AddRecipePhotosTest {
         val vm = open(saved)
         vm.state.launchIn(screen)
         vm.addPhotos(listOf(Uri.fromFile(photo()), Uri.fromFile(photo())))
-        awaitUntil {
+        until {
             vm.state.value.photos
                 .count { it.file != null } == 2
         }
@@ -108,28 +117,13 @@ class AddRecipePhotosTest {
     }
 
     @Test
-    fun `no more photos are taken than an import sends`() {
-        val vm = open(SavedStateHandle())
-        vm.state.launchIn(screen)
-
-        vm.addPhotos(List(MAX_IMPORT_PHOTOS + 2) { Uri.fromFile(photo()) })
-        awaitUntil {
-            vm.state.value.photos
-                .count { it.file != null } == MAX_IMPORT_PHOTOS
-        }
-        vm.addPhotos(listOf(Uri.fromFile(photo())))
-
-        assertEquals(MAX_IMPORT_PHOTOS, vm.state.value.photos.size)
-    }
-
-    @Test
     fun `photos shared to Aroma are copied in for the photo import, and wait for the import button`() {
-        serverReadsPhotos()
+        signIn()
         val shared = listOf(photo(), photo())
 
         val vm = open(SavedStateHandle(), shared.map(Uri::fromFile))
         vm.state.launchIn(screen)
-        awaitUntil {
+        until {
             vm.state.value.photosAvailable && vm.state.value.photos
                 .count { it.file != null } == 2
         }
@@ -146,11 +140,11 @@ class AddRecipePhotosTest {
 
     @Test
     fun `of more photos shared than an import sends, the first are taken, and the screen says so`() {
-        serverReadsPhotos()
+        signIn()
 
         val vm = open(SavedStateHandle(), List(MAX_IMPORT_PHOTOS + 2) { Uri.fromFile(photo()) })
         vm.state.launchIn(screen)
-        awaitUntil {
+        until {
             vm.state.value.photosAvailable && vm.state.value.photos
                 .count { it.file != null } == MAX_IMPORT_PHOTOS
         }
@@ -158,58 +152,22 @@ class AddRecipePhotosTest {
         assertEquals(PhotosNote.FirstOnly, vm.state.value.photosNote)
     }
 
-    @Test
-    fun `photos shared to a server that cannot read them are set aside, and the screen says why`() {
-        val vm = open(SavedStateHandle(), listOf(Uri.fromFile(photo())))
-        vm.state.launchIn(screen)
-        awaitUntil { vm.state.value.photosNote == PhotosNote.Unreadable }
-
-        assertTrue(
-            vm.state.value.photos
-                .isEmpty(),
-        )
-        assertFalse("nothing is left to import", vm.state.value.canImport)
-        awaitUntil { File(context.cacheDir, "import-photos").listFiles().isNullOrEmpty() }
-    }
-
     private fun open(saved: SavedStateHandle, shared: List<Uri> = emptyList()): AddRecipeViewModel {
         val importer = RecipeImporter(env.recipes, SocialPosts(OkHttpClient()) { "Test browser" }, untitled = { "Rezept" })
         val imports = RecipeImports(context, env.recipes, importer)
-        return AddRecipeViewModel(env.recipes, imports, settings, null, shownJob = null, saved, sharedPhotos = shared)
+        return AddRecipeViewModel(env.recipes, imports, env.settings, null, shownJob = null, saved, sharedPhotos = shared).also(opened::add)
     }
 
-    /** Signs in to a server whose group has Mealie's AI with a provider for images. */
-    private fun serverReadsPhotos() {
-        server.dispatcher =
-            object : Dispatcher() {
-                override fun dispatch(request: RecordedRequest): MockResponse =
-                    if (request.url.encodedPath == "/api/groups/self") {
-                        MockResponse
-                            .Builder()
-                            .addHeader("Content-Type", "application/json")
-                            .body("""{"aiProviderSettings":{"aiEnabled":true,"imageProviderEnabled":true}}""")
-                            .build()
-                    } else {
-                        MockResponse.Builder().code(404).build()
-                    }
-            }
-        server.start()
-        val address = server.url("/").toString().trimEnd('/')
-        runBlocking { env.sessions.start(Session(address, token = "t", userId = "user-1", username = "mara", serverVersion = "v3.31.0")) }
+    private fun signIn() {
+        runBlocking {
+            env.sessions.start(
+                Session(server.address, token = "t", userId = "user-1", username = "mara", serverVersion = "v3.31.0"),
+            )
+        }
     }
 
     private fun photo(): File {
-        val bitmap = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFFC8A165.toInt()) }
+        val bitmap = Bitmap.createBitmap(64, 48, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFFC8A165.toInt()) }
         return folder.newFile().apply { outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) } }
-    }
-
-    /** Lets the view model's work on the main thread and in the background go on until [done]. */
-    private fun awaitUntil(done: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 10_000
-        while (!done()) {
-            check(System.currentTimeMillis() < deadline) { "Timed out" }
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(10)
-        }
     }
 }

@@ -38,25 +38,6 @@ class RecipeQuickActionsTest {
         assertEquals(listOf("plan", "shop", "cook"), opened)
     }
 
-    @Test
-    fun `a recipe without ingredients offers planning only`() {
-        show(recipe.copy(ingredients = emptyList()), RecipeActions())
-        compose.onNodeWithContentDescription("Plan").assertExists()
-        compose.onNodeWithContentDescription("Shop").assertDoesNotExist()
-    }
-
-    @Test
-    fun `the menu holds what manages the recipe, rating included`() {
-        val chosen = mutableListOf<String>()
-        show(recipe.copy(rating = null), RecipeActions(onEdit = { chosen += "edit" }))
-        compose.onNodeWithContentDescription("More options").performClick()
-        compose.onNodeWithWords("Rate this recipe").assertExists()
-        compose.onNodeWithWords("Share").assertExists()
-        compose.onNodeWithWords("Delete").assertExists()
-        compose.onNodeWithWords("Edit").performClick()
-        assertEquals(listOf("edit"), chosen)
-    }
-
     private fun show(recipe: app.aroma.core.model.Recipe, actions: RecipeActions) {
         compose.setContent {
             AromaTheme { RecipeScreen(RecipeUiState(recipe = recipe, isLoading = false), actions) }

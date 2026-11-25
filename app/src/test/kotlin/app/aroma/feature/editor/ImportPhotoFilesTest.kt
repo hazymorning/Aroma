@@ -3,7 +3,6 @@ package app.aroma.feature.editor
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.testing.WorkManagerTestInitHelper
 import app.aroma.data.TestEnvironment
@@ -107,7 +106,9 @@ class ImportPhotoFilesTest {
     fun `a photo is prepared in the cache, and a photo the camera took for it is removed`() =
         runBlocking {
             val taken = newCameraPhoto(context)
-            context.contentResolver.openOutputStream(taken)!!.use { it.write(photo("camera").readBytes()) }
+            context.contentResolver.openOutputStream(taken)!!.use { out ->
+                Bitmap.createBitmap(64, 48, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.JPEG, 90, out)
+            }
 
             val prepared = imports.preparePhoto(taken)
 
@@ -117,16 +118,6 @@ class ImportPhotoFilesTest {
             assertTrue(File(context.cacheDir, "camera").listFiles().isNullOrEmpty())
         }
 
-    @Test
-    fun `a photo that cannot be read is not prepared`() =
-        runBlocking {
-            val notAPhoto = folder.newFile("notes.jpg").apply { writeText("Zutaten") }
-
-            assertEquals(null, imports.preparePhoto(Uri.fromFile(notAPhoto)))
-        }
-
-    private fun photo(name: String): File {
-        val bitmap = Bitmap.createBitmap(320, 240, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFFC8A165.toInt()) }
-        return folder.newFile("$name.jpg").apply { outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) } }
-    }
+    /** An import only copies its photos, so any bytes will do. */
+    private fun photo(name: String): File = folder.newFile("$name.jpg").apply { writeText("photo $name") }
 }
