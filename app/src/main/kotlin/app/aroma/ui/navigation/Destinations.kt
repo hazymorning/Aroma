@@ -3,7 +3,6 @@ package app.aroma.ui.navigation
 import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
@@ -31,12 +30,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
-import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import app.aroma.R
+import app.aroma.checkNotificationPermission
 import app.aroma.core.model.Filing
 import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
@@ -437,10 +436,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 onOpenUrl = { openUrl(context, it) },
                 onDelete = vm::delete,
                 onRework = { translate ->
-                    val needsPermission =
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                    if (needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    if (needsNotificationPermission(context)) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     vm.rework(translate)
                 },
                 onOrganize = {
@@ -520,10 +516,7 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
             CookActions(
                 onClose = { nav.popBackStack() },
                 onStartTimer = { seconds, label ->
-                    val needsPermission =
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                    if (needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    if (needsNotificationPermission(context)) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     vm.startTimer(seconds, label)
                 },
                 onToggleIngredient = vm::toggleIngredient,
@@ -733,9 +726,7 @@ fun AddRecipeDestination(
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var askedForNotifications by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.isImporting) {
-        val needsPermission =
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-        if (state.isImporting && needsPermission && !askedForNotifications) {
+        if (state.isImporting && needsNotificationPermission(context) && !askedForNotifications) {
             askedForNotifications = true
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -826,8 +817,12 @@ fun LicensesDestination(nav: NavController) {
     LicensesScreen(onBack = { nav.popBackStack() })
 }
 
-private fun hasPermission(context: Context, permission: String): Boolean =
-    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+/**
+ * Whether to ask for the permission to post notifications, which Android 13 brought. The version
+ * check stays in sight here, so lint knows the permission's name exists where it is asked for.
+ */
+private fun needsNotificationPermission(context: Context): Boolean =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !context.checkNotificationPermission()
 
 private fun shareText(context: Context, text: String) {
     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)

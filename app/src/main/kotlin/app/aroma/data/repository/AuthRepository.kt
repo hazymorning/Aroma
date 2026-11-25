@@ -41,8 +41,7 @@ class AuthRepository(
             } catch (error: Throwable) {
                 val failure = error.toAromaError()
                 if (failure is AromaError.UnsupportedVersion) throw failure
-                if (failure is AromaError.NotFound) firstError = firstError ?: AromaError.NotMealie()
-                firstError = firstError ?: failure
+                firstError = firstError ?: if (failure is AromaError.NotFound) AromaError.NotMealie() else failure
             }
         }
         throw firstError ?: AromaError.HostNotFound()
@@ -55,14 +54,7 @@ class AuthRepository(
      */
     suspend fun signIn(server: ServerInfo, username: String, password: String) {
         val api = clients.create(SessionManager.baseUrl(server.url))
-        val accessToken =
-            try {
-                api.signIn(username.trim(), password).accessToken
-            } catch (error: HttpException) {
-                throw if (error.code() == 401 || error.code() == 400) AromaError.InvalidCredentials() else error.toAromaError()
-            } catch (error: Throwable) {
-                throw error.toAromaError()
-            }
+        val accessToken = signingIn(401, 400) { api.signIn(username.trim(), password).accessToken }
         val bearer = "Bearer $accessToken"
         val user = mealieCall { api.currentUser(bearer) }
         val apiToken =
@@ -77,16 +69,17 @@ class AuthRepository(
 
     suspend fun signInWithToken(server: ServerInfo, token: String) {
         val api = clients.create(SessionManager.baseUrl(server.url))
-        val user =
-            try {
-                api.currentUser("Bearer ${token.trim()}")
-            } catch (error: HttpException) {
-                throw if (error.code() == 401) AromaError.InvalidCredentials() else error.toAromaError()
-            } catch (error: Throwable) {
-                throw error.toAromaError()
-            }
+        val user = signingIn(401) { api.currentUser("Bearer ${token.trim()}") }
         start(server, token.trim(), null, user)
     }
+
+    /** Runs [block], a sign-in: Mealie answering with one of the [refusals] means the credentials are wrong. */
+    private suspend fun <T> signingIn(vararg refusals: Int, block: suspend () -> T): T =
+        try {
+            block()
+        } catch (error: Throwable) {
+            throw if (error is HttpException && error.code() in refusals) AromaError.InvalidCredentials() else error.toAromaError()
+        }
 
     /** Reads the signed-in user again, so a new name set in Mealie shows here too. */
     suspend fun refreshUser() {

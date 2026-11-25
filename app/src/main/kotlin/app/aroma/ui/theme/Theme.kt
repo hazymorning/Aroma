@@ -1,6 +1,10 @@
 package app.aroma.ui.theme
 
+import android.graphics.Color.TRANSPARENT
 import android.os.Build
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +17,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
@@ -21,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.intl.LocaleList
+import app.aroma.data.settings.AppSettings
+import app.aroma.data.settings.ThemeMode
 import app.aroma.ui.components.PressTint
 import java.util.Locale
 
@@ -118,6 +125,26 @@ fun AromaTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean
             content = content,
         )
     }
+}
+
+/**
+ * [AromaTheme] for a whole activity, light or dark as [settings] ask, with the system bars drawn
+ * over the page and their icons dark or light to match.
+ */
+@Composable
+fun ComponentActivity.AromaActivityTheme(settings: AppSettings, content: @Composable () -> Unit) {
+    val dark =
+        when (settings.themeMode) {
+            ThemeMode.System -> isSystemInDarkTheme()
+            ThemeMode.Light -> false
+            ThemeMode.Dark -> true
+        }
+    DisposableEffect(dark) {
+        val style = SystemBarStyle.auto(TRANSPARENT, TRANSPARENT) { dark }
+        enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+        onDispose { }
+    }
+    AromaTheme(darkTheme = dark, dynamicColor = settings.dynamicColor, content = content)
 }
 
 /** German text breaks by German rules wherever it is set; a language without a region takes its home region. */

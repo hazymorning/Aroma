@@ -3,14 +3,10 @@ package app.aroma.widget
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,7 +20,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,11 +37,11 @@ import androidx.lifecycle.lifecycleScope
 import app.aroma.R
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.session.SessionState
-import app.aroma.data.settings.ThemeMode
 import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.Separator
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TonalBox
+import app.aroma.ui.theme.AromaActivityTheme
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Glyph
@@ -88,18 +83,7 @@ class ShoppingWidgetConfigActivity : AppCompatActivity() {
                         .map { it.data }
                         .catch { emit(emptyList()) }
                 }.collectAsStateWithLifecycle(emptyList())
-                val dark =
-                    when (settings.themeMode) {
-                        ThemeMode.System -> isSystemInDarkTheme()
-                        ThemeMode.Light -> false
-                        ThemeMode.Dark -> true
-                    }
-                DisposableEffect(dark) {
-                    val style = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark }
-                    enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
-                    onDispose { }
-                }
-                AromaTheme(darkTheme = dark, dynamicColor = settings.dynamicColor) {
+                AromaActivityTheme(settings) {
                     ListChoice(
                         lists = lists,
                         chosen = chosen,

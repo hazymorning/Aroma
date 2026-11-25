@@ -1,16 +1,11 @@
 package app.aroma
 
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -19,12 +14,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.aroma.data.session.SessionState
-import app.aroma.data.settings.ThemeMode
 import app.aroma.ui.navigation.AromaNavHost
 import app.aroma.ui.navigation.LaunchRequest
 import app.aroma.ui.navigation.LoginDestination
 import app.aroma.ui.navigation.Shortcut
-import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.AromaActivityTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -51,18 +45,7 @@ class MainActivity : AppCompatActivity() {
             val settings = container.appSettings.collectAsStateWithLifecycle().value ?: return@setContent
             val session by container.sessions.state.collectAsStateWithLifecycle()
             val pendingLaunch by launch.collectAsStateWithLifecycle()
-            val dark =
-                when (settings.themeMode) {
-                    ThemeMode.System -> isSystemInDarkTheme()
-                    ThemeMode.Light -> false
-                    ThemeMode.Dark -> true
-                }
-            DisposableEffect(dark) {
-                val style = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark }
-                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
-                onDispose { }
-            }
-            AromaTheme(darkTheme = dark, dynamicColor = settings.dynamicColor) {
+            AromaActivityTheme(settings) {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     when (val current = session) {
                         SessionState.Loading -> {}

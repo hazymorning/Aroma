@@ -75,7 +75,6 @@ import java.io.File
 import java.text.Collator
 import java.text.Normalizer
 import java.time.LocalDate
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
@@ -344,12 +343,12 @@ class RecipeRepository(
             emit(Loadable(fresh.toModel(server)))
         }.flowOn(Dispatchers.Default)
 
-    private suspend fun fetchAndStore(slug: String): RecipeDto {
-        val dto = sessions.api().recipe(slug)
+    private suspend fun fetchAndStore(slug: String): RecipeDto = sessions.api().recipe(slug).also { storeDetail(it) }
+
+    private suspend fun storeDetail(dto: RecipeDto) {
         dao.upsertDetail(
             RecipeDetailEntity(dto.slug, dto.id, MealieJson.encodeToString(RecipeDto.serializer(), dto), System.currentTimeMillis()),
         )
-        return dto
     }
 
     /** Raw recipe JSON, used by the editor so fields Aroma does not know survive a save. */
@@ -472,11 +471,7 @@ class RecipeRepository(
         aiImport?.let { (askedFor, answer) -> if (askedFor == session) return answer }
         if (!MealieVersion.isAtLeast(session.serverVersion, 3, 23)) return AiImport.None
         val settings =
-            try {
-                sessions.api().group().aiProviderSettings
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
+            attempt { sessions.api().group().aiProviderSettings }.getOrElse {
                 // Asked again next time: the server may just have been out of reach.
                 return AiImport.None
             }
@@ -565,9 +560,7 @@ class RecipeRepository(
     /** Saves [patch]; a new name gives the recipe a new slug, which is returned. */
     suspend fun update(slug: String, patch: JsonObject): String {
         val dto = mealieCall { sessions.api().patchRecipe(slug, patch) }
-        dao.upsertDetail(
-            RecipeDetailEntity(dto.slug, dto.id, MealieJson.encodeToString(RecipeDto.serializer(), dto), System.currentTimeMillis()),
-        )
+        storeDetail(dto)
         if (dto.slug != slug) dao.deleteDetail(slug)
         changed()
         return dto.slug
@@ -718,15 +711,8 @@ class RecipeRepository(
         coroutineScope {
             stale.forEach { summary ->
                 launch {
-                    downloads.withPermit {
-                        try {
-                            fetchAndStore(summary.slug)
-                        } catch (cancelled: CancellationException) {
-                            throw cancelled
-                        } catch (_: Exception) {
-                            // The next run tries again; one failing recipe must not stop the others.
-                        }
-                    }
+                    // The next run tries again; one failing recipe must not stop the others.
+                    downloads.withPermit { attempt { fetchAndStore(summary.slug) } }
                 }
             }
         }

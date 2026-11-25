@@ -1,6 +1,5 @@
 package app.aroma.widget
 
-import android.appwidget.AppWidgetManager
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,7 +20,6 @@ import androidx.glance.action.action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.lazy.LazyColumn
@@ -135,24 +133,8 @@ class ShoppingWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
     }
 }
 
-class ShoppingWidgetReceiver : GlanceAppWidgetReceiver() {
+class ShoppingWidgetReceiver : AromaWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = ShoppingWidget()
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        Widgets.keepFresh(context)
-    }
-
-    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        super.onUpdate(context, appWidgetManager, appWidgetIds)
-        // Also called without widgets, as the clock or the language changes: then nothing needs refreshing.
-        if (appWidgetIds.isNotEmpty()) Widgets.keepFresh(context)
-    }
-
-    override fun onDisabled(context: Context) {
-        super.onDisabled(context)
-        Widgets.removed(context)
-    }
 }
 
 /** The widget's state as the session, the list it shows and that list change. */
