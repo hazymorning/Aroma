@@ -5,8 +5,6 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -764,19 +762,14 @@ private const val NEWEST_PHOTO = 4f / 3f
 /**
  * Holds the rate prompt. Answered or dismissed, the box fades where it stands and gives up its room
  * once it has all but faded, and the page below glides in. A new prompt takes its room at once and
- * fades in as the page glides aside.
+ * fades in as the page glides aside. It only fades: it never grows or shrinks.
  */
 @Composable
 private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions, modifier: Modifier = Modifier) {
     AnimatedContent(
         targetState = toRate,
         contentKey = { it?.recipeId },
-        transitionSpec = {
-            val arrive = fadeIn(Motion.state()) + scaleIn(Motion.state(), RATE_SCALE)
-            val leave = fadeOut(Motion.edge()) + scaleOut(Motion.edge(), RATE_SCALE)
-            arrive togetherWith leave using
-                SizeTransform(clip = false) { initial, target -> if (target.height < initial.height) snap(Motion.EDGE / 2) else snap() }
-        },
+        transitionSpec = { fadeIn(Motion.state()) togetherWith fadeOut(Motion.edge()) using roomAtOnce() },
         modifier = modifier.fillMaxWidth(),
         label = "ratePrompt",
     ) { reminder ->
@@ -784,8 +777,13 @@ private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions, modifier
     }
 }
 
-/** How small the rate prompt is as it starts to fade in, and once it has faded out. */
-private const val RATE_SCALE = 0.96f
+/**
+ * The room of a box in Home's list that turns into another: taken at once where the new one is
+ * taller, so the page glides aside as it fades in, and given up a moment into the fade where it is
+ * shorter, so the page glides in over what has all but faded.
+ */
+private fun roomAtOnce(): SizeTransform =
+    SizeTransform(clip = false) { initial, target -> if (target.height < initial.height) snap(Motion.EDGE / 2) else snap() }
 
 /** Asks, without a notification, how the last recipe cooked turned out. */
 @Composable
