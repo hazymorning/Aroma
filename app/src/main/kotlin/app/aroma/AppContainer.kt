@@ -152,13 +152,14 @@ class AppContainer(context: Context) {
     /**
      * Reads the session kept from the last run. Without one, what an account may have left is removed:
      * a sign-out the app was ended during, or a session that could not be read any more, would leave
-     * it to the next account.
+     * it to the next account. Then the tokens earlier sign-outs could not revoke are tried again.
      */
     fun restore() =
         scope.launch {
             sessions.restore()
             // Every account keeps something in the database: without its file, none was ever here.
             if (sessions.current == null && appContext.getDatabasePath(DATABASE).exists()) auth.forgetLocal()
+            auth.revokeEndedTokens()
         }
 
     /**

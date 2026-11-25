@@ -8,6 +8,7 @@ import app.aroma.data.remote.MealieClientFactory
 import app.aroma.data.remote.ServerAddress
 import app.aroma.data.remote.dto.ApiTokenRequest
 import app.aroma.data.remote.dto.UserDto
+import app.aroma.data.session.Revocation
 import app.aroma.data.session.Session
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
@@ -119,23 +120,15 @@ class AuthRepository(
 
     /**
      * Ends the session at once, so the screens leave and no request carries the token any more,
-     * forgets everything stored for it, and then revokes the token Aroma created, if Mealie answers
-     * within a few seconds.
+     * forgets everything stored for it, and then revokes the token Aroma created. The token is kept,
+     * encrypted, until Mealie answers: when it is out of reach now, or Android ends the app first,
+     * the token is revoked at a later start or sign-out.
      */
     suspend fun signOut() {
         val session = sessions.current ?: return
-        sessions.end()
+        sessions.end(revoke = session.tokenId?.let { Revocation(session.serverUrl, it, session.token) })
         forgetLocal()
-        val tokenId = session.tokenId ?: return
-        withTimeoutOrNull(REVOKE_PATIENCE) {
-            try {
-                clients.create(SessionManager.baseUrl(session.serverUrl)).deleteApiToken(tokenId, "Bearer ${session.token}")
-            } catch (_: IOException) {
-                // Unreachable: the token stays valid on the server, as a token deleted there would anyway.
-            } catch (_: HttpException) {
-                // Already revoked in Mealie's settings.
-            }
-        }
+        revokeEndedTokens()
     }
 
     /**
@@ -147,6 +140,30 @@ class AuthRepository(
     suspend fun forgetLocal() {
         forgetOutsideDatabase()
         withContext(Dispatchers.IO) { database.clearAllTables() }
+    }
+
+    /**
+     * Revokes the tokens of ended sessions, if Mealie answers within a few seconds. A token is
+     * forgotten once Mealie took it back or refused to; one it could not be asked about is tried again later.
+     */
+    suspend fun revokeEndedTokens() {
+        for (revocation in sessions.revocations()) {
+            val api = clients.create(SessionManager.baseUrl(revocation.serverUrl))
+            val answered =
+                withTimeoutOrNull(REVOKE_PATIENCE) {
+                    try {
+                        api.deleteApiToken(revocation.tokenId, "Bearer ${revocation.token}")
+                        true
+                    } catch (_: IOException) {
+                        // Out of reach: many servers answer only at home.
+                        false
+                    } catch (error: HttpException) {
+                        // Mealie refuses a token revoked in its settings already; a 5xx may be a proxy in front of a Mealie that is down.
+                        error.code() !in 500..599
+                    }
+                } ?: false
+            if (answered) sessions.revoked(revocation)
+        }
     }
 }
 

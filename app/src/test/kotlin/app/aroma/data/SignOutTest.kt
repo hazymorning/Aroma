@@ -11,6 +11,7 @@ import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
+import mockwebserver3.SocketEffect
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -29,8 +30,12 @@ import java.util.concurrent.TimeUnit
 class SignOutTest {
     private val server = MockWebServer()
     private val itemsSent = CopyOnWriteArrayList<String>()
+    private val revoked = CopyOnWriteArrayList<String>()
     private lateinit var env: TestEnvironment
     private lateinit var url: String
+
+    @Volatile
+    private var revocationsFail = false
 
     /** Set to hold back the answers to the shopping lists until it is counted down. */
     @Volatile
@@ -60,6 +65,15 @@ class SignOutTest {
                         request.method == "POST" && path == "/api/households/shopping/items" -> {
                             itemsSent += auth
                             json("""{"createdItems":[],"updatedItems":[],"deletedItems":[]}""")
+                        }
+
+                        request.method == "DELETE" && path.startsWith("/api/users/api-tokens/") -> {
+                            if (revocationsFail) {
+                                MockResponse.Builder().onResponseStart(SocketEffect.CloseSocket()).build()
+                            } else {
+                                revoked += "${path.substringAfterLast('/')} $auth"
+                                MockResponse.Builder().code(200).build()
+                            }
                         }
 
                         else -> {
@@ -121,6 +135,23 @@ class SignOutTest {
 
             assertEquals(1, lists.await().data.size)
             assertNull(env.database.cache().get("shopping:lists"))
+        }
+
+    @Test
+    fun `tokens Mealie could not be asked to revoke are revoked at the next try`() =
+        runBlocking {
+            revocationsFail = true
+            env.sessions.start(session("token-a", tokenId = 1))
+            env.auth.signOut()
+            env.sessions.start(session("token-b", tokenId = 2))
+            env.auth.signOut()
+            assertEquals(2, env.sessions.revocations().size)
+
+            revocationsFail = false
+            env.auth.revokeEndedTokens()
+
+            assertEquals(setOf("1 Bearer token-a", "2 Bearer token-b"), revoked.toSet())
+            assertEquals(0, env.sessions.revocations().size)
         }
 
     /** Signs out once the shopping lists were asked for, then lets Mealie's answer through. */
