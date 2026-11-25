@@ -5,23 +5,16 @@
 
 Aroma is an Android app for Mealie, available in English and German. It came from needing a recipe app that's nice to look at and that the household enjoys enough to actually use.
 
+<br>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/aroma-screens-dark-2.webp">
   <img src="docs/assets/aroma-screens-light.webp" alt="Home, the recipes and the meal plan, a recipe and cooking mode" width="100%">
 </picture>
 
 <br>
-
-<details>
-<summary><b>Why Aroma</b></summary>
-
 <br>
 
-- Pleasant UI, designed like a cookbook
-- Features made for everyday cooking
-- Care for the little details (like widgets)
-
-</details>
 <details>
 <summary><b>Features</b></summary>
 
