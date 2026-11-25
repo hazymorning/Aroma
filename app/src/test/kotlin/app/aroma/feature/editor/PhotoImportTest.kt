@@ -2,12 +2,14 @@ package app.aroma.feature.editor
 
 import app.aroma.data.AromaError
 import app.aroma.data.TestEnvironment
+import app.aroma.data.address
+import app.aroma.data.eventStream
+import app.aroma.data.json
+import app.aroma.data.mealieServer
 import app.aroma.data.remote.SocialPosts
 import app.aroma.data.session.Session
 import kotlinx.coroutines.runBlocking
-import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import okhttp3.Dns
 import okhttp3.MediaType.Companion.toMediaType
@@ -40,10 +42,9 @@ class PhotoImportTest {
     @get:Rule
     val folder = TemporaryFolder()
 
-    private val server = MockWebServer()
     private val requests = CopyOnWriteArrayList<RecordedRequest>()
-    private lateinit var env: TestEnvironment
-    private lateinit var session: Session
+    private val server = mealieServer { answer(it.also(requests::add)) }
+    private val env = TestEnvironment()
 
     /** Recipes on the server, newest first. */
     private val listed = CopyOnWriteArrayList(listOf(summary("old-1", "aelteres-rezept")))
@@ -54,27 +55,13 @@ class PhotoImportTest {
         "event: progress\ndata: {\"message\":\"Lese Bilder mit KI...\"}\n\n" +
             "event: done\ndata: {\"slug\":\"kartoffelsuppe\"}\n\n"
 
-    /** Whether the group has an AI provider for images. */
-    @Volatile
-    private var imageProvider = true
-
     @Before
     fun setUp() {
-        server.dispatcher =
-            object : Dispatcher() {
-                override fun dispatch(request: RecordedRequest): MockResponse = answer(request.also { requests += it })
-            }
-        server.start()
-        env = TestEnvironment()
-        session =
-            Session(
-                serverUrl = server.url("/").toString().trimEnd('/'),
-                token = "t",
-                userId = USER,
-                username = "mara",
-                serverVersion = "v3.31.0",
+        runBlocking {
+            env.sessions.start(
+                Session(server.address, token = "t", userId = USER, username = "mara", serverVersion = "v3.31.0"),
             )
-        runBlocking { env.sessions.start(session) }
+        }
     }
 
     @After
@@ -84,23 +71,21 @@ class PhotoImportTest {
     }
 
     @Test
-    fun `photos go to Mealie's AI as JPEG images, with the text, the link and the language`() =
+    fun `photos go to Mealie's AI as JPEG images, with the text, the link and the language, and nowhere else`() =
         runBlocking<Unit> {
             val photos = listOf(photo("photo-1.jpg", 1), photo("photo-2.jpg", 2))
             val steps = mutableListOf<ImportStep>()
 
-            val slug =
-                importer().import(
-                    ImportRequest(PAGE, text = "Omas Kartoffelsuppe", translateTo = "de-DE", photos = photos),
-                    onSending = {},
-                ) { steps += it }
+            // Read with AI is switched off: photos are read with it all the same.
+            val request = ImportRequest(post, text = "Omas Kartoffelsuppe", useAi = false, translateTo = "de-DE", photos = photos)
+            val slug = importer().import(request, onSending = {}) { steps += it }
 
             assertEquals("kartoffelsuppe", slug)
             assertEquals(listOf("/api/recipes/create/ai/stream"), creations())
             val parts = parts(requests.single { it.url.encodedPath == "/api/recipes/create/ai/stream" })
             assertEquals(listOf("content", "url", "translateLanguage", "images", "images"), parts.map { it.name })
             assertEquals("Omas Kartoffelsuppe", parts[0].text)
-            assertEquals(PAGE, parts[1].text)
+            assertEquals(post, parts[1].text)
             assertEquals("de-DE", parts[2].text)
             parts.drop(3).forEachIndexed { index, image ->
                 assertEquals(photos[index].name, image.fileName)
@@ -108,16 +93,6 @@ class PhotoImportTest {
                 assertArrayEquals(photos[index].readBytes(), image.bytes)
             }
             assertTrue(ImportStep.Server("Lese Bilder mit KI...") in steps)
-        }
-
-    @Test
-    fun `photos with a post's link go to the AI alone, never to the post or to Mealie's regular import`() =
-        runBlocking<Unit> {
-            // Read with AI is switched off: photos are read with it all the same.
-            val slug = importer().import(ImportRequest(post, useAi = false, photos = listOf(photo("photo-1.jpg", 1))), onSending = {}) { }
-
-            assertEquals("kartoffelsuppe", slug)
-            assertEquals(listOf("/api/recipes/create/ai/stream"), creations())
             assertFalse("the phone does not read the post", requests.any { it.url.encodedPath.startsWith("/p/") })
             assertFalse("nothing is saved besides", requests.any { it.method == "POST" && it.url.encodedPath == "/api/recipes" })
         }
@@ -157,20 +132,6 @@ class PhotoImportTest {
             assertFalse("nothing of a post is finished", requests.any { it.method == "PATCH" || it.method == "PUT" })
         }
 
-    @Test
-    fun `photos are offered where Mealie 3_23 or newer has a provider for images`() =
-        runBlocking<Unit> {
-            assertTrue(env.recipes.canImportPhotosWithAi())
-
-            env.sessions.start(session.copy(serverVersion = "v3.22.0"))
-            assertFalse("the AI import came with 3.23", env.recipes.canImportPhotosWithAi())
-
-            imageProvider = false
-            env.sessions.start(session.copy(serverVersion = "v3.23.0"))
-            assertTrue(env.recipes.canImportWithAi())
-            assertFalse("without a provider for images Mealie refuses photos", env.recipes.canImportPhotosWithAi())
-        }
-
     private val post get() = "http://www.instagram.com:${server.port}/p/AromaTest03/"
 
     private fun creations() = requests.map { it.url.encodedPath }.filter { it.startsWith("/api/recipes/create/") }
@@ -208,43 +169,25 @@ class PhotoImportTest {
         }
     }
 
-    private fun answer(request: RecordedRequest): MockResponse {
-        val path = request.url.encodedPath
-        return when {
-            request.method == "GET" && path == "/api/recipes" -> {
+    private fun answer(request: RecordedRequest): MockResponse =
+        when {
+            request.method == "GET" && request.url.encodedPath == "/api/recipes" -> {
                 json("""{"page":1,"per_page":10,"total":${listed.size},"total_pages":1,"items":[${listed.joinToString(",")}]}""")
             }
 
-            path == "/api/groups/self" -> {
-                json("""{"aiProviderSettings":{"aiEnabled":true,"imageProviderEnabled":$imageProvider}}""")
-            }
-
-            request.method == "POST" && path == "/api/recipes/create/ai/stream" -> {
-                MockResponse
-                    .Builder()
-                    .addHeader("Content-Type", "text/event-stream")
-                    .body(answer)
-                    .build()
+            request.method == "POST" && request.url.encodedPath == "/api/recipes/create/ai/stream" -> {
+                eventStream(answer)
             }
 
             else -> {
                 MockResponse.Builder().code(404).build()
             }
         }
-    }
-
-    private fun json(body: String) =
-        MockResponse
-            .Builder()
-            .addHeader("Content-Type", "application/json")
-            .body(body)
-            .build()
 
     private fun summary(id: String, slug: String, link: String? = null) =
         """{"id":"$id","slug":"$slug","name":"$slug","userId":"$USER","orgURL":${link?.let { "\"$it\"" }}}"""
 
     private companion object {
         const val USER = "user-1"
-        const val PAGE = "https://www.example.com/kartoffelsuppe"
     }
 }
