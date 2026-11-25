@@ -132,10 +132,10 @@ internal fun LazyListScope.shoppingSections(
                     text = stringResource(R.string.shopping_empty_title),
                     actionLabel = stringResource(R.string.shopping_add_from_plan),
                     onAction = actions.onAddFromPlan,
-                    modifier = Modifier.animateRow(this),
+                    modifier = Modifier.animateRow(this).paperGround(),
                 )
             } else {
-                EmptyState(text = stringResource(R.string.shopping_done_title), modifier = Modifier.animateRow(this))
+                EmptyState(text = stringResource(R.string.shopping_done_title), modifier = Modifier.animateRow(this).paperGround())
             }
         }
     }
@@ -146,6 +146,7 @@ internal fun LazyListScope.shoppingSections(
                 modifier =
                     Modifier
                         .animateRow(this)
+                        .paperGround()
                         .padding(start = PageMargin, end = PageMargin, top = if (index == 0) 0.dp else Space.s24, bottom = Space.s12),
             )
         }
@@ -158,12 +159,20 @@ internal fun LazyListScope.shoppingSections(
                 open = showDone,
                 onToggle = { onShowDone(!showDone) },
                 onClear = actions.onClearChecked,
-                modifier = Modifier.animateRow(this),
+                modifier = Modifier.animateRow(this).paperGround(),
             )
         }
         if (showDone) itemRows(groups.checked, state, actions, large, onEdit)
     }
 }
+
+/**
+ * The page's paper under a row that stands open on it, an aisle's name or the head of what is done,
+ * across the whole width, so that as it glides over a row that leaves, it covers that row as the
+ * rows of a box do, and the box closes up from below.
+ */
+@Composable
+private fun Modifier.paperGround(): Modifier = fillMaxWidth().background(AromaTheme.colors.background)
 
 /**
  * The rows of one box, a separator between each two, inset to their text. A row keyed by where it

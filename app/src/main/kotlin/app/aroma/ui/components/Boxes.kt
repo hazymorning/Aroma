@@ -1,6 +1,9 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +40,7 @@ import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.LocalTonalFill
+import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Radius
 import app.aroma.ui.theme.Space
 
@@ -107,18 +112,18 @@ enum class BoxPart(internal val isTop: Boolean, internal val isBottom: Boolean) 
 
 /**
  * One [part] of a box that spans several items of a lazy list: the box's fill and the part's
- * corners, nothing more; each row pads itself. What it holds takes the box's own tonal fill.
+ * corners, nothing more; each row pads itself. What it holds takes the box's own tonal fill. As a
+ * row next to it comes or goes, a part's corners ease into their new shape: they square at once to
+ * meet a row that comes, and round only as a row that goes fades, so the box shows no notch where
+ * the row still stands.
  */
 @Composable
 fun TonalBoxPart(part: BoxPart, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    val radius = Radius.box
+    val top by animateDpAsState(if (part.isTop) Radius.box else 0.dp, cornerSpec(part.isTop), label = "topCorners")
+    val bottom by animateDpAsState(if (part.isBottom) Radius.box else 0.dp, cornerSpec(part.isBottom), label = "bottomCorners")
     val shape =
-        androidx.compose.foundation.shape.RoundedCornerShape(
-            topStart = if (part.isTop) radius else 0.dp,
-            topEnd = if (part.isTop) radius else 0.dp,
-            bottomStart = if (part.isBottom) radius else 0.dp,
-            bottomEnd = if (part.isBottom) radius else 0.dp,
-        )
+        androidx.compose.foundation.shape
+            .RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom)
     val fill = AromaTheme.tonalFill
     val inner = AromaTheme.colors.surfaceInBox
     Column(
@@ -130,6 +135,10 @@ fun TonalBoxPart(part: BoxPart, modifier: Modifier = Modifier, content: @Composa
         CompositionLocalProvider(LocalTonalFill provides inner) { content() }
     }
 }
+
+/** Corners round as the row that leaves begins to fade, which a list does after an edge's time; they square at once. */
+private fun cornerSpec(round: Boolean): FiniteAnimationSpec<Dp> =
+    if (round) tween(Motion.STATE, delayMillis = Motion.EDGE, easing = Motion.Decelerate) else Motion.state()
 
 /**
  * The head of a box: its title on the left, and on the right a [meta] line, a [chevron] where the
