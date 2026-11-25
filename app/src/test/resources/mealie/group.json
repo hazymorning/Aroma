@@ -1,0 +1,20 @@
+{
+  "name": "Home",
+  "id": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+  "slug": "home",
+  "preferences": {
+    "privateGroup": true,
+    "showAnnouncements": true,
+    "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+    "id": "8a3277ec-e2dc-4d86-afbf-365ac47034f0"
+  },
+  "aiProviderSettings": {
+    "defaultProviderId": null,
+    "audioProviderId": null,
+    "imageProviderId": null,
+    "providers": [],
+    "aiEnabled": false,
+    "audioProviderEnabled": false,
+    "imageProviderEnabled": false
+  }
+}
