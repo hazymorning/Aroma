@@ -16,7 +16,7 @@ Aroma is an Android app for Mealie, available in English and German. It came fro
 **What it does:**
 
 - Pleasant UI, designed like a cookbook
-- Features made for everyday cooking at home
+- Features made for everyday cooking
 - Care for the little details (like widgets)
 
 <br>
