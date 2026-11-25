@@ -2,8 +2,8 @@
 
 package app.aroma.feature.editor
 
-import app.aroma.core.format.DurationDetector
 import app.aroma.core.format.IngredientFormatter
+import app.aroma.core.format.readyMinutes
 import app.aroma.core.model.Filing
 import app.aroma.core.model.Organizer
 import app.aroma.data.remote.MealieJson
@@ -201,8 +201,9 @@ object RecipeDraft {
 
     private fun lineOf(raw: JsonObject, locale: Locale): String = IngredientFormatter.format(raw.toIngredient(), 1.0, locale).toPlainText()
 
+    /** The minutes of the time in [field], read from its text as the recipe's page reads it, a range by its end. */
     private fun minutes(recipe: JsonObject, field: String): String {
-        val seconds = recipe.int("${field}Seconds") ?: recipe.string(field)?.let { DurationDetector.detect(it).sumOf { d -> d.seconds } }
+        val seconds = recipe.int("${field}Seconds") ?: recipe.string(field)?.let(::readyMinutes)?.times(60)
         return seconds?.takeIf { it > 0 }?.let { (it / 60).toString() }.orEmpty()
     }
 
