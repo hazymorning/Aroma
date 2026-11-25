@@ -1,12 +1,12 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-dark.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-dark-2.png">
   <img src="docs/assets/hero-light.png" alt="Aroma – Good enough to eat" width="100%">
 </picture>
 
-Aroma is an Android app for Mealie, available in English and German. It came from wanting a recipe app that's easy to use every day and as nice to look at as the food.
+Aroma is an Android app for Mealie, available in English and German. It came from needing a recipe app the household enjoys enough to actually use, and one that's as nice to look at as the food in it.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/aroma-screens-dark.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/aroma-screens-dark-2.webp">
   <img src="docs/assets/aroma-screens-light.webp" alt="Home, the recipes and the meal plan, a recipe and cooking mode" width="100%">
 </picture>
 
