@@ -74,8 +74,11 @@ import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.SubtitleGap
 import app.aroma.ui.theme.layeredShadow
 
-/** The height of the collapsed head, below the status bar. */
-val TopBarHeight: Dp = 56.dp
+/**
+ * The height of the collapsed head, below the status bar: its 40 dp circles keep 12 dp of air above
+ * and below, so they never crowd the head's foot, where its shadow falls.
+ */
+val TopBarHeight: Dp = 64.dp
 
 /**
  * Whether a page's large head has scrolled away: [LargeHeader] tells it, and the [TopBar] shows the
@@ -176,7 +179,7 @@ fun Subtitle(text: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * The collapsed head: 56 dp of bar paper under the status bar with the page's title in one line,
+ * The collapsed head: 64 dp of bar paper under the status bar with the page's title in one line,
  * there once the large head has scrolled beneath it ([collapsed]), with its shadow once content lies
  * under it ([raised]). Its paper fades in with its title, so what lies under it fades out rather
  * than vanishing at once. Before that it is only the status bar's ground, the page's paper, with the

@@ -395,7 +395,10 @@ private fun RecipeHead(
             Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = PageMargin - IconButtonReach, vertical = Space.s4),
+                // In the row the collapsed head will have, so the buttons stay where they are as it comes.
+                .height(TopBarHeight)
+                .padding(horizontal = PageMargin - IconButtonReach),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(R.drawable.ic_arrow_back, stringResource(R.string.action_back), actions.onBack, place = IconButtonPlace.Photo)
             Spacer(Modifier.weight(1f))
