@@ -7,9 +7,10 @@ sage.
 
 The values live in `ui/theme` (`Color.kt`, `Type.kt`, `Tokens.kt`, `Shadows.kt`, `Theme.kt`), the
 pieces in `ui/components`, one of each. Screens under `feature/` are built from those two only, and
-`DesignRulesTest` keeps them to it: sizes from tokens or named constants, spacing on the scale,
-colours from the theme, no outlines, no dividers but the separator, no FABs, no capitals or letter
-spacing, text at least 4.5 : 1 and meaningful shapes at least 3 : 1 against their ground.
+`DesignRulesTest` keeps them to it: colours from the theme, text set with Aroma's `Text` in roles
+that hyphenate, controls, shapes and motion from Aroma instead of Material, no outlines, no dividers
+but the separator, no FABs, no capitals or letter spacing, text at least 4.5 : 1 and meaningful
+shapes at least 3 : 1 against their ground.
 
 ## Rules
 

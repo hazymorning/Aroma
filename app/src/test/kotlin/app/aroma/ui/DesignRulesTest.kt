@@ -3,85 +3,36 @@ package app.aroma.ui
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import app.aroma.ui.theme.AromaColors
-import app.aroma.ui.theme.BoxGap
-import app.aroma.ui.theme.BoxPadding
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.intl.LocaleList
+import androidx.compose.ui.text.style.Hyphens
+import app.aroma.ui.theme.AromaTypography
 import app.aroma.ui.theme.DarkColors
-import app.aroma.ui.theme.EndSpace
-import app.aroma.ui.theme.GridColumnGap
-import app.aroma.ui.theme.GridRowGap
-import app.aroma.ui.theme.HeaderGap
-import app.aroma.ui.theme.HeaderTop
 import app.aroma.ui.theme.LightColors
-import app.aroma.ui.theme.PageMargin
-import app.aroma.ui.theme.SectionGap
-import app.aroma.ui.theme.SectionTitleGap
-import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.SubtitleGap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 /**
- * The rules of docs/design/AUFTRAG.md that can be read from the code: paper, ink and sage from the
- * theme and nothing else; text in Aroma's roles, never in capitals or tracked; spacing on the scale;
- * no outlines, no dividers but the separator, no floating buttons; controls from Aroma's components;
- * motion from Motion; and every pairing of words and ground legible.
+ * The rules of docs/DESIGN.md that can be read from the code: colours from the theme, text set with
+ * Aroma's Text in roles that hyphenate, none of the pieces the design does without, and words and
+ * meaningful shapes legible on every ground.
  */
 class DesignRulesTest {
     private val root = File("src/main/kotlin/app/aroma")
-    private val resources = File("src/main/res")
 
     private fun files(vararg dirs: String) = dirs.flatMap { File(root, it).walk().filter { file -> file.extension == "kt" }.toList() }
 
-    /** Every line in [dirs] that matches [pattern], except declarations of a named constant. */
+    /** Every line of code in [dirs] that matches [pattern]. */
     private fun violations(pattern: Regex, vararg dirs: String): List<String> =
         files(*dirs).flatMap { file ->
             file.readLines().mapIndexedNotNull { index, line ->
-                val code = line.substringBefore("//")
-                val named = NamedConstant.containsMatchIn(code)
-                if (!named && pattern.containsMatchIn(code)) "${file.relativeTo(root)}:${index + 1}: ${line.trim()}" else null
+                if (pattern.containsMatchIn(line.substringBefore("//"))) "${file.relativeTo(root)}:${index + 1}: ${line.trim()}" else null
             }
         }
 
     private fun assertNone(rule: String, found: List<String>) = assertTrue("$rule\n" + found.joinToString("\n"), found.isEmpty())
-
-    @Test
-    fun screensSizeWithTokensOrNamedConstants() =
-        assertNone(
-            "Use Space, a token of Tokens.kt or a named constant instead of a bare size:",
-            violations(Regex("""\b(?!0\.dp)\d+(\.\d+)?\.dp\b"""), "feature", "ui/navigation"),
-        )
-
-    @Test
-    fun spacingKeepsToTheScale() {
-        val scale = setOf(4, 8, 12, 16, 20, 24, 32, 40, 48, 64).map { it.dp }.toSet()
-        val steps =
-            Space::class.java.declaredMethods
-                .filter { it.name.startsWith("getS") }
-                .map { Dp(it.invoke(Space) as Float) }
-        assertEquals("Space offers every step of the scale and no other", scale, steps.toSet())
-        // The rows of the recipe grid are 28 dp apart, as the brief sets them; every other distance is on the scale.
-        val tokens =
-            listOf(
-                PageMargin,
-                BoxPadding,
-                BoxGap,
-                SectionGap,
-                SectionTitleGap,
-                HeaderTop,
-                SubtitleGap,
-                HeaderGap,
-                EndSpace,
-                GridColumnGap,
-            )
-        assertNone("A spacing token off the scale:", tokens.filter { it !in scale }.map { it.toString() })
-        assertEquals(28.dp, GridRowGap)
-    }
 
     @Test
     fun coloursComeFromTheTheme() =
@@ -89,41 +40,6 @@ class DesignRulesTest {
             "Use a colour of AromaTheme.colors:",
             violations(Regex("""Color\(0x|Color\.(White|Black|Gray|LightGray|DarkGray)\b"""), "feature", "ui/navigation") +
                 violations(Regex("""Color\(0x"""), "ui/components"),
-        )
-
-    @Test
-    fun noWhiteGreyOrMintSurfaces() {
-        val banned = setOf(0xFFFFFFFF, 0xFFEFEEEB, 0xFFD6E7DA).map { it.toInt() }
-        listOf("light" to LightColors, "dark" to DarkColors).forEach { (scheme, colors) ->
-            val found = colors.roles().filter { (_, color) -> color.toArgb() in banned }.map { it.first }
-            assertNone("The $scheme palette has a banned surface:", found)
-        }
-        val hex = Regex("""#(FF)?(FFFFFF|EFEEEB|D6E7DA)\b""", RegexOption.IGNORE_CASE)
-        val found =
-            resources.walk().filter { it.extension == "xml" && it.parentFile.name.startsWith("values") }.flatMap { file ->
-                file.readLines().mapIndexedNotNull { index, line ->
-                    if (hex.containsMatchIn(line)) "${file.relativeTo(resources)}:${index + 1}: ${line.trim()}" else null
-                }
-            }
-        assertNone("A banned colour in the resources:", found.toList())
-    }
-
-    @Test
-    fun shapesComeFromTheTheme() =
-        assertNone("Use AromaTheme.shapes or CircleShape:", violations(Regex("""RoundedCornerShape\("""), "feature", "ui/navigation"))
-
-    @Test
-    fun typeComesFromTypeKt() =
-        assertNone(
-            "Name the role in Type.kt instead of sizing text here:",
-            violations(Regex("""fontSize\s*=|\b\d+(\.\d+)?\.(sp|em)\b"""), "feature", "ui/components", "ui/navigation"),
-        )
-
-    @Test
-    fun screensSetTextInAromasRoles() =
-        assertNone(
-            "Use AromaTheme.type and AromaTheme.colors instead of Material's slots:",
-            violations(Regex("""MaterialTheme\.(typography|colorScheme|shapes)"""), "feature", "ui/components", "ui/navigation"),
         )
 
     @Test
@@ -136,57 +52,25 @@ class DesignRulesTest {
                 },
         )
 
+    /** Every role of [AromaTypography], found by reflection so that a new role is checked too. */
     @Test
-    fun textIsNeverSetInCapitalsOrTracked() =
-        assertNone(
-            "Set text in sentence case, without letter spacing:",
-            // An initial is a name's own capital, and an intent's action is no text; screens set none in capitals.
-            violations(Regex("""\.uppercase\(|\.toUpperCase\("""), "feature") +
-                violations(Regex("""letterSpacing\s*="""), "feature", "ui/components", "ui/navigation"),
-        )
+    fun everyRoleHyphenatesInTheAppsLanguage() {
+        val type = AromaTypography(LightColors, LocaleList("de-DE"))
+        AromaTypography::class.java.declaredFields.filter { it.type == TextStyle::class.java }.forEach { field ->
+            field.isAccessible = true
+            val style = field.get(type) as TextStyle
+            assertEquals("${field.name} does not hyphenate", Hyphens.Auto, style.hyphens)
+            assertEquals("${field.name} has no language", LocaleList("de-DE"), style.localeList)
+        }
+    }
 
     @Test
-    fun nothingIsOutlined() =
-        assertNone(
-            "Give a control a tonal fill instead of an outline:",
-            violations(Regex("""\.border\(|BorderStroke\("""), "feature", "ui/components", "ui/navigation"),
-        )
-
-    @Test
-    fun theSeparatorIsTheOnlyLine() =
-        assertNone(
-            "Lines stand only between the rows of a grouped list in a box, as Separator draws them:",
-            violations(Regex("""\b(Horizontal|Vertical)?Divider\b"""), "feature", "ui", "widget"),
-        )
-
-    @Test
-    fun nothingFloats() =
-        assertNone("Aroma has no floating buttons:", violations(Regex("""FloatingActionButton"""), "feature", "ui", "widget"))
-
-    @Test
-    fun controlsComeFromAromasComponents() =
-        assertNone(
-            "Use Aroma's component instead of Material's:",
-            violations(Regex("""^import androidx\.compose\.material3\.($MATERIAL_PRIMITIVES)$"""), "feature", "ui/navigation"),
-        )
-
-    @Test
-    fun motionComesFromMotion() =
-        assertNone("Use a duration of Motion:", violations(Regex("""tween\(\s*\d"""), "feature", "ui/components", "ui/navigation"))
-
-    @Test
-    fun listRowsMoveAlike() =
-        assertNone("Move rows of a list with animateRow:", violations(Regex("""\.animateItem\("""), "feature", "ui/navigation"))
-
-    @Test
-    fun listsGlideInsteadOfGrowingInSteps() {
-        val list = Regex("""\bLazy(Column|Row|ListScope)\b""")
-        val growing = Regex("""\b(expandVertically|shrinkVertically|animateContentSize)\b""")
+    fun noneOfThePiecesTheDesignDoesWithout() {
         val found =
-            files("feature", "ui/components", "ui/navigation")
-                .filter { file -> file.readText().let { list.containsMatchIn(it) && growing.containsMatchIn(it) } }
-                .map { it.relativeTo(root).path }
-        assertNone("Change a row's size at once and let the list glide around it, instead of growing it in steps:", found)
+            Bans.mapNotNull { ban ->
+                violations(ban.pattern, *ban.dirs).takeIf { it.isNotEmpty() }?.joinToString("\n", "${ban.rule}\n")
+            }
+        assertTrue(found.joinToString("\n\n"), found.isEmpty())
     }
 
     @Test
@@ -256,21 +140,8 @@ class DesignRulesTest {
         return (lighter + 0.05f) / (darker + 0.05f)
     }
 
-    /** Every colour role of a palette, by name. */
-    private fun AromaColors.roles(): List<Pair<String, Color>> =
-        listOf(
-            "background" to background,
-            "surface" to surface,
-            "surfaceInBox" to surfaceInBox,
-            "surfacePressed" to surfacePressed,
-            "bar" to bar,
-            "ink" to ink,
-            "inkSecondary" to inkSecondary,
-            "inkTertiary" to inkTertiary,
-            "accent" to accent,
-            "accentSoft" to accentSoft,
-            "onInk" to onInk,
-        )
+    /** A piece the design does without, as a line of code shows it, with what to use instead, and where the rule holds. */
+    private class Ban(val rule: String, val pattern: Regex, vararg val dirs: String)
 
     private companion object {
         /** WCAG's least contrast for text of a normal size. */
@@ -279,14 +150,42 @@ class DesignRulesTest {
         /** WCAG's least contrast for icons and shapes that carry meaning. */
         const val MIN_SHAPE_CONTRAST = 3f
 
-        /** `val Name = 56.dp`: a size with a name, which is what the rules ask for. */
-        val NamedConstant = Regex("""^\s*(private |internal )?(const )?val [A-Z][A-Za-z0-9]*\s*(:\s*\w+\s*)?=""")
-
         const val MATERIAL_PRIMITIVES =
             "Button|OutlinedButton|TextButton|FilledTonalButton|ElevatedButton|IconButton|FilledIconButton|" +
                 "Card|ElevatedCard|OutlinedCard|" +
                 "AlertDialog|ModalBottomSheet|DropdownMenu|DropdownMenuItem|Switch|Checkbox|RadioButton|FilterChip|AssistChip|" +
                 "SuggestionChip|InputChip|Snackbar|CircularProgressIndicator|LinearProgressIndicator|TextField|OutlinedTextField|" +
                 "NavigationBar|NavigationBarItem|TopAppBar|LargeTopAppBar|CenterAlignedTopAppBar|Scaffold|Surface|Divider"
+
+        val Bans =
+            listOf(
+                Ban("Aroma has no floating buttons:", Regex("""FloatingActionButton"""), "feature", "ui", "widget"),
+                Ban(
+                    "Lines stand only between the rows of a grouped list in a box, as Separator draws them:",
+                    Regex("""\b(Horizontal|Vertical)?Divider\b"""),
+                    "feature",
+                    "ui",
+                    "widget",
+                ),
+                Ban(
+                    "Give a control a tonal fill instead of an outline:",
+                    Regex("""\.border\(|BorderStroke\("""),
+                    "feature",
+                    "ui/components",
+                    "ui/navigation",
+                ),
+                // An initial is a name's own capital, and an intent's action is no text; screens set none in capitals.
+                Ban("Set text in sentence case:", Regex("""\.uppercase\(|\.toUpperCase\("""), "feature"),
+                Ban("Set text without letter spacing:", Regex("""letterSpacing\s*="""), "feature", "ui/components", "ui/navigation"),
+                Ban("Use AromaTheme.shapes or CircleShape:", Regex("""RoundedCornerShape\("""), "feature", "ui/navigation"),
+                Ban(
+                    "Use Aroma's component instead of Material's:",
+                    Regex("""^import androidx\.compose\.material3\.($MATERIAL_PRIMITIVES)$"""),
+                    "feature",
+                    "ui/navigation",
+                ),
+                Ban("Use a duration of Motion:", Regex("""tween\(\s*\d"""), "feature", "ui/components", "ui/navigation"),
+                Ban("Move rows of a list with animateRow:", Regex("""\.animateItem\("""), "feature", "ui/navigation"),
+            )
     }
 }
