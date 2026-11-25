@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.0 – 2026-11-25
+
+**New**
+- Home greets you with a few words that suit the time of day.
+- Tap the logo at the end of the settings to open Aroma on GitHub.
+
+**Better**
+- Pages, sheets, menus and messages fade and glide into place instead of jumping or zooming, and the back gesture moves the page with your finger.
+- The settings are tidier: cooking has a sheet of its own, and your account, its server and signing out share one box.
+- Counts and amounts change softly, lists make room as items come and go, and a running timer shows its time on a dial.
+- The week in the meal plan follows your finger when you swipe it.
+- The shopping list stays above the keyboard while you add to it.
+
+**Fixed**
+- Today's date sits in the middle of its circle on Home.
+
 ## 0.8.1 – 2026-11-25
 
 **Better**
