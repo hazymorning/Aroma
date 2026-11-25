@@ -1,16 +1,10 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,8 +31,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
@@ -88,9 +80,9 @@ import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.tabular
+import kotlinx.coroutines.launch
 import kotlin.math.floor
 import kotlin.math.roundToInt
-import kotlinx.coroutines.launch
 
 /**
  * Minus, the value and plus on one 40 dp pill of the tonal fill where it stands; each sign takes a
@@ -171,7 +163,9 @@ private val StepperValueWidth = 64.dp
 /**
  * A row of choices set as words, of which one is chosen: the chosen one on a soft sage pill, which
  * glides to the next choice, the others in second ink. It scrolls sideways, its first pill starting
- * on the page's edge, flush with the search field and the boxes above and below it.
+ * on the page's edge, flush with the search field and the boxes above and below it. Where more
+ * choices lie beyond an edge, the row fades out softly there; a choice that stands partly beyond
+ * one comes fully into view as it is chosen.
  */
 @Composable
 fun SelectionRow(
@@ -186,14 +180,27 @@ fun SelectionRow(
     val chosen = positions[selectedIndex]
     val left = remember { Animatable(0f) }
     val width = remember { Animatable(0f) }
+    val scroll = rememberScrollState()
+    val margin = with(LocalDensity.current) { contentPadding.toPx() }
     LaunchedEffect(chosen) {
         val (x, w) = chosen ?: return@LaunchedEffect
-        if (width.value == 0f) {
+        val first = width.value == 0f
+        if (first) {
             left.snapTo(x)
             width.snapTo(w)
         } else {
             launch { left.animateTo(x, Motion.state()) }
-            width.animateTo(w, Motion.state())
+            launch { width.animateTo(w, Motion.state()) }
+        }
+        // In view with the margin kept on either side, or as near as it goes.
+        val inView =
+            scroll.value
+                .toFloat()
+                .coerceAtLeast(x + w + 2 * margin - scroll.viewportSize)
+                .coerceAtMost(x)
+        val target = inView.roundToInt().coerceIn(0, scroll.maxValue)
+        if (target != scroll.value) {
+            if (first) scroll.scrollTo(target) else scroll.animateScrollTo(target, Motion.state())
         }
     }
     val pill = AromaTheme.colors.accentSoft
@@ -201,7 +208,8 @@ fun SelectionRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
+                .sideFades(scroll, contentPadding)
+                .horizontalScroll(scroll)
                 .padding(horizontal = contentPadding)
                 .drawBehind {
                     if (chosen != null && width.value > 0f) {
@@ -231,6 +239,49 @@ fun SelectionRow(
         }
     }
 }
+
+/**
+ * A row that scrolls sideways fades out softly over [width], the page's margin, at an edge where
+ * more of it lies beyond: each fade comes in over the first stretch of scrolling and goes over the
+ * last, so the row stands sharp at its ends. Drawn alone, it never lays the row out anew.
+ */
+fun Modifier.sideFades(scroll: ScrollState, width: Dp = PageMargin): Modifier =
+    sideFades(width, before = { scroll.value.toFloat() }, beyond = { (scroll.maxValue - scroll.value).toFloat() })
+
+/** [sideFades] for a lazy row. */
+fun Modifier.sideFades(list: LazyListState, width: Dp = PageMargin): Modifier =
+    sideFades(
+        width,
+        before = { if (list.firstVisibleItemIndex > 0) Float.MAX_VALUE else list.firstVisibleItemScrollOffset.toFloat() },
+        beyond = {
+            val info = list.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()
+            when {
+                last == null -> 0f
+                last.index < info.totalItemsCount - 1 -> Float.MAX_VALUE
+                else -> (last.offset + last.size + info.afterContentPadding - info.viewportEndOffset).toFloat()
+            }
+        },
+    )
+
+private fun Modifier.sideFades(width: Dp, before: () -> Float, beyond: () -> Float): Modifier =
+    graphicsLayer {
+        // A layer of its own only while there is anything to fade, as the fades cut into what it holds.
+        compositingStrategy = if (before() > 0f || beyond() > 0f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+    }.drawWithCache {
+        val fade = width.toPx().coerceAtMost(size.width / 2)
+        val start = Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = 0f, endX = fade)
+        val end = Brush.horizontalGradient(listOf(Color.Transparent, Color.Black), startX = size.width - fade, endX = size.width)
+        val band = Size(fade, size.height)
+        onDrawWithContent {
+            drawContent()
+            if (fade <= 0f) return@onDrawWithContent
+            val starting = (before() / fade).coerceIn(0f, 1f)
+            val ending = (beyond() / fade).coerceIn(0f, 1f)
+            if (starting > 0f) drawRect(start, size = band, alpha = starting, blendMode = BlendMode.DstOut)
+            if (ending > 0f) drawRect(end, Offset(size.width - fade, 0f), band, alpha = ending, blendMode = BlendMode.DstOut)
+        }
+    }
 
 /**
  * One choice among others that may be chosen together, on its own soft sage pill while chosen:
