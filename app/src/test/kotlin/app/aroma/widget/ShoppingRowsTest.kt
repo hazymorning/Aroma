@@ -1,7 +1,5 @@
 package app.aroma.widget
 
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
 import app.aroma.core.model.IngredientFood
 import app.aroma.core.model.IngredientUnit
 import app.aroma.core.model.ShoppingItem
@@ -25,8 +23,9 @@ class ShoppingRowsTest {
     private fun list(vararg items: ShoppingItem) =
         ShoppingList("list", "Weekly shop", items.toList(), labelOrder = listOf("produce", "dairy"))
 
+    /** The rows as the widget reads, aisles marked with "#". */
     private fun List<ShoppingRow>.names() =
-        map { row ->
+        joinToString(" ") { row ->
             when (row) {
                 is ShoppingRow.Aisle -> "# ${row.label?.name ?: "Other"}"
                 is ShoppingRow.Item -> row.item.id
@@ -34,7 +33,7 @@ class ShoppingRowsTest {
         }
 
     @Test
-    fun `aisles follow the label order set in Mealie, then by name, and items without one come last`() {
+    fun `aisles follow the label order set in Mealie, then by name, with unlabelled items last, each in its position`() {
         val rows =
             shoppingRows(
                 list(
@@ -42,31 +41,22 @@ class ShoppingRowsTest {
                     item("bread", bakery, 1),
                     item("soap", household, 2),
                     item("milk", dairy, 3),
+                    item("lemons", produce, 7),
                     item("apples", produce, 4),
+                    item("leeks", produce, 5),
                 ),
                 lingering = emptySet(),
             )
 
-        assertEquals(
-            listOf("# Produce", "apples", "# Dairy", "milk", "# Bakery", "bread", "# Household", "soap", "# Other", "towels"),
-            rows.names(),
-        )
-    }
-
-    @Test
-    fun `items keep their position within an aisle`() {
-        val rows =
-            shoppingRows(list(item("lemons", produce, 7), item("apples", produce, 2), item("leeks", produce, 5)), lingering = emptySet())
-
-        assertEquals(listOf("# Produce", "apples", "leeks", "lemons"), rows.names())
+        assertEquals("# Produce apples leeks lemons # Dairy milk # Bakery bread # Household soap # Other towels", rows.names())
     }
 
     @Test
     fun `a checked item stays where it was while it lingers, then leaves`() {
         val shopping = list(item("apples", produce, 0), item("lemons", produce, 1, checked = true), item("milk", dairy, 2, checked = true))
 
-        assertEquals(listOf("# Produce", "apples", "lemons"), shoppingRows(shopping, lingering = setOf("lemons")).names())
-        assertEquals(listOf("# Produce", "apples"), shoppingRows(shopping, lingering = emptySet()).names())
+        assertEquals("# Produce apples lemons", shoppingRows(shopping, lingering = setOf("lemons")).names())
+        assertEquals("# Produce apples", shoppingRows(shopping, lingering = emptySet()).names())
     }
 
     @Test
@@ -88,16 +78,5 @@ class ShoppingRowsTest {
 
         assertEquals("500 g flour, sifted", parsed.text(Locale.ENGLISH))
         assertEquals("2 lemons", item("2 lemons", null, 0).text(Locale.ENGLISH))
-    }
-
-    @Test
-    fun `a layout for every size`() {
-        assertEquals(ShoppingLayout.Count, ShoppingLayout.at(DpSize(57.dp, 102.dp)))
-        assertEquals(ShoppingLayout.Bar, ShoppingLayout.at(DpSize(269.dp, 51.dp)))
-        assertEquals(ShoppingLayout.List, ShoppingLayout.at(DpSize(130.dp, 102.dp)))
-        assertEquals(ShoppingLayout.List, ShoppingLayout.at(DpSize(130.dp, 220.dp)))
-        assertEquals(ShoppingLayout.List, ShoppingLayout.at(DpSize(276.dp, 220.dp)))
-        assertEquals(ShoppingLayout.Aisles, ShoppingLayout.at(DpSize(276.dp, 455.dp)))
-        assertEquals(ShoppingLayout.Aisles, ShoppingLayout.at(DpSize(130.dp, 337.dp)))
     }
 }

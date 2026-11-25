@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import mockwebserver3.Dispatcher
@@ -32,8 +33,6 @@ class UpdatesTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val apkBytes = ByteArray(300_000) { (it % 251).toByte() }
     private val releaseRequests = AtomicInteger()
-
-    @Volatile private var tag = "v0.4.0"
 
     @Volatile private var releaseCode = 200
 
@@ -73,7 +72,7 @@ class UpdatesTest {
     }
 
     private fun release(): String =
-        """{"tag_name": "$tag", "name": "Aroma", "assets": [
+        """{"tag_name": "v0.4.0", "name": "Aroma", "assets": [
             {"name": "notes.txt", "browser_download_url": "${server.url("/download/notes.txt")}", "size": 10},
             {"name": "Aroma.apk", "browser_download_url": "${server.url("/download/Aroma.apk")}", "size": $announcedSize}
         ]}"""
@@ -92,16 +91,6 @@ class UpdatesTest {
         updates.checkNow()
         val found = updates.settled()
         assertEquals(UpdateState.Available("0.4.0", server.url("/download/Aroma.apk").toString(), apkBytes.size.toLong()), found)
-    }
-
-    @Test
-    fun theSameOrAnOlderReleaseIsCurrent() {
-        for (latest in listOf("v0.3.0", "v0.2.9", "0.3")) {
-            tag = latest
-            val updates = updates()
-            updates.checkNow()
-            assertEquals(latest, UpdateState.Current, updates.settled())
-        }
     }
 
     @Test
@@ -163,23 +152,21 @@ class UpdatesTest {
     @Test
     fun checksAtStartOnlyWhenTurnedOnAndOnlyOnce() =
         runBlocking {
-            val off = updates()
-            off.checkAtStart { false }
-            Thread.sleep(300)
-            assertEquals(0, releaseRequests.get())
-            assertEquals(UpdateState.Unknown, off.state.value)
-
             val leftover =
                 temp.root
                     .resolve("update")
                     .apply { mkdirs() }
                     .resolve("Aroma-0.3.0.apk")
                     .apply { writeText("old") }
+            updates().checkAtStart { false }
             val on = updates()
             on.checkAtStart { true }
             on.checkAtStart { true }
             val found = withTimeout(10_000) { on.messages.first() }
             assertTrue(found is UpdateMessage.Found)
+            // Once the work begun at start is done, the one turned off has asked GitHub too, or never will.
+            val started = scope.coroutineContext.job.children
+            started.forEach { it.join() }
             assertEquals(1, releaseRequests.get())
             assertFalse(leftover.exists())
         }
@@ -189,6 +176,9 @@ class UpdatesTest {
         assertTrue(isNewer("0.10.0", "0.9.9"))
         assertTrue(isNewer("1.0", "0.99.1"))
         assertTrue(isNewer("0.3.1", "0.3"))
+        // The same or an older release is current.
+        assertFalse(isNewer("0.3.0", "0.3.0"))
+        assertFalse(isNewer("0.3", "0.3.0"))
         assertFalse(isNewer("0.3.0", "0.3"))
         assertFalse(isNewer("0.2.9", "0.3.0"))
     }
