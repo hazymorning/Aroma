@@ -265,25 +265,6 @@ class RecipeRepository(
             "home:recent",
         ) { sessions.api().recipes(page = 1, perPage = limit, orderBy = "created_at", orderDirection = "desc").items }
 
-    /** Recipes marked as favorites; [fresh] fetches the favorites again, as they may have changed elsewhere. */
-    fun favorites(fresh: Boolean, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
-        summaries("home:favorites") {
-            val ids = loadRatings(fresh).filterValues { it.isFavorite }.keys
-            if (ids.isEmpty()) {
-                emptyList()
-            } else {
-                sessions
-                    .api()
-                    .recipes(
-                        page = 1,
-                        perPage = limit,
-                        orderBy = "rating",
-                        orderDirection = "desc",
-                        queryFilter = idsFilter(ids),
-                    ).items
-            }
-        }
-
     /** A choice of recipes filed under [names] as category or tag, or of all recipes without names; new each [day]. */
     fun suggestions(names: List<String>, day: LocalDate, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
         summaries("home:suggestions:${names.sorted().joinToString(",")}") {
@@ -325,23 +306,6 @@ class RecipeRepository(
      * earliest in Mealie 3, so a lower bound keeps them out.
      */
     private fun cookedBeforeFilter(day: java.time.LocalDate) = "lastMade > \"$EARLIEST_MADE\" AND lastMade < \"$day\""
-
-    /** Summaries of [ids], from the stored copy where it has them and from Mealie for the rest. */
-    suspend fun summaries(ids: Set<String>): Map<String, RecipeSummary> {
-        if (ids.isEmpty()) return emptyMap()
-        val server = sessions.requireServerUrl()
-        val stored = dao.summaries(ids).map(::decodeSummary)
-        val missing = ids - stored.mapTo(mutableSetOf()) { it.id }
-        val fetched =
-            if (missing.isEmpty()) {
-                emptyList()
-            } else {
-                sessions.api().recipes(page = 1, perPage = missing.size, queryFilter = idsFilter(missing)).items.also { items ->
-                    dao.upsertSummaries(items.map { it.toEntity() })
-                }
-            }
-        return withContext(Dispatchers.Default) { (stored + fetched).associate { it.id to it.toModel(server) } }
-    }
 
     private fun idsFilter(ids: Collection<String>) = ids.joinToString(prefix = "id IN [", postfix = "]") { "\"$it\"" }
 

@@ -75,17 +75,6 @@ object StepAmounts {
         return steps.indices.map { step -> amounts.filter { it.first == step }.map { it.second }.sortedBy { it.start } }
     }
 
-    /** [text] with [amounts] written in, as plain text. */
-    fun write(text: String, amounts: List<StepAmount>): String =
-        buildString {
-            var position = 0
-            amounts.sortedBy { it.start }.forEach {
-                append(text, position, it.start).append(it.before).append(it.line.measureText()).append(it.then)
-                position = it.end
-            }
-            append(text, position, text.length)
-        }
-
     /**
      * The amounts to write where the recipe first names a food, with the step they go into: none where that
      * place gives an amount or a share of its own, or where a later place gives an amount or a part of it.

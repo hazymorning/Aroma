@@ -24,7 +24,18 @@ class StepAmountsTest {
     ): List<String> =
         StepAmounts
             .of(ingredients, steps, uses, scale, locale, system)
-            .mapIndexed { index, amounts -> StepAmounts.write(steps[index], amounts) }
+            .mapIndexed { index, amounts -> write(steps[index], amounts) }
+
+    /** [text] with [amounts] written in, as plain text. */
+    private fun write(text: String, amounts: List<StepAmount>): String =
+        buildString {
+            var position = 0
+            amounts.sortedBy { it.start }.forEach {
+                append(text, position, it.start).append(it.before).append(it.line.measureText()).append(it.then)
+                position = it.end
+            }
+            append(text, position, text.length)
+        }
 
     private fun german(lines: List<String>, vararg steps: String) = written(lines.map(::text), steps.toList())
 
