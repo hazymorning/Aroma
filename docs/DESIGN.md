@@ -39,6 +39,30 @@ shapes at least 3 : 1 against their ground.
   version 14, text reads in full; rows move an action under their words where the column would get
   too narrow. Larger sizes, up to 200 %, must not break anything, but a long word may end in "…".
 
+## Writing
+
+For every text people read: the README, the changelog, release notes, commit messages, pull
+requests and the app's own words.
+
+- **Facts.** Every claim is checked in the code first, not taken from memory or the changelog.
+- **Content.** What Aroma does for the user, not how it works. No numbers, no lists of examples, no
+  technical detail. Only what Aroma adds: what Mealie does by itself is neither listed as Aroma's
+  nor explained. As of Mealie 3.31 that is scaling, the meal planner (also adding a week to a
+  list), shopping lists sorted by aisle, a cook view that keeps the screen on, importing links (also
+  through the share menu of its web app), AI imports from text and photos, categories, tags,
+  cookbooks, a random recipe and app shortcuts.
+- **Tone.** Calm, modest and plain, for readers who aren't technical. Short sentences and common
+  words. No sales tone, no lists whose every line starts with a verb, no ", with X and Y" tacked
+  onto a line, no filler such as "right in", "seamless" or "only ever", no dashes or semicolons
+  where two sentences would do, and no jokes that need explaining.
+- **Length.** As short as it can be. In the README, details go into toggles, and only if a reader
+  needs them. The owner's own sentences stay as they are.
+- **Review.** Before a text is shown, every line is checked: is it about Aroma, is it true, does a
+  reader need it? Then the whole text is read again. It is shown in full before it is merged.
+- **Commits and pull requests.** Commit messages are short plain English in the imperative and say
+  what changes, as in `git log`. No prefixes, no trailers, no tool signatures such as "Generated
+  with". Pull request descriptions are in English and at most 300 characters.
+
 ## Checking a change
 
 `scripts/check.sh` runs what CI runs: formatting, lint, the tests and the APK, in about a minute.
