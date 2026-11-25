@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.aroma.data.session.SessionState
+import app.aroma.ui.SignInScope
 import app.aroma.ui.navigation.AromaNavHost
 import app.aroma.ui.navigation.LaunchRequest
 import app.aroma.ui.navigation.LoginDestination
@@ -56,7 +57,9 @@ class MainActivity : AppCompatActivity() {
 
                         is SessionState.SignedIn -> {
                             key(current.session.serverUrl, current.session.userId) {
-                                AromaNavHost(launch = pendingLaunch, onLaunchConsume = { launch.value = null })
+                                SignInScope(current.session.serverUrl to current.session.userId) {
+                                    AromaNavHost(launch = pendingLaunch, onLaunchConsume = { launch.value = null })
+                                }
                             }
                         }
                     }
