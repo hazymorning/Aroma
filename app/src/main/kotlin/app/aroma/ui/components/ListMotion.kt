@@ -9,6 +9,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.runtime.Composable
@@ -19,6 +20,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import app.aroma.ui.theme.Motion
 
 /**
@@ -53,7 +58,8 @@ fun Modifier.animateOpenRow(scope: LazyItemScope): Modifier =
 /**
  * Rows in a column, outside a lazy list, that come and go as the rows of a list do: a new row opens
  * its room as it fades in, its top edge first; a row that leaves fades where it stands, then gives
- * its room up. Rows keep their place by [key]; those there from the start are simply there.
+ * its room up. Rows keep their place by [key]; those there from the start are simply there. A row
+ * on its way out takes no tap, no focus and no word for TalkBack: what it stood for is gone.
  */
 @Composable
 fun <T> RowsInMotion(items: List<T>, key: (T) -> Any, modifier: Modifier = Modifier, row: @Composable (T) -> Unit) {
@@ -61,11 +67,24 @@ fun <T> RowsInMotion(items: List<T>, key: (T) -> Any, modifier: Modifier = Modif
     Column(modifier) {
         rows.forEach { shown ->
             key(shown.key) {
-                AnimatedVisibility(visibleState = shown.visible, enter = RoomOpens, exit = RoomCloses) { row(shown.item) }
+                AnimatedVisibility(visibleState = shown.visible, enter = RoomOpens, exit = RoomCloses) {
+                    Box(if (shown.visible.targetState) Modifier else Leaving) { row(shown.item) }
+                }
             }
         }
     }
 }
+
+/** What a row on its way out no longer takes. */
+private val Leaving =
+    Modifier
+        .clearAndSetSemantics {}
+        .focusProperties { canFocus = false }
+        .pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+            }
+        }
 
 /**
  * How something outside a lazy list comes into a column: its room opens, its top edge first, as it
