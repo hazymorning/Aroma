@@ -2,8 +2,10 @@ package app.aroma.feature.home
 
 import app.aroma.core.model.Meal
 import app.aroma.core.model.RecipeSummary
+import app.aroma.data.settings.HomeSection
 import app.aroma.testing.ScreenTest
 import app.aroma.testing.TestApp
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -42,8 +44,8 @@ class HomeScreenTest {
         mealie.addRecipe("Pfannkuchen")
         mealie.plan(WEDNESDAY, soup)
         mealie.addList("Wocheneinkauf", "Milch", "Eier", "Mehl", checked = setOf("Mehl"))
-        // The list as the shopping tab last loaded it, which is what Home counts.
-        screen.awaitState(screen.shopping().state) { it.list != null }
+        // Home counts what is left to buy where it shows the list, without the shopping tab ever opened.
+        runBlocking { screen.container.settings.setHomeSection(HomeSection.Shopping, shown = true) }
 
         val home = screen.home()
         val state = screen.awaitState(home.state) { !it.isLoading && it.openItems > 0 }
