@@ -23,6 +23,9 @@ class DurationDetectorTest {
             "Insgesamt 1 Std. 30 Min. garen." to listOf("1 Std. 30 Min." to 5400),
             "Cook for 1 hour and 15 minutes." to listOf("1 hour and 15 minutes" to 4500),
             "5 Minuten anbraten, dann 20 Minuten köcheln." to listOf("5 Minuten" to 300, "20 Minuten" to 1200),
+            // After a colon come the minutes of an hour, or the seconds of a minute.
+            "Den Teig 1:20 h gehen lassen." to listOf("1:20 h" to 4800),
+            "In der Mikrowelle 1:30 min erhitzen." to listOf("1:30 min" to 90),
             // Temperatures and amounts are no times.
             "Bei 180 Grad backen, 200 g Mehl dazugeben." to emptyList(),
             "Add 2 minced garlic cloves." to emptyList(),
