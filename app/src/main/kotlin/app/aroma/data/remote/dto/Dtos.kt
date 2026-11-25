@@ -248,6 +248,37 @@ data class LabelDto(val id: String, val name: String = "", val color: String? = 
 data class LabelSettingDto(val labelId: String? = null, val position: Int = 0, val label: LabelDto? = null)
 
 @Serializable
+data class ShoppingListDto(
+    val id: String,
+    val name: String? = null,
+    val listItems: List<ShoppingItemDto> = emptyList(),
+    val labelSettings: List<LabelSettingDto> = emptyList(),
+    val recipeReferences: List<ListRecipeReferenceDto> = emptyList(),
+)
+
+@Serializable
+data class ShoppingItemDto(
+    val id: String,
+    val quantity: Double = 0.0,
+    val unit: UnitDto? = null,
+    val food: FoodDto? = null,
+    val note: String? = null,
+    val checked: Boolean = false,
+    val position: Int = 0,
+    val label: LabelDto? = null,
+    val recipeReferences: List<ItemRecipeReferenceDto> = emptyList(),
+)
+
+@Serializable
+data class ItemRecipeReferenceDto(val recipeId: String? = null)
+
+@Serializable
+data class ListRecipeReferenceDto(val recipeId: String, val recipe: RecipeNameDto? = null)
+
+@Serializable
+data class RecipeNameDto(val name: String? = null)
+
+@Serializable
 data class CreateShoppingListDto(val name: String)
 
 @Serializable

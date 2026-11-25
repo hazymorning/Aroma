@@ -577,13 +577,13 @@ class RecipeRepository(
 
     fun organizers(): Flow<Loadable<Organizers>> =
         cache
-            .stream(ORGANIZERS, OrganizersDto.serializer()) {
+            .stream(ORGANIZERS, OrganizersCopy.serializer()) {
                 val api = sessions.api()
                 coroutineScope {
                     val categories = async { api.categories().items }
                     val tags = async { api.tags().items }
                     val tools = async { api.tools().items }
-                    OrganizersDto(categories.await(), tags.await(), tools.await())
+                    OrganizersCopy(categories.await(), tags.await(), tools.await())
                 }
             }.map { loadable ->
                 val dto = loadable.data
@@ -640,13 +640,13 @@ class RecipeRepository(
             }
         if (made.isNotEmpty()) {
             // Lists offer them at once, also while Mealie is out of reach.
-            cache.read(ORGANIZERS, OrganizersDto.serializer())?.let { stored ->
+            cache.read(ORGANIZERS, OrganizersCopy.serializer())?.let { stored ->
                 val updated =
                     when (kind) {
                         OrganizerKind.Tag -> stored.copy(tags = stored.tags + made)
                         else -> stored.copy(categories = stored.categories + made)
                     }
-                cache.write(ORGANIZERS, OrganizersDto.serializer(), updated)
+                cache.write(ORGANIZERS, OrganizersCopy.serializer(), updated)
             }
         }
         return result
@@ -659,7 +659,7 @@ class RecipeRepository(
     fun cookbooks(): Flow<Loadable<List<CookbookCover>>> {
         val server = sessions.requireServerUrl()
         return cache
-            .stream("cookbook-covers", ListSerializer(CookbookCoverDto.serializer())) {
+            .stream("cookbook-covers", ListSerializer(CookbookCoverCopy.serializer())) {
                 val api = sessions.api()
                 val requests = Semaphore(PARALLEL_DOWNLOADS)
                 coroutineScope {
@@ -678,7 +678,7 @@ class RecipeRepository(
                                             orderDirection = "desc",
                                             cookbook = book.id,
                                         )
-                                    CookbookCoverDto(book, newest.total, newest.items.firstOrNull { it.toModel(server).image != null })
+                                    CookbookCoverCopy(book, newest.total, newest.items.firstOrNull { it.toModel(server).image != null })
                                 }
                             }
                         }.awaitAll()
@@ -740,6 +740,18 @@ class RecipeRepository(
 
     private fun decodeRecipe(json: String) = runCatching { MealieJson.decodeFromString(RecipeDto.serializer(), json) }.getOrNull()
 
+    /** A cookbook as Mealie had it, with its number of recipes and its newest recipe with a photo. */
+    @Serializable
+    private data class CookbookCoverCopy(val cookbook: CookbookDto, val recipeCount: Int, val cover: RecipeSummaryDto?)
+
+    /** The group's categories, tags and tools as Mealie had them. */
+    @Serializable
+    private data class OrganizersCopy(
+        val categories: List<OrganizerDto> = emptyList(),
+        val tags: List<OrganizerDto> = emptyList(),
+        val tools: List<OrganizerDto> = emptyList(),
+    )
+
     companion object {
         const val PAGE_SIZE = 30
 
@@ -777,13 +789,3 @@ class RecipeRepository(
         private val JPEG = "image/jpeg".toMediaType()
     }
 }
-
-@Serializable
-internal data class CookbookCoverDto(val cookbook: CookbookDto, val recipeCount: Int, val cover: RecipeSummaryDto?)
-
-@Serializable
-internal data class OrganizersDto(
-    val categories: List<OrganizerDto> = emptyList(),
-    val tags: List<OrganizerDto> = emptyList(),
-    val tools: List<OrganizerDto> = emptyList(),
-)

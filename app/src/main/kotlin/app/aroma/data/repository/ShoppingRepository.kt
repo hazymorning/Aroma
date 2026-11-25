@@ -17,11 +17,8 @@ import app.aroma.data.network.ServerConnection
 import app.aroma.data.remote.MealieJson
 import app.aroma.data.remote.dto.AddRecipeToListDto
 import app.aroma.data.remote.dto.CreateShoppingListDto
-import app.aroma.data.remote.dto.FoodDto
-import app.aroma.data.remote.dto.LabelDto
-import app.aroma.data.remote.dto.LabelSettingDto
+import app.aroma.data.remote.dto.ShoppingListDto
 import app.aroma.data.remote.dto.ShoppingListSummaryDto
-import app.aroma.data.remote.dto.UnitDto
 import app.aroma.data.remote.toModel
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
@@ -35,7 +32,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -344,34 +340,3 @@ private fun JsonObject.forCreate(): JsonObject {
             }.orEmpty()
     return JsonObject(filterKeys { it in CREATE_FIELDS } + ("recipeReferences" to JsonArray(references)))
 }
-
-@Serializable
-internal data class ShoppingListDto(
-    val id: String,
-    val name: String? = null,
-    val listItems: List<ShoppingItemDto> = emptyList(),
-    val labelSettings: List<LabelSettingDto> = emptyList(),
-    val recipeReferences: List<ListRecipeReferenceDto> = emptyList(),
-)
-
-@Serializable
-internal data class ShoppingItemDto(
-    val id: String,
-    val quantity: Double = 0.0,
-    val unit: UnitDto? = null,
-    val food: FoodDto? = null,
-    val note: String? = null,
-    val checked: Boolean = false,
-    val position: Int = 0,
-    val label: LabelDto? = null,
-    val recipeReferences: List<ItemRecipeReferenceDto> = emptyList(),
-)
-
-@Serializable
-internal data class ItemRecipeReferenceDto(val recipeId: String? = null)
-
-@Serializable
-internal data class ListRecipeReferenceDto(val recipeId: String, val recipe: RecipeNameDto? = null)
-
-@Serializable
-internal data class RecipeNameDto(val name: String? = null)
