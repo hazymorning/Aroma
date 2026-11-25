@@ -2,6 +2,7 @@ package app.aroma.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /*
@@ -216,6 +217,26 @@ data class CookbookDto(
     val slug: String? = null,
     val description: String? = null,
     val position: Int = 0,
+    /** The rule that gathers its recipes, as written in Mealie; empty for every recipe. */
+    val queryFilterString: String = "",
+    /** The rule as Mealie reads it; empty where it could not, and missing from Mealie before 2.0. */
+    val queryFilter: QueryFilterDto? = null,
+)
+
+/** A cookbook's rule as Mealie reads it: its parts in their order. */
+@Serializable
+data class QueryFilterDto(val parts: List<QueryFilterPartDto> = emptyList())
+
+/** One part of a rule: what it looks at, how and at what, and the word that joins it to the part before. */
+@Serializable
+data class QueryFilterPartDto(
+    val leftParenthesis: String? = null,
+    val rightParenthesis: String? = null,
+    val logicalOperator: String? = null,
+    val attributeName: String? = null,
+    val relationalOperator: String? = null,
+    /** One value, or a list of them. */
+    val value: JsonElement? = null,
 )
 
 @Serializable

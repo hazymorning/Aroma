@@ -153,6 +153,7 @@
     <string name="recipe_bake_time">Backen</string>
     <string name="recipe_total_time">Gesamt</string>
     <string name="recipe_add_to_list">Auf die Einkaufsliste</string>
+    <string name="recipe_add_to_cookbook">Zu Kochbuch hinzufügen</string>
     <string name="recipe_tools">Utensilien</string>
     <string name="recipe_rate">Rezept bewerten</string>
     <string name="recipe_multiplier">Menge ×%1$s</string>
@@ -342,6 +343,10 @@
     <!-- Cookbooks -->
     <string name="collection_cookbook">Kochbuch</string>
     <string name="cookbook_empty_title">Dieses Kochbuch ist leer</string>
+    <string name="cookbooks_none">Noch keine Kochbücher</string>
+    <string name="cookbook_holds_all">Enthält alle Rezepte</string>
+    <string name="cookbook_by_rule">Mealie füllt es nach seinen Regeln</string>
+    <string name="cookbooks_offline">Kochbücher lassen sich ändern, sobald Mealie wieder antwortet.</string>
 
     <!-- Timeline -->
     <string name="timeline_made_this">%1$s hat das gekocht</string>

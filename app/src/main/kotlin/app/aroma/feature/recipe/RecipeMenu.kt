@@ -22,7 +22,7 @@ import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Space
 
 /** Which sheet a long press on a recipe card has open. */
-enum class RecipeMenuSheet { Actions, Plan, Shop }
+enum class RecipeMenuSheet { Actions, Plan, Shop, Cookbooks }
 
 /**
  * The recipe a long press was made on, and the sheet it has open. The recipe stays after the
@@ -49,6 +49,7 @@ fun RecipeActionsSheet(
     onCook: () -> Unit,
     onPlan: () -> Unit,
     onShop: () -> Unit,
+    onCookbook: () -> Unit,
     onToggleFavorite: () -> Unit,
     onShare: () -> Unit,
     onDismiss: () -> Unit,
@@ -74,6 +75,7 @@ fun RecipeActionsSheet(
             SheetAction(R.drawable.ic_cooking, stringResource(R.string.recipe_start_cooking), onClick = { choose(onCook) })
             SheetAction(R.drawable.ic_calendar_add, stringResource(R.string.recipe_add_to_plan), onClick = { choose(onPlan) })
             SheetAction(R.drawable.ic_basket_add, stringResource(R.string.recipe_add_to_list), onClick = { choose(onShop) })
+            SheetAction(R.drawable.ic_book_add, stringResource(R.string.recipe_add_to_cookbook), onClick = { choose(onCookbook) })
             SheetAction(
                 icon = if (isFavorite) R.drawable.ic_bookmark_filled else R.drawable.ic_bookmark,
                 label = stringResource(if (isFavorite) R.string.action_unfavorite else R.string.action_favorite),

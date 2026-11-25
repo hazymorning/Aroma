@@ -25,6 +25,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import app.aroma.core.format.MeasureSystem
+import app.aroma.core.model.CookbookRule
 import app.aroma.core.model.Filing
 import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
@@ -71,6 +72,8 @@ import app.aroma.feature.mealplan.MealPlanActions
 import app.aroma.feature.mealplan.MealPlanScreen
 import app.aroma.feature.mealplan.MealPlanUiState
 import app.aroma.feature.mealplan.PlanSearchState
+import app.aroma.feature.recipe.CookbookChoice
+import app.aroma.feature.recipe.CookbookSheet
 import app.aroma.feature.recipe.OrganizerSheet
 import app.aroma.feature.recipe.RatingSheet
 import app.aroma.feature.recipe.RecipeActions
@@ -292,6 +295,27 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
         shoot("recipe_reworking", content = recipe(recipeState(recipe).copy(aiAvailable = true, rework = rework)))
     }
 
+    /** The cookbooks to put a recipe into: one it is in, one to put it into, and one Mealie fills by its rules. */
+    @Test
+    fun recipeCookbooks() {
+        val (veggie, weeknight, brunch) = sample.cookbooks
+        val filed = CookbookRule.Filed(emptyList())
+        val any = Filing(emptyList(), emptyList())
+        shoot("recipe_cookbooks") {
+            RecipeScreen(recipeState(sample.recipe), RecipeActions())
+            CookbookSheet(
+                choices =
+                    listOf(
+                        CookbookChoice(veggie.copy(rule = filed), held = true, change = any),
+                        CookbookChoice(weeknight.copy(rule = filed), held = false, change = any),
+                        CookbookChoice(brunch, held = false, change = null),
+                    ),
+                onToggle = {},
+                onDismiss = {},
+            )
+        }
+    }
+
     /** A recipe's menu, held down in the list. */
     @Test
     fun recipeMenu() =
@@ -305,6 +329,7 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
                 onCook = {},
                 onPlan = {},
                 onShop = {},
+                onCookbook = {},
                 onToggleFavorite = {},
                 onShare = {},
                 onDismiss = {},

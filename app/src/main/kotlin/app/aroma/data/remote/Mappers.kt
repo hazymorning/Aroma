@@ -1,6 +1,7 @@
 package app.aroma.data.remote
 
 import app.aroma.core.model.Cookbook
+import app.aroma.core.model.CookbookRule
 import app.aroma.core.model.Ingredient
 import app.aroma.core.model.IngredientFood
 import app.aroma.core.model.IngredientUnit
@@ -15,6 +16,7 @@ import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeNote
 import app.aroma.core.model.RecipeSummary
 import app.aroma.core.model.RecipeTime
+import app.aroma.core.model.RulePart
 import app.aroma.core.model.Step
 import app.aroma.data.remote.dto.CookbookDto
 import app.aroma.data.remote.dto.FoodDto
@@ -22,9 +24,13 @@ import app.aroma.data.remote.dto.IngredientDto
 import app.aroma.data.remote.dto.MealPlanEntryDto
 import app.aroma.data.remote.dto.NutritionDto
 import app.aroma.data.remote.dto.OrganizerDto
+import app.aroma.data.remote.dto.QueryFilterPartDto
 import app.aroma.data.remote.dto.RecipeDto
 import app.aroma.data.remote.dto.RecipeSummaryDto
 import app.aroma.data.remote.dto.UnitDto
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import java.time.LocalDate
 
 private fun time(seconds: Int?, text: String?): RecipeTime? =
@@ -143,7 +149,28 @@ private fun NutritionDto.toModel(): List<NutritionValue> =
         NutritionKind.Cholesterol to cholesterolContent,
     ).mapNotNull { (kind, value) -> value?.takeIf { it.isNotBlank() }?.let { NutritionValue(kind, it) } }
 
-fun CookbookDto.toModel() = Cookbook(id = id, slug = slug ?: id, name = name, description = description.orEmpty())
+fun CookbookDto.toModel() =
+    Cookbook(
+        id = id,
+        slug = slug ?: id,
+        name = name,
+        description = description.orEmpty(),
+        // A copy kept from before Aroma read the rule has none: Mealie alone knows it then.
+        rule = queryFilter?.let { filter -> CookbookRule.of(filter.parts.map { it.toModel() }, queryFilterString) } ?: CookbookRule.Own,
+    )
+
+private fun QueryFilterPartDto.toModel() =
+    RulePart(
+        attribute = attributeName,
+        operator = relationalOperator,
+        values =
+            when (val found = value) {
+                is JsonArray -> found.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+                is JsonPrimitive -> listOfNotNull(found.contentOrNull)
+                else -> emptyList()
+            },
+        joinedBy = logicalOperator,
+    )
 
 fun MealPlanEntryDto.toModel(serverUrl: String): MealPlanEntry? {
     val day = date(date) ?: return null

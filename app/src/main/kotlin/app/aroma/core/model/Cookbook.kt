@@ -5,6 +5,8 @@ data class Cookbook(
     val slug: String,
     val name: String,
     val description: String,
+    /** Which recipes it holds, as far as Aroma can tell and change it. */
+    val rule: CookbookRule = CookbookRule.Own,
 )
 
 /** A cookbook with how many recipes it holds and the photo of its newest one. */

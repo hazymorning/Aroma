@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.format.MeasureSystem
+import app.aroma.core.model.Cookbook
+import app.aroma.core.model.CookbookRule
 import app.aroma.core.model.Filing
 import app.aroma.core.model.MealType
 import app.aroma.core.model.Organizer
@@ -34,13 +36,17 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -128,6 +134,27 @@ class RecipeViewModel(
     /** Says the filing on the page changed; Mealie gets the latest, one save at a time. */
     private val filings = Channel<Unit>(Channel.CONFLATED)
 
+    /** The household's cookbooks, once the recipe is to be put into them; null until asked for and loaded. */
+    private val mutableCookbooks = MutableStateFlow<List<Cookbook>?>(null)
+
+    /** Which cookbooks Mealie alone can read the rule of hold the recipe, by cookbook id, as Mealie told. */
+    private val heldByMealie = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+
+    /** Each cookbook, whether it holds the recipe, and the filing that takes it in or out; null until loaded. */
+    val cookbooks: StateFlow<List<CookbookChoice>?> =
+        combine(mutableCookbooks, mutableState.map { it.recipe }.distinctUntilChanged(), mutableOrganizers, heldByMealie) {
+            books,
+            recipe,
+            organizers,
+            held,
+            ->
+            if (books == null || recipe == null) return@combine null
+            val filing = Filing(recipe.categories, recipe.tags)
+            books.map { book -> CookbookChoice.of(book, filing, organizers, held[book.id]) }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
+
+    private var cookbooksJob: Job? = null
+
     private var loadJob: Job? = null
 
     init {
@@ -188,6 +215,7 @@ class RecipeViewModel(
     fun show(slug: String) {
         if (slug == this.slug) return
         this.slug = slug
+        heldByMealie.value = emptyMap()
         mutableState.update {
             RecipeUiState(
                 measures = it.measures,
@@ -296,6 +324,33 @@ class RecipeViewModel(
         viewModelScope.launch {
             recipes.organizers().catch { }.collect { loadable -> mutableOrganizers.value = loadable.data }
         }
+
+    /**
+     * Loads the household's cookbooks to put the recipe into, with the categories and tags to file it
+     * under, and asks Mealie which of the cookbooks only it can read hold the recipe.
+     */
+    fun loadCookbooks() {
+        loadOrganizers()
+        cookbooksJob?.cancel()
+        cookbooksJob =
+            viewModelScope.launch {
+                launch { recipes.cookbooks().catch { }.collect { loadable -> mutableCookbooks.value = loadable.data.map { it.cookbook } } }
+                combine(mutableCookbooks.filterNotNull(), mutableState.mapNotNull { it.recipe?.id }.distinctUntilChanged(), ::Pair)
+                    .collectLatest { (books, recipeId) ->
+                        books
+                            .filter { it.rule == CookbookRule.Own && it.id !in heldByMealie.value }
+                            .forEach { book ->
+                                attempt { recipes.cookbookHolds(book.id, recipeId) }
+                                    .onSuccess { held -> heldByMealie.update { it + (book.id to held) } }
+                            }
+                    }
+            }
+    }
+
+    /** Puts the recipe into the cookbook of [choice], or takes it out, by filing it as the cookbook asks. */
+    fun toggleCookbook(choice: CookbookChoice) {
+        choice.change?.let(::file)
+    }
 
     /** Files the recipe under [filing]: the page shows it at once, Mealie gets it a moment later. */
     fun file(filing: Filing) {

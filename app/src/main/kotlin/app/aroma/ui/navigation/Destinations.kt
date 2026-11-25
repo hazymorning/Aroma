@@ -66,6 +66,7 @@ import app.aroma.feature.mealplan.MealPlanEvent
 import app.aroma.feature.mealplan.MealPlanScreen
 import app.aroma.feature.mealplan.MealPlanViewModel
 import app.aroma.feature.recipe.AddToListSheet
+import app.aroma.feature.recipe.CookbookSheet
 import app.aroma.feature.recipe.OrganizerSheet
 import app.aroma.feature.recipe.PlanSheet
 import app.aroma.feature.recipe.RecipeActions
@@ -242,6 +243,8 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
     val lists by vm.shoppingLists.collectAsStateWithLifecycle()
     val preferredList by vm.preferredListId.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
     RecipeFeedback(vm, snackbar)
     when (menu.sheet) {
         RecipeMenuSheet.Actions -> {
@@ -253,6 +256,15 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
                 onShop = {
                     vm.loadShoppingLists()
                     menu.sheet = RecipeMenuSheet.Shop
+                },
+                onCookbook = {
+                    // Filing is saved in Mealie as it is chosen, so it waits for Mealie to answer.
+                    if (state.isOffline) {
+                        scope.launch { snackbar.showSnackbar(resources.getString(R.string.cookbooks_offline)) }
+                    } else {
+                        vm.loadCookbooks()
+                        menu.sheet = RecipeMenuSheet.Cookbooks
+                    }
                 },
                 onToggleFavorite = vm::toggleFavorite,
                 onShare = { vm.shareText()?.let { shareText(context, it) } },
@@ -290,6 +302,11 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
                 // A recipe that could not be loaded has nothing to add.
                 LaunchedEffect(state.error) { menu.sheet = null }
             }
+        }
+
+        RecipeMenuSheet.Cookbooks -> {
+            val cookbooks by vm.cookbooks.collectAsStateWithLifecycle()
+            CookbookSheet(choices = cookbooks, onToggle = vm::toggleCookbook, onDismiss = { menu.sheet = null })
         }
 
         null -> {}
@@ -360,7 +377,19 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
     val scope = rememberCoroutineScope()
     val resources = LocalResources.current
     RecipeFeedback(vm, snackbar, onDelete = { nav.popBackStack() })
-    LaunchedEffect(sheet) { if (sheet == RecipeMenuSheet.Shop) vm.loadShoppingLists() }
+    LaunchedEffect(sheet) {
+        when (sheet) {
+            RecipeMenuSheet.Shop -> {
+                vm.loadShoppingLists()
+            }
+
+            RecipeMenuSheet.Cookbooks -> {
+                vm.loadCookbooks()
+            }
+
+            else -> {}
+        }
+    }
     LaunchedEffect(organizing) { if (organizing) vm.loadOrganizers() }
     val reworked = rework?.outcome
     LaunchedEffect(reworked) { if (reworked != null) vm.onReworkShown(reworked) }
@@ -396,6 +425,13 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                         scope.launch { snackbar.showSnackbar(resources.getString(R.string.organizers_offline)) }
                     } else {
                         organizing = true
+                    }
+                },
+                onAddToCookbook = {
+                    if (state.isOffline) {
+                        scope.launch { snackbar.showSnackbar(resources.getString(R.string.cookbooks_offline)) }
+                    } else {
+                        sheet = RecipeMenuSheet.Cookbooks
                     }
                 },
                 onRetry = vm::load,
@@ -439,6 +475,11 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 },
                 onDismiss = { sheet = null },
             )
+        }
+
+        sheet == RecipeMenuSheet.Cookbooks -> {
+            val cookbooks by vm.cookbooks.collectAsStateWithLifecycle()
+            CookbookSheet(choices = cookbooks, onToggle = vm::toggleCookbook, onDismiss = { sheet = null })
         }
     }
 }

@@ -57,6 +57,7 @@ class SheetMotionScreenshotTest(private val look: Look) : ScreenshotTest() {
                             onCook = {},
                             onPlan = {},
                             onShop = {},
+                            onCookbook = {},
                             onToggleFavorite = {},
                             onShare = {},
                             onDismiss = { open = false },

@@ -184,6 +184,7 @@ data class RecipeActions(
     val onDelete: () -> Unit = {},
     val onRework: (translate: Boolean) -> Unit = {},
     val onOrganize: () -> Unit = {},
+    val onAddToCookbook: () -> Unit = {},
     val onRetry: () -> Unit = {},
 )
 
@@ -441,7 +442,7 @@ private fun SaveButton(saved: Boolean, onToggle: () -> Unit, place: IconButtonPl
     )
 }
 
-/** What manages the recipe, and is not needed to cook it: editing, filing, rating, reworking, sharing and deleting. */
+/** What manages the recipe, and is not needed to cook it: editing, filing, cookbooks, rating, reworking, sharing and deleting. */
 @Composable
 private fun MoreMenu(actions: RecipeActions, menu: PageMenu, place: IconButtonPlace) {
     var open by remember { mutableStateOf(false) }
@@ -454,6 +455,7 @@ private fun MoreMenu(actions: RecipeActions, menu: PageMenu, place: IconButtonPl
         AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             AromaMenuItem(stringResource(R.string.action_edit), R.drawable.ic_edit, { choose(actions.onEdit) })
             AromaMenuItem(stringResource(R.string.organizers_title), R.drawable.ic_tag, { choose(actions.onOrganize) })
+            AromaMenuItem(stringResource(R.string.recipe_add_to_cookbook), R.drawable.ic_book_add, { choose(actions.onAddToCookbook) })
             AromaMenuItem(stringResource(R.string.recipe_rate), R.drawable.ic_star, { choose(menu.onRate) })
             menu.onRework?.let { AromaMenuItem(stringResource(R.string.recipe_rework), R.drawable.ic_sparkle, { choose(it) }) }
             AromaMenuItem(stringResource(R.string.action_share), R.drawable.ic_share, { choose(actions.onShare) })
