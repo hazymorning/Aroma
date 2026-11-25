@@ -31,7 +31,7 @@ class DurationDetectorTest {
             "Add 2 minced garlic cloves." to emptyList(),
         ).forEach { (text, timers) ->
             assertEquals(text, timers, timers(text))
-            // A step binds each number to its unit with a narrow no-break space, which keeps every timer where it is.
+            // A step is shown with each number bound to its unit by a narrow no-break space: the same timers, in the same places.
             assertEquals(text, DurationDetector.detect(text), DurationDetector.detect(UnitSpacing.apply(text)))
         }
 

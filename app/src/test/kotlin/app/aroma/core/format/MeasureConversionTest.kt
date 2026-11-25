@@ -37,7 +37,7 @@ class MeasureConversionTest {
     private fun food(name: String, plural: String? = null) = IngredientFood("f-$name", name, plural)
 
     @Test
-    fun `US amounts become grams and millilitres in the steps a scale or jug shows`() =
+    fun `cups, ounces and pounds become grams and millilitres in the steps a scale or jug shows`() =
         assertConverts(
             MeasureSystem.Metric,
             listOf(
@@ -56,12 +56,13 @@ class MeasureConversionTest {
                 // Brands of kosher salt differ twofold, whole walnuts by a quarter.
                 "1 cup kosher salt" to "240 ml kosher salt",
                 "1 cup walnuts" to "240 ml walnuts",
+                // A German Pfund is 500 g.
                 "1 Pfund Hackfleisch" to "500 g Hackfleisch",
             ),
         )
 
     @Test
-    fun `metric amounts become the closest cup, spoon, ounce or pound`() =
+    fun `grams and millilitres become the closest cup, spoon, ounce or pound`() =
         assertConverts(
             MeasureSystem.US,
             listOf(
