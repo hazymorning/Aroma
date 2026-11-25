@@ -194,7 +194,8 @@ class RecipeRepository(
             val read = serverPage(query, next, READY_SCAN, server)
             // Reading the times as text is not for the main thread, which screens ask from.
             found += withContext(Dispatchers.Default) { read.items.filter { it.isReadyWithin(minutes) } }
-            if (found.size >= perPage || !read.hasMore) return read.copy(items = found, total = null)
+            // Mealie's order may shift between pages, as when a recipe is added meanwhile, so one can come twice.
+            if (found.size >= perPage || !read.hasMore) return read.copy(items = found.distinctBy { it.id }, total = null)
             next++
         }
     }
