@@ -1,6 +1,12 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -35,6 +41,7 @@ import app.aroma.R
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.LocalTonalFill
+import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Space
 
 /** The height of the search field and of a quick entry like it. */
@@ -91,25 +98,52 @@ fun PillField(
                         .let { if (focusRequester != null) it.focusRequester(focusRequester) else it },
             )
         }
-        // Inside the field, a button stands on the box's paper, a step off the field's fill.
+        // Inside the field, a button stands on the box's paper, a step off the field's fill. It fades
+        // in as there is something to clear or to add, and out again, while the words keep their place.
         CompositionLocalProvider(LocalTonalFill provides colors.surfaceInBox) {
-            when {
-                trailing != null -> {
-                    trailing()
+            // The field's own button as it last stood, so it can fade out once it is gone.
+            val own = remember { LastButton() }
+            if (trailing != null) own.content = trailing
+            val end =
+                when {
+                    trailing != null -> FieldEnd.Own
+                    value.isNotEmpty() -> FieldEnd.Clear
+                    else -> FieldEnd.None
                 }
+            AnimatedContent(
+                targetState = end,
+                transitionSpec = {
+                    fadeIn(Motion.edge()) togetherWith fadeOut(Motion.edge()) using
+                        SizeTransform(clip = false) { _, _ -> snap() }
+                },
+                contentAlignment = Alignment.CenterEnd,
+                label = "fieldEnd",
+            ) { shown ->
+                when (shown) {
+                    FieldEnd.Own -> {
+                        own.content?.invoke()
+                    }
 
-                value.isNotEmpty() -> {
-                    IconButton(
-                        R.drawable.ic_close,
-                        stringResource(R.string.action_clear),
-                        onClick = { onValueChange("") },
-                    )
-                }
+                    FieldEnd.Clear -> {
+                        IconButton(
+                            R.drawable.ic_close,
+                            stringResource(R.string.action_clear),
+                            onClick = { onValueChange("") },
+                        )
+                    }
 
-                else -> {
-                    Spacer(Modifier.width(Space.s16))
+                    FieldEnd.None -> {
+                        Spacer(Modifier.width(Space.s16))
+                    }
                 }
             }
         }
     }
+}
+
+/** What stands at the end of a [PillField]: the field's own button, the one that clears it, or nothing. */
+private enum class FieldEnd { Own, Clear, None }
+
+private class LastButton {
+    var content: (@Composable () -> Unit)? = null
 }

@@ -37,8 +37,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -64,6 +66,7 @@ import app.aroma.ui.components.IconButtonPlace
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RecipeImage
+import app.aroma.ui.components.RowsInMotion
 import app.aroma.ui.components.SectionTitle
 import app.aroma.ui.components.Separator
 import app.aroma.ui.components.Skeleton
@@ -352,7 +355,8 @@ private fun NoPhoto(onPick: () -> Unit) {
 /**
  * Ingredients and steps as rows of plain text between hairlines, each with a quiet remove glyph,
  * and a link to add one more. Adding a row, or pressing next on the keyboard in the last
- * ingredient, moves the cursor into the new row.
+ * ingredient, moves the cursor into the new row, which opens its room as it fades in; a row taken
+ * away fades, then closes, and what follows glides up.
  */
 @Composable
 private fun EditableRows(
@@ -366,21 +370,23 @@ private fun EditableRows(
     val keys = remember { RowKeys() }
     val rowKeys = keys.of(rows.size)
     var focusRow by remember { mutableStateOf<Int?>(null) }
+    val focusManager = LocalFocusManager.current
     val addRow = {
         onChange(rows + "")
         focusRow = rows.size
     }
     TonalBox(Modifier.padding(horizontal = PageMargin), contentPadding = PaddingValues(vertical = Space.s4)) {
-        rows.forEachIndexed { index, text ->
-            key(rowKeys[index]) {
-                val focusRequester = remember { FocusRequester() }
-                // A new row arrives with the next state; the cursor moves into it once it is here.
-                if (focusRow == index) {
-                    LaunchedEffect(Unit) {
-                        focusRequester.requestFocus()
-                        focusRow = null
-                    }
+        RowsInMotion(rows.mapIndexed { index, text -> EditedRow(rowKeys[index], index, text) }, key = { it.key }) { (key, index, text) ->
+            val focusRequester = remember { FocusRequester() }
+            var focused by remember { mutableStateOf(false) }
+            // A new row arrives with the next state; the cursor moves into it once it is here, and never into one on its way out.
+            if (focusRow == index && rowKeys.getOrNull(index) == key) {
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                    focusRow = null
                 }
+            }
+            Column {
                 if (index > 0) Separator(start = if (numbered) BoxPadding + StepNumberWidth else BoxPadding)
                 EditableRow(
                     text = text,
@@ -391,6 +397,8 @@ private fun EditableRows(
                     onRemove =
                         if (rows.size > 1) {
                             {
+                                // The row fades out before it goes: its cursor goes at once, as it would with the row.
+                                if (focused) focusManager.clearFocus()
                                 keys.remove(index)
                                 onChange(rows.filterIndexed { i, _ -> i != index })
                             }
@@ -410,12 +418,16 @@ private fun EditableRows(
                             }
                         },
                     focusRequester = focusRequester,
+                    onFocusChange = { focused = it },
                 )
             }
         }
         TextAction(addLabel, addRow, Modifier.padding(horizontal = BoxPadding), icon = R.drawable.ic_add)
     }
 }
+
+/** A row of [EditableRows]: the key it keeps, where it stands and what it says. */
+private data class EditedRow(val key: Int, val index: Int, val text: String)
 
 /**
  * A key per row that stays with it when a row before it is removed, so each field keeps its text,
@@ -450,6 +462,7 @@ private fun EditableRow(
     onRemove: (() -> Unit)?,
     onNext: (() -> Unit)?,
     focusRequester: FocusRequester,
+    onFocusChange: (Boolean) -> Unit,
 ) {
     val body = AromaTheme.type.body
     // Lines starting with # become section headings; setting them in Medium shows that while typing.
@@ -466,7 +479,8 @@ private fun EditableRow(
             modifier =
                 Modifier
                     .weight(1f)
-                    .focusRequester(focusRequester),
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { onFocusChange(it.isFocused) },
             textStyle = style.copy(color = AromaTheme.colors.ink),
             keyboardOptions =
                 KeyboardOptions(

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,17 +26,21 @@ import app.aroma.ui.components.PillField
 import app.aroma.ui.components.Segment
 import app.aroma.ui.components.SegmentGap
 import app.aroma.ui.components.mealLabel
+import app.aroma.ui.components.sideFades
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 
 /**
  * The kinds of dish in one row that scrolls from edge to edge, the [chosen] ones on the sage wash.
- * [onToggle] gets the label too: a category made for the kind of dish is called that.
+ * Where more of them lie beyond an edge, the row fades out softly there. [onToggle] gets the label
+ * too: a category made for the kind of dish is called that.
  */
 @Composable
 fun MealChips(chosen: Set<Meal>, onToggle: (Meal, String) -> Unit, modifier: Modifier = Modifier) {
+    val row = rememberLazyListState()
     LazyRow(
-        modifier = modifier,
+        state = row,
+        modifier = modifier.sideFades(row),
         contentPadding = PaddingValues(horizontal = PageMargin),
         horizontalArrangement = Arrangement.spacedBy(SegmentGap),
     ) {

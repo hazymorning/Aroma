@@ -2,6 +2,7 @@ package app.aroma.feature.recipe
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -31,6 +32,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -41,8 +43,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -99,7 +103,7 @@ import app.aroma.ui.components.SEPARATOR
 import app.aroma.ui.components.SectionTitle
 import app.aroma.ui.components.Skeleton
 import app.aroma.ui.components.SkeletonLine
-import app.aroma.ui.components.StatusBarCover
+import app.aroma.ui.components.StatusBarEdge
 import app.aroma.ui.components.StatusBarOverPhoto
 import app.aroma.ui.components.StepTexts
 import app.aroma.ui.components.Stepper
@@ -113,10 +117,12 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.labelRes
 import app.aroma.ui.components.ratingDescription
 import app.aroma.ui.components.recipeTimeText
+import app.aroma.ui.components.reducedMotion
 import app.aroma.ui.components.rememberIngredientRows
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.components.rememberStepText
 import app.aroma.ui.components.rememberStepTexts
+import app.aroma.ui.components.scrolledBeneath
 import app.aroma.ui.components.totalTime
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.ContentMaxWidth
@@ -201,9 +207,10 @@ private const val PHOTO_SHADE = 0.45f
  * The recipe as a cookbook page: the photo to the edges, the title and what it is, the headnote,
  * the times, the ingredients and the steps, open on paper. Cooking is the page's one main action, in
  * the bar at its foot beside planning and shopping. All that manages the recipe waits in the menu.
+ * [onTop] is false once another page is on its way in, which then has the status bar to itself.
  */
 @Composable
-fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifier = Modifier) {
+fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifier = Modifier, onTop: Boolean = true) {
     val listState = rememberLazyListState()
     val recipe = state.recipe
     var rateOpen by rememberSaveable { mutableStateOf(false) }
@@ -229,42 +236,50 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
         )
     val steps = rememberSteps(recipe, state)
     Box(modifier.fillMaxSize()) {
-        when {
-            recipe != null -> {
-                LazyColumn(
-                    state = listState,
-                    // The last section ends 24 dp above the action bar.
-                    contentPadding = PaddingValues(bottom = actionBarInset() + EndSpace),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    item(key = HERO_KEY) {
-                        if (hasPhoto) {
-                            Hero(recipe, saved = state.isFavorite, onUnsave = actions.onToggleFavorite)
-                        } else {
-                            PageButtons(state.isFavorite, actions, menu)
+        // The page's outline gives way to the recipe by fading into it, and so does it to an error.
+        Crossfade(pageShown(state), animationSpec = Motion.state(), label = "recipePage") { shown ->
+            when {
+                shown == PageShown.Recipe && recipe != null -> {
+                    LazyColumn(
+                        state = listState,
+                        // The last section ends 24 dp above the action bar.
+                        contentPadding = PaddingValues(bottom = actionBarInset() + EndSpace),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        item(key = HERO_KEY) {
+                            if (hasPhoto) {
+                                Hero(
+                                    recipe,
+                                    saved = state.isFavorite,
+                                    onUnsave = actions.onToggleFavorite,
+                                    scrolled = { if (listState.firstVisibleItemIndex == 0) listState.firstVisibleItemScrollOffset else 0 },
+                                )
+                            } else {
+                                PageButtons(state.isFavorite, actions, menu)
+                            }
                         }
+                        recipeBody(recipe, state, actions, steps, underPhoto = hasPhoto)
                     }
-                    recipeBody(recipe, state, actions, steps, underPhoto = hasPhoto)
+                }
+
+                shown == PageShown.Outline -> {
+                    RecipeLoading()
+                }
+
+                shown == PageShown.Error && state.error != null -> {
+                    ErrorState(
+                        state.error,
+                        onRetry = actions.onRetry,
+                        modifier =
+                            Modifier
+                                .statusBarsPadding()
+                                .padding(top = TopBarHeight + HeaderTop),
+                    )
                 }
             }
-
-            state.isLoading -> {
-                RecipeLoading()
-            }
-
-            state.error != null -> {
-                ErrorState(
-                    state.error,
-                    onRetry = actions.onRetry,
-                    modifier =
-                        Modifier
-                            .statusBarsPadding()
-                            .padding(top = TopBarHeight + HeaderTop),
-                )
-            }
         }
-        RecipeHead(recipe, collapsed, overPhoto, state.isFavorite, actions, menu)
+        RecipeHead(recipe, collapsed, overPhoto, state.isFavorite, actions, menu, scrolled = listState::scrolledBeneath)
         if (recipe != null) {
             RecipeActionBar(
                 canShop = recipe.ingredients.isNotEmpty(),
@@ -275,8 +290,9 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
             )
         }
     }
-    // Light icons over the photo's shade; the theme's own once the photo has gone beneath the head.
-    StatusBarOverPhoto(overPhoto)
+    // Light icons over the photo's shade; the theme's own once the photo has gone beneath the head,
+    // or as soon as the page is leaving, so the page coming in has its own at once.
+    StatusBarOverPhoto(overPhoto && onTop)
     if (rateOpen && recipe != null) {
         RatingSheet(rating = state.userRating, onRate = actions.onRate, onDismiss = { rateOpen = false })
     }
@@ -298,6 +314,17 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
         )
     }
 }
+
+/** What the page shows: the recipe, its outline while it loads, or why it could not load. */
+private enum class PageShown { Recipe, Outline, Error, Nothing }
+
+private fun pageShown(state: RecipeUiState): PageShown =
+    when {
+        state.recipe != null -> PageShown.Recipe
+        state.isLoading -> PageShown.Outline
+        state.error != null -> PageShown.Error
+        else -> PageShown.Nothing
+    }
 
 private fun LazyListState.bottomOf(key: Any): Int? = layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.let { it.offset + it.size }
 
@@ -345,9 +372,10 @@ private fun RecipeHead(
     saved: Boolean,
     actions: RecipeActions,
     menu: PageMenu,
+    scrolled: () -> Float,
 ) {
     // Without a photo, the page's own paper keeps the status bar clear until the head collapses.
-    if (!collapsed && !overPhoto) StatusBarCover()
+    if (!collapsed && !overPhoto) StatusBarEdge(scrolled)
     AnimatedVisibility(visible = collapsed, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
         TopBar(
             title = recipe?.name.orEmpty(),
@@ -437,7 +465,8 @@ private fun MoreMenu(actions: RecipeActions, menu: PageMenu, place: IconButtonPl
 /**
  * Plan and shop as icon buttons, the two things people do with a recipe besides cooking it, and
  * cooking itself across the rest of the bar, the page's one main action. Shop is there where
- * there is something to buy; cooking, where there are steps to cook by.
+ * there is something to buy; cooking, where there are steps to cook by. Once planning or shopping
+ * went through, its button shows a check and the phone gives a tap to feel it.
  */
 @Composable
 private fun RecipeActionBar(
@@ -447,6 +476,10 @@ private fun RecipeActionBar(
     actions: RecipeActions,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(confirmed) {
+        if (confirmed != null) haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+    }
     BottomActionBar(modifier) {
         IconButton(
             icon = R.drawable.ic_calendar_add,
@@ -483,22 +516,30 @@ private fun heroHeight(): Dp {
 
 /**
  * The photo to the edges, with a shade at its top. A saved recipe's ribbon hangs from its top edge
- * where the save button stood, its foot level with the buttons; a tap on it lets the recipe go.
+ * where the save button stood, its foot level with the buttons; a tap on it lets the recipe go. As
+ * the page scrolls, the photo slides away at half its pace, as if the page passed over it; how far
+ * the page has [scrolled] past the photo's top is read while drawing, so it composes nothing anew.
+ * With the system's animations off, the photo scrolls with the page.
  */
 @Composable
-private fun Hero(recipe: Recipe, saved: Boolean, onUnsave: () -> Unit) {
+private fun Hero(recipe: Recipe, saved: Boolean, onUnsave: () -> Unit, scrolled: () -> Int) {
     val statusBar = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
+    val parallax = if (reducedMotion()) 0f else Motion.PARALLAX
     Box(
         Modifier
             .fillMaxWidth()
-            .height(heroHeight()),
+            .height(heroHeight())
+            .clipToBounds(),
     ) {
         RecipeImage(
             image = recipe.image,
             size = ImageSize.Original,
             placeholder = ImageSize.Medium,
             fallbackIconSize = HeroPlateSize,
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { translationY = scrolled() * parallax },
         )
         val scrim = AromaTheme.colors.scrim
         Box(

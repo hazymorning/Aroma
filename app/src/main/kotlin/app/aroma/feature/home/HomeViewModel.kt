@@ -295,8 +295,10 @@ class HomeViewModel(
         fun greetingFor(time: LocalTime): Greeting =
             when (time.hour) {
                 in 5..10 -> Greeting.Morning
-                in 11..17 -> Greeting.Afternoon
-                else -> Greeting.Evening
+                in 11..13 -> Greeting.Midday
+                in 14..16 -> Greeting.Afternoon
+                in 17..21 -> Greeting.Evening
+                else -> Greeting.Night
             }
     }
 }

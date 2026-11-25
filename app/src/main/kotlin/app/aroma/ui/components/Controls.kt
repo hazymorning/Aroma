@@ -1,16 +1,11 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -29,14 +24,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
@@ -47,19 +41,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -86,7 +86,8 @@ import kotlin.math.roundToInt
 
 /**
  * Minus, the value and plus on one 40 dp pill of the tonal fill where it stands; each sign takes a
- * 48 dp target. For servings.
+ * 48 dp target. For servings. The value's figure rolls up as it grows and down as it shrinks, and a
+ * sign that can go no further fades back.
  */
 @Composable
 fun Stepper(
@@ -109,20 +110,8 @@ fun Stepper(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StepperSign(R.drawable.ic_remove, stringResource(R.string.action_decrease), onDecrease, canDecrease)
-        AnimatedContent(
-            targetState = label,
-            transitionSpec = {
-                fadeIn(Motion.edge()) togetherWith fadeOut(Motion.edge()) using SizeTransform { _, _ -> Motion.state() }
-            },
-            label = "stepperValue",
-        ) { value ->
-            Text(
-                text = value,
-                style = AromaTheme.type.label.tabular(),
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                modifier = Modifier.widthIn(min = StepperValueWidth),
-            )
+        Box(Modifier.widthIn(min = StepperValueWidth), contentAlignment = Alignment.Center) {
+            RollingText(label, style = AromaTheme.type.label.tabular())
         }
         StepperSign(R.drawable.ic_add, stringResource(R.string.action_increase), onIncrease, canIncrease)
     }
@@ -135,6 +124,7 @@ private fun StepperSign(
     onClick: () -> Unit,
     enabled: Boolean,
 ) {
+    val shown by animateFloatAsState(if (enabled) 1f else DISABLED_CONTROL, Motion.state(), label = "stepperSign")
     val interaction = remember { MutableInteractionSource() }
     Box(
         Modifier
@@ -152,12 +142,18 @@ private fun StepperSign(
             Icon(
                 painterResource(icon),
                 contentDescription = description,
-                tint = AromaTheme.colors.ink.copy(alpha = if (enabled) 1f else 0.38f),
-                modifier = Modifier.size(Glyph.control),
+                tint = AromaTheme.colors.ink,
+                modifier =
+                    Modifier
+                        .size(Glyph.control)
+                        .graphicsLayer { alpha = shown },
             )
         }
     }
 }
+
+/** How dim a sign is while it can go no further. */
+private const val DISABLED_CONTROL = 0.38f
 
 private val StepperHeight = 40.dp
 
@@ -167,7 +163,9 @@ private val StepperValueWidth = 64.dp
 /**
  * A row of choices set as words, of which one is chosen: the chosen one on a soft sage pill, which
  * glides to the next choice, the others in second ink. It scrolls sideways, its first pill starting
- * on the page's edge, flush with the search field and the boxes above and below it.
+ * on the page's edge, flush with the search field and the boxes above and below it. Where more
+ * choices lie beyond an edge, the row fades out softly there; a choice that stands partly beyond
+ * one comes fully into view as it is chosen.
  */
 @Composable
 fun SelectionRow(
@@ -182,14 +180,27 @@ fun SelectionRow(
     val chosen = positions[selectedIndex]
     val left = remember { Animatable(0f) }
     val width = remember { Animatable(0f) }
+    val scroll = rememberScrollState()
+    val margin = with(LocalDensity.current) { contentPadding.toPx() }
     LaunchedEffect(chosen) {
         val (x, w) = chosen ?: return@LaunchedEffect
-        if (width.value == 0f) {
+        val first = width.value == 0f
+        if (first) {
             left.snapTo(x)
             width.snapTo(w)
         } else {
             launch { left.animateTo(x, Motion.state()) }
-            width.animateTo(w, Motion.state())
+            launch { width.animateTo(w, Motion.state()) }
+        }
+        // In view with the margin kept on either side, or as near as it goes.
+        val inView =
+            scroll.value
+                .toFloat()
+                .coerceAtLeast(x + w + 2 * margin - scroll.viewportSize)
+                .coerceAtMost(x)
+        val target = inView.roundToInt().coerceIn(0, scroll.maxValue)
+        if (target != scroll.value) {
+            if (first) scroll.scrollTo(target) else scroll.animateScrollTo(target, Motion.state())
         }
     }
     val pill = AromaTheme.colors.accentSoft
@@ -197,7 +208,8 @@ fun SelectionRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
+                .sideFades(scroll, contentPadding)
+                .horizontalScroll(scroll)
                 .padding(horizontal = contentPadding)
                 .drawBehind {
                     if (chosen != null && width.value > 0f) {
@@ -227,6 +239,49 @@ fun SelectionRow(
         }
     }
 }
+
+/**
+ * A row that scrolls sideways fades out softly over [width], the page's margin, at an edge where
+ * more of it lies beyond: each fade comes in over the first stretch of scrolling and goes over the
+ * last, so the row stands sharp at its ends. Drawn alone, it never lays the row out anew.
+ */
+fun Modifier.sideFades(scroll: ScrollState, width: Dp = PageMargin): Modifier =
+    sideFades(width, before = { scroll.value.toFloat() }, beyond = { (scroll.maxValue - scroll.value).toFloat() })
+
+/** [sideFades] for a lazy row. */
+fun Modifier.sideFades(list: LazyListState, width: Dp = PageMargin): Modifier =
+    sideFades(
+        width,
+        before = { if (list.firstVisibleItemIndex > 0) Float.MAX_VALUE else list.firstVisibleItemScrollOffset.toFloat() },
+        beyond = {
+            val info = list.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()
+            when {
+                last == null -> 0f
+                last.index < info.totalItemsCount - 1 -> Float.MAX_VALUE
+                else -> (last.offset + last.size + info.afterContentPadding - info.viewportEndOffset).toFloat()
+            }
+        },
+    )
+
+private fun Modifier.sideFades(width: Dp, before: () -> Float, beyond: () -> Float): Modifier =
+    graphicsLayer {
+        // A layer of its own only while there is anything to fade, as the fades cut into what it holds.
+        compositingStrategy = if (before() > 0f || beyond() > 0f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+    }.drawWithCache {
+        val fade = width.toPx().coerceAtMost(size.width / 2)
+        val start = Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = 0f, endX = fade)
+        val end = Brush.horizontalGradient(listOf(Color.Transparent, Color.Black), startX = size.width - fade, endX = size.width)
+        val band = Size(fade, size.height)
+        onDrawWithContent {
+            drawContent()
+            if (fade <= 0f) return@onDrawWithContent
+            val starting = (before() / fade).coerceIn(0f, 1f)
+            val ending = (beyond() / fade).coerceIn(0f, 1f)
+            if (starting > 0f) drawRect(start, size = band, alpha = starting, blendMode = BlendMode.DstOut)
+            if (ending > 0f) drawRect(end, Offset(size.width - fade, 0f), band, alpha = ending, blendMode = BlendMode.DstOut)
+        }
+    }
 
 /**
  * One choice among others that may be chosen together, on its own soft sage pill while chosen:
@@ -279,40 +334,63 @@ val SegmentGap: Dp = Space.s4
 
 /**
  * The tick of a list to tick off: a ring on the tonal fill that fills with sage and draws its check
- * in paper. The row it sits in is the target, and gives the haptic tick.
+ * in paper. Taken back, the check fades with the sage instead of vanishing, and draws itself anew
+ * the next time. The row it sits in is the target, and gives the haptic tick.
  */
 @Composable
 fun CheckCircle(checked: Boolean, modifier: Modifier = Modifier, size: Dp = CheckSize) {
-    val fill by animateFloatAsState(if (checked) 1f else 0f, Motion.edge(), label = "checkFill")
+    val fill = remember { Animatable(if (checked) 1f else 0f) }
     val draw = remember { Animatable(if (checked) 1f else 0f) }
     LaunchedEffect(checked) {
-        if (checked) draw.animateTo(1f, tween(Motion.STATE, delayMillis = Motion.EDGE, easing = Motion.Decelerate)) else draw.snapTo(0f)
+        if (checked) {
+            launch { fill.animateTo(1f, Motion.edge()) }
+            // A check still standing, taken back and ticked again before it had faded, stays drawn.
+            if (draw.value < 1f) draw.animateTo(1f, tween(Motion.STATE, delayMillis = Motion.EDGE, easing = Motion.Decelerate))
+        } else {
+            fill.animateTo(0f, Motion.edge())
+            draw.snapTo(0f)
+        }
     }
     val colors = AromaTheme.colors
     val ground = AromaTheme.tonalFill
-    Canvas(modifier.size(size)) {
-        val radius = this.size.minDimension / 2
-        val ring = CheckRing.toPx()
-        if (fill < 1f) {
-            drawCircle(ground, radius = radius)
-            drawCircle(colors.inkTertiary.copy(alpha = 1f - fill), radius = radius - ring / 2, style = Stroke(ring))
-        }
-        if (fill > 0f) drawCircle(colors.accent.copy(alpha = fill), radius = radius)
-        if (draw.value > 0f) {
-            val w = this.size.width
-            val h = this.size.height
-            val path =
-                Path().apply {
-                    moveTo(0.29f * w, 0.52f * h)
-                    lineTo(0.44f * w, 0.66f * h)
-                    lineTo(0.71f * w, 0.37f * h)
+    Spacer(
+        modifier
+            .size(size)
+            .drawWithCache {
+                val radius = this.size.minDimension / 2
+                val ring = CheckRing.toPx()
+                val ringStroke = Stroke(ring)
+                val checkStroke = Stroke(width = CheckStroke.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                val w = this.size.width
+                val h = this.size.height
+                val check =
+                    PathMeasure().apply {
+                        setPath(
+                            Path().apply {
+                                moveTo(0.29f * w, 0.52f * h)
+                                lineTo(0.44f * w, 0.66f * h)
+                                lineTo(0.71f * w, 0.37f * h)
+                            },
+                            false,
+                        )
+                    }
+                val drawn = Path()
+                onDrawBehind {
+                    val filled = fill.value
+                    if (filled < 1f) {
+                        drawCircle(ground, radius = radius)
+                        drawCircle(colors.inkTertiary.copy(alpha = 1f - filled), radius = radius - ring / 2, style = ringStroke)
+                    }
+                    if (filled > 0f) drawCircle(colors.accent.copy(alpha = filled), radius = radius)
+                    val stroke = draw.value
+                    if (stroke > 0f && filled > 0f) {
+                        drawn.rewind()
+                        check.getSegment(0f, check.length * stroke, drawn, true)
+                        drawPath(drawn, colors.onInk.copy(alpha = filled), style = checkStroke)
+                    }
                 }
-            val measure = PathMeasure().apply { setPath(path, false) }
-            val partial = Path()
-            measure.getSegment(0f, measure.length * draw.value, partial, true)
-            drawPath(partial, colors.onInk, style = Stroke(width = CheckStroke.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-        }
-    }
+            },
+    )
 }
 
 /** The tick's size, its ring and the stroke of its check. */
@@ -320,29 +398,38 @@ val CheckSize: Dp = 24.dp
 private val CheckRing = 1.5.dp
 private val CheckStroke = 1.75.dp
 
-/** A switch: on, a sage track with a paper knob; off, a pressed-paper track with a tertiary knob; no edge. */
+/**
+ * A switch: on, a sage track with a paper knob; off, a pressed-paper track with a tertiary knob; no
+ * edge. The knob glides across in a change of state's time and the track takes on its colour as it
+ * goes; the knob keeps its size, pressed or not. The row it stands in takes the tap.
+ */
 @Composable
-private fun AromaSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier) {
+fun AromaSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val colors = AromaTheme.colors
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        // Thumb content with a real size keeps the knob as large off as on.
-        thumbContent = { Spacer(Modifier.size(SwitchDefaults.IconSize)) },
-        colors =
-            SwitchDefaults.colors(
-                checkedTrackColor = colors.accent,
-                checkedThumbColor = colors.onInk,
-                checkedBorderColor = Color.Transparent,
-                checkedIconColor = Color.Transparent,
-                uncheckedTrackColor = colors.surfacePressed,
-                uncheckedThumbColor = colors.inkTertiary,
-                uncheckedBorderColor = Color.Transparent,
-                uncheckedIconColor = Color.Transparent,
-            ),
-        modifier = modifier,
+    val on = remember { Animatable(if (checked) 1f else 0f) }
+    LaunchedEffect(checked) { on.animateTo(if (checked) 1f else 0f, Motion.state()) }
+    Spacer(
+        modifier
+            .size(SwitchWidth, SwitchHeight)
+            .drawBehind {
+                val position = on.value
+                val height = size.height
+                drawRoundRect(lerp(colors.surfacePressed, colors.accent, position), cornerRadius = CornerRadius(height / 2))
+                val knob = SwitchKnob.toPx() / 2
+                val inset = height / 2
+                drawCircle(
+                    color = lerp(colors.inkTertiary, colors.onInk, position),
+                    radius = knob,
+                    center = Offset(inset + (size.width - 2 * inset) * position, height / 2),
+                )
+            },
     )
 }
+
+/** The switch's track, and its knob, which stands as large off as on. */
+private val SwitchWidth = 52.dp
+private val SwitchHeight = 32.dp
+private val SwitchKnob = 24.dp
 
 /**
  * A row of settings in a box: a 20 dp glyph in second ink, the title, and a [description] under
@@ -365,11 +452,24 @@ fun SettingsRow(
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val colors = AromaTheme.colors
+    val haptics = LocalHapticFeedback.current
     val tap =
         when {
-            checked != null && onClick != null -> Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = { onClick() })
-            onClick != null -> Modifier.clickable(role = Role.Button, onClick = onClick)
-            else -> Modifier
+            checked != null && onClick != null -> {
+                Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = {
+                    // The phone confirms the switch turning, on or off, as Android's own switches do.
+                    haptics.performHapticFeedback(if (checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
+                    onClick()
+                })
+            }
+
+            onClick != null -> {
+                Modifier.clickable(role = Role.Button, onClick = onClick)
+            }
+
+            else -> {
+                Modifier
+            }
         }
     Row(
         modifier =
@@ -399,7 +499,7 @@ fun SettingsRow(
                 when {
                     checked != null -> {
                         Spacer(Modifier.width(Space.s16))
-                        AromaSwitch(checked = checked, onCheckedChange = null)
+                        AromaSwitch(checked = checked)
                     }
 
                     chevron && trailing == null -> {

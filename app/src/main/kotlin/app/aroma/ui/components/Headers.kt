@@ -28,9 +28,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -39,6 +41,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.CacheDrawScope
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -168,8 +178,10 @@ fun Subtitle(text: String, modifier: Modifier = Modifier) {
 /**
  * The collapsed head: 56 dp of bar paper under the status bar with the page's title in one line,
  * there once the large head has scrolled beneath it ([collapsed]), with its shadow once content lies
- * under it ([raised]). Before that it is only the status bar's ground, the page's paper.
- * [navigation] stands left of the title, [actions] on the right.
+ * under it ([raised]). Its paper fades in with its title, so what lies under it fades out rather
+ * than vanishing at once. Before that it is only the status bar's ground, the page's paper, with the
+ * soft edge under it that content scrolls into ([scrolled], see [StatusBarEdge]). [navigation]
+ * stands left of the title, [actions] on the right.
  */
 @Composable
 fun TopBar(
@@ -177,29 +189,36 @@ fun TopBar(
     collapsed: Boolean,
     raised: Boolean,
     modifier: Modifier = Modifier,
+    scrolled: () -> Float = { if (raised) Float.POSITIVE_INFINITY else 0f },
     navigation: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = AromaTheme.colors
-    val shadow by animateFloatAsState(if (collapsed && raised) 1f else 0f, Motion.edge(), label = "topBarShadow")
-    val ground by androidx.compose.animation.animateColorAsState(
-        if (collapsed) colors.bar else colors.background,
-        Motion.edge(),
-        label = "topBarGround",
-    )
+    // Read while drawing only, so the head fades without composing again on every frame.
+    val shown = animateFloatAsState(if (collapsed) 1f else 0f, Motion.edge(), label = "topBar")
+    val lifted = animateFloatAsState(if (collapsed && raised) 1f else 0f, Motion.edge(), label = "topBarShadow")
+    val statusBar = WindowInsets.statusBars.getTop(LocalDensity.current).toFloat()
     Column(
         modifier
             .fillMaxWidth()
-            .layeredShadow(AromaTheme.shadows.topBar, alpha = shadow)
-            .background(ground),
+            .layeredShadow(AromaTheme.shadows.topBar) { lifted.value }
+            .drawWithCache {
+                val edge = scrollEdge(colors.background, statusBar)
+                onDrawBehind {
+                    // The status bar's ground turns from the page's paper to the bar's as the head comes.
+                    drawRect(lerp(colors.background, colors.bar, shown.value), size = Size(size.width, statusBar))
+                    edge.draw(this, (1f - shown.value) * edge.share(scrolled()))
+                }
+            },
     ) {
         Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
         AnimatedVisibility(collapsed, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
-            androidx.compose.runtime.CompositionLocalProvider(LocalTonalFill provides colors.surfaceOnBar) {
+            CompositionLocalProvider(LocalTonalFill provides colors.surfaceOnBar) {
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .height(TopBarHeight)
+                        .background(colors.bar)
                         .padding(start = if (navigation != null) PageMargin - IconButtonReach else PageMargin)
                         .padding(end = PageMargin - IconButtonReach),
                     verticalAlignment = Alignment.CenterVertically,
@@ -219,6 +238,60 @@ fun TopBar(
                 }
             }
         }
+    }
+}
+
+/**
+ * The top of a page that scrolls beneath the status bar and has no head of its own there: the
+ * page's paper behind the clock and the icons, and under it a soft edge into which the content
+ * fades as it scrolls up ([scrolled], in pixels, read while drawing), instead of being cut by a
+ * line. At rest the edge is not there, so it never lies over the page's own head.
+ */
+@Composable
+fun StatusBarEdge(scrolled: () -> Float, modifier: Modifier = Modifier) {
+    val paper = AromaTheme.colors.background
+    val statusBar = WindowInsets.statusBars.getTop(LocalDensity.current).toFloat()
+    Spacer(
+        modifier
+            .fillMaxWidth()
+            .windowInsetsTopHeight(WindowInsets.statusBars)
+            .drawWithCache {
+                val edge = scrollEdge(paper, statusBar)
+                onDrawBehind {
+                    drawRect(paper)
+                    edge.draw(this, edge.share(scrolled()))
+                }
+            },
+    )
+}
+
+/** How far [this] list has moved its content up beneath the top of the page, in pixels; past its first item, as far as can be. */
+fun LazyListState.scrolledBeneath(): Float {
+    if (firstVisibleItemIndex > 0) return Float.POSITIVE_INFINITY
+    return firstVisibleItemScrollOffset.toFloat()
+}
+
+/** The soft edge under the status bar, from the page's [paper] at [top] to nothing [Motion.ScrollEdge] lower. */
+private fun CacheDrawScope.scrollEdge(paper: Color, top: Float): ScrollEdgeFade {
+    val height = Motion.ScrollEdge.toPx()
+    // A smooth step from full paper to none, so neither end of the edge shows as a line.
+    val stops =
+        Array(EDGE_STOPS + 1) { index ->
+            val at = index / EDGE_STOPS.toFloat()
+            at to paper.copy(alpha = 1f - at * at * (3f - 2f * at))
+        }
+    return ScrollEdgeFade(Brush.verticalGradient(*stops, startY = top, endY = top + height), top, height)
+}
+
+/** How finely the edge's fade is set. */
+private const val EDGE_STOPS = 8
+
+private class ScrollEdgeFade(private val brush: Brush, private val top: Float, private val height: Float) {
+    /** How much of the edge shows once the content has moved [scrolled] pixels: all of it once it has moved the edge's height. */
+    fun share(scrolled: Float): Float = (scrolled / height).coerceIn(0f, 1f)
+
+    fun draw(scope: DrawScope, alpha: Float) {
+        if (alpha > 0f) scope.drawRect(brush, topLeft = Offset(0f, top), size = Size(scope.size.width, height), alpha = alpha)
     }
 }
 
@@ -267,6 +340,7 @@ fun DetailPage(
             title = title,
             collapsed = header.collapsed,
             raised = scroll.canScrollBackward,
+            scrolled = { scroll.value.toFloat() },
             navigation = { BackButton(onBack) },
         )
         if (bottomBar != null) Box(Modifier.align(Alignment.BottomCenter).imePadding()) { bottomBar() }
@@ -309,20 +383,6 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier, actionLabel: Stri
 }
 
 private val SectionActionHeight = 28.dp
-
-/**
- * The ground of the status bar on a page that scrolls beneath it: the page's own paper, so nothing
- * runs under the clock and the icons. A page with a photo at its head draws its photo there instead.
- */
-@Composable
-fun StatusBarCover(modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .fillMaxWidth()
-            .background(AromaTheme.colors.background)
-            .windowInsetsTopHeight(WindowInsets.statusBars),
-    )
-}
 
 /**
  * Light status bar icons while [overPhoto], as the shaded top of a photo needs them, and the

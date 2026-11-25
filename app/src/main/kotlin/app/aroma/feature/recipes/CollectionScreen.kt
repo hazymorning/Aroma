@@ -28,8 +28,10 @@ import app.aroma.ui.components.SEPARATOR
 import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TopBar
+import app.aroma.ui.components.animateOpenRow
 import app.aroma.ui.components.recipeGridSkeletons
 import app.aroma.ui.components.rememberHeaderState
+import app.aroma.ui.components.scrolledBeneath
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.HeaderGap
@@ -86,11 +88,15 @@ fun CollectionScreen(
                         }
 
                         state.error != null && state.recipes.isEmpty() -> {
-                            item(key = "error") { ErrorState(state.error, onRetry = actions.onRetry) }
+                            item(
+                                key = "error",
+                            ) { ErrorState(state.error, onRetry = actions.onRetry, modifier = Modifier.animateOpenRow(this)) }
                         }
 
                         state.recipes.isEmpty() -> {
-                            item(key = "empty") { EmptyState(text = stringResource(kind.emptyRes())) }
+                            item(
+                                key = "empty",
+                            ) { EmptyState(text = stringResource(kind.emptyRes()), modifier = Modifier.animateOpenRow(this)) }
                         }
                     }
                 },
@@ -100,6 +106,7 @@ fun CollectionScreen(
             title = name,
             collapsed = header.collapsed,
             raised = list.canScrollBackward,
+            scrolled = list::scrolledBeneath,
             navigation = { BackButton(actions.onBack) },
         )
     }

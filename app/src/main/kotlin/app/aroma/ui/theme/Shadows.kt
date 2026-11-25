@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.shadow.Shadow
@@ -50,5 +51,23 @@ fun Modifier.layeredShadow(layers: List<ShadowLayer>, shape: Shape = RectangleSh
             shape,
             Shadow(radius = layer.blur, color = color, alpha = layer.opacity * alpha, offset = DpOffset(0.dp, layer.offsetY)),
         )
+    }
+}
+
+/**
+ * [layeredShadow] for a shadow that fades as it comes and goes: [alpha] is read while drawing, so
+ * the fade costs no composition.
+ */
+@Composable
+@ReadOnlyComposable
+fun Modifier.layeredShadow(layers: List<ShadowLayer>, shape: Shape = RectangleShape, alpha: () -> Float): Modifier {
+    val shadowColor = AromaTheme.colors.shadow
+    return layers.fold(this) { modifier, layer ->
+        modifier.dropShadow(shape) {
+            radius = layer.blur.toPx()
+            color = shadowColor
+            this.alpha = layer.opacity * alpha()
+            offset = Offset(0f, layer.offsetY.toPx())
+        }
     }
 }

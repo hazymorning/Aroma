@@ -7,6 +7,8 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalRippleConfiguration
@@ -19,9 +21,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
@@ -106,7 +113,12 @@ fun AromaTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean
     val locale = LocalLocale.current.platformLocale
     val type = remember(colors, locale) { AromaTypography(colors, textLocale(locale)) }
     val shadows = remember(darkTheme) { AromaShadows(darkTheme) }
-    MaterialTheme(colorScheme = colors.toMaterial(), typography = type.material, shapes = MaterialShapes) {
+    MaterialTheme(
+        colorScheme = colors.toMaterial(),
+        motionScheme = AromaMotionScheme,
+        shapes = MaterialShapes,
+        typography = type.material,
+    ) {
         CompositionLocalProvider(
             LocalAromaColors provides colors,
             LocalAromaTypography provides type,
@@ -123,23 +135,40 @@ fun AromaTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean
 
 /**
  * [AromaTheme] for a whole activity, light or dark as [settings] ask, with the system bars drawn
- * over the page and their icons dark or light to match.
+ * over the page and their icons dark or light to match. A new look chosen while the app is open
+ * dissolves into view (see [LookFade]).
  */
 @Composable
-fun ComponentActivity.AromaActivityTheme(settings: AppSettings, content: @Composable () -> Unit) {
+fun ComponentActivity.AromaActivityTheme(settings: AppSettings, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val dark =
         when (settings.themeMode) {
             ThemeMode.System -> isSystemInDarkTheme()
             ThemeMode.Light -> false
             ThemeMode.Dark -> true
         }
-    DisposableEffect(dark) {
-        val style = SystemBarStyle.auto(TRANSPARENT, TRANSPARENT) { dark }
+    val wanted = Look(dark, settings.dynamicColor)
+    var look by remember { mutableStateOf(wanted) }
+    val fade = remember { LookFade() }
+    LaunchedEffect(wanted) {
+        if (wanted == look) return@LaunchedEffect
+        // The old look is pictured before the new one is drawn, and fades away over it.
+        val covered = fade.cover(window)
+        look = wanted
+        if (covered) fade.dissolve()
+    }
+    val shownDark = look.dark
+    DisposableEffect(shownDark) {
+        val style = SystemBarStyle.auto(TRANSPARENT, TRANSPARENT) { shownDark }
         enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
         onDispose { }
     }
-    AromaTheme(darkTheme = dark, dynamicColor = settings.dynamicColor, content = content)
+    AromaTheme(darkTheme = look.dark, dynamicColor = look.wallpaper) {
+        Box(with(fade) { modifier.fillMaxSize().overlay() }) { content() }
+    }
 }
+
+/** What the theme looks like: light or dark, and whether the wallpaper colours the sage. */
+private data class Look(val dark: Boolean, val wallpaper: Boolean)
 
 /** German text breaks by German rules wherever it is set; a language without a region takes its home region. */
 private fun textLocale(locale: Locale): LocaleList =

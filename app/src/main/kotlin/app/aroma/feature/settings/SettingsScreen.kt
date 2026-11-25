@@ -1,6 +1,7 @@
 package app.aroma.feature.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,11 +25,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,10 +60,11 @@ import app.aroma.ui.components.SettingsRow
 import app.aroma.ui.components.SettingsTextEdge
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TonalBox
-import app.aroma.ui.components.labelRes
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.PageMargin
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.SectionGap
 import app.aroma.ui.theme.Space
 
@@ -99,34 +105,38 @@ data class SettingsActions(
     val onInstallUpdate: (UpdateState.Available) -> Unit = {},
     val onCheckUpdatesAtStartChange: (Boolean) -> Unit = {},
     val onOpenLicenses: () -> Unit = {},
+    val onOpenUrl: (String) -> Unit = {},
     val onSignOut: () -> Unit = {},
 )
 
-/** A setting with a few values, chosen on a sheet. */
-private enum class SettingsChoice { Theme, HomeSections, Language, Measures, IngredientsInSteps }
+/** Where Aroma is made, which its signature opens. */
+private const val AROMA_REPOSITORY = "https://github.com/hazymorning/Aroma"
+
+/** A sheet the settings open: the values of one setting, what Home shows, or everything for cooking. */
+private enum class SettingsSheet { Theme, HomeSections, Language, Cooking }
 
 @Composable
 fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: Modifier = Modifier) {
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
-    var choice by rememberSaveable { mutableStateOf<SettingsChoice?>(null) }
+    var sheet by rememberSaveable { mutableStateOf<SettingsSheet?>(null) }
     DetailPage(title = stringResource(R.string.settings_title), onBack = actions.onBack, modifier = modifier) {
         Column(Modifier.padding(horizontal = PageMargin)) {
-            state.user?.let { user -> Profile(user, state.server, state.connected) }
+            Account(state.user, state.server, state.connected, onSignOut = { confirmSignOut = true })
             Group(stringResource(R.string.settings_appearance)) {
                 SettingsRow(
                     title = stringResource(R.string.settings_theme),
                     icon = R.drawable.ic_contrast,
                     value = stringResource(state.themeMode.labelRes()),
-                    onClick = { choice = SettingsChoice.Theme },
+                    onClick = { sheet = SettingsSheet.Theme },
                 )
                 if (state.dynamicColorAvailable) {
                     Separator(start = SettingsTextEdge)
-                    SettingsRow(
+                    SwitchRow(
                         title = stringResource(R.string.settings_dynamic_color),
                         icon = R.drawable.ic_drop,
                         description = stringResource(R.string.settings_dynamic_color_hint),
                         checked = state.dynamicColor,
-                        onClick = { actions.onDynamicColorChange(!state.dynamicColor) },
+                        onCheckedChange = actions.onDynamicColorChange,
                     )
                 }
                 Separator(start = SettingsTextEdge)
@@ -135,60 +145,24 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     icon = R.drawable.ic_home,
                     description = stringResource(R.string.settings_home_description),
                     value = stringResource(R.string.settings_home_shown, state.homeSections.size, HomeSection.entries.size),
-                    onClick = { choice = SettingsChoice.HomeSections },
+                    onClick = { sheet = SettingsSheet.HomeSections },
                 )
-            }
-            Group(stringResource(R.string.settings_language)) {
+                Separator(start = SettingsTextEdge)
                 SettingsRow(
-                    title = stringResource(R.string.settings_app_language),
+                    title = stringResource(R.string.settings_language),
                     icon = R.drawable.ic_globe,
                     value = stringResource(state.language.labelRes()),
-                    onClick = { choice = SettingsChoice.Language },
+                    onClick = { sheet = SettingsSheet.Language },
                 )
             }
-            Group(stringResource(R.string.settings_cooking)) {
+            Group(stringResource(R.string.settings_recipes)) {
                 SettingsRow(
-                    title = stringResource(R.string.measures_title),
-                    icon = R.drawable.ic_scale,
-                    description = stringResource(R.string.measures_hint),
-                    value = stringResource(state.measures.labelRes()),
-                    onClick = { choice = SettingsChoice.Measures },
+                    title = stringResource(R.string.settings_cooking),
+                    icon = R.drawable.ic_cooking,
+                    onClick = { sheet = SettingsSheet.Cooking },
                 )
                 Separator(start = SettingsTextEdge)
-                SettingsRow(
-                    title = stringResource(R.string.settings_keep_screen_on),
-                    icon = R.drawable.ic_visibility,
-                    description = stringResource(R.string.settings_keep_screen_on_hint),
-                    checked = state.keepScreenOn,
-                    onClick = { actions.onKeepScreenOnChange(!state.keepScreenOn) },
-                )
-                Separator(start = SettingsTextEdge)
-                SettingsRow(
-                    title = stringResource(R.string.settings_next_step),
-                    icon = R.drawable.ic_arrow_forward,
-                    description = stringResource(R.string.settings_next_step_hint),
-                    checked = state.showNextStep,
-                    onClick = { actions.onShowNextStepChange(!state.showNextStep) },
-                )
-                Separator(start = SettingsTextEdge)
-                SettingsRow(
-                    title = stringResource(R.string.settings_ingredients_in_steps),
-                    icon = R.drawable.ic_notes,
-                    description = stringResource(R.string.settings_ingredients_in_steps_hint),
-                    value = stringResource(state.ingredientsInSteps.labelRes()),
-                    onClick = { choice = SettingsChoice.IngredientsInSteps },
-                )
-                Separator(start = SettingsTextEdge)
-                SettingsRow(
-                    title = stringResource(R.string.settings_amounts_in_steps),
-                    icon = R.drawable.ic_plate,
-                    description = stringResource(R.string.settings_amounts_in_steps_hint),
-                    checked = state.amountsInSteps,
-                    onClick = { actions.onAmountsInStepsChange(!state.amountsInSteps) },
-                )
-            }
-            Group(stringResource(R.string.settings_offline)) {
-                SettingsRow(
+                SwitchRow(
                     title = stringResource(R.string.settings_offline_all),
                     icon = R.drawable.ic_download,
                     description =
@@ -198,18 +172,18 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                             stringResource(R.string.settings_offline_all_hint)
                         },
                     checked = state.offlineRecipes,
-                    onClick = { actions.onOfflineRecipesChange(!state.offlineRecipes) },
+                    onCheckedChange = actions.onOfflineRecipesChange,
                 )
             }
             Group(stringResource(R.string.settings_about)) {
                 UpdateRow(state.version, state.update, actions.onCheckForUpdates, actions.onInstallUpdate)
                 Separator(start = SettingsTextEdge)
-                SettingsRow(
+                SwitchRow(
                     title = stringResource(R.string.settings_updates_at_start),
                     icon = R.drawable.ic_refresh,
                     description = stringResource(R.string.settings_updates_at_start_hint),
                     checked = state.checkUpdatesAtStart,
-                    onClick = { actions.onCheckUpdatesAtStartChange(!state.checkUpdatesAtStart) },
+                    onCheckedChange = actions.onCheckUpdatesAtStartChange,
                 )
                 Separator(start = SettingsTextEdge)
                 SettingsRow(
@@ -218,65 +192,44 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     onClick = actions.onOpenLicenses,
                 )
             }
-            TonalBox(Modifier.padding(top = SectionGap), contentPadding = PaddingValues()) {
-                SettingsRow(
-                    title = stringResource(R.string.settings_sign_out),
-                    icon = R.drawable.ic_logout,
-                    titleColor = AromaTheme.colors.error,
-                    chevron = false,
-                    onClick = { confirmSignOut = true },
-                )
-            }
-            Signature(Modifier.padding(top = SignatureGap))
+            Signature(
+                onClick = { actions.onOpenUrl(AROMA_REPOSITORY) },
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = SignatureGap - SignatureReach, bottom = SignatureEnd),
+            )
         }
     }
-    when (choice) {
-        SettingsChoice.Theme -> {
+    when (sheet) {
+        SettingsSheet.Theme -> {
             ChoiceSheet(
                 title = stringResource(R.string.settings_theme),
                 options = ThemeMode.entries,
                 selected = state.themeMode,
                 optionLabel = { stringResource(it.labelRes()) },
                 onSelect = actions.onThemeModeChange,
-                onDismiss = { choice = null },
+                onDismiss = { sheet = null },
             )
         }
 
-        SettingsChoice.HomeSections -> {
-            HomeSectionsSheet(state.homeSections, actions.onHomeSectionChange) { choice = null }
+        SettingsSheet.HomeSections -> {
+            HomeSectionsSheet(state.homeSections, actions.onHomeSectionChange) { sheet = null }
         }
 
-        SettingsChoice.Language -> {
+        SettingsSheet.Language -> {
             ChoiceSheet(
-                title = stringResource(R.string.settings_app_language),
+                title = stringResource(R.string.settings_language),
                 options = AppLanguage.entries,
                 selected = state.language,
                 optionLabel = { stringResource(it.labelRes()) },
                 onSelect = actions.onLanguageChange,
-                onDismiss = { choice = null },
+                onDismiss = { sheet = null },
             )
         }
 
-        SettingsChoice.Measures -> {
-            ChoiceSheet(
-                title = stringResource(R.string.measures_title),
-                options = MeasureSystem.entries,
-                selected = state.measures,
-                optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onMeasuresChange,
-                onDismiss = { choice = null },
-            )
-        }
-
-        SettingsChoice.IngredientsInSteps -> {
-            ChoiceSheet(
-                title = stringResource(R.string.settings_ingredients_in_steps),
-                options = IngredientsInSteps.entries,
-                selected = state.ingredientsInSteps,
-                optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onIngredientsInStepsChange,
-                onDismiss = { choice = null },
-            )
+        SettingsSheet.Cooking -> {
+            CookingSheet(state, actions, onDismiss = { sheet = null })
         }
 
         null -> {}
@@ -298,69 +251,123 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
 }
 
 /**
- * Who is signed in where: their initial on a 56 dp circle, their name and address, and the server,
- * with a sage dot while it answers.
+ * The account, in one box: who is signed in, where, whether the server answers, and the way out.
+ * The person's initial stands on a 56 dp circle; the words of every row start on one edge after it.
  */
 @Composable
-private fun Profile(user: User, server: ServerInfo?, connected: Boolean) {
-    val name = user.fullName.ifBlank { user.username }
-    val colors = AromaTheme.colors
-    TonalBox {
-        Row(
-            Modifier.semantics(mergeDescendants = true) {},
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Avatar(name, ProfileAvatarSize)
-            Spacer(Modifier.width(Space.s16))
-            Column(Modifier.weight(1f)) {
-                Text(name, style = AromaTheme.type.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (user.email.isNotBlank()) {
-                    Text(user.email, style = AromaTheme.type.meta, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun Account(
+    user: User?,
+    server: ServerInfo?,
+    connected: Boolean,
+    onSignOut: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Without a person to show, nothing stands in the circle's column, and the words take its place.
+    val circle = user != null
+    val edge = if (circle) AccountTextEdge else BoxPadding
+    TonalBox(modifier, contentPadding = PaddingValues()) {
+        user?.let { person ->
+            val name = person.fullName.ifBlank { person.username }
+            // The circle keeps the box's padding all around, as the box's own content would.
+            AccountRow(
+                circle = true,
+                leading = { Avatar(name, ProfileAvatarSize) },
+                modifier =
+                    Modifier
+                        .padding(vertical = BoxPadding - Space.s12)
+                        .semantics(mergeDescendants = true) {},
+            ) {
+                // A long name or address takes a second line rather than losing its end.
+                Text(name, style = AromaTheme.type.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (person.email.isNotBlank()) {
+                    Text(person.email, style = AromaTheme.type.meta, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
+            Separator(start = edge)
         }
         server?.let {
-            Row(Modifier.padding(top = Space.s16), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(StatusDot)
-                        .background(if (connected) colors.accent else colors.inkTertiary, CircleShape),
-                )
-                Spacer(Modifier.width(Space.s8))
+            AccountRow(circle = circle, modifier = Modifier.semantics(mergeDescendants = true) {}) {
                 Text(
-                    text =
-                        stringResource(
-                            if (connected) R.string.settings_server_connected else R.string.settings_server_offline,
-                            it.version,
-                        ),
-                    style = AromaTheme.type.meta,
-                    maxLines = 1,
+                    text = it.url.removePrefix("https://").removePrefix("http://"),
+                    style = AromaTheme.type.body,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                ServerStatus(it.version, connected)
             }
-            Text(
-                text = it.url.removePrefix("https://").removePrefix("http://"),
-                style = AromaTheme.type.meta,
-                color = colors.inkTertiary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = StatusDot + Space.s8),
-            )
+            Separator(start = edge)
+        }
+        AccountRow(circle = circle, modifier = Modifier.clickable(role = Role.Button, onClick = onSignOut)) {
+            Text(stringResource(R.string.settings_sign_out), style = AromaTheme.type.body, color = AromaTheme.colors.error)
         }
     }
 }
 
+/** Whether the server answers, and its version: after a sage dot while it does, a dot in third ink while it does not. */
+@Composable
+private fun ServerStatus(version: String, connected: Boolean) {
+    val colors = AromaTheme.colors
+    val style = AromaTheme.type.bodySmall
+    val line = with(LocalDensity.current) { style.lineHeight.toDp() }
+    Row {
+        // The dot stands on the middle of the first line, however large the text is.
+        Box(
+            Modifier
+                .padding(top = (line - StatusDot) / 2)
+                .size(StatusDot)
+                .background(if (connected) colors.accent else colors.inkTertiary, CircleShape),
+        )
+        Spacer(Modifier.width(Space.s8))
+        Text(
+            text = stringResource(if (connected) R.string.settings_server_connected else R.string.settings_server_offline, version),
+            style = style,
+        )
+    }
+}
+
+/** A row of the account's box: the words after the [circle]'s column, where there is one, and [leading] in it. */
+@Composable
+private fun AccountRow(
+    circle: Boolean,
+    modifier: Modifier = Modifier,
+    leading: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = RowHeight.oneLine)
+            .padding(horizontal = BoxPadding, vertical = Space.s12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (circle) {
+            Box(Modifier.width(ProfileAvatarSize), contentAlignment = Alignment.Center) { leading?.invoke() }
+            Spacer(Modifier.width(Space.s16))
+        }
+        Column(Modifier.weight(1f), content = content)
+    }
+}
+
+/** Where the words of the account's rows start, after the circle: its separators start there. */
+private val AccountTextEdge = BoxPadding + ProfileAvatarSize + Space.s16
+
 /** The dot that says whether the server answers. */
 private val StatusDot = 8.dp
 
-/** Aroma's mark over its name, quiet and small in the middle, where the page ends. */
+/**
+ * Aroma's mark over its name, quiet and small in the middle, where the page ends. A tap opens the
+ * place Aroma is made, on GitHub.
+ */
 @Composable
-private fun Signature(modifier: Modifier = Modifier) {
+private fun Signature(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val tint = AromaTheme.colors.inkTertiary
+    val label = stringResource(R.string.settings_repository)
     Column(
         modifier
-            .fillMaxWidth()
-            .semantics(mergeDescendants = true) {},
+            .clip(AromaTheme.shapes.box)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label }
+            .padding(horizontal = Space.s24, vertical = SignatureReach),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(
@@ -372,15 +379,21 @@ private fun Signature(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(Space.s12))
         Icon(
             painterResource(R.drawable.aroma_wordmark),
-            contentDescription = stringResource(R.string.app_name),
+            contentDescription = null,
             tint = tint,
             modifier = Modifier.height(SignatureName),
         )
     }
 }
 
-/** Room above the signature, so it closes the page rather than joins its last box; its mark and its name. */
+/**
+ * Room above the signature, so it closes the page rather than joins its last box, and more below
+ * it, so the page ends in air and not on the screen's edge; how far its tap reaches around it; its
+ * mark and its name.
+ */
 private val SignatureGap = Space.s64
+private val SignatureEnd = Space.s64
+private val SignatureReach = Space.s16
 private val SignatureMark = 40.dp
 private val SignatureName = 20.dp
 

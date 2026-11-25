@@ -1,7 +1,15 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
@@ -20,12 +28,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,7 +59,8 @@ private const val DISABLED = 0.38f
 /**
  * The one main action of a screen: ink, with its label in paper and an optional 20 dp glyph before
  * it. [compact] is the one inside a box. While [loading], a fine ring takes the label's place, and
- * the button keeps its width.
+ * the button keeps its width. It takes on and gives up its ink as it becomes usable or not, and a
+ * label that changes cross-fades while the pill finds its new width.
  */
 @Composable
 fun PrimaryButton(
@@ -65,11 +76,17 @@ fun PrimaryButton(
 ) {
     val colors = AromaTheme.colors
     val usable = enabled && !loading
+    val fill by animateColorAsState(if (enabled || loading) colors.ink else colors.ink.copy(alpha = 0.12f), Motion.state(), label = "fill")
+    val content by animateColorAsState(
+        if (enabled || loading) colors.onInk else colors.ink.copy(alpha = DISABLED),
+        Motion.state(),
+        label = "content",
+    )
     ButtonFrame(
         onClick = onClick,
         enabled = usable,
-        fill = if (enabled || loading) colors.ink else colors.ink.copy(alpha = 0.12f),
-        content = if (enabled || loading) colors.onInk else colors.ink.copy(alpha = DISABLED),
+        fill = { fill },
+        content = content,
         height =
             if (compact) {
                 CompactButtonHeight
@@ -80,13 +97,27 @@ fun PrimaryButton(
             },
         onInk = true,
         modifier = modifier,
-    ) { content ->
-        Box(contentAlignment = Alignment.Center) {
-            ButtonLabel(text, icon, content, Modifier.alpha(if (loading) 0f else 1f), trailingIcon = trailingIcon)
-            if (loading) ButtonProgress(content)
+    ) { tint ->
+        Busy(loading, tint) {
+            AnimatedContent(
+                targetState = ButtonWords(text, icon, trailingIcon),
+                transitionSpec = {
+                    fadeIn(Motion.after()) togetherWith fadeOut(Motion.edge()) using
+                        SizeTransform(clip = false) { _, _ -> Motion.state() }
+                },
+                contentAlignment = Alignment.Center,
+                label = "primaryLabel",
+            ) { words -> ButtonLabel(words.text, words.icon, tint, trailingIcon = words.trailingIcon) }
         }
     }
 }
+
+/** What a button says: its label and its glyphs. */
+private data class ButtonWords(
+    val text: String,
+    @param:DrawableRes val icon: Int?,
+    @param:DrawableRes val trailingIcon: Int?,
+)
 
 /**
  * An action beside or below the main one: on the tonal fill where it stands, the page's or the
@@ -104,23 +135,36 @@ fun SecondaryButton(
     @DrawableRes icon: Int? = null,
 ) {
     val colors = AromaTheme.colors
-    val content = if (enabled) colors.ink else colors.ink.copy(alpha = DISABLED)
+    val content by animateColorAsState(if (enabled) colors.ink else colors.ink.copy(alpha = DISABLED), Motion.state(), label = "content")
+    val fill = AromaTheme.tonalFill
     ButtonFrame(
         onClick = onClick,
         enabled = enabled && !loading,
-        fill = AromaTheme.tonalFill,
+        fill = { fill },
         content = content,
         height = if (compact) CompactButtonHeight else ButtonHeight,
         onInk = false,
         modifier = modifier,
     ) { tint ->
-        Box(contentAlignment = Alignment.Center) {
+        Busy(loading, tint) {
             val shown = if (confirmed && icon != null) R.drawable.ic_check else icon
-            Crossfade(shown, animationSpec = Motion.state(), modifier = Modifier.alpha(if (loading) 0f else 1f), label = "secondaryIcon") {
+            Crossfade(shown, animationSpec = Motion.state(), label = "secondaryIcon") {
                 ButtonLabel(text, it, if (confirmed) colors.accent else tint, textColor = tint)
             }
-            if (loading) ButtonProgress(tint)
         }
+    }
+}
+
+/**
+ * A button's label, and the fine ring that takes its place while the button's work runs: the label
+ * fades out as the ring fades in, and back, in an edge's time, and the button keeps its width.
+ */
+@Composable
+private fun Busy(loading: Boolean, tint: Color, label: @Composable () -> Unit) {
+    val busy by animateFloatAsState(if (loading) 1f else 0f, Motion.edge(), label = "busy")
+    Box(contentAlignment = Alignment.Center) {
+        Box(Modifier.graphicsLayer { alpha = 1f - busy }) { label() }
+        AnimatedVisibility(visible = loading, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) { ButtonProgress(tint) }
     }
 }
 
@@ -128,7 +172,7 @@ fun SecondaryButton(
 private fun ButtonFrame(
     onClick: () -> Unit,
     enabled: Boolean,
-    fill: Color,
+    fill: () -> Color,
     content: Color,
     height: Dp,
     onInk: Boolean,
@@ -152,7 +196,8 @@ private fun ButtonFrame(
                     .wrapContentHeight()
                     .heightIn(min = height)
                     .clip(CircleShape)
-                    .background(fill)
+                    // Drawn rather than composed, so the fill eases without composing the button anew.
+                    .drawBehind { drawRect(fill()) }
                     .indication(interaction, if (onInk) PressTintOnInk else PressTint)
                     .padding(horizontal = if (height == CompactButtonHeight) Space.s16 else Space.s24, vertical = Space.s8),
             verticalAlignment = Alignment.CenterVertically,
@@ -208,13 +253,14 @@ fun TextAction(
 ) {
     val accent = AromaTheme.colors.accent
     val interaction = remember { MutableInteractionSource() }
+    val shown by animateFloatAsState(if (enabled) 1f else DISABLED, Motion.state(), label = "textAction")
     Row(
         modifier =
             modifier
                 // Within a line, the target reaches past it without pushing the lines apart.
                 .then(if (inline) Modifier else Modifier.heightIn(min = TouchTarget))
                 .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
-                .alpha(if (enabled) 1f else DISABLED),
+                .graphicsLayer { alpha = shown },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
@@ -259,6 +305,7 @@ enum class IconButtonPlace {
 /**
  * An icon that stands alone and takes a tap: always on a circle, a 20 dp glyph in ink, a 48 dp
  * target. [dot] marks it, as a filter in use. [confirmed] turns the glyph into a check for a moment.
+ * The glyph dims and brightens as the button becomes usable or not, and the dot fades in and out.
  */
 @Composable
 fun IconButton(
@@ -285,6 +332,7 @@ fun IconButton(
             else -> IconCircle
         }
     val interaction = remember { MutableInteractionSource() }
+    val shown by animateFloatAsState(if (enabled) 1f else DISABLED, Motion.state(), label = "iconButton")
     Box(
         modifier =
             modifier
@@ -305,16 +353,25 @@ fun IconButton(
                 Icon(
                     painterResource(it),
                     contentDescription = contentDescription,
-                    tint = (if (confirmed) colors.accent else colors.ink).copy(alpha = if (enabled) 1f else DISABLED),
-                    modifier = Modifier.size(Glyph.control),
+                    tint = if (confirmed) colors.accent else colors.ink,
+                    modifier =
+                        Modifier
+                            .size(Glyph.control)
+                            .graphicsLayer { alpha = shown },
                 )
             }
         }
-        if (dot) {
-            Box(
+        AnimatedVisibility(
+            visible = dot,
+            enter = fadeIn(Motion.edge()),
+            exit = fadeOut(Motion.edge()),
+            modifier =
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = Space.s4, end = Space.s4)
+                    .padding(top = Space.s4, end = Space.s4),
+        ) {
+            Box(
+                Modifier
                     .size(DotSize)
                     .background(colors.accent, CircleShape),
             )

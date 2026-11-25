@@ -69,17 +69,31 @@
     <string name="offline_notice">Offline. Du siehst deine gespeicherte Kopie.</string>
 
     <!-- Home -->
-    <string name="greeting_morning_name">Guten Morgen,\n%1$s</string>
-    <string name="greeting_afternoon_name">Guten Tag,\n%1$s</string>
-    <string name="greeting_evening_name">Guten Abend,\n%1$s</string>
-    <!-- Kitchen nicknames Home greets with, one a day: for everyone, whoever they are, and long enough to balance the greeting. -->
-    <string-array name="greeting_nicknames">
-        <item>Küchengenie</item>
-        <item>Kochtalent</item>
-        <item>Genussmensch</item>
-        <item>Gourmet</item>
-        <item>Naschkatze</item>
-        <item>Schleckermaul</item>
+    <!-- What Home greets with, by the time of day: one of them each day. -->
+    <string-array name="greeting_morning">
+        <item>Guten Morgen</item>
+        <item>Gut geschlafen?</item>
+        <item>Was gibt’s zum Frühstück?</item>
+    </string-array>
+    <string-array name="greeting_midday">
+        <item>Mahlzeit!</item>
+        <item>Was gibt’s heute Mittag?</item>
+        <item>Schon Hunger?</item>
+    </string-array>
+    <string-array name="greeting_afternoon">
+        <item>Guten Tag</item>
+        <item>Zeit für Kaffee und Kuchen?</item>
+        <item>Schon eine Idee fürs Abendessen?</item>
+    </string-array>
+    <string-array name="greeting_evening">
+        <item>Guten Abend</item>
+        <item>Was gibt’s heute Abend?</item>
+        <item>Was kochen wir heute?</item>
+    </string-array>
+    <string-array name="greeting_night">
+        <item>Na, was gibt’s als Snack?</item>
+        <item>Noch Hunger?</item>
+        <item>Lust auf eine Kleinigkeit?</item>
     </string-array>
     <string name="home_open_profile">Profil und Einstellungen</string>
     <string name="home_today">Heute</string>
@@ -397,8 +411,8 @@
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
-    <string name="settings_server_connected">Verbunden\u00A0· Mealie %1$s</string>
-    <string name="settings_server_offline">Nicht verbunden\u00A0· Mealie %1$s</string>
+    <string name="settings_server_connected">Verbunden\u00A0· Mealie\u00A0%1$s</string>
+    <string name="settings_server_offline">Nicht verbunden\u00A0· Mealie\u00A0%1$s</string>
     <string name="settings_appearance">Darstellung</string>
     <string name="settings_theme">Design</string>
     <string name="settings_theme_system">System</string>
@@ -410,33 +424,32 @@
     <string name="settings_home_description">Was die Startseite zeigt</string>
     <string name="settings_home_shown">%1$d von %2$d</string>
     <string name="settings_language">Sprache</string>
-    <string name="settings_app_language">Sprache der App</string>
     <string name="settings_language_system">System</string>
     <string name="settings_language_german">Deutsch</string>
     <string name="settings_language_english">English</string>
+    <string name="settings_recipes">Rezepte</string>
     <string name="settings_cooking">Kochen</string>
     <string name="settings_keep_screen_on">Bildschirm anlassen</string>
     <string name="settings_keep_screen_on_hint">Solange der Kochmodus geöffnet ist.</string>
     <string name="settings_next_step">Nächsten Schritt zeigen</string>
     <string name="settings_next_step_hint">Im Kochmodus unter jedem Schritt.</string>
     <string name="settings_ingredients_in_steps">Zutaten bei den Schritten</string>
-    <string name="settings_ingredients_in_steps_hint">Im Kochmodus und auf der Rezeptseite. Was ein Schritt braucht, findet Aroma dort, wo er es nennt.</string>
+    <string name="settings_ingredients_in_steps_hint">Im Kochmodus und auf der Rezeptseite.</string>
     <string name="ingredients_in_steps_none">Keine</string>
     <string name="ingredients_in_steps_used">Benötigte</string>
     <string name="ingredients_in_steps_all">Alle</string>
     <string name="settings_amounts_in_steps">Mengen in den Schritten</string>
-    <string name="settings_amounts_in_steps_hint">Wo ein Schritt eine Zutat zum ersten Mal nennt, steht ihre Menge dabei, etwa „75 g Couscous kochen“.</string>
-    <string name="settings_offline">Offline</string>
-    <string name="settings_offline_all">Alle Rezepte auf diesem Gerät speichern</string>
-    <string name="settings_offline_all_hint">Geöffnete Rezepte werden immer gespeichert. Damit lädst du auch alle anderen.</string>
+    <string name="settings_amounts_in_steps_hint">Aus „Couscous\u00A0kochen“ wird „75\u00A0g Couscous kochen“.</string>
+    <string name="settings_offline_all">Alle Rezepte offline speichern</string>
+    <string name="settings_offline_all_hint">Lädt auch die Rezepte, die du noch nicht geöffnet hast.</string>
     <plurals name="settings_offline_count">
-        <item quantity="one">%1$d Rezept auf diesem Gerät gespeichert</item>
-        <item quantity="other">%1$d Rezepte auf diesem Gerät gespeichert</item>
+        <item quantity="one">%1$d Rezept auf diesem Gerät</item>
+        <item quantity="other">%1$d Rezepte auf diesem Gerät</item>
     </plurals>
     <string name="settings_about">Über Aroma</string>
     <string name="settings_version">Version %1$s</string>
-    <string name="settings_updates_check">Tippe, um nach einer neueren Version zu suchen.</string>
-    <string name="settings_updates_checking">Neuere Version wird gesucht …</string>
+    <string name="settings_updates_check">Tippe, um nach Updates zu suchen.</string>
+    <string name="settings_updates_checking">Suche nach Updates …</string>
     <string name="settings_updates_current">Das ist die neueste Version.</string>
     <string name="settings_updates_failed">GitHub ist nicht erreichbar. Versuch es gleich noch einmal.</string>
     <string name="settings_updates_available">Aroma %1$s ist da.</string>
@@ -445,6 +458,7 @@
     <string name="settings_updates_at_start">Beim Start nach Updates suchen</string>
     <string name="settings_updates_at_start_hint">Fragt GitHub einmal bei jedem Start, nie im Hintergrund.</string>
     <string name="settings_licenses">Open-Source-Lizenzen</string>
+    <string name="settings_repository">Aroma auf GitHub</string>
     <string name="settings_sign_out">Abmelden</string>
     <string name="settings_sign_out_title">Abmelden?</string>
     <string name="settings_sign_out_message">Gespeicherte Rezepte und noch nicht übertragene Änderungen an Einkaufslisten werden von diesem Gerät entfernt.</string>
@@ -462,7 +476,8 @@
     <string name="measures_as_written">Wie im Rezept</string>
     <string name="measures_metric">Metrisch (g, ml)</string>
     <string name="measures_us">US (Cups, oz)</string>
-    <string name="measures_hint">Mengen, Backtemperaturen und Formgrößen; nur die Anzeige ändert sich.</string>
+    <string name="measures_hint">Nur die Anzeige ändert sich, nicht das Rezept.</string>
+    <string name="settings_measures_metric">Metrisch</string>
 
     <!-- Widgets -->
     <string name="widget_today_name">Heute</string>
