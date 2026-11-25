@@ -38,7 +38,18 @@ shapes at least 3 : 1 against their ground.
   overshoot. Content scrolls into a soft 16 dp edge under the status bar, and the collapsed head
   fades in with its paper. A skeleton shows only after 150 ms and fades out as the content fades
   in. A new look dissolves in 250 ms. Cards and boxes give way to 0.98 when pressed and tint with
-  ink at 6 %. With the system's animations off, pages only cross-fade.
+  ink at 6 %, and a quick tap shows the whole press. With the system's animations off, pages only
+  cross-fade.
+- **Motion in a page.** A change happens where it is. A figure that changes rolls 40 % of its line,
+  up as it counts up and down as it counts down, and the words around it stand still. A label that
+  changes in its place fades out before the new one fades in. A row that comes fades in where it
+  lands while the rows after it glide aside, or, outside a list, opens its room as it fades in. A row
+  that goes fades, then gives its room up. A tick fades with its circle. A switch's knob glides and
+  its track takes on its colour. A row that scrolls sideways fades out over the margin where more of
+  it lies beyond. A recipe's photo slides away at half the page's pace. A week swiped sideways
+  follows the finger, held back, and springs back where letting go would not turn it. A timer's dial
+  runs down with the clock, the one thing that keeps an even pace. The phone gives a tap where
+  something is done: a tick, a switch, a step reached, a timer started, a dish planned.
 - **Access.** Everything that takes a tap has words or a description for TalkBack; the screenshot
   tool checks it on every screen it renders. Up to 130 % font size, Android's largest before
   version 14, text reads in full; rows move an action under their words where the column would get

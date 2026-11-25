@@ -37,9 +37,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
@@ -80,6 +82,7 @@ import app.aroma.ui.components.RecipeCard
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.RecipeMetaLine
 import app.aroma.ui.components.RecipeRow
+import app.aroma.ui.components.RollingText
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SectionTitle
@@ -90,6 +93,7 @@ import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TextAction
 import app.aroma.ui.components.TonalBox
+import app.aroma.ui.components.animateOpenRow
 import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.breakable
 import app.aroma.ui.components.currentLocale
@@ -225,7 +229,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
 
                 state.error != null && state.recent.isEmpty() && state.week.isEmpty() -> {
                     item(key = "error") {
-                        ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.animateRow(this).measure())
+                        ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.animateOpenRow(this).measure())
                     }
                 }
 
@@ -437,16 +441,33 @@ private fun longDate(date: LocalDate, locale: Locale): String =
 
 /**
  * Today: the next meal planned, its photo across the top of the box, ready to cook, and the other
- * meals of the day as rows below. With nothing planned, three suggestions to plan for today.
+ * meals of the day as rows below. With nothing planned, three suggestions to plan for today. Once
+ * one is planned, or the next meal is another, the box fades through to what it shows now while
+ * the page glides to its new room.
  */
 @Composable
 private fun TodayBox(state: HomeUiState, suggestions: List<RecipeSummary>, actions: HomeActions, modifier: Modifier = Modifier) {
     val todays = state.todays
     val next = todays.firstOrNull { it.type.hour >= state.meal.mealType.hour } ?: todays.lastOrNull()
-    if (next == null) {
-        NothingPlanned(suggestions, actions, modifier)
-        return
+    AnimatedContent(
+        // Whole, so the box on its way out still shows what it held.
+        targetState = Today(next, if (next == null) emptyList() else todays - next, suggestions),
+        contentKey = { it.next?.id },
+        transitionSpec = { fadeIn(Motion.after()) togetherWith fadeOut(Motion.edge()) using roomAtOnce() },
+        modifier = modifier,
+        label = "today",
+    ) { today ->
+        val meal = today.next
+        if (meal == null) NothingPlanned(today.suggestions, actions) else PlannedToday(meal, today.others, actions)
     }
+}
+
+/** What today's box shows: the [next] meal and the [others] of the day, or [suggestions] where nothing is planned. */
+private data class Today(val next: MealPlanEntry?, val others: List<MealPlanEntry>, val suggestions: List<RecipeSummary>)
+
+/** The next meal planned for today, its photo across the top of the box, and the other meals of the day under it. */
+@Composable
+private fun PlannedToday(next: MealPlanEntry, others: List<MealPlanEntry>, actions: HomeActions, modifier: Modifier = Modifier) {
     val recipe = next.recipe
     TonalBox(modifier, contentPadding = PaddingValues()) {
         if (recipe != null) {
@@ -505,7 +526,6 @@ private fun TodayBox(state: HomeUiState, suggestions: List<RecipeSummary>, actio
                 }
             }
         }
-        val others = todays - next
         if (others.isNotEmpty()) {
             Column(
                 Modifier.padding(start = BoxPadding, end = BoxPadding, bottom = BoxPadding),
@@ -540,9 +560,10 @@ private fun todayMealLabel(type: MealType): String =
         else -> stringResource(R.string.home_today_other, mealTypeLabel(type))
     }
 
-/** Nothing planned for today: three suggestions as rows, each to plan with a tap. */
+/** Nothing planned for today: three suggestions as rows, each to plan with a tap one can feel. */
 @Composable
 private fun NothingPlanned(suggestions: List<RecipeSummary>, actions: HomeActions, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
     TonalBox(modifier) {
         BoxHeader(stringResource(R.string.home_today_empty))
         if (suggestions.isEmpty()) {
@@ -554,7 +575,12 @@ private fun NothingPlanned(suggestions: List<RecipeSummary>, actions: HomeAction
                         recipe = recipe,
                         onClick = { actions.onOpenRecipe(recipe.slug) },
                         onLongClick = { actions.onRecipeMenu(recipe) },
-                        trailing = { TextAction(stringResource(R.string.recipe_action_plan), { actions.onPlanToday(recipe) }) },
+                        trailing = {
+                            TextAction(stringResource(R.string.recipe_action_plan), {
+                                haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                                actions.onPlanToday(recipe)
+                            })
+                        },
                     )
                 }
             }
@@ -687,7 +713,7 @@ private fun ShoppingBox(open: Int, onOpen: () -> Unit, modifier: Modifier = Modi
                     .padding(start = Space.s12),
             ) {
                 Text(stringResource(R.string.home_shopping_list), style = AromaTheme.type.label)
-                Text(pluralStringResource(R.plurals.home_shopping_open, open, open), style = AromaTheme.type.meta)
+                RollingText(pluralStringResource(R.plurals.home_shopping_open, open, open), style = AromaTheme.type.meta)
             }
             Icon(
                 painterResource(R.drawable.ic_chevron_right),
@@ -789,24 +815,28 @@ private const val NEWEST_PHOTO = 4f / 3f
 /**
  * Holds the rate prompt. Answered or dismissed, the box fades where it stands and gives up its room
  * once it has all but faded, and the page below glides in. A new prompt takes its room at once and
- * fades in as the page glides aside.
+ * fades in as the page glides aside. It only fades: it never grows or shrinks.
  */
 @Composable
 private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions, modifier: Modifier = Modifier) {
     AnimatedContent(
         targetState = toRate,
         contentKey = { it?.recipeId },
-        transitionSpec = {
-            // It fades in and out where it stands, and never grows or shrinks.
-            fadeIn(Motion.state()) togetherWith fadeOut(Motion.edge()) using
-                SizeTransform(clip = false) { initial, target -> if (target.height < initial.height) snap(Motion.EDGE / 2) else snap() }
-        },
+        transitionSpec = { fadeIn(Motion.state()) togetherWith fadeOut(Motion.edge()) using roomAtOnce() },
         modifier = modifier.fillMaxWidth(),
         label = "ratePrompt",
     ) { reminder ->
         if (reminder != null) RatePrompt(reminder, actions)
     }
 }
+
+/**
+ * The room of a box in Home's list that turns into another: taken at once where the new one is
+ * taller, so the page glides aside as it fades in, and given up a moment into the fade where it is
+ * shorter, so the page glides in over what has all but faded.
+ */
+private fun roomAtOnce(): SizeTransform =
+    SizeTransform(clip = false) { initial, target -> if (target.height < initial.height) snap(Motion.EDGE / 2) else snap() }
 
 /** Asks, without a notification, how the last recipe cooked turned out. */
 @Composable

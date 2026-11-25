@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.aroma.ui.components.AromaSwitch
@@ -28,14 +30,19 @@ internal fun SwitchRow(
     description: String? = null,
     onSheet: Boolean = false,
 ) {
+    val haptics = LocalHapticFeedback.current
     SettingsRow(
         title = title,
         icon = icon,
         description = description,
         modifier =
             modifier
-                .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+                .toggleable(value = checked, role = Role.Switch, onValueChange = {
+                    // The phone confirms the switch turning, on or off, as Android's own switches do.
+                    haptics.performHapticFeedback(if (it) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
+                    onCheckedChange(it)
+                })
                 .padding(horizontal = if (onSheet) PageMargin - BoxPadding else 0.dp),
-        trailing = { AromaSwitch(checked = checked, onCheckedChange = null) },
+        trailing = { AromaSwitch(checked = checked) },
     )
 }

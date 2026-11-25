@@ -493,11 +493,11 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     @Test
     fun shoppingNoList() = shoot("shopping_no_list") { ShoppingScreen(ShoppingUiState(isLoading = false), ShoppingActions()) }
 
-    /** The curry's step of nine ingredients, with their amounts in its text, two ticked off, beside a running timer. */
+    /** The curry's step of nine ingredients, with their amounts in its text, two ticked off, beside a timer part way down. */
     @Test
     fun cook() =
         shoot("cook") {
-            val timer = CookTimerUi(1, t("Schritt 2", "Step 2"), remainingSeconds = 432, isRunning = true)
+            val timer = CookTimerUi(1, t("Schritt 2", "Step 2"), remainingSeconds = 432, isRunning = true, totalSeconds = 600)
             val state =
                 CookUiState(
                     recipe = sample.curry,

@@ -18,13 +18,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 
-/** A running or paused countdown. [endsAt] is on the elapsed-realtime clock and null while paused. */
+/**
+ * A running or paused countdown. [endsAt] is on the elapsed-realtime clock and null while paused;
+ * [durationMillis] is how long it was set for, to show how much of it is left.
+ */
 data class CookingTimer(
     val id: Long,
     val label: String,
     val recipeName: String,
     val endsAt: Long?,
     val remainingMillis: Long,
+    val durationMillis: Long = remainingMillis,
 ) {
     val isRunning: Boolean get() = endsAt != null
 

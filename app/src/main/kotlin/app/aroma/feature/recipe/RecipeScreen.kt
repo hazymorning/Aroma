@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -42,8 +43,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -114,6 +117,7 @@ import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.labelRes
 import app.aroma.ui.components.ratingDescription
 import app.aroma.ui.components.recipeTimeText
+import app.aroma.ui.components.reducedMotion
 import app.aroma.ui.components.rememberIngredientRows
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.components.rememberStepText
@@ -245,7 +249,12 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
                     ) {
                         item(key = HERO_KEY) {
                             if (hasPhoto) {
-                                Hero(recipe, saved = state.isFavorite, onUnsave = actions.onToggleFavorite)
+                                Hero(
+                                    recipe,
+                                    saved = state.isFavorite,
+                                    onUnsave = actions.onToggleFavorite,
+                                    scrolled = { if (listState.firstVisibleItemIndex == 0) listState.firstVisibleItemScrollOffset else 0 },
+                                )
                             } else {
                                 PageButtons(state.isFavorite, actions, menu)
                             }
@@ -456,7 +465,8 @@ private fun MoreMenu(actions: RecipeActions, menu: PageMenu, place: IconButtonPl
 /**
  * Plan and shop as icon buttons, the two things people do with a recipe besides cooking it, and
  * cooking itself across the rest of the bar, the page's one main action. Shop is there where
- * there is something to buy; cooking, where there are steps to cook by.
+ * there is something to buy; cooking, where there are steps to cook by. Once planning or shopping
+ * went through, its button shows a check and the phone gives a tap to feel it.
  */
 @Composable
 private fun RecipeActionBar(
@@ -466,6 +476,10 @@ private fun RecipeActionBar(
     actions: RecipeActions,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(confirmed) {
+        if (confirmed != null) haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+    }
     BottomActionBar(modifier) {
         IconButton(
             icon = R.drawable.ic_calendar_add,
@@ -502,22 +516,30 @@ private fun heroHeight(): Dp {
 
 /**
  * The photo to the edges, with a shade at its top. A saved recipe's ribbon hangs from its top edge
- * where the save button stood, its foot level with the buttons; a tap on it lets the recipe go.
+ * where the save button stood, its foot level with the buttons; a tap on it lets the recipe go. As
+ * the page scrolls, the photo slides away at half its pace, as if the page passed over it; how far
+ * the page has [scrolled] past the photo's top is read while drawing, so it composes nothing anew.
+ * With the system's animations off, the photo scrolls with the page.
  */
 @Composable
-private fun Hero(recipe: Recipe, saved: Boolean, onUnsave: () -> Unit) {
+private fun Hero(recipe: Recipe, saved: Boolean, onUnsave: () -> Unit, scrolled: () -> Int) {
     val statusBar = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
+    val parallax = if (reducedMotion()) 0f else Motion.PARALLAX
     Box(
         Modifier
             .fillMaxWidth()
-            .height(heroHeight()),
+            .height(heroHeight())
+            .clipToBounds(),
     ) {
         RecipeImage(
             image = recipe.image,
             size = ImageSize.Original,
             placeholder = ImageSize.Medium,
             fallbackIconSize = HeroPlateSize,
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { translationY = scrolled() * parallax },
         )
         val scrim = AromaTheme.colors.scrim
         Box(

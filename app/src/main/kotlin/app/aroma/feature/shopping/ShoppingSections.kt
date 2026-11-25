@@ -1,8 +1,11 @@
 package app.aroma.feature.shopping
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -63,6 +66,7 @@ import app.aroma.ui.components.CheckCircle
 import app.aroma.ui.components.CheckSize
 import app.aroma.ui.components.EmptyState
 import app.aroma.ui.components.GroupHead
+import app.aroma.ui.components.RollingText
 import app.aroma.ui.components.Separator
 import app.aroma.ui.components.SwipeToRemove
 import app.aroma.ui.components.Text
@@ -128,10 +132,10 @@ internal fun LazyListScope.shoppingSections(
                     text = stringResource(R.string.shopping_empty_title),
                     actionLabel = stringResource(R.string.shopping_add_from_plan),
                     onAction = actions.onAddFromPlan,
-                    modifier = Modifier.animateRow(this),
+                    modifier = Modifier.animateRow(this).paperGround(),
                 )
             } else {
-                EmptyState(text = stringResource(R.string.shopping_done_title), modifier = Modifier.animateRow(this))
+                EmptyState(text = stringResource(R.string.shopping_done_title), modifier = Modifier.animateRow(this).paperGround())
             }
         }
     }
@@ -142,6 +146,7 @@ internal fun LazyListScope.shoppingSections(
                 modifier =
                     Modifier
                         .animateRow(this)
+                        .paperGround()
                         .padding(start = PageMargin, end = PageMargin, top = if (index == 0) 0.dp else Space.s24, bottom = Space.s12),
             )
         }
@@ -154,12 +159,20 @@ internal fun LazyListScope.shoppingSections(
                 open = showDone,
                 onToggle = { onShowDone(!showDone) },
                 onClear = actions.onClearChecked,
-                modifier = Modifier.animateRow(this),
+                modifier = Modifier.animateRow(this).paperGround(),
             )
         }
         if (showDone) itemRows(groups.checked, state, actions, large, onEdit)
     }
 }
+
+/**
+ * The page's paper under a row that stands open on it, an aisle's name or the head of what is done,
+ * across the whole width, so that as it glides over a row that leaves, it covers that row as the
+ * rows of a box do, and the box closes up from below.
+ */
+@Composable
+private fun Modifier.paperGround(): Modifier = fillMaxWidth().background(AromaTheme.colors.background)
 
 /**
  * The rows of one box, a separator between each two, inset to their text. A row keyed by where it
@@ -202,7 +215,7 @@ private fun LazyListScope.itemRows(
 
 /**
  * "Done (3)": what is in the basket, folded away until a tap opens it; the way to clear it stands
- * at its end.
+ * at its end, fading in as it opens. The count rolls as items go in and out of the basket.
  */
 @Composable
 private fun DoneHead(
@@ -228,7 +241,11 @@ private fun DoneHead(
                 .semantics { heading() },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.shopping_done_group, count), style = AromaTheme.type.label, color = AromaTheme.colors.inkSecondary)
+            RollingText(
+                stringResource(R.string.shopping_done_group, count),
+                style = AromaTheme.type.label,
+                color = AromaTheme.colors.inkSecondary,
+            )
             Spacer(Modifier.width(Space.s4))
             Icon(
                 painterResource(R.drawable.ic_expand_more),
@@ -240,7 +257,9 @@ private fun DoneHead(
                         .rotate(turn),
             )
         }
-        if (open) TextAction(stringResource(R.string.shopping_clear_checked), onClear)
+        AnimatedVisibility(visible = open, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
+            TextAction(stringResource(R.string.shopping_clear_checked), onClear)
+        }
     }
 }
 

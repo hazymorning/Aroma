@@ -1,8 +1,5 @@
 package app.aroma.feature.shopping
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,13 +7,16 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -72,6 +72,7 @@ import app.aroma.ui.components.SkeletonLine
 import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.TonalBox
 import app.aroma.ui.components.TopBar
+import app.aroma.ui.components.animateOpenRow
 import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.rememberHeaderState
@@ -80,7 +81,6 @@ import app.aroma.ui.components.scrolledBeneath
 import app.aroma.ui.components.skeletonRow
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.HeaderGap
-import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 import kotlinx.coroutines.flow.first
@@ -151,7 +151,7 @@ fun ShoppingScreen(
         if (focusAdd) {
             shoppingMode = false
             adding = true
-            // The field shows once a list does, as part of the list's first item, laid out a frame later.
+            // The field shows once a list does, as an item of the list under its head, laid out a frame later.
             snapshotFlow { current.list != null }.first { it }
             listState.scrollToItem(0)
             addFocus.requestWhenAttached()
@@ -178,25 +178,31 @@ fun ShoppingScreen(
             )
         }
     }
+    val barInset = LocalBottomBarInset.current
     Box(modifier.fillMaxSize()) {
         AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 state = listState,
-                contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + EndSpace),
-                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = barInset + EndSpace),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        // While typing, the list ends above the keyboard, which covers the bar, so all of it
+                        // can still be brought into view; its end follows the keyboard as it slides.
+                        .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets(bottom = barInset))),
             ) {
                 item(key = "header") {
-                    Header(
-                        state = state,
-                        groups = groups,
-                        header = header,
-                        shoppingMode = shoppingMode,
-                        adding = adding || state.newItem.isNotEmpty(),
-                        addFocus = addFocus,
-                        actions = actions,
-                        headActions = headActions,
-                    )
+                    Header(state = state, groups = groups, header = header, shoppingMode = shoppingMode, headActions = headActions)
                 }
+                // The field and the quiet lines under the head are rows of their own, so the list glides
+                // aside as they come and back as they go.
+                if (state.list != null && (adding || state.newItem.isNotEmpty()) && !shoppingMode) {
+                    item(key = "add") { AddField(state, addFocus, actions, Modifier.animateRow(this)) }
+                }
+                if (state.isOffline || state.pendingChanges > 0) {
+                    item(key = "sync") { SyncStatus(state.isOffline, state.pendingChanges, Modifier.animateRow(this)) }
+                }
+                item(key = "headGap") { Spacer(Modifier.animateRow(this).height(HeaderGap)) }
                 body(
                     state = state,
                     groups = groups,
@@ -318,7 +324,7 @@ private fun LazyListScope.body(
         }
 
         groups == null && state.error != null -> {
-            item(key = "error") { ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.animateRow(this)) }
+            item(key = "error") { ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.animateOpenRow(this)) }
         }
 
         groups == null -> {
@@ -327,7 +333,7 @@ private fun LazyListScope.body(
                     text = stringResource(R.string.shopping_no_lists_title),
                     actionLabel = stringResource(R.string.shopping_create_list),
                     onAction = onCreateList,
-                    modifier = Modifier.animateRow(this),
+                    modifier = Modifier.animateOpenRow(this),
                 )
             }
         }
@@ -344,65 +350,57 @@ private fun Header(
     groups: ShoppingGroups?,
     header: HeaderState,
     shoppingMode: Boolean,
-    adding: Boolean,
-    addFocus: FocusRequester,
-    actions: ShoppingActions,
     headActions: @Composable () -> Unit,
 ) {
     val list = state.list
     val open = groups?.sections?.sumOf { it.items.size } ?: 0
-    Column(Modifier.padding(bottom = HeaderGap)) {
-        LargeHeader(
-            title = stringResource(R.string.nav_shopping),
-            state = header,
-            subtitle =
-                list?.let {
-                    {
-                        val count = pluralStringResource(R.plurals.shopping_open, open, open)
-                        Subtitle(
-                            when {
-                                shoppingMode -> stringResource(R.string.shopping_mode_hint)
-                                state.lists.size > 1 -> "${list.name}$SEPARATOR$count"
-                                else -> count
-                            },
-                        )
-                    }
-                },
-            actions = { headActions() },
-        )
-        AnimatedVisibility(
-            visible = list != null && adding && !shoppingMode,
-            enter = fadeIn(Motion.edge()),
-            exit = fadeOut(Motion.edge()),
-        ) {
-            PillField(
-                value = state.newItem,
-                onValueChange = actions.onNewItemChange,
-                placeholder = stringResource(R.string.shopping_add_hint),
-                leadingIcon = R.drawable.ic_add,
-                imeAction = ImeAction.Done,
-                onSubmit = actions.onAddItem,
-                focusRequester = addFocus,
-                capitalization = KeyboardCapitalization.Sentences,
-                modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
-                trailing =
-                    if (state.newItem.isNotBlank()) {
-                        { IconButton(R.drawable.ic_check, stringResource(R.string.shopping_add), actions.onAddItem) }
-                    } else {
-                        null
-                    },
-            )
-        }
-        SyncStatus(offline = state.isOffline, pendingChanges = state.pendingChanges)
-    }
+    LargeHeader(
+        title = stringResource(R.string.nav_shopping),
+        state = header,
+        subtitle =
+            list?.let {
+                {
+                    val count = pluralStringResource(R.plurals.shopping_open, open, open)
+                    Subtitle(
+                        when {
+                            shoppingMode -> stringResource(R.string.shopping_mode_hint)
+                            state.lists.size > 1 -> "${list.name}$SEPARATOR$count"
+                            else -> count
+                        },
+                    )
+                }
+            },
+        actions = { headActions() },
+    )
+}
+
+/** The field that adds an item, 16 dp under the head; its button adds what was typed. */
+@Composable
+private fun AddField(state: ShoppingUiState, addFocus: FocusRequester, actions: ShoppingActions, modifier: Modifier = Modifier) {
+    PillField(
+        value = state.newItem,
+        onValueChange = actions.onNewItemChange,
+        placeholder = stringResource(R.string.shopping_add_hint),
+        leadingIcon = R.drawable.ic_add,
+        imeAction = ImeAction.Done,
+        onSubmit = actions.onAddItem,
+        focusRequester = addFocus,
+        capitalization = KeyboardCapitalization.Sentences,
+        modifier = modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
+        trailing =
+            if (state.newItem.isNotBlank()) {
+                { IconButton(R.drawable.ic_check, stringResource(R.string.shopping_add), actions.onAddItem) }
+            } else {
+                null
+            },
+    )
 }
 
 /** That the list is the offline copy, and how many changes wait to be sent, in quiet lines. */
 @Composable
-private fun SyncStatus(offline: Boolean, pendingChanges: Int) {
-    if (!offline && pendingChanges == 0) return
+private fun SyncStatus(offline: Boolean, pendingChanges: Int, modifier: Modifier = Modifier) {
     Column(
-        Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
+        modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
         verticalArrangement = Arrangement.spacedBy(Space.s4),
     ) {
         if (offline) OfflineNotice()

@@ -150,6 +150,18 @@ object Motion {
     const val STIFFNESS_EDGE = 1500f
     const val STIFFNESS_STATE = 550f
     const val STIFFNESS_SLOW = 300f
+
+    /** How far a figure that changes drifts as it rolls, a share of its line: up as it counts up, down as it counts down. */
+    const val ROLL = 0.4f
+
+    /** What takes another's place, a label in its button: it fades in once the other has all but faded, so the two never blur. */
+    fun <T> after() = tween<T>(EDGE, delayMillis = EDGE / 2, easing = Decelerate)
+
+    /** How fast the photo at the head of a page moves as the page scrolls over it, against the page's own pace. */
+    const val PARALLAX = 0.5f
+
+    /** How much of a swipe the page under the finger follows, held back, before letting go turns it. */
+    const val SWIPE_PULL = 0.4f
 }
 
 /**

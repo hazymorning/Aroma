@@ -1,11 +1,14 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -13,12 +16,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -36,9 +40,10 @@ import kotlin.math.roundToInt
 
 /**
  * A recipe's photo: a quiet fill while it loads, then the photo fading in over 200 ms. A fine
- * outline inside its edge keeps a light photo from melting into the paper. Recipes without a photo,
- * or with one that will not load, keep the fill with a plate on it. With [placeholder], a smaller
- * copy already in memory, from a card, stands in until [size] arrives.
+ * outline inside its edge keeps a light photo from melting into the paper. Recipes without a photo
+ * keep the fill with a plate on it; where a photo will not load, the plate fades in as the photo
+ * would have. With [placeholder], a smaller copy already in memory, from a card, stands in until
+ * [size] arrives.
  */
 @Composable
 fun RecipeImage(
@@ -55,15 +60,22 @@ fun RecipeImage(
     val fadeIn = (Motion.IMAGE * systemAnimationScale()).roundToInt()
     // Ink at 6 % on paper; on dark photos in the dark, white at 6 %.
     val outline = if (colors.isDark) Color.White.copy(alpha = OUTLINE) else colors.ink.copy(alpha = OUTLINE)
+    // A photo that is not there to begin with has its plate at once; one that fails, after a fade.
+    val plate = remember(image) { Animatable(if (image == null) 1f else 0f) }
+    LaunchedEffect(failed) { if (failed) plate.animateTo(1f, tween(Motion.IMAGE, easing = Motion.Decelerate)) }
     Box(
         modifier =
             modifier
                 .clip(shape)
                 .background(colors.surfacePressed)
-                .drawWithContent {
-                    drawContent()
+                .drawWithCache {
+                    val edge = shape.createOutline(this.size, layoutDirection, this)
                     // Twice as wide as shown: the outer half falls outside the clip, the inner pixel stays.
-                    drawOutline(shape.createOutline(this.size, layoutDirection, this), outline, style = Stroke(width = 2f))
+                    val stroke = Stroke(width = 2f)
+                    onDrawWithContent {
+                        drawContent()
+                        drawOutline(edge, outline, style = stroke)
+                    }
                 },
         contentAlignment = Alignment.Center,
     ) {
@@ -72,7 +84,10 @@ fun RecipeImage(
                 painter = painterResource(fallbackIcon),
                 contentDescription = null,
                 tint = colors.inkTertiary,
-                modifier = Modifier.size(fallbackIconSize),
+                modifier =
+                    Modifier
+                        .size(fallbackIconSize)
+                        .graphicsLayer { alpha = plate.value },
             )
         }
         if (image != null) {
