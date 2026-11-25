@@ -19,6 +19,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowAlarmManager
 import org.robolectric.shadows.ShadowSystemClock
 import java.time.Duration
 
@@ -69,6 +70,21 @@ class CookingTimersTest {
             assertTrue(alarms.scheduledAlarms.isEmpty())
             timers.toggle(dough.id)
             assertEquals(1, alarms.scheduledAlarms.size)
+        }
+
+    @Test
+    fun `a timer set going before exact alarms were allowed rings on time once they are`() =
+        runTest {
+            ShadowAlarmManager.setCanScheduleExactAlarms(false)
+            val timers = CookingTimers(context, backgroundScope)
+            timers.start(60, "Teig", "Brot")
+            timers.useExactAlarms()
+            assertEquals(ShadowAlarmManager.WINDOW_HEURISTIC, alarms.scheduledAlarms.single().windowLengthMs)
+
+            ShadowAlarmManager.setCanScheduleExactAlarms(true)
+            timers.useExactAlarms()
+
+            assertEquals(ShadowAlarmManager.WINDOW_EXACT, alarms.scheduledAlarms.single().windowLengthMs)
         }
 
     /** Moves on both the clock the timers read and the one their loop waits on. */

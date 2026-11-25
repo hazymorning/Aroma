@@ -97,6 +97,14 @@ class CookingTimers(private val context: Context, scope: CoroutineScope) {
         mutableTimers.value = emptyList()
     }
 
+    /**
+     * Sets the running timers' alarms again once Aroma may set exact ones. From Android 14 on it may not
+     * at first, and allowing it in the system's settings leaves the inexact alarms already set as they are.
+     */
+    fun useExactAlarms() {
+        if (canUseExactAlarms) mutableTimers.value.filter { it.isRunning }.forEach(::schedule)
+    }
+
     /** Moves [now] on and rings the timers that have ended. */
     private fun tick() {
         val now = SystemClock.elapsedRealtime()

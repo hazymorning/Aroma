@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -510,6 +511,11 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
         onDispose { view.keepScreenOn = false }
     }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    // Back from the settings that allow exact alarms, the timers running meanwhile ring on time too.
+    LifecycleResumeEffect(vm) {
+        vm.useExactAlarms()
+        onPauseOrDispose { }
+    }
     CookScreen(
         state = state,
         actions =

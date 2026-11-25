@@ -94,6 +94,8 @@ class CookViewModel(
 
     fun dismissTimer(id: Long) = timers.dismiss(id)
 
+    fun useExactAlarms() = timers.useExactAlarms()
+
     /** Only a saved rating ends the reminder; otherwise Home still asks later. 0 takes the rating back. */
     fun rate(stars: Int) {
         val recipe = base.value.recipe ?: return
