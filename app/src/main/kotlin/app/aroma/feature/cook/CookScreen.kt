@@ -239,7 +239,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                 }
 
                 else -> {
-                    StepProgress(pager.currentPage, steps.size)
+                    StepProgress(pager, steps.size)
                     // Without a step that names an ingredient, every box would only ever say there is none.
                     val showsIngredients =
                         rows.isNotEmpty() &&
@@ -310,9 +310,12 @@ private fun TopBar(hasIngredients: Boolean, onClose: () -> Unit, onIngredients: 
     }
 }
 
-/** One segment per step, fully round: the steps done and the one on screen in sage, the rest open. */
+/**
+ * One segment per step, fully round: the steps done and the one on screen in sage, the rest open.
+ * The next segment fills as the page turns to its step, in step with the finger or the button.
+ */
 @Composable
-private fun StepProgress(current: Int, steps: Int) {
+private fun StepProgress(pager: PagerState, steps: Int) {
     val colors = AromaTheme.colors
     Row(
         modifier =
@@ -323,14 +326,18 @@ private fun StepProgress(current: Int, steps: Int) {
         horizontalArrangement = Arrangement.spacedBy(Space.s4),
     ) {
         repeat(steps) { index ->
-            val fill by animateFloatAsState(if (index <= current) 1f else 0f, Motion.state(), label = "stepFill")
             Box(
                 Modifier
                     .weight(1f)
                     .height(ProgressHeight)
                     .clip(CircleShape)
                     .background(colors.surfacePressed)
-                    .drawBehind { drawRect(colors.accent, size = size.copy(width = size.width * fill)) },
+                    .drawBehind {
+                        // Read where the pages stand while drawing, so turning a page composes nothing anew.
+                        val position = pager.currentPage + pager.currentPageOffsetFraction
+                        val fill = (position - index + 1f).coerceIn(0f, 1f)
+                        if (fill > 0f) drawRect(colors.accent, size = size.copy(width = size.width * fill))
+                    },
             )
         }
     }
