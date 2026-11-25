@@ -66,7 +66,7 @@ private class TintNode(private val interactionSource: InteractionSource, private
     }
 }
 
-/** Ink at 6 %, as the brief has it; on ink, paper a little stronger, as dark fills hide a faint tint. */
+/** Ink at 6 %; on ink, paper a little stronger, as dark fills hide a faint tint. */
 private const val INK_TINT = 0.06f
 private const val ON_INK_TINT = 0.12f
 

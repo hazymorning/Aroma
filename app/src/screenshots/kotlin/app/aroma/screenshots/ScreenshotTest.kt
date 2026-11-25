@@ -92,8 +92,8 @@ abstract class ScreenshotTest {
     }
 
     /**
-     * Everything that takes a tap says what it is, in its own words or in a description for TalkBack
-     * (section 9): a button without either is read out as an unnamed button.
+     * Everything that takes a tap says what it is, in its own words or in a description for TalkBack:
+     * a button without either is read out as an unnamed button.
      */
     private fun assertTapsAreNamed(name: String) {
         val unnamed =

@@ -65,8 +65,8 @@ val EndSpace: Dp = Space.s24
 val GridColumnGap: Dp = Space.s16
 
 /**
- * Between the rows of the recipe grid. The one distance off the scale, as the brief asks for it: a
- * row of cards carries its title and meta under the photo, and needs a little more than 24 dp.
+ * Between the rows of the recipe grid. The one distance off the scale: a row of cards carries its
+ * title and meta under the photo, and needs a little more than 24 dp.
  */
 val GridRowGap: Dp = 28.dp
 

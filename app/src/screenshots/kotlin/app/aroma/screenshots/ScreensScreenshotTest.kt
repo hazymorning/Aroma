@@ -109,9 +109,9 @@ import java.io.File
 import java.util.UUID
 
 /**
- * Every screen and sheet in its states, with the sample content and with the design brief's test
- * texts (see [Brief]), in each [Look]. Pages that scroll are also shown whole, in a window tall
- * enough to hold them.
+ * Every screen and sheet in its states, with the sample content and with German edge cases (see
+ * [Extremes]), in each [Look]. Pages that scroll are also shown whole, in a window tall enough to
+ * hold them.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @Config(qualifiers = "w411dp-h891dp-xxhdpi")
@@ -185,18 +185,18 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
             TabFrame(Tab.Home) { HomeScreen(state, HomeActions()) }
         }
 
-    /** The longest titles of the brief for today and the suggestions, under a long name, all of it. */
+    /** Long compound titles for today and the suggestions, all of the page. */
     @Test
     fun homeExtreme() =
         shootWhole("home_extreme") {
             val state =
                 homeFull.copy(
                     firstName = "Maximiliane",
-                    date = Brief.today,
-                    week = Brief.entries,
-                    suggestions = Brief.recipes,
+                    date = Extremes.today,
+                    week = Extremes.entries,
+                    suggestions = Extremes.recipes,
                     openItems = 12,
-                    toRate = Brief.recipes[5].let { RateReminder(it.id, it.slug, it.name, it.image) },
+                    toRate = Extremes.recipes[5].let { RateReminder(it.id, it.slug, it.name, it.image) },
                 )
             TabFrame(Tab.Home) { HomeScreen(state, HomeActions()) }
         }
@@ -217,15 +217,15 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
 
     /** Everything a recipe can have, saved, with 30 ingredients in four groups and a step with a title. */
     @Test
-    fun recipeFull() = shootWhole("recipe_full", recipe(recipeState(Brief.full).copy(isFavorite = true)))
+    fun recipeFull() = shootWhole("recipe_full", recipe(recipeState(Extremes.full).copy(isFavorite = true)))
 
     /** The longest title, a yield of "1 Blech" and times as free text. */
     @Test
-    fun recipeExtreme() = shoot("recipe_extreme", content = recipe(recipeState(Brief.longTitle)))
+    fun recipeExtreme() = shoot("recipe_extreme", content = recipe(recipeState(Extremes.longTitle)))
 
     /** Nothing but a name: no photo, times, headnote or rating. */
     @Test
-    fun recipeBare() = shoot("recipe_bare", content = recipe(recipeState(Brief.bare)))
+    fun recipeBare() = shoot("recipe_bare", content = recipe(recipeState(Extremes.bare)))
 
     @Test
     fun recipeLoading() = shoot("recipe_loading", content = recipe(RecipeUiState(isLoading = true)))
@@ -355,14 +355,14 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     fun recipesMealUnfiled() =
         shoot("recipes_meal_unfiled", content = recipes(RecipesUiState(isLoading = false, filter = RecipeFilter(meal = Meal.Lunch))))
 
-    /** The brief's titles in the grid, two of them saved. */
+    /** Long compound titles and the shortest in the grid, two of them saved. */
     @Test
     fun recipesExtreme() =
         shoot(
             "recipes_extreme",
             content =
                 recipes(
-                    RecipesUiState(recipes = Brief.recipes, total = Brief.recipes.size, saved = setOf("k0", "k5"), isLoading = false),
+                    RecipesUiState(recipes = Extremes.recipes, total = Extremes.recipes.size, saved = setOf("k0", "k5"), isLoading = false),
                 ),
         )
 
@@ -373,7 +373,12 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
             "recipes_search",
             content =
                 recipes(
-                    RecipesUiState(filter = RecipeFilter(query = "Blech"), recipes = Brief.recipes.take(3), total = 3, isLoading = false),
+                    RecipesUiState(
+                        filter = RecipeFilter(query = "Blech"),
+                        recipes = Extremes.recipes.take(3),
+                        total = 3,
+                        isLoading = false,
+                    ),
                 ),
         )
 
@@ -410,12 +415,20 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
             content = plan(MealPlanUiState(today = sample.today, weekStart = sample.today, days = sample.week, isLoading = false)),
         )
 
-    /** The brief's week under way, all of it: Monday folded away, today on its surface, empty days with their link. */
+    /** A week under way, all of it: a day gone by, today with the longest title and the shortest, and the empty days' slots. */
     @Test
     fun mealPlanExtreme() =
         shootWhole(
             "mealplan_extreme",
-            plan(MealPlanUiState(today = Brief.today, weekStart = Brief.monday, days = Brief.week, weekItems = 46, isLoading = false)),
+            plan(
+                MealPlanUiState(
+                    today = Extremes.today,
+                    weekStart = Extremes.monday,
+                    days = Extremes.week,
+                    weekItems = 46,
+                    isLoading = false,
+                ),
+            ),
         )
 
     /** A week with nothing planned yet. */
@@ -423,7 +436,8 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     fun mealPlanEmpty() =
         shoot(
             "mealplan_empty",
-            content = plan(MealPlanUiState(today = Brief.today, weekStart = Brief.monday, days = Brief.emptyWeek, isLoading = false)),
+            content =
+                plan(MealPlanUiState(today = Extremes.today, weekStart = Extremes.monday, days = Extremes.emptyWeek, isLoading = false)),
         )
 
     /** The week across the turn of the month, with the link back to this week. */
@@ -431,7 +445,15 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     fun mealPlanNextMonth() =
         shoot(
             "mealplan_next_month",
-            content = plan(MealPlanUiState(today = Brief.today, weekStart = Brief.nextMonday, days = Brief.turnOfMonth, isLoading = false)),
+            content =
+                plan(
+                    MealPlanUiState(
+                        today = Extremes.today,
+                        weekStart = Extremes.nextMonday,
+                        days = Extremes.turnOfMonth,
+                        isLoading = false,
+                    ),
+                ),
         )
 
     /** Planning a dish for a day: the meal, recipe or note, and the recipes to tap, on the margin and 12 dp apart. */
@@ -484,7 +506,7 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
 
     /** Forty things to buy in four groups and some without, three ticked off, all of them. */
     @Test
-    fun shoppingExtreme() = shootWhole("shopping_extreme", shopping(Brief.longList))
+    fun shoppingExtreme() = shootWhole("shopping_extreme", shopping(Extremes.longList))
 
     @Test
     fun shoppingEmptyList() = shoot("shopping_empty", content = shopping(sample.shoppingList.copy(items = emptyList())))
@@ -526,7 +548,7 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     /** The step with a title, of the recipe with 30 ingredients. */
     @Test
     fun cookTitled() =
-        shoot("cook_titled") { CookScreen(CookUiState(recipe = Brief.full, isLoading = false), CookActions(), initialPage = 2) }
+        shoot("cook_titled") { CookScreen(CookUiState(recipe = Extremes.full, isLoading = false), CookActions(), initialPage = 2) }
 
     @Test
     fun cookLandscape() {
@@ -745,8 +767,8 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
         private val GESTURE_NAVIGATION = 24.dp
 
         /**
-         * German light and dark, whose words run longest; English; and the narrowest phone the brief
-         * aims at, 360 dp, with large text: 130 %, Android's largest before version 14.
+         * German light and dark, whose words run longest; English; and the narrowest phone Aroma is
+         * set for, 360 dp, with large text: 130 %, Android's largest before version 14.
          */
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")

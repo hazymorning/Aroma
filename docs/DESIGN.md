@@ -1,9 +1,12 @@
 # Aroma design
 
 A well-set cookbook in two colours: warm paper, ink and one sage, a book face (Newsreader) for
-names and recipes, a calm sans (Instrument Sans) for everything that is read or tapped. The photos
-bring the colour. Light and dark follow the system; "Colours from your wallpaper" tints only the
-sage.
+names and recipes, a calm sans (Instrument Sans) for everything that is read or tapped. Ink is for
+text, icons and the one main action. Sage marks amounts, links, progress and what is chosen, and
+red is kept for errors and for removing something for good. The photos bring all other colour.
+Light and dark follow the system; "Colours from your wallpaper" tints only the sage. The widgets
+take the same colours, from `widget_colors.xml`, which follows `Color.kt`. Launchers set a widget's
+words in the system's serif and sans, as they allow no other fonts.
 
 The values live in `ui/theme` (`Color.kt`, `Type.kt`, `Tokens.kt`, `Shadows.kt`, `Theme.kt`), the
 pieces in `ui/components`, one of each. Screens under `feature/` are built from those two only, and
@@ -17,19 +20,55 @@ shapes at least 3 : 1 against their ground.
 - **Space.** 4, 8, 12, 16, 20, 24, 32, 40, 48, 64 dp. Page margin 24, box padding 16, boxes 12
   apart, sections 40 apart, 12 from a section's title to its content. From the status bar to a
   title 16, title to subtitle 4, head to content 24, back button row to title 16, eyebrow to title 8.
-  Recipe grid: 2 columns, 16 apart, rows 28 apart. Touch targets at least 48.
+  Recipe grid: 2 columns, 16 apart, rows 28 apart. The 28 is the one distance off the scale: a row
+  of cards carries its names and times under the photos and needs a little more than 24. Content
+  that scrolls ends 24 above any bar, so nothing stays hidden under one. Touch targets at least 48.
+  The ingredients on a recipe's page are lines of 40, as a cookbook sets its list: at 48 they read
+  like a list of settings. They meet without a gap across the page, so a tap still finds its line.
 - **Edges.** Text, boxes, fields and the first pill of a selection row all start on the page
   margin, with nothing reaching past it. The meal plan sets its days on that margin, every row as
   tall as a meal's 64 dp picture; today says "Heute" in sage over its date in full ink. Only the
   week strip on Home puts today's date in an ink circle.
 - **Surfaces.** On the page's paper stand boxes in `surface`; inside a box, `surfaceInBox`. No
-  borders. The one line is `separator`, inset to the text, between rows of a grouped list in a box.
-  Bottom bars and sheets cast a soft warm shadow, twice as dense in the dark, and have no line.
+  borders. A box holds a state, an action or figures, such as today's meal, the week or the
+  shopping list. What is read, recipes, ingredients and steps, stands open on the paper, as in a
+  cookbook. The one line is `separator`, inset to the text, between rows of a grouped list in a box.
+  Bottom bars and sheets cast a soft warm shadow, twice as dense in the dark, and have no line. Only
+  what floats over the page casts a shadow, never a box. Photos have a fine outline at 6 % inside
+  their edge, so a light one does not melt into the paper. A recipe's photo at the head of its page
+  is shaded at the top, so the status bar and the buttons read on it.
 - **Bars.** Navigation bar 80 dp (16 above the pill, 12 below the label), labels grow to 130 %.
   Action bars have 16 dp all around their buttons. The collapsed head is 56 dp.
+- **Icons.** Aroma draws its own on a 24 dp grid, in 1.5 dp strokes with round ends, and a new one
+  is drawn the same way, so they stay one set. A chosen tab's icon has 2 dp strokes. An icon that
+  stands alone and takes a tap stands on a circle, so it reads as a button: 40 dp on the page, on
+  photos and in the heads, 48 in the bottom bars and 56 beside cook mode's taller buttons, always in
+  a 48 dp target. The heads keep 40: a 48 dp circle would leave 4 dp of air in the 56 dp collapsed
+  head, and the back button keeps one size and place as the head collapses. Icons in a button with
+  words, a row or a line of meta have no circle of their own.
+- **Actions.** A screen has at most one primary button, in ink, for its main action. A screen
+  without one, such as the plan or the shopping list, has none rather than one made up for it. What
+  manages a thing rather than uses it waits a level down, in the ⋯ menu, a sheet or the editor, so
+  pages stay calm and nothing is lost.
+- **States.** Emptiness is quiet: one line and its action, no picture, never taller than what it
+  stands for. Where the two do not fit on one line, the action moves under the words instead of
+  squeezing them. A page that cannot load says so the same way, with "Try again". An error of a
+  field or a button stands under it, where it happened. What loads shows a skeleton in the shape of
+  what is coming. The only spinner turns in a button, or in its place, while its action runs. What
+  a recipe does not have is left out, not shown empty: empty stars would read as a poor rating, and
+  "0 min" as a dish that takes no time. A recipe without a photo opens like any pushed page.
 - **Type.** Only the roles in `Type.kt`. The serif names: page titles, recipe names, section titles,
   group labels, figures. Everything else is the sans. Titles hyphenate and break balanced; words of
-  four to seven letters are never hyphenated.
+  four to seven letters are never hyphenated. A compound breaks after a hyphen, never before one,
+  and each part hyphenates on its own: by itself, Android never hyphenates a word that holds a
+  hyphen and would break it anywhere. Text that is cut ends after a whole word with "…", not in the
+  middle of one.
+- **Numbers.** Set as a typesetter sets them. Amounts, times and counts have tabular figures, so
+  they stand in columns and do not jitter. A narrow no-break space holds a number to its unit,
+  "500 g", so the two never part at a line's end. A span takes an en dash, "10–15 min", and a
+  fraction its own character, "½". The dot between facts keeps to the word before it, so no line
+  starts with "·". The narrow space is for the screen alone: times written back to Mealie keep
+  plain spaces.
 - **Motion.** 150 ms for edges, 250 ms for a change of state and the selection pill, 220 ms for a
   page: the old page fades out, the new one fades in and drifts a few dp into place. The back
   gesture plays the same under the finger, and the tab bar comes and goes with its page. Nothing
@@ -86,9 +125,5 @@ Screenshots of every screen, sheet and widget render on demand for a design revi
 `./gradlew :app:recordRoborazziDebug -Pscreenshots --tests 'app.aroma.screenshots.*'` or the
 Screenshots workflow; the images land in `app/build/outputs/roborazzi`. Each screen shows in
 German, light and dark, in English, and at 130 % font size on a 360 dp phone, with the sample
-content and the brief's test texts. The tool lives in `app/src/screenshots` and builds only with
-`-Pscreenshots`.
-
-The design round that set these rules is written up in `docs/design`: the brief (`AUFTRAG.md`),
-every decision and deviation (`PROGRESS.md`) and the report with before and after images
-(`BERICHT.md`).
+content and with German edge cases, such as long compound titles and a recipe with nothing but its
+name. The tool lives in `app/src/screenshots` and builds only with `-Pscreenshots`.

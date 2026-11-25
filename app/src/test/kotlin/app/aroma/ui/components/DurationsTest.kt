@@ -9,7 +9,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Every time a recipe comes with reads the same way on every page, the test times of the design brief included. */
+/** Every time a recipe comes with reads the same way on every page, whether Mealie keeps it as a duration or as free text. */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "de")
 class DurationsTest {
