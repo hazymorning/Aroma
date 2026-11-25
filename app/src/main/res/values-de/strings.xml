@@ -458,6 +458,7 @@
     <string name="settings_updates_at_start">Beim Start nach Updates suchen</string>
     <string name="settings_updates_at_start_hint">Fragt GitHub einmal bei jedem Start, nie im Hintergrund.</string>
     <string name="settings_licenses">Open-Source-Lizenzen</string>
+    <string name="settings_repository">Aroma auf GitHub</string>
     <string name="settings_sign_out">Abmelden</string>
     <string name="settings_sign_out_title">Abmelden?</string>
     <string name="settings_sign_out_message">Gespeicherte Rezepte und noch nicht übertragene Änderungen an Einkaufslisten werden von diesem Gerät entfernt.</string>

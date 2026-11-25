@@ -14,11 +14,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToKeyAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import app.aroma.core.format.MeasureSystem
@@ -137,6 +140,11 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     }
 
     private fun scrollTo(key: String): () -> Unit = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey(key) }
+
+    /** Scrolls a page that is no list as far down as it goes. */
+    private fun scrollToEnd() {
+        composeRule.onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, SCROLL_TO_END) }
+    }
 
     private val homeFull
         get() =
@@ -564,6 +572,11 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     @Test
     fun settings() = shoot("settings") { SettingsScreen(settings("Mara Berger", "mara@example.com"), SettingsActions()) }
 
+    /** The end of the page: the signature, with room below it. */
+    @Test
+    fun settingsEnd() =
+        shoot("settings_end", interact = ::scrollToEnd) { SettingsScreen(settings("Mara Berger", "mara@example.com"), SettingsActions()) }
+
     /** The settings for cooking on a sheet of their own, opened from the page. */
     @Test
     fun settingsCooking() =
@@ -726,6 +739,7 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
 
     companion object {
         private const val WHOLE_PAGE = 4200
+        private const val SCROLL_TO_END = 100_000f
         private const val JPEG_QUALITY = 90
         private val SNACKBAR_LIFT = 96.dp
         private val GESTURE_NAVIGATION = 24.dp

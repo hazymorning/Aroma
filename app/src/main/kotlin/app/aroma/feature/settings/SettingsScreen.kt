@@ -25,12 +25,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -103,8 +105,12 @@ data class SettingsActions(
     val onInstallUpdate: (UpdateState.Available) -> Unit = {},
     val onCheckUpdatesAtStartChange: (Boolean) -> Unit = {},
     val onOpenLicenses: () -> Unit = {},
+    val onOpenUrl: (String) -> Unit = {},
     val onSignOut: () -> Unit = {},
 )
+
+/** Where Aroma is made, which its signature opens. */
+private const val AROMA_REPOSITORY = "https://github.com/hazymorning/Aroma"
 
 /** A sheet the settings open: the values of one setting, what Home shows, or everything for cooking. */
 private enum class SettingsSheet { Theme, HomeSections, Language, Cooking }
@@ -186,7 +192,13 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     onClick = actions.onOpenLicenses,
                 )
             }
-            Signature(Modifier.padding(top = SignatureGap))
+            Signature(
+                onClick = { actions.onOpenUrl(AROMA_REPOSITORY) },
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = SignatureGap - SignatureReach, bottom = SignatureEnd),
+            )
         }
     }
     when (sheet) {
@@ -342,14 +354,20 @@ private val AccountTextEdge = BoxPadding + ProfileAvatarSize + Space.s16
 /** The dot that says whether the server answers. */
 private val StatusDot = 8.dp
 
-/** Aroma's mark over its name, quiet and small in the middle, where the page ends. */
+/**
+ * Aroma's mark over its name, quiet and small in the middle, where the page ends. A tap opens the
+ * place Aroma is made, on GitHub.
+ */
 @Composable
-private fun Signature(modifier: Modifier = Modifier) {
+private fun Signature(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val tint = AromaTheme.colors.inkTertiary
+    val label = stringResource(R.string.settings_repository)
     Column(
         modifier
-            .fillMaxWidth()
-            .semantics(mergeDescendants = true) {},
+            .clip(AromaTheme.shapes.box)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label }
+            .padding(horizontal = Space.s24, vertical = SignatureReach),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(
@@ -361,15 +379,21 @@ private fun Signature(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(Space.s12))
         Icon(
             painterResource(R.drawable.aroma_wordmark),
-            contentDescription = stringResource(R.string.app_name),
+            contentDescription = null,
             tint = tint,
             modifier = Modifier.height(SignatureName),
         )
     }
 }
 
-/** Room above the signature, so it closes the page rather than joins its last box; its mark and its name. */
+/**
+ * Room above the signature, so it closes the page rather than joins its last box, and more below
+ * it, so the page ends in air and not on the screen's edge; how far its tap reaches around it; its
+ * mark and its name.
+ */
 private val SignatureGap = Space.s64
+private val SignatureEnd = Space.s64
+private val SignatureReach = Space.s16
 private val SignatureMark = 40.dp
 private val SignatureName = 20.dp
 

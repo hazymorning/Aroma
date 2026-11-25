@@ -739,6 +739,7 @@ fun SettingsDestination(nav: NavController) {
                 onInstallUpdate = vm::installUpdate,
                 onCheckUpdatesAtStartChange = { vm.setCheckUpdatesAtStart(it) },
                 onOpenLicenses = { nav.navigate(LicensesRoute) },
+                onOpenUrl = { openUrl(context, it) },
                 onSignOut = { vm.signOut() },
             ),
     )
