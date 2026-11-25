@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +32,7 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -196,6 +199,41 @@ fun ChoiceRow(label: String, chosen: Boolean, modifier: Modifier = Modifier, des
 }
 
 private val ChoiceHeight = 56.dp
+
+/** The values to choose one of, on a sheet; choosing one applies it and lets the sheet slide away. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> ChoiceSheet(
+    title: String,
+    options: List<T>,
+    selected: T?,
+    optionLabel: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sheetState = rememberFullSheetState()
+    val scope = rememberCoroutineScope()
+    AromaBottomSheet(onDismissRequest = onDismiss, title = title, modifier = modifier, sheetState = sheetState) {
+        Column(
+            Modifier
+                .selectableGroup()
+                .padding(bottom = Space.s16),
+        ) {
+            options.forEach { option ->
+                ChoiceRow(
+                    label = optionLabel(option),
+                    chosen = option == selected,
+                    modifier =
+                        Modifier.selectable(selected = option == selected, role = Role.RadioButton) {
+                            onSelect(option)
+                            scope.hideThen(sheetState, onDismiss)
+                        },
+                )
+            }
+        }
+    }
+}
 
 /**
  * A menu on the bars' paper with the soft shadow of what floats. The popup is padded by the

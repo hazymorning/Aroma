@@ -153,7 +153,6 @@ class RecipesViewModel(
             when (kind) {
                 OrganizerKind.Category -> filter.copy(categories = filter.categories.toggle())
                 OrganizerKind.Tag -> filter.copy(tags = filter.tags.toggle())
-                OrganizerKind.Tool -> filter.copy(tools = filter.tools.toggle())
             }
         }
 
@@ -163,6 +162,9 @@ class RecipesViewModel(
     }
 
     fun clearFilters() = changeFilter { RecipeFilter(query = it.query, sort = it.sort) }
+
+    /** Clears the filters and puts the order back to the newest first, in one load; the search stays. */
+    fun resetFilters() = changeFilter { RecipeFilter(query = it.query) }
 
     private fun changeFilter(change: (RecipeFilter) -> RecipeFilter) {
         mutableState.update { it.copy(filter = change(it.filter)) }
@@ -216,7 +218,6 @@ class RecipesViewModel(
                 favoritesOnly = filter.favoritesOnly,
                 categories = filter.categories.map { it.id },
                 tags = filter.tags.map { it.id },
-                tools = filter.tools.map { it.id },
                 cookbook = cookbook,
                 mealNames = names.orEmpty(),
                 readyWithin = QUICK_MINUTES.takeIf { filter.quick },

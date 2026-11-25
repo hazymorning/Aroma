@@ -57,7 +57,7 @@ fun IngredientList(
 ) {
     val amountStyle = AromaTheme.type.body.tabular()
     val textMeasurer = rememberTextMeasurer()
-    val amounts = remember(rows) { rows.map { measureText(it.line) } }
+    val amounts = remember(rows) { rows.map { styledMeasure(it.line) } }
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val density = LocalDensity.current
         val widest = remember(amounts, amountStyle) { amounts.maxOfOrNull { textMeasurer.measure(it, amountStyle).size.width } ?: 0 }

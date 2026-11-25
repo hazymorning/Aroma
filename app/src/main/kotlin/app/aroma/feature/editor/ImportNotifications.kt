@@ -1,20 +1,18 @@
 package app.aroma.feature.editor
 
-import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.work.ForegroundInfo
 import app.aroma.R
+import app.aroma.checkNotificationPermission
 import app.aroma.data.AromaError
 import app.aroma.data.settings.inAppLanguage
 import app.aroma.ui.components.messageRes
@@ -185,11 +183,7 @@ object ImportNotifications {
         PendingIntent.getActivity(context, id.hashCode(), intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
     private fun notify(context: Context, tag: String?, id: Int, notification: Notification) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
+        if (!context.checkNotificationPermission()) return
         NotificationManagerCompat.from(context).notify(tag, id, notification)
     }
 }

@@ -20,33 +20,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -56,17 +48,17 @@ import app.aroma.core.model.ShoppingList
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaAlertDialog
-import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaDropdownMenu
 import app.aroma.ui.components.AromaMenuItem
 import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.AromaSnackbarHost
 import app.aroma.ui.components.CheckSize
-import app.aroma.ui.components.ChoiceRow
+import app.aroma.ui.components.ChoiceSheet
 import app.aroma.ui.components.EmptyState
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.HeaderState
 import app.aroma.ui.components.IconButton
+import app.aroma.ui.components.KeepScreenOn
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.LargeHeader
 import app.aroma.ui.components.LocalBottomBarInset
@@ -81,9 +73,8 @@ import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.TonalBox
 import app.aroma.ui.components.TopBar
 import app.aroma.ui.components.currentLocale
-import app.aroma.ui.components.hideThen
-import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.rememberHeaderState
+import app.aroma.ui.components.requestWhenAttached
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.HeaderGap
 import app.aroma.ui.theme.Motion
@@ -111,7 +102,7 @@ data class ShoppingActions(
     val onAddItem: () -> Unit = {},
     val onToggle: (ShoppingItem) -> Unit = {},
     val onDelete: (ShoppingItem) -> Unit = {},
-    val onEdit: (ShoppingItem, String) -> Unit = { _, _ -> },
+    val onRenameItem: (ShoppingItem, String) -> Unit = { _, _ -> },
     val onClearChecked: () -> Unit = {},
     val onSelectList: (String) -> Unit = {},
     val onCreateList: (String) -> Unit = {},
@@ -144,6 +135,7 @@ fun ShoppingScreen(
     var shoppingMode by rememberSaveable { mutableStateOf(false) }
     var adding by rememberSaveable { mutableStateOf(false) }
     var showDone by rememberSaveable { mutableStateOf(false) }
+    // Shopping mode keeps the screen awake, so the list stays readable between shelves.
     KeepScreenOn(shoppingMode)
     // Another list, or shopping mode with its larger rows, is another page rather than an edit of this one.
     val listState = key(state.list?.id, shoppingMode) { rememberLazyListState() }
@@ -159,17 +151,13 @@ fun ShoppingScreen(
             // The field shows once a list does, as part of the list's first item, laid out a frame later.
             snapshotFlow { current.list != null }.first { it }
             listState.scrollToItem(0)
-            withFrameNanos {}
-            runCatching { addFocus.requestFocus() }
+            addFocus.requestWhenAttached()
             // Only now: consuming changes the key, which would end this effect.
             consumeFocusAdd()
         }
     }
     LaunchedEffect(adding) {
-        if (adding) {
-            withFrameNanos {}
-            runCatching { addFocus.requestFocus() }
-        }
+        if (adding) addFocus.requestWhenAttached()
     }
     // Grouped here, not in the list's builder, which runs again on every keystroke in the add field.
     val groups = remember(state.list) { state.list?.grouped() }
@@ -245,7 +233,7 @@ fun ShoppingScreen(
             title = stringResource(R.string.shopping_edit_item),
             initial = itemLine(item, locale).toPlainText(),
             onConfirm = {
-                actions.onEdit(item, it)
+                actions.onRenameItem(item, it)
                 editingId = null
             },
             onDismiss = { editingId = null },
@@ -296,20 +284,17 @@ private fun ShoppingDialogs(dialog: ShoppingDialog?, state: ShoppingUiState, act
         }
 
         ShoppingDialog.Lists -> {
-            ListsSheet(state.lists, state.list?.id, onSelect = actions.onSelectList, onDismiss = onDismiss)
+            ChoiceSheet(
+                title = stringResource(R.string.shopping_switch_list),
+                options = state.lists,
+                selected = state.lists.firstOrNull { it.id == state.list?.id },
+                optionLabel = { it.name },
+                onSelect = { actions.onSelectList(it.id) },
+                onDismiss = onDismiss,
+            )
         }
 
         null -> {}
-    }
-}
-
-/** Shopping mode keeps the screen awake, so the list stays readable between shelves. */
-@Composable
-private fun KeepScreenOn(enabled: Boolean) {
-    val view = LocalView.current
-    DisposableEffect(enabled) {
-        view.keepScreenOn = enabled
-        onDispose { view.keepScreenOn = false }
     }
 }
 
@@ -465,33 +450,6 @@ private fun ListMenu(
                 onClick = { choose { openDialog(ShoppingDialog.Delete) } },
                 destructive = true,
             )
-        }
-    }
-}
-
-/** The lists to switch to, the shown one checked; choosing one shows it and lets the sheet slide away. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ListsSheet(lists: List<ShoppingListInfo>, current: String?, onSelect: (String) -> Unit, onDismiss: () -> Unit) {
-    val sheetState = rememberFullSheetState()
-    val scope = rememberCoroutineScope()
-    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.shopping_switch_list), sheetState = sheetState) {
-        Column(
-            Modifier
-                .selectableGroup()
-                .padding(bottom = Space.s16),
-        ) {
-            lists.forEach { info ->
-                ChoiceRow(
-                    label = info.name,
-                    chosen = info.id == current,
-                    modifier =
-                        Modifier.selectable(selected = info.id == current, role = Role.RadioButton) {
-                            onSelect(info.id)
-                            scope.hideThen(sheetState, onDismiss)
-                        },
-                )
-            }
         }
     }
 }

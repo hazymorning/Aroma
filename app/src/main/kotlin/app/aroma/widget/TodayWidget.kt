@@ -9,7 +9,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.collectAsState
@@ -28,7 +27,6 @@ import androidx.glance.action.Action
 import androidx.glance.action.action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
@@ -57,9 +55,9 @@ import app.aroma.AppContainer
 import app.aroma.R
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.MealPlanEntry
-import app.aroma.core.model.MealType
 import app.aroma.data.attempt
 import app.aroma.data.session.SessionState
+import app.aroma.ui.components.labelRes
 import app.aroma.ui.navigation.LaunchRequest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -116,7 +114,7 @@ class TodayWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
     }
 }
 
-class TodayWidgetReceiver : GlanceAppWidgetReceiver() {
+class TodayWidgetReceiver : AromaWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TodayWidget()
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -128,21 +126,9 @@ class TodayWidgetReceiver : GlanceAppWidgetReceiver() {
         }
     }
 
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        Widgets.keepFresh(context)
-    }
-
-    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        super.onUpdate(context, appWidgetManager, appWidgetIds)
-        // Also called without widgets, as the clock or the language changes: then nothing needs refreshing.
-        if (appWidgetIds.isNotEmpty()) Widgets.keepFresh(context)
-    }
-
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         TodayRollover.cancel(context)
-        Widgets.removed(context)
     }
 }
 
@@ -565,7 +551,7 @@ private fun MealRow(
             Spacer(GlanceModifier.width(16.dp))
         }
         Column(GlanceModifier.defaultWeight()) {
-            val kind = label ?: context.getString(meal.type.label)
+            val kind = label ?: context.getString(meal.type.labelRes)
             Text(
                 kind,
                 style = WidgetType.small.copy(color = if (washed) WidgetColors.onSelected else WidgetColors.onSurfaceVariant),
@@ -649,7 +635,7 @@ private fun open(meal: MealPlanEntry): Action {
 @ReadOnlyComposable
 private fun leadLabel(plan: TodayPlan, lead: MealPlanEntry): String {
     val context = LocalContext.current
-    val kind = context.getString(lead.type.label)
+    val kind = context.getString(lead.type.labelRes)
     return if (plan.day.date == plan.today) kind else context.getString(R.string.widget_tomorrow_meal, kind)
 }
 
@@ -669,19 +655,6 @@ private val MealPlanEntry.name: String get() = recipe?.name ?: title.ifBlank { n
 
 @get:DrawableRes
 private val MealPlanEntry.glyph: Int get() = if (recipe != null) R.drawable.ic_plate else R.drawable.ic_notes
-
-@get:StringRes
-private val MealType.label: Int
-    get() =
-        when (this) {
-            MealType.Breakfast -> R.string.meal_breakfast
-            MealType.Lunch -> R.string.meal_lunch
-            MealType.Dinner -> R.string.meal_dinner
-            MealType.Side -> R.string.meal_side
-            MealType.Snack -> R.string.meal_snack
-            MealType.Drink -> R.string.meal_drink
-            MealType.Dessert -> R.string.meal_dessert
-        }
 
 /** About as large as the next meal's photo shows: filling a widget two cells by two, or beside the day. */
 private val HERO_SIZE = 200.dp

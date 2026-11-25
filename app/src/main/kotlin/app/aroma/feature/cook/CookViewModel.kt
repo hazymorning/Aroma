@@ -12,6 +12,7 @@ import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
 import app.aroma.timer.CookingTimer
 import app.aroma.timer.CookingTimers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -60,21 +61,32 @@ class CookViewModel(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), base.value)
 
+    private var loadJob: Job? = null
+
     init {
         load()
     }
 
+    /** Loads the recipe anew; a load still under way gives way, so an older answer never shows over a newer one. */
     fun load() {
-        viewModelScope.launch {
-            base.update { it.copy(isLoading = it.recipe == null, error = null) }
-            recipes
-                .recipe(slug)
-                .catch { error -> base.update { it.copy(isLoading = false, error = error.toAromaError()) } }
-                .collect { loadable ->
-                    val rating = recipes.ratings.value[loadable.data.id]?.rating
-                    base.update { it.copy(recipe = loadable.data, isLoading = false, rating = rating ?: it.rating ?: loadable.data.rating) }
-                }
-        }
+        loadJob?.cancel()
+        loadJob =
+            viewModelScope.launch {
+                base.update { it.copy(isLoading = it.recipe == null, error = null) }
+                recipes
+                    .recipe(slug)
+                    .catch { error -> base.update { it.copy(isLoading = false, error = error.toAromaError()) } }
+                    .collect { loadable ->
+                        val rating = recipes.ratings.value[loadable.data.id]
+                        base.update {
+                            it.copy(
+                                recipe = loadable.data,
+                                isLoading = false,
+                                userRating = if (rating != null) rating.rating else it.userRating,
+                            )
+                        }
+                    }
+            }
     }
 
     fun startTimer(seconds: Int, label: String) {
@@ -94,18 +106,20 @@ class CookViewModel(
 
     fun dismissTimer(id: Long) = timers.dismiss(id)
 
+    fun useExactAlarms() = timers.useExactAlarms()
+
     /** Only a saved rating ends the reminder; otherwise Home still asks later. 0 takes the rating back. */
     fun rate(stars: Int) {
         val recipe = base.value.recipe ?: return
-        val previous = base.value.rating
-        base.update { it.copy(rating = stars.takeIf { s -> s > 0 }?.toDouble()) }
+        val previous = base.value.userRating
+        base.update { it.copy(userRating = stars.takeIf { s -> s > 0 }?.toDouble()) }
         viewModelScope.launch {
             try {
                 recipes.rate(recipe.id, recipe.slug, stars)
                 base.update { it.copy(ratedHere = stars > 0) }
                 if (stars > 0) reminder.clear(recipe.id)
             } catch (_: AromaError) {
-                base.update { it.copy(rating = previous) }
+                base.update { it.copy(userRating = previous) }
             }
         }
     }

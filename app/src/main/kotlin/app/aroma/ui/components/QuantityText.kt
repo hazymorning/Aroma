@@ -21,7 +21,7 @@ fun AnnotatedString.Builder.appendQuantity(quantity: DisplayQuantity) {
 }
 
 /** The amount and unit of [line] as the amounts' column and the steps set them: "250 g", "1–2 EL". */
-fun measureText(line: IngredientLine): AnnotatedString =
+fun styledMeasure(line: IngredientLine): AnnotatedString =
     buildAnnotatedString {
         line.amount?.let { appendQuantity(it) }
         line.amountUpper?.let {

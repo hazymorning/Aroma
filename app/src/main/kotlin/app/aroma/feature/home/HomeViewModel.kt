@@ -3,7 +3,6 @@ package app.aroma.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.Meal
-import app.aroma.core.model.MealType
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
@@ -21,13 +20,11 @@ import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
@@ -36,6 +33,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -64,8 +62,8 @@ class HomeViewModel(
     private val mutableState = MutableStateFlow(HomeUiState(greeting = greetingFor(LocalTime.now(clock)), date = LocalDate.now(clock)))
     val state: StateFlow<HomeUiState> = mutableState.asStateFlow()
 
-    private val mutableEvents = MutableSharedFlow<HomeEvent>(extraBufferCapacity = 2)
-    val events: SharedFlow<HomeEvent> = mutableEvents.asSharedFlow()
+    private val outbox = Channel<HomeEvent>(Channel.BUFFERED)
+    val events: Flow<HomeEvent> = outbox.receiveAsFlow()
 
     private var loads: List<Job> = emptyList()
 
@@ -164,10 +162,10 @@ class HomeViewModel(
         viewModelScope.launch {
             try {
                 mealPlans.add(today, state.value.meal.mealType, recipe.id, "", "")
-                mutableEvents.emit(HomeEvent.Planned(today))
+                outbox.send(HomeEvent.Planned(today))
                 load(refreshing = false)
             } catch (error: AromaError) {
-                mutableEvents.emit(HomeEvent.Failed(error))
+                outbox.send(HomeEvent.Failed(error))
             }
         }
     }
@@ -184,21 +182,24 @@ class HomeViewModel(
                 date = today,
             )
         }
+        val meal = Meal.at(LocalTime.now(clock))
+        val sources =
+            listOf(
+                Source(mealPlans.range(today.with(DayOfWeek.MONDAY), DAYS_OF_WEEK)) { copy(week = it) },
+                Source(suggestions(meal, today)) { (forMeal, list) -> copy(meal = meal, suggestionsForMeal = forMeal, suggestions = list) },
+                Source(recipes.quick(today)) { copy(quick = it) },
+                Source(recipes.recent()) { copy(recent = it) },
+                Source(openItems()) { copy(openItems = it) },
+            )
         // The page shows as soon as every section has something to show, from the phone's copy or from
         // Mealie; a pull to refresh ends once every section has heard from Mealie or found it out of reach.
-        val sections = Sections(count = 5)
-        val meal = Meal.at(LocalTime.now(clock))
-        loads =
-            listOf(
-                viewModelScope.launch { refreshUser() },
-                collect(mealPlans.range(today.with(DayOfWeek.MONDAY), DAYS_OF_WEEK), sections) { copy(week = it) },
-                collect(suggestions(meal, today), sections) { (forMeal, list) ->
-                    copy(meal = meal, suggestionsForMeal = forMeal, suggestions = list)
-                },
-                collect(recipes.quick(today), sections) { copy(quick = it) },
-                collect(recipes.recent(), sections) { copy(recent = it) },
-                collect(openItems(), sections) { copy(openItems = it) },
-            )
+        val sections = Sections(count = sources.size)
+        loads = listOf(viewModelScope.launch { refreshUser() }) + sources.map { it.load(sections) }
+    }
+
+    /** Where a section of the page comes from, and what it changes on the page. */
+    private inner class Source<T>(private val source: Flow<Loadable<T>>, private val apply: HomeUiState.(T) -> HomeUiState) {
+        fun load(sections: Sections): Job = collect(source, sections, apply)
     }
 
     /** Counts down the sections of one load, all on the main thread. */
@@ -291,16 +292,3 @@ class HomeViewModel(
             }
     }
 }
-
-/** The plan's meal for a meal of the day. */
-private val Meal.mealType: MealType
-    get() =
-        when (this) {
-            Meal.Breakfast -> MealType.Breakfast
-            Meal.Lunch -> MealType.Lunch
-            Meal.Snack -> MealType.Snack
-            Meal.Dinner -> MealType.Dinner
-            Meal.Dessert -> MealType.Dessert
-            Meal.Side -> MealType.Side
-            Meal.Drink -> MealType.Drink
-        }

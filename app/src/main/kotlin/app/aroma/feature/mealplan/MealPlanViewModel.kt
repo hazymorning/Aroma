@@ -17,17 +17,17 @@ import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -66,8 +66,8 @@ class MealPlanViewModel(
     private val mutableSearch = MutableStateFlow(PlanSearchState())
     val search: StateFlow<PlanSearchState> = mutableSearch.asStateFlow()
 
-    private val mutableEvents = MutableSharedFlow<MealPlanEvent>(extraBufferCapacity = 4)
-    val events: SharedFlow<MealPlanEvent> = mutableEvents.asSharedFlow()
+    private val outbox = Channel<MealPlanEvent>(Channel.BUFFERED)
+    val events: Flow<MealPlanEvent> = outbox.receiveAsFlow()
 
     private val searchQuery = MutableStateFlow("")
     private var loadJob: Job? = null
@@ -188,11 +188,11 @@ class MealPlanViewModel(
             attempt { mealPlans.delete(entry.id) }
                 .onSuccess {
                     load(refreshing = false)
-                    mutableEvents.emit(MealPlanEvent.Removed(entry))
+                    outbox.send(MealPlanEvent.Removed(entry))
                 }.onFailure { error ->
                     removed -= entry.id
                     mutableState.update { it.copy(days = before) }
-                    mutableEvents.emit(MealPlanEvent.Failed(error.toAromaError()))
+                    outbox.send(MealPlanEvent.Failed(error.toAromaError()))
                 }
         }
 
@@ -205,7 +205,7 @@ class MealPlanViewModel(
     ) = viewModelScope.launch {
         attempt { mealPlans.add(date, type, recipe?.id, title, note) }
             .onSuccess { load(refreshing = false) }
-            .onFailure { mutableEvents.emit(MealPlanEvent.Failed(it.toAromaError())) }
+            .onFailure { outbox.send(MealPlanEvent.Failed(it.toAromaError())) }
     }
 
     fun move(entry: MealPlanEntry, date: LocalDate, type: MealType) =
@@ -214,7 +214,7 @@ class MealPlanViewModel(
                 mealPlans.move(entry.id, date, type)
                 load(refreshing = false)
             } catch (error: AromaError) {
-                mutableEvents.emit(MealPlanEvent.Failed(error))
+                outbox.send(MealPlanEvent.Failed(error))
             }
         }
 
@@ -228,9 +228,9 @@ class MealPlanViewModel(
             try {
                 val list = shoppingList()
                 shopping.addRecipe(list.id, recipe.id, 1.0, ingredients = null)
-                mutableEvents.emit(MealPlanEvent.AddedToList(list.name))
+                outbox.send(MealPlanEvent.AddedToList(list.name))
             } catch (error: AromaError) {
-                mutableEvents.emit(MealPlanEvent.Failed(error))
+                outbox.send(MealPlanEvent.Failed(error))
             }
         }
 
@@ -245,9 +245,9 @@ class MealPlanViewModel(
             try {
                 val list = shoppingList()
                 recipes.forEach { shopping.addRecipe(list.id, it.id, 1.0, ingredients = null) }
-                mutableEvents.emit(MealPlanEvent.WeekAddedToList(recipes.size, list.name))
+                outbox.send(MealPlanEvent.WeekAddedToList(recipes.size, list.name))
             } catch (error: AromaError) {
-                mutableEvents.emit(MealPlanEvent.Failed(error))
+                outbox.send(MealPlanEvent.Failed(error))
             }
         }
 

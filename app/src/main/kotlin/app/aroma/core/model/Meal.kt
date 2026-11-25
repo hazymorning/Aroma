@@ -1,5 +1,6 @@
 package app.aroma.core.model
 
+import java.time.LocalDate
 import java.time.LocalTime
 
 /**
@@ -26,6 +27,19 @@ enum class Meal(private val names: List<String>, private val hints: Set<String> 
             .map { it.name }
             .filter { it.key() in names || it.key() in hints }
             .distinct()
+
+    /** The meal plan's meal of the same name. */
+    val mealType: MealType
+        get() =
+            when (this) {
+                Breakfast -> MealType.Breakfast
+                Lunch -> MealType.Lunch
+                Snack -> MealType.Snack
+                Dinner -> MealType.Dinner
+                Dessert -> MealType.Dessert
+                Side -> MealType.Side
+                Drink -> MealType.Drink
+            }
 
     /** Whether [organizer] says a recipe is this meal: named for it, not merely hinting at it. */
     fun matches(organizer: Organizer): Boolean = organizer.name.key() in names
@@ -70,3 +84,27 @@ data class Filing(val categories: List<Organizer>, val tags: List<Organizer>) {
             copy(categories = categories + meal.categoryIn(available, label))
         }
 }
+
+enum class MealType(val apiValue: String) {
+    Breakfast("breakfast"),
+    Lunch("lunch"),
+    Dinner("dinner"),
+    Side("side"),
+    Snack("snack"),
+    Drink("drink"),
+    Dessert("dessert"),
+    ;
+
+    companion object {
+        fun fromApi(value: String?): MealType = entries.firstOrNull { it.apiValue == value } ?: Dinner
+    }
+}
+
+data class MealPlanEntry(
+    val id: Int,
+    val date: LocalDate,
+    val type: MealType,
+    val title: String,
+    val note: String,
+    val recipe: RecipeSummary?,
+)

@@ -192,16 +192,6 @@ private val MealType.hour: Int
             MealType.Dessert, MealType.Drink -> 4
         }
 
-private val Meal.hour: Int
-    get() =
-        when (this) {
-            Meal.Breakfast -> 0
-            Meal.Lunch -> 1
-            Meal.Snack -> 2
-            Meal.Dinner, Meal.Side -> 3
-            Meal.Dessert, Meal.Drink -> 4
-        }
-
 /**
  * The start page: the greeting, today's meal as a box to cook from, the week at a glance, the
  * shopping list where something is still to buy, and inspiration in three formats below, each
@@ -445,7 +435,7 @@ private fun longDate(date: LocalDate, locale: Locale): String =
 @Composable
 private fun TodayBox(state: HomeUiState, suggestions: List<RecipeSummary>, actions: HomeActions, modifier: Modifier = Modifier) {
     val todays = state.todays
-    val next = todays.firstOrNull { it.type.hour >= state.meal.hour } ?: todays.lastOrNull()
+    val next = todays.firstOrNull { it.type.hour >= state.meal.mealType.hour } ?: todays.lastOrNull()
     if (next == null) {
         NothingPlanned(suggestions, actions, modifier)
         return

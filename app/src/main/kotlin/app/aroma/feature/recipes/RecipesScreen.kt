@@ -25,9 +25,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -69,6 +67,7 @@ import app.aroma.ui.components.mealLabel
 import app.aroma.ui.components.recipeGridSkeletons
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.rememberHeaderState
+import app.aroma.ui.components.requestWhenAttached
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.HeaderGap
 import app.aroma.ui.theme.PageMargin
@@ -85,17 +84,19 @@ data class RecipeFilter(
     val longAgo: Boolean = false,
     val categories: Set<Organizer> = emptySet(),
     val tags: Set<Organizer> = emptySet(),
-    val tools: Set<Organizer> = emptySet(),
     val sort: RecipeSort = RecipeSort.Newest,
 ) {
     val hasFilters: Boolean
-        get() = favoritesOnly || quick || longAgo || meal != null || categories.isNotEmpty() || tags.isNotEmpty() || tools.isNotEmpty()
+        get() = favoritesOnly || quick || longAgo || meal != null || categories.isNotEmpty() || tags.isNotEmpty()
+
+    /** Whether anything narrows or orders the library other than the search: what resetting the filters takes back. */
+    val hasFiltersOrSort: Boolean
+        get() = hasFilters || sort != RecipeSort.Newest
 
     fun selected(kind: OrganizerKind): Set<Organizer> =
         when (kind) {
             OrganizerKind.Category -> categories
             OrganizerKind.Tag -> tags
-            OrganizerKind.Tool -> tools
         }
 }
 
@@ -129,19 +130,16 @@ data class RecipesUiState(
     /** The names of the categories and tags the chosen meal goes by in Mealie; null while no meal is chosen. */
     fun mealNames(): List<String>? = filter.meal?.namesIn(Organizers(categories, tags))
 
-    /** Categories and tags to choose from; the tab offers no tools. */
+    /** Categories and tags to choose from. */
     fun options(kind: OrganizerKind): List<Organizer> =
         when (kind) {
             OrganizerKind.Category -> categories
             OrganizerKind.Tag -> tags
-            OrganizerKind.Tool -> emptyList()
         }
 
-    /** Whether anything beyond the kind of dish narrows the library: what the filter's dot says. */
+    /** Whether anything beyond the kind of dish narrows or orders the library: what the filter's dot says. */
     val filtersOtherThanMeal: Boolean
-        get() =
-            filter.quick || filter.favoritesOnly || filter.categories.isNotEmpty() || filter.tags.isNotEmpty() ||
-                filter.sort != RecipeSort.Newest
+        get() = filter.copy(meal = null).hasFiltersOrSort
 }
 
 data class RecipesActions(
@@ -153,6 +151,7 @@ data class RecipesActions(
     val onToggleOrganizer: (OrganizerKind, Organizer) -> Unit = { _, _ -> },
     val onSortChange: (RecipeSort) -> Unit = {},
     val onClearFilters: () -> Unit = {},
+    val onResetFilters: () -> Unit = {},
     val onOpenRecipe: (RecipeSummary) -> Unit = {},
     val onRecipeMenu: (RecipeSummary) -> Unit = {},
     val onOpenCookbook: (Cookbook) -> Unit = {},
@@ -190,13 +189,7 @@ fun RecipesScreen(
     LaunchedEffect(focusSearch) {
         if (!focusSearch) return@LaunchedEffect
         list.scrollToItem(0)
-        repeat(FOCUS_FRAMES) {
-            withFrameNanos {}
-            if (runCatching { searchFocus.requestFocus(FocusDirection.Enter) }.getOrDefault(false)) {
-                consumeFocusSearch()
-                return@LaunchedEffect
-            }
-        }
+        searchFocus.requestWhenAttached()
         consumeFocusSearch()
     }
     val header = rememberHeaderState()
@@ -242,7 +235,7 @@ fun RecipesScreen(
         )
     }
     organizers?.let { kind ->
-        OrganizerSheet(
+        OrganizerFilterSheet(
             kind = kind,
             options = state.options(kind),
             selected = state.filter.selected(kind),
@@ -397,13 +390,10 @@ private fun FilterSheet(state: RecipesUiState, actions: RecipesActions, onOrgani
                     )
                 }
             }
-            if (state.filter.hasFilters || state.filter.sort != RecipeSort.Newest) {
+            if (state.filter.hasFiltersOrSort) {
                 TextAction(
                     stringResource(R.string.recipes_clear_filters),
-                    onClick = {
-                        actions.onClearFilters()
-                        actions.onSortChange(RecipeSort.Newest)
-                    },
+                    onClick = actions.onResetFilters,
                     modifier = Modifier.padding(start = PageMargin, top = Space.s16),
                 )
             }
@@ -415,7 +405,6 @@ private fun OrganizerKind.labelRes() =
     when (this) {
         OrganizerKind.Category -> R.string.recipes_categories
         OrganizerKind.Tag -> R.string.recipes_tags
-        OrganizerKind.Tool -> R.string.collection_tool
     }
 
 private fun RecipeSort.labelRes() =
@@ -430,7 +419,7 @@ private fun RecipeSort.labelRes() =
 /** The categories or tags to narrow by, any number of them. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun OrganizerSheet(
+private fun OrganizerFilterSheet(
     kind: OrganizerKind,
     options: List<Organizer>,
     selected: Set<Organizer>,
@@ -450,6 +439,3 @@ private fun OrganizerSheet(
         }
     }
 }
-
-/** How many frames the search field is asked for focus while the page settles. */
-private const val FOCUS_FRAMES = 10

@@ -10,7 +10,6 @@ import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
-import kotlinx.coroutines.launch
 
 class AromaApplication :
     Application(),
@@ -21,7 +20,8 @@ class AromaApplication :
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
-        container.scope.launch { container.sessions.restore() }
+        container.settings.restoreLanguage()
+        container.restore()
         TimerNotifications.createChannel(this)
         ImportNotifications.createChannel(this)
         Widgets.follow(this, container)

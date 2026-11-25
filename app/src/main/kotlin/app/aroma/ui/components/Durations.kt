@@ -19,7 +19,7 @@ fun Resources.formatDuration(seconds: Int): String {
 }
 
 /** [formatDuration] for text that goes to Mealie, which keeps plain spaces. */
-fun Resources.formatDurationPlain(seconds: Int): String = formatDuration(seconds).replace(NARROW_SPACE, ' ')
+fun Resources.formatDurationPlain(seconds: Int): String = formatDuration(seconds).replace(NARROW_NO_BREAK_SPACE, " ")
 
 private fun Resources.formatMinutes(totalMinutes: Int): String {
     val hours = totalMinutes / 60
@@ -84,5 +84,3 @@ fun formatClock(seconds: Long): String {
     val s = clamped % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
-
-private const val NARROW_SPACE = ' '

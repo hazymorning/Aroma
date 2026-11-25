@@ -134,7 +134,6 @@ fun RecipeRow(
     meta: List<String> = emptyList(),
     @DrawableRes metaIcon: Int? = null,
     onLongClick: (() -> Unit)? = null,
-    onLongClickLabel: String? = null,
     dimmed: Boolean = false,
     thumbnail: Dp = ThumbnailSize,
     @DrawableRes fallbackIcon: Int = R.drawable.ic_plate,
@@ -148,7 +147,7 @@ fun RecipeRow(
                 interactionSource = interaction,
                 indication = null,
                 role = Role.Button,
-                onLongClickLabel = onLongClickLabel ?: onLongClick?.let { stringResource(R.string.action_more) },
+                onLongClickLabel = onLongClick?.let { stringResource(R.string.action_more) },
                 onLongClick = onLongClick,
                 onClick = onClick,
             )

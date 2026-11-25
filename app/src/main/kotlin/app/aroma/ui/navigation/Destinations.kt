@@ -3,7 +3,7 @@ package app.aroma.ui.navigation
 import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.content.res.Resources
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
@@ -11,12 +11,12 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,16 +30,15 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.LocalView
-import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import app.aroma.R
+import app.aroma.checkNotificationPermission
 import app.aroma.core.model.Filing
 import app.aroma.core.model.Meal
-import app.aroma.core.model.Organizer
 import app.aroma.feature.cook.CookActions
 import app.aroma.feature.cook.CookScreen
 import app.aroma.feature.cook.CookViewModel
@@ -93,9 +92,11 @@ import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingViewModel
 import app.aroma.ui.appContainer
 import app.aroma.ui.aromaViewModel
+import app.aroma.ui.components.KeepScreenOn
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatDurationPlain
 import app.aroma.ui.components.titleRes
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -180,6 +181,7 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
                 onToggleOrganizer = vm::toggleOrganizer,
                 onSortChange = vm::setSort,
                 onClearFilters = vm::clearFilters,
+                onResetFilters = vm::resetFilters,
                 onOpenRecipe = { nav.navigate(RecipeRoute(it.slug)) },
                 onRecipeMenu = menu::open,
                 onOpenCookbook = { nav.navigate(CollectionRoute(CollectionKind.Cookbook, it.name, it.id, it.description)) },
@@ -196,44 +198,13 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
 fun CollectionDestination(route: CollectionRoute, nav: NavController, snackbar: SnackbarHostState) {
     val vm =
         aromaViewModel {
-            val organizer = setOf(Organizer(route.id, route.name, ""))
             when (route.kind) {
                 CollectionKind.Cookbook -> {
                     RecipesViewModel(recipes, connection, cookbook = route.id)
                 }
 
-                CollectionKind.Favorites -> {
-                    RecipesViewModel(recipes, connection, RecipeFilter(favoritesOnly = true))
-                }
-
-                CollectionKind.Category -> {
-                    RecipesViewModel(recipes, connection, RecipeFilter(categories = organizer))
-                }
-
-                CollectionKind.Tag -> {
-                    RecipesViewModel(recipes, connection, RecipeFilter(tags = organizer))
-                }
-
-                CollectionKind.Tool -> {
-                    RecipesViewModel(recipes, connection, RecipeFilter(tools = organizer))
-                }
-
                 CollectionKind.Meal -> {
-                    RecipesViewModel(
-                        recipes,
-                        connection,
-                        RecipeFilter(
-                            meal =
-                                Meal.entries.firstOrNull {
-                                    it.name ==
-                                        route.id
-                                },
-                        ),
-                    )
-                }
-
-                CollectionKind.Quick -> {
-                    RecipesViewModel(recipes, connection, RecipeFilter(quick = true))
+                    RecipesViewModel(recipes, connection, RecipeFilter(meal = Meal.entries.firstOrNull { it.name == route.id }))
                 }
             }
         }
@@ -261,10 +232,12 @@ fun CollectionDestination(route: CollectionRoute, nav: NavController, snackbar: 
 @Composable
 fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHostState) {
     val target = menu.recipe ?: return
+    // One view model shows whichever recipe was pressed last, rather than one staying behind for every recipe pressed.
     val vm =
-        aromaViewModel(key = "menu-${target.slug}") {
+        aromaViewModel(key = "menu") {
             RecipeViewModel(target.slug, recipes, reworks, shopping, mealPlans, sessions, settings, connection, it)
         }
+    LaunchedEffect(vm, target.slug) { vm.show(target.slug) }
     val state by vm.state.collectAsStateWithLifecycle()
     val lists by vm.shoppingLists.collectAsStateWithLifecycle()
     val preferredList by vm.preferredListId.collectAsStateWithLifecycle()
@@ -306,7 +279,7 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
                     scale = state.scale,
                     lists = lists,
                     preferredListId = preferredList,
-                    onScale = vm::setScale,
+                    onScaleChange = vm::setScale,
                     onAdd = { list, indexes ->
                         vm.addToList(list, indexes)
                         menu.sheet = null
@@ -314,7 +287,8 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
                     onDismiss = { menu.sheet = null },
                 )
             } else if (state.error != null) {
-                menu.sheet = null
+                // A recipe that could not be loaded has nothing to add.
+                LaunchedEffect(state.error) { menu.sheet = null }
             }
         }
 
@@ -347,16 +321,8 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
                     leave()
                 }
 
-                RecipeEvent.Unsaved -> {
-                    launch {
-                        val result =
-                            snackbar.showSnackbar(
-                                message = resources.getString(R.string.recipe_unsaved),
-                                actionLabel = resources.getString(R.string.action_undo),
-                                duration = SnackbarDuration.Long,
-                            )
-                        if (result == SnackbarResult.ActionPerformed) vm.toggleFavorite()
-                    }
+                is RecipeEvent.Unsaved -> {
+                    showUndo(snackbar, resources, R.string.recipe_unsaved) { vm.resave(event.recipe) }
                 }
 
                 is RecipeEvent.Failed -> {
@@ -364,15 +330,7 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
                 }
 
                 is RecipeEvent.Reworked -> {
-                    launch {
-                        val result =
-                            snackbar.showSnackbar(
-                                message = resources.getString(R.string.recipe_reworked),
-                                actionLabel = resources.getString(R.string.action_undo),
-                                duration = SnackbarDuration.Long,
-                            )
-                        if (result == SnackbarResult.ActionPerformed) vm.undoRework(event.reworked)
-                    }
+                    showUndo(snackbar, resources, R.string.recipe_reworked) { vm.undoRework(event.reworked) }
                 }
 
                 is RecipeEvent.ReworkFailed -> {
@@ -381,15 +339,7 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
                 }
 
                 is RecipeEvent.Unrated -> {
-                    launch {
-                        val result =
-                            snackbar.showSnackbar(
-                                message = resources.getString(R.string.rating_removed),
-                                actionLabel = resources.getString(R.string.action_undo),
-                                duration = SnackbarDuration.Long,
-                            )
-                        if (result == SnackbarResult.ActionPerformed) vm.rate(event.stars)
-                    }
+                    showUndo(snackbar, resources, R.string.rating_removed) { vm.rate(event.stars) }
                 }
             }
         }
@@ -415,7 +365,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
     val reworked = rework?.outcome
     LaunchedEffect(reworked) { if (reworked != null) vm.onReworkShown(reworked) }
     // A rework may outlast the page; a notification then says how it ended.
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val askForNotifications = rememberNotificationPermissionRequest()
     // A translated name gives the recipe a new slug.
     val current = state.recipe?.slug ?: slug
 
@@ -426,8 +376,8 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 onBack = { nav.popBackStack() },
                 onToggleFavorite = vm::toggleFavorite,
                 onRate = vm::rate,
-                onScale = vm::setScale,
-                onMeasures = vm::setMeasures,
+                onScaleChange = vm::setScale,
+                onMeasuresChange = vm::setMeasures,
                 onToggleIngredient = vm::toggleIngredient,
                 onAddToShoppingList = { sheet = RecipeMenuSheet.Shop },
                 onAddToMealPlan = { sheet = RecipeMenuSheet.Plan },
@@ -437,10 +387,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 onOpenUrl = { openUrl(context, it) },
                 onDelete = vm::delete,
                 onRework = { translate ->
-                    val needsPermission =
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                    if (needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    askForNotifications()
                     vm.rework(translate)
                 },
                 onOrganize = {
@@ -473,7 +420,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 scale = state.scale,
                 lists = lists,
                 preferredListId = preferredList,
-                onScale = vm::setScale,
+                onScaleChange = vm::setScale,
                 onAdd = { list, indexes ->
                     vm.addToList(list, indexes)
                     sheet = null
@@ -508,26 +455,25 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
     val state by vm.state.collectAsStateWithLifecycle()
     val keepScreenOn by vm.keepScreenOn.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val view = LocalView.current
-    DisposableEffect(keepScreenOn) {
-        view.keepScreenOn = keepScreenOn
-        onDispose { view.keepScreenOn = false }
+    KeepScreenOn(keepScreenOn)
+    // A timer that runs out rings in a notification.
+    val askForNotifications = rememberNotificationPermissionRequest()
+    // Back from the settings that allow exact alarms, the timers running meanwhile ring on time too.
+    LifecycleResumeEffect(vm) {
+        vm.useExactAlarms()
+        onPauseOrDispose { }
     }
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     CookScreen(
         state = state,
         actions =
             CookActions(
                 onClose = { nav.popBackStack() },
                 onStartTimer = { seconds, label ->
-                    val needsPermission =
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                    if (needsPermission) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    askForNotifications()
                     vm.startTimer(seconds, label)
                 },
                 onToggleIngredient = vm::toggleIngredient,
-                onIngredientsInSteps = { vm.setIngredientsInSteps(it) },
+                onIngredientsInStepsChange = { vm.setIngredientsInSteps(it) },
                 onToggleTimer = vm::toggleTimer,
                 onDismissTimer = vm::dismissTimer,
                 onRate = vm::rate,
@@ -558,9 +504,7 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState, focus: 
         vm.events.collect { event ->
             when (event) {
                 is MealPlanEvent.AddedToList -> {
-                    snackbar.showSnackbar(
-                        resources.getString(R.string.recipe_added_to_list, event.listName),
-                    )
+                    launch { snackbar.showSnackbar(resources.getString(R.string.recipe_added_to_list, event.listName)) }
                 }
 
                 is MealPlanEvent.WeekAddedToList -> {
@@ -572,21 +516,13 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState, focus: 
                 }
 
                 is MealPlanEvent.Removed -> {
-                    // Launched, so a second removal replaces this snackbar instead of queueing behind it.
+                    // A second removal replaces this snackbar instead of queueing behind it.
                     snackbar.currentSnackbarData?.dismiss()
-                    launch {
-                        val result =
-                            snackbar.showSnackbar(
-                                message = resources.getString(R.string.plan_removed),
-                                actionLabel = resources.getString(R.string.action_undo),
-                                duration = SnackbarDuration.Short,
-                            )
-                        if (result == SnackbarResult.ActionPerformed) vm.restore(event.entry)
-                    }
+                    showUndo(snackbar, resources, R.string.plan_removed, SnackbarDuration.Short) { vm.restore(event.entry) }
                 }
 
                 is MealPlanEvent.Failed -> {
-                    snackbar.showSnackbar(resources.getString(event.error.titleRes()))
+                    launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
                 }
             }
         }
@@ -647,17 +583,9 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
         vm.events.collect { event ->
             when (event) {
                 is ShoppingEvent.Deleted -> {
-                    // Launched, so a second deletion replaces this snackbar instead of queueing behind it.
+                    // A second deletion replaces this snackbar instead of queueing behind it.
                     snackbar.currentSnackbarData?.dismiss()
-                    launch {
-                        val result =
-                            snackbar.showSnackbar(
-                                message = resources.getString(R.string.shopping_item_deleted),
-                                actionLabel = resources.getString(R.string.action_undo),
-                                duration = SnackbarDuration.Short,
-                            )
-                        if (result == SnackbarResult.ActionPerformed) vm.undoDelete(event)
-                    }
+                    showUndo(snackbar, resources, R.string.shopping_item_deleted, SnackbarDuration.Short) { vm.undoDelete(event) }
                 }
 
                 is ShoppingEvent.Failed -> {
@@ -683,7 +611,7 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
                 onAddItem = vm::addItem,
                 onToggle = vm::toggle,
                 onDelete = vm::delete,
-                onEdit = vm::rename,
+                onRenameItem = vm::rename,
                 onClearChecked = vm::clearChecked,
                 onSelectList = vm::select,
                 onCreateList = { vm.createList(it) },
@@ -729,16 +657,11 @@ fun AddRecipeDestination(
         if (outcome != null) vm.onOutcomeShown()
         if (outcome is ImportOutcome.Added) nav.navigate(RecipeRoute(outcome.slug)) { popUpTo<AddRecipeRoute> { inclusive = true } }
     }
-    // An import may outlast the screen; a notification then says how it ended.
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    // An import may outlast the screen; a notification then says how it ended. The screen asks once.
+    val askForNotifications = rememberNotificationPermissionRequest()
     var askedForNotifications by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.isImporting) {
-        val needsPermission =
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-        if (state.isImporting && needsPermission && !askedForNotifications) {
-            askedForNotifications = true
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        if (state.isImporting && !askedForNotifications) askedForNotifications = askForNotifications()
     }
     AddRecipeScreen(
         state = state,
@@ -802,19 +725,19 @@ fun SettingsDestination(nav: NavController) {
         actions =
             SettingsActions(
                 onBack = { nav.popBackStack() },
-                onThemeMode = { vm.setThemeMode(it) },
-                onDynamicColor = { vm.setDynamicColor(it) },
-                onHomeSection = { section, shown -> vm.setHomeSection(section, shown) },
-                onLanguage = vm::setLanguage,
-                onKeepScreenOn = { vm.setKeepScreenOn(it) },
-                onShowNextStep = { vm.setShowNextStep(it) },
-                onIngredientsInSteps = { vm.setIngredientsInSteps(it) },
-                onAmountsInSteps = { vm.setAmountsInSteps(it) },
-                onMeasures = { vm.setMeasures(it) },
-                onOfflineRecipes = { vm.setOfflineRecipes(it) },
+                onThemeModeChange = { vm.setThemeMode(it) },
+                onDynamicColorChange = { vm.setDynamicColor(it) },
+                onHomeSectionChange = { section, shown -> vm.setHomeSection(section, shown) },
+                onLanguageChange = vm::setLanguage,
+                onKeepScreenOnChange = { vm.setKeepScreenOn(it) },
+                onShowNextStepChange = { vm.setShowNextStep(it) },
+                onIngredientsInStepsChange = { vm.setIngredientsInSteps(it) },
+                onAmountsInStepsChange = { vm.setAmountsInSteps(it) },
+                onMeasuresChange = { vm.setMeasures(it) },
+                onOfflineRecipesChange = { vm.setOfflineRecipes(it) },
                 onCheckForUpdates = vm::checkForUpdates,
                 onInstallUpdate = vm::installUpdate,
-                onCheckUpdatesAtStart = { vm.setCheckUpdatesAtStart(it) },
+                onCheckUpdatesAtStartChange = { vm.setCheckUpdatesAtStart(it) },
                 onOpenLicenses = { nav.navigate(LicensesRoute) },
                 onSignOut = { vm.signOut() },
             ),
@@ -826,8 +749,51 @@ fun LicensesDestination(nav: NavController) {
     LicensesScreen(onBack = { nav.popBackStack() })
 }
 
-private fun hasPermission(context: Context, permission: String): Boolean =
-    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+/**
+ * Whether to ask for the permission to post notifications, which Android 13 brought. The version
+ * check stays in sight here, so lint knows the permission's name exists where it is asked for.
+ */
+private fun needsNotificationPermission(context: Context): Boolean =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !context.checkNotificationPermission()
+
+/**
+ * Shows [message] with an undo, which runs [undo] once tapped. Launched, so the events go on being
+ * collected and the next message never waits behind this one.
+ */
+private fun CoroutineScope.showUndo(
+    snackbar: SnackbarHostState,
+    resources: Resources,
+    @StringRes message: Int,
+    duration: SnackbarDuration = SnackbarDuration.Long,
+    undo: () -> Unit,
+) {
+    launch {
+        val result =
+            snackbar.showSnackbar(
+                message = resources.getString(message),
+                actionLabel = resources.getString(R.string.action_undo),
+                duration = duration,
+            )
+        if (result == SnackbarResult.ActionPerformed) undo()
+    }
+}
+
+/**
+ * Asks for leave to post notifications where Android wants it asked and it is not given yet; the
+ * request it returns says whether it asked. Whatever the answer, the work goes on.
+ */
+@Composable
+private fun rememberNotificationPermissionRequest(): () -> Boolean {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    return remember(context, launcher) {
+        {
+            val needsPermission = needsNotificationPermission(context)
+            if (needsPermission) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            needsPermission
+        }
+    }
+}
 
 private fun shareText(context: Context, text: String) {
     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)

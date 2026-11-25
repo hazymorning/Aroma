@@ -1,6 +1,5 @@
 package app.aroma.widget
 
-import android.appwidget.AppWidgetManager
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,7 +20,6 @@ import androidx.glance.action.action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.lazy.LazyColumn
@@ -47,18 +45,17 @@ import app.aroma.R
 import app.aroma.core.model.ShoppingItem
 import app.aroma.core.model.ShoppingLabel
 import app.aroma.core.model.ShoppingList
-import app.aroma.data.AromaError
 import app.aroma.data.attempt
 import app.aroma.data.session.SessionState
 import app.aroma.ui.navigation.LaunchRequest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.transformLatest
@@ -135,24 +132,8 @@ class ShoppingWidget : GlanceAppWidget(errorUiLayout = R.layout.widget_error) {
     }
 }
 
-class ShoppingWidgetReceiver : GlanceAppWidgetReceiver() {
+class ShoppingWidgetReceiver : AromaWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = ShoppingWidget()
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        Widgets.keepFresh(context)
-    }
-
-    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        super.onUpdate(context, appWidgetManager, appWidgetIds)
-        // Also called without widgets, as the clock or the language changes: then nothing needs refreshing.
-        if (appWidgetIds.isNotEmpty()) Widgets.keepFresh(context)
-    }
-
-    override fun onDisabled(context: Context) {
-        super.onDisabled(context)
-        Widgets.removed(context)
-    }
 }
 
 /** The widget's state as the session, the list it shows and that list change. */
@@ -168,14 +149,30 @@ internal fun shoppingStates(container: AppContainer, chosen: String?): Flow<Shop
                 flowOf(ShoppingState.SignedOut)
             }
 
+            // The lists as the app or the widgets' refresh last fetched them: a widget drawn again fetches nothing.
             is SessionState.SignedIn -> {
-                combine(container.shopping.lists(), container.settings.settings) { lists, settings ->
-                    pickList(lists.data, chosen, settings.lastShoppingList)?.id
+                combine(container.shopping.cachedLists(), container.settings.settings) { lists, settings ->
+                    lists?.let { Shown(pickList(it, chosen, settings.lastShoppingList)?.id) }
                 }.distinctUntilChanged()
-                    .flatMapLatest { listId -> if (listId == null) flowOf(ShoppingState.NoLists) else listStates(container, listId) }
-                    .catch { error -> if (error is AromaError) emit(ShoppingState.Unreachable) else throw error }
+                    .flatMapLatest { shown ->
+                        when {
+                            shown == null -> firstLists(container)
+                            shown.listId == null -> flowOf(ShoppingState.NoLists)
+                            else -> listStates(container, shown.listId)
+                        }
+                    }
             }
         }
+    }
+
+/** The list a widget shows, if there is one to show, once the lists are known. */
+private data class Shown(val listId: String?)
+
+/** The lists were never fetched on this phone: fetch them once; the copy kept then comes through above. */
+private fun firstLists(container: AppContainer): Flow<ShoppingState> =
+    flow {
+        emit(ShoppingState.Loading)
+        attempt { container.shopping.lists().last() }.onFailure { emit(ShoppingState.Unreachable) }
     }
 
 @OptIn(ExperimentalCoroutinesApi::class)

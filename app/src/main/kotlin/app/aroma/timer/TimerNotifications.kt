@@ -1,21 +1,19 @@
 package app.aroma.timer
 
-import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import app.aroma.MainActivity
 import app.aroma.R
+import app.aroma.checkNotificationPermission
+import app.aroma.data.settings.inAppLanguage
 
 object TimerNotifications {
     private const val CHANNEL = "timers"
@@ -34,11 +32,7 @@ object TimerNotifications {
     }
 
     fun showFinished(context: Context, id: Long, recipeName: String, label: String) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
+        if (!context.checkNotificationPermission()) return
         val open =
             PendingIntent.getActivity(
                 context,
@@ -50,7 +44,7 @@ object TimerNotifications {
             NotificationCompat
                 .Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_timer)
-                .setContentTitle(context.getString(R.string.timer_finished_title))
+                .setContentTitle(context.inAppLanguage().getString(R.string.timer_finished_title))
                 .setContentText(listOf(recipeName, label).filter { it.isNotBlank() }.joinToString(" · "))
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)

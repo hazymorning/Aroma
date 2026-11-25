@@ -104,7 +104,7 @@ class SettingsViewModel(
 
     fun setLanguage(value: AppLanguage) {
         language.value = value
-        settings.setLanguage(value)
+        viewModelScope.launch { settings.setLanguage(value) }
     }
 
     fun signOut() = signOutAndForget()

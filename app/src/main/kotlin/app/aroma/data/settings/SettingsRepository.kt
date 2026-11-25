@@ -14,7 +14,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.aroma.core.format.MeasureSystem
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 
 enum class ThemeMode { System, Light, Dark }
 
@@ -73,6 +75,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val checkUpdatesAtStart = booleanPreferencesKey("check_updates_at_start")
         val measureSystem = stringPreferencesKey("measure_system")
         val homeSections = stringSetPreferencesKey("home_sections")
+
+        /** The language chosen here, kept for [restoreLanguage]. */
+        val language = stringPreferencesKey("language")
     }
 
     val settings: Flow<AppSettings> =
@@ -147,9 +152,28 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             return AppLanguage.entries.firstOrNull { it.tag != null && tag.startsWith(it.tag) } ?: AppLanguage.System
         }
 
-    fun setLanguage(language: AppLanguage) {
+    suspend fun setLanguage(language: AppLanguage) {
         val locales = language.tag?.let { LocaleListCompat.forLanguageTags(it) } ?: LocaleListCompat.getEmptyLocaleList()
         AppCompatDelegate.setApplicationLocales(locales)
+        keepLanguage()
+    }
+
+    /**
+     * Below Android 13, AppCompat reads the language chosen here from its storage only as a screen opens,
+     * so widgets, workers and timer alarms, which often run without one, would speak the system's. Aroma
+     * keeps the choice too, as it is made and as a screen opens, and hands it to AppCompat at start.
+     */
+    suspend fun keepLanguage() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return
+        val tags = AppCompatDelegate.getApplicationLocales().toLanguageTags()
+        dataStore.edit { if (tags.isEmpty()) it.remove(Keys.language) else it[Keys.language] = tags }
+    }
+
+    /** See [keepLanguage]. Read at once, as a widget or a timer's notification may be drawn right after. */
+    fun restoreLanguage() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU || !AppCompatDelegate.getApplicationLocales().isEmpty) return
+        val tags = runBlocking { dataStore.data.first()[Keys.language] } ?: return
+        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tags))
     }
 }
 

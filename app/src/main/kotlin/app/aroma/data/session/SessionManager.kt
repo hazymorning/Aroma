@@ -54,12 +54,18 @@ class SessionManager(private val store: SessionStore, private val clientFactory:
             mutableState.value = SessionState.SignedIn(changed)
         }
 
-    suspend fun end() =
+    /** Ends the session; [revoke] is kept until [revoked], so the token can be revoked later if Mealie does not answer now. */
+    suspend fun end(revoke: Revocation? = null) =
         changes.withLock {
-            store.clear()
+            store.clear(revoke)
             cachedApi = null
             mutableState.value = SessionState.SignedOut
         }
+
+    /** The tokens of ended sessions that Mealie has not taken back yet. */
+    suspend fun revocations(): List<Revocation> = store.revocations()
+
+    suspend fun revoked(revocation: Revocation) = store.revoked(revocation)
 
     fun credentials(): Credentials? = current?.let { Credentials(baseUrl(it.serverUrl), it.token) }
 

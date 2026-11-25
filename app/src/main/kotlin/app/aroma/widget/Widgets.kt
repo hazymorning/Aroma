@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.core.content.edit
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetManager.Companion.SET_WIDGET_PREVIEWS_RESULT_SUCCESS
+import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.updateAll
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -140,6 +141,25 @@ internal object Widgets {
     }
 
     private const val PREVIEWS = "previews"
+}
+
+/** A receiver of Aroma's widgets: keeps the periodic refresh scheduled while any of them is on a home screen. */
+abstract class AromaWidgetReceiver : GlanceAppWidgetReceiver() {
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        Widgets.keepFresh(context)
+    }
+
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        super.onUpdate(context, appWidgetManager, appWidgetIds)
+        // Also called without widgets, as the clock or the language changes: then nothing needs refreshing.
+        if (appWidgetIds.isNotEmpty()) Widgets.keepFresh(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        Widgets.removed(context)
+    }
 }
 
 /** Brings in from the server what the widgets show, then draws them again. */

@@ -70,7 +70,7 @@ import app.aroma.ui.components.TextAction
 import app.aroma.ui.components.TonalBoxPart
 import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
-import app.aroma.ui.components.measureText
+import app.aroma.ui.components.styledMeasure
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Glyph
@@ -372,7 +372,7 @@ internal fun itemLine(item: ShoppingItem, locale: Locale): IngredientLine =
 private fun itemText(line: IngredientLine, amountColor: Color): AnnotatedString =
     buildAnnotatedString {
         if (line.hasMeasure) {
-            withStyle(SpanStyle(color = amountColor, fontFeatureSettings = "tnum")) { append(measureText(line)) }
+            withStyle(SpanStyle(color = amountColor, fontFeatureSettings = "tnum")) { append(styledMeasure(line)) }
             append(' ')
         }
         append(line.text)

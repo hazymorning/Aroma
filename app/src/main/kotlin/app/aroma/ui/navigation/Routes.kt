@@ -22,7 +22,7 @@ data class RecipeRoute(val slug: String)
 @Serializable
 data class CookRoute(val slug: String, val scale: Double)
 
-/** Recipes that belong together, on a page of their own; [id] names the cookbook, category, tag or tool. */
+/** Recipes that belong together, on a page of their own; [id] names the cookbook or the meal. */
 @Serializable
 data class CollectionRoute(
     val kind: CollectionKind,

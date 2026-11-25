@@ -6,11 +6,13 @@ import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
+import androidx.work.ListenableWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import app.aroma.AppContainer
 import app.aroma.AromaApplication
 import app.aroma.R
 import app.aroma.data.AromaError
@@ -109,10 +111,15 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
     /** The screen has shown how import [id] ended; its notification is no longer needed. */
     fun shown(id: UUID) = ImportNotifications.dismiss(context, id)
 
-    /** Drops the imports and reworks still queued, and the imports' photos, as when the user signs out. */
+    /**
+     * Drops the imports and reworks still queued, as when the user signs out, and what imports keep
+     * on disk: photos waiting for an import to start or end, and the notes for a re-run.
+     */
     fun cancelAll() {
         WorkManager.getInstance(context).cancelUniqueWork(QUEUE)
+        File(context.cacheDir, PHOTO_FOLDER).deleteRecursively()
         File(context.noBackupFilesDir, PHOTO_FOLDER).deleteRecursively()
+        File(context.noBackupFilesDir, NOTES_FOLDER).deleteRecursively()
     }
 
     /**
@@ -132,8 +139,8 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
             if (job != null && !seen()) ImportNotifications.running(context, id, job)
         }
         // The newest recipes from right before the last and the first request that creates a recipe, kept on disk for a re-run.
-        val sent = File(context.noBackupFilesDir, "imports/$id")
-        val first = File(context.noBackupFilesDir, "imports/$id.first")
+        val sent = File(context.noBackupFilesDir, "$NOTES_FOLDER/$id")
+        val first = File(context.noBackupFilesDir, "$NOTES_FOLDER/$id.first")
         val outcome =
             try {
                 val known = if (rerun && sent.exists()) sent.ids() else null
@@ -199,26 +206,33 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
          */
         const val QUEUE = "recipe-import"
         private const val PHOTO_FOLDER = "import-photos"
+        private const val NOTES_FOLDER = "imports"
     }
+}
+
+/**
+ * Runs [work] for whoever is signed in, as a foreground service where Android allows one; signed out,
+ * there is nothing to run. It succeeds also when the work failed: that is told on its screen or in a
+ * notification, and a failed import or rework must not cancel the ones queued behind it.
+ */
+internal suspend fun CoroutineWorker.runSignedIn(work: suspend (AppContainer) -> Unit): ListenableWorker.Result {
+    val container = (applicationContext as AromaApplication).container
+    if (container.sessions.state.first { it != SessionState.Loading } !is SessionState.SignedIn) return ListenableWorker.Result.success()
+    try {
+        setForeground(getForegroundInfo())
+    } catch (_: IllegalStateException) {
+        // Android lets no foreground service start from the background; the work runs on without one.
+    }
+    work(container)
+    return ListenableWorker.Result.success()
 }
 
 /** Runs one import in the background, as a foreground service where Android allows one. */
 class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun getForegroundInfo(): ForegroundInfo = ImportNotifications.foreground(applicationContext, id, inputData.startedAt)
 
-    override suspend fun doWork(): Result {
-        val container = (applicationContext as AromaApplication).container
-        if (container.sessions.state.first { it != SessionState.Loading } !is SessionState.SignedIn) return Result.success()
-        try {
-            setForeground(getForegroundInfo())
-        } catch (_: IllegalStateException) {
-            // Android lets no foreground service start from the background; the work runs on without one.
-        }
-        container.imports.run(id, request(inputData), inputData.startedAt, rerun = runAttemptCount > 0)
-        // Success also when the import failed: that is told on its screen or in a notification, and
-        // a failed import must not cancel the ones queued behind it.
-        return Result.success()
-    }
+    override suspend fun doWork(): Result =
+        runSignedIn { it.imports.run(id, request(inputData), inputData.startedAt, rerun = runAttemptCount > 0) }
 
     private val Data.startedAt: Long get() = getLong(STARTED_AT, System.currentTimeMillis())
 

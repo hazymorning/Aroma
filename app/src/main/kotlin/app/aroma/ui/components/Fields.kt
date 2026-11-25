@@ -119,7 +119,6 @@ fun LabeledTextField(
     minLines: Int = 1,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -140,7 +139,6 @@ fun LabeledTextField(
             keyboardActions = keyboardActions,
             singleLine = singleLine,
             minLines = minLines,
-            visualTransformation = visualTransformation,
             interactionSource = interaction,
             cursorBrush = SolidColor(AromaTheme.colors.accent),
             decorationBox = { inner ->
@@ -149,7 +147,7 @@ fun LabeledTextField(
                     innerTextField = inner,
                     enabled = enabled,
                     singleLine = singleLine,
-                    visualTransformation = visualTransformation,
+                    visualTransformation = VisualTransformation.None,
                     interactionSource = interaction,
                     isError = isError,
                     placeholder = placeholder?.let { { Text(it, style = AromaTheme.type.body) } },

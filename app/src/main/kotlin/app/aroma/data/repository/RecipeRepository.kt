@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.last
@@ -70,12 +71,13 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
+import retrofit2.Call
 import retrofit2.HttpException
+import retrofit2.await
 import java.io.File
 import java.text.Collator
 import java.text.Normalizer
 import java.time.LocalDate
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
@@ -152,7 +154,6 @@ class RecipeRepository(
                 search = query.search.trim().ifEmpty { null },
                 categories = query.categories.ifEmpty { null },
                 tags = query.tags.ifEmpty { null },
-                tools = query.tools.ifEmpty { null },
                 cookbook = query.cookbook,
                 queryFilter =
                     listOfNotNull(
@@ -194,7 +195,8 @@ class RecipeRepository(
             val read = serverPage(query, next, READY_SCAN, server)
             // Reading the times as text is not for the main thread, which screens ask from.
             found += withContext(Dispatchers.Default) { read.items.filter { it.isReadyWithin(minutes) } }
-            if (found.size >= perPage || !read.hasMore) return read.copy(items = found, total = null)
+            // Mealie's order may shift between pages, as when a recipe is added meanwhile, so one can come twice.
+            if (found.size >= perPage || !read.hasMore) return read.copy(items = found.distinctBy { it.id }, total = null)
             next++
         }
     }
@@ -223,7 +225,6 @@ class RecipeRepository(
                             (query.mealNames.isEmpty() || (recipe.recipeCategory + recipe.tags).any { it.name in query.mealNames }) &&
                             query.categories.all { wanted -> recipe.recipeCategory.any { it.slug == wanted || it.id == wanted } } &&
                             query.tags.all { wanted -> recipe.tags.any { it.slug == wanted || it.id == wanted } } &&
-                            query.tools.all { wanted -> recipe.tools.any { it.slug == wanted || it.id == wanted } } &&
                             query.cookedBefore.let { day ->
                                 day == null ||
                                     recipe.lastMade?.take(DATE_LENGTH)?.let { it > EARLIEST_MADE && it < day.toString() } == true
@@ -248,7 +249,7 @@ class RecipeRepository(
     /** Whether [this] asks for a whole cookbook, not for some of its recipes. */
     private val RecipeQuery.isWholeCollection: Boolean
         get() =
-            search.isBlank() && !favoritesOnly && categories.isEmpty() && tags.isEmpty() && tools.isEmpty() && mealNames.isEmpty() &&
+            search.isBlank() && !favoritesOnly && categories.isEmpty() && tags.isEmpty() && mealNames.isEmpty() &&
                 readyWithin == null && cookedBefore == null
 
     /**
@@ -264,25 +265,6 @@ class RecipeRepository(
         summaries(
             "home:recent",
         ) { sessions.api().recipes(page = 1, perPage = limit, orderBy = "created_at", orderDirection = "desc").items }
-
-    /** Recipes marked as favorites; [fresh] fetches the favorites again, as they may have changed elsewhere. */
-    fun favorites(fresh: Boolean, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
-        summaries("home:favorites") {
-            val ids = loadRatings(fresh).filterValues { it.isFavorite }.keys
-            if (ids.isEmpty()) {
-                emptyList()
-            } else {
-                sessions
-                    .api()
-                    .recipes(
-                        page = 1,
-                        perPage = limit,
-                        orderBy = "rating",
-                        orderDirection = "desc",
-                        queryFilter = idsFilter(ids),
-                    ).items
-            }
-        }
 
     /** A choice of recipes filed under [names] as category or tag, or of all recipes without names; new each [day]. */
     fun suggestions(names: List<String>, day: LocalDate, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
@@ -303,9 +285,9 @@ class RecipeRepository(
      * A choice of recipes ready in [minutes] or less, new each [day]. Mealie cannot compare its times,
      * so the phone picks them from a larger choice, in an order of the day of their own.
      */
-    fun quick(day: LocalDate, minutes: Int = QUICK_MINUTES, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> {
-        val server = sessions.requireServerUrl()
-        return summaries("home:quick") {
+    fun quick(day: LocalDate, minutes: Int = QUICK_MINUTES, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
+        summaries("home:quick") {
+            val server = sessions.requireServerUrl()
             sessions
                 .api()
                 .recipes(
@@ -318,30 +300,12 @@ class RecipeRepository(
                 .filter { it.toModel(server).isReadyWithin(minutes) }
                 .take(limit)
         }
-    }
 
     /**
      * Mealie's filter for recipes cooked before, but not since, [day]. Recipes never cooked compare as
      * earliest in Mealie 3, so a lower bound keeps them out.
      */
     private fun cookedBeforeFilter(day: java.time.LocalDate) = "lastMade > \"$EARLIEST_MADE\" AND lastMade < \"$day\""
-
-    /** Summaries of [ids], from the stored copy where it has them and from Mealie for the rest. */
-    suspend fun summaries(ids: Set<String>): Map<String, RecipeSummary> {
-        if (ids.isEmpty()) return emptyMap()
-        val server = sessions.requireServerUrl()
-        val stored = dao.summaries(ids).map(::decodeSummary)
-        val missing = ids - stored.mapTo(mutableSetOf()) { it.id }
-        val fetched =
-            if (missing.isEmpty()) {
-                emptyList()
-            } else {
-                sessions.api().recipes(page = 1, perPage = missing.size, queryFilter = idsFilter(missing)).items.also { items ->
-                    dao.upsertSummaries(items.map { it.toEntity() })
-                }
-            }
-        return withContext(Dispatchers.Default) { (stored + fetched).associate { it.id to it.toModel(server) } }
-    }
 
     private fun idsFilter(ids: Collection<String>) = ids.joinToString(prefix = "id IN [", postfix = "]") { "\"$it\"" }
 
@@ -351,13 +315,17 @@ class RecipeRepository(
         return "recipe_category.name IN $list OR tags.name IN $list"
     }
 
-    private fun summaries(key: String, fetch: suspend () -> List<RecipeSummaryDto>): Flow<Loadable<List<RecipeSummary>>> {
-        val server = sessions.requireServerUrl()
-        return cache
-            .stream(key, ListSerializer(RecipeSummaryDto.serializer())) {
-                fetch().also { items -> dao.upsertSummaries(items.map { it.toEntity() }) }
-            }.map { loadable -> Loadable(loadable.data.map { it.toModel(server) }, loadable.isRefreshing, loadable.error) }
-    }
+    private fun summaries(key: String, fetch: suspend () -> List<RecipeSummaryDto>): Flow<Loadable<List<RecipeSummary>>> =
+        flow {
+            // Looked up once collected, not when asked for, so signed out the flow fails where collectors catch it.
+            val server = sessions.requireServerUrl()
+            val summaries =
+                cache
+                    .stream(key, ListSerializer(RecipeSummaryDto.serializer())) {
+                        fetch().also { items -> dao.upsertSummaries(items.map { it.toEntity() }) }
+                    }.map { loadable -> Loadable(loadable.data.map { it.toModel(server) }, loadable.isRefreshing, loadable.error) }
+            emitAll(summaries)
+        }
 
     /**
      * Cached copy first, then the server's. Keeps working offline for recipes opened before, and
@@ -380,12 +348,12 @@ class RecipeRepository(
             emit(Loadable(fresh.toModel(server)))
         }.flowOn(Dispatchers.Default)
 
-    private suspend fun fetchAndStore(slug: String): RecipeDto {
-        val dto = sessions.api().recipe(slug)
+    private suspend fun fetchAndStore(slug: String): RecipeDto = sessions.api().recipe(slug).also { storeDetail(it) }
+
+    private suspend fun storeDetail(dto: RecipeDto) {
         dao.upsertDetail(
             RecipeDetailEntity(dto.slug, dto.id, MealieJson.encodeToString(RecipeDto.serializer(), dto), System.currentTimeMillis()),
         )
-        return dto
     }
 
     /** Raw recipe JSON, used by the editor so fields Aroma does not know survive a save. */
@@ -508,11 +476,7 @@ class RecipeRepository(
         aiImport?.let { (askedFor, answer) -> if (askedFor == session) return answer }
         if (!MealieVersion.isAtLeast(session.serverVersion, 3, 23)) return AiImport.None
         val settings =
-            try {
-                sessions.api().group().aiProviderSettings
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
+            attempt { sessions.api().group().aiProviderSettings }.getOrElse {
                 // Asked again next time: the server may just have been out of reach.
                 return AiImport.None
             }
@@ -531,13 +495,14 @@ class RecipeRepository(
     /** Uses the streaming endpoint where the server has one and maps rejected sources to [AromaError.ImportFailed]. */
     private suspend fun importing(
         onProgress: (String) -> Unit,
-        stream: suspend MealieApi.() -> ResponseBody,
+        stream: MealieApi.() -> Call<ResponseBody>,
         plain: suspend MealieApi.() -> String,
     ): String {
         val api = sessions.api()
         return try {
             try {
-                ImportStream.slugFrom(api.stream(), onProgress)
+                val call = api.stream()
+                ImportStream.slugFrom(call.await(), onProgress, call::cancel)
             } catch (missing: HttpException) {
                 if (missing.code() != 404 && missing.code() != 405) throw missing
                 api.plain()
@@ -601,9 +566,7 @@ class RecipeRepository(
     /** Saves [patch]; a new name gives the recipe a new slug, which is returned. */
     suspend fun update(slug: String, patch: JsonObject): String {
         val dto = mealieCall { sessions.api().patchRecipe(slug, patch) }
-        dao.upsertDetail(
-            RecipeDetailEntity(dto.slug, dto.id, MealieJson.encodeToString(RecipeDto.serializer(), dto), System.currentTimeMillis()),
-        )
+        storeDetail(dto)
         if (dto.slug != slug) dao.deleteDetail(slug)
         changed()
         return dto.slug
@@ -620,18 +583,17 @@ class RecipeRepository(
 
     fun organizers(): Flow<Loadable<Organizers>> =
         cache
-            .stream(ORGANIZERS, OrganizersDto.serializer()) {
+            .stream(ORGANIZERS, OrganizersCopy.serializer()) {
                 val api = sessions.api()
                 coroutineScope {
                     val categories = async { api.categories().items }
                     val tags = async { api.tags().items }
-                    val tools = async { api.tools().items }
-                    OrganizersDto(categories.await(), tags.await(), tools.await())
+                    OrganizersCopy(categories.await(), tags.await())
                 }
             }.map { loadable ->
                 val dto = loadable.data
                 Loadable(
-                    Organizers(dto.categories.map { it.toModel() }, dto.tags.map { it.toModel() }, dto.tools.map { it.toModel() }),
+                    Organizers(dto.categories.map { it.toModel() }, dto.tags.map { it.toModel() }),
                     loadable.isRefreshing,
                     loadable.error,
                 )
@@ -683,13 +645,13 @@ class RecipeRepository(
             }
         if (made.isNotEmpty()) {
             // Lists offer them at once, also while Mealie is out of reach.
-            cache.read(ORGANIZERS, OrganizersDto.serializer())?.let { stored ->
+            cache.read(ORGANIZERS, OrganizersCopy.serializer())?.let { stored ->
                 val updated =
                     when (kind) {
                         OrganizerKind.Tag -> stored.copy(tags = stored.tags + made)
                         else -> stored.copy(categories = stored.categories + made)
                     }
-                cache.write(ORGANIZERS, OrganizersDto.serializer(), updated)
+                cache.write(ORGANIZERS, OrganizersCopy.serializer(), updated)
             }
         }
         return result
@@ -699,10 +661,11 @@ class RecipeRepository(
         MealieJson.encodeToJsonElement(ListSerializer(OrganizerDto.serializer()), items.map { OrganizerDto(it.id, it.name, it.slug) })
 
     /** The household's cookbooks, each with its number of recipes and the photo of its newest one. */
-    fun cookbooks(): Flow<Loadable<List<CookbookCover>>> {
-        val server = sessions.requireServerUrl()
-        return cache
-            .stream("cookbook-covers", ListSerializer(CookbookCoverDto.serializer())) {
+    fun cookbooks(): Flow<Loadable<List<CookbookCover>>> = flow { emitAll(cookbooks(sessions.requireServerUrl())) }
+
+    private fun cookbooks(server: String): Flow<Loadable<List<CookbookCover>>> =
+        cache
+            .stream("cookbook-covers", ListSerializer(CookbookCoverCopy.serializer())) {
                 val api = sessions.api()
                 val requests = Semaphore(PARALLEL_DOWNLOADS)
                 coroutineScope {
@@ -721,7 +684,7 @@ class RecipeRepository(
                                             orderDirection = "desc",
                                             cookbook = book.id,
                                         )
-                                    CookbookCoverDto(book, newest.total, newest.items.firstOrNull { it.toModel(server).image != null })
+                                    CookbookCoverCopy(book, newest.total, newest.items.firstOrNull { it.toModel(server).image != null })
                                 }
                             }
                         }.awaitAll()
@@ -730,7 +693,6 @@ class RecipeRepository(
                 val covers = loadable.data.map { CookbookCover(it.cookbook.toModel(), it.recipeCount, it.cover?.toModel(server)?.image) }
                 Loadable(covers, loadable.isRefreshing, loadable.error)
             }
-    }
 
     /**
      * Keeps a copy of every recipe for offline use: fetches new and changed ones a few at a time
@@ -754,15 +716,8 @@ class RecipeRepository(
         coroutineScope {
             stale.forEach { summary ->
                 launch {
-                    downloads.withPermit {
-                        try {
-                            fetchAndStore(summary.slug)
-                        } catch (cancelled: CancellationException) {
-                            throw cancelled
-                        } catch (_: Exception) {
-                            // The next run tries again; one failing recipe must not stop the others.
-                        }
-                    }
+                    // The next run tries again; one failing recipe must not stop the others.
+                    downloads.withPermit { attempt { fetchAndStore(summary.slug) } }
                 }
             }
         }
@@ -789,6 +744,14 @@ class RecipeRepository(
     private fun decodeSummary(entity: RecipeSummaryEntity) = MealieJson.decodeFromString(RecipeSummaryDto.serializer(), entity.json)
 
     private fun decodeRecipe(json: String) = runCatching { MealieJson.decodeFromString(RecipeDto.serializer(), json) }.getOrNull()
+
+    /** A cookbook as Mealie had it, with its number of recipes and its newest recipe with a photo. */
+    @Serializable
+    private data class CookbookCoverCopy(val cookbook: CookbookDto, val recipeCount: Int, val cover: RecipeSummaryDto?)
+
+    /** The group's categories and tags as Mealie had them. */
+    @Serializable
+    private data class OrganizersCopy(val categories: List<OrganizerDto> = emptyList(), val tags: List<OrganizerDto> = emptyList())
 
     companion object {
         const val PAGE_SIZE = 30
@@ -827,13 +790,3 @@ class RecipeRepository(
         private val JPEG = "image/jpeg".toMediaType()
     }
 }
-
-@Serializable
-internal data class CookbookCoverDto(val cookbook: CookbookDto, val recipeCount: Int, val cover: RecipeSummaryDto?)
-
-@Serializable
-internal data class OrganizersDto(
-    val categories: List<OrganizerDto> = emptyList(),
-    val tags: List<OrganizerDto> = emptyList(),
-    val tools: List<OrganizerDto> = emptyList(),
-)

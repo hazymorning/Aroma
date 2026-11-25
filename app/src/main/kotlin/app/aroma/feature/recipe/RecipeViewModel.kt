@@ -8,7 +8,9 @@ import app.aroma.core.model.Filing
 import app.aroma.core.model.MealType
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.Organizers
+import app.aroma.core.model.Recipe
 import app.aroma.core.model.ShoppingListInfo
+import app.aroma.core.model.UserRating
 import app.aroma.data.AromaError
 import app.aroma.data.attempt
 import app.aroma.data.network.ServerConnection
@@ -23,14 +25,13 @@ import app.aroma.feature.editor.ReworkJob
 import app.aroma.feature.editor.ReworkOutcome
 import app.aroma.feature.editor.ReworkRequest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -59,8 +60,8 @@ sealed interface RecipeEvent {
 
     data object Deleted : RecipeEvent
 
-    /** The recipe is no longer saved; the snackbar offers to save it again. */
-    data object Unsaved : RecipeEvent
+    /** [recipe] is no longer saved; the snackbar offers to save it again. */
+    data class Unsaved(val recipe: Recipe) : RecipeEvent
 
     data class Failed(val error: AromaError) : RecipeEvent
 
@@ -109,8 +110,8 @@ class RecipeViewModel(
             .flatMapLatest { id -> id?.let(reworks::job) ?: flowOf(null) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
-    private val mutableEvents = MutableSharedFlow<RecipeEvent>(extraBufferCapacity = 4)
-    val events: SharedFlow<RecipeEvent> = mutableEvents.asSharedFlow()
+    private val outbox = Channel<RecipeEvent>(Channel.BUFFERED)
+    val events: Flow<RecipeEvent> = outbox.receiveAsFlow()
 
     /** Null while the lists are loading. */
     private val mutableLists = MutableStateFlow<List<ShoppingListInfo>?>(null)
@@ -127,6 +128,8 @@ class RecipeViewModel(
     /** Says the filing on the page changed; Mealie gets the latest, one save at a time. */
     private val filings = Channel<Unit>(Channel.CONFLATED)
 
+    private var loadJob: Job? = null
+
     init {
         load()
         viewModelScope.launch {
@@ -137,14 +140,7 @@ class RecipeViewModel(
         }
         viewModelScope.launch {
             recipes.ratings.collect { ratings ->
-                mutableState.update { state ->
-                    val rating = state.recipe?.let { ratings[it.id] }
-                    // A rating taken back is null: only a recipe Mealie sent nothing for keeps what it showed.
-                    state.copy(
-                        isFavorite = rating?.isFavorite ?: state.isFavorite,
-                        userRating = if (rating != null) rating.rating else state.userRating,
-                    )
-                }
+                mutableState.update { state -> state.withRating(state.recipe?.let { ratings[it.id] }) }
             }
         }
         viewModelScope.launch { attempt { recipes.loadRatings() } }
@@ -167,25 +163,41 @@ class RecipeViewModel(
         }
     }
 
+    /** Loads the recipe anew; a load still under way gives way, so an older answer never shows over a newer one. */
     fun load() {
-        viewModelScope.launch {
-            mutableState.update { it.copy(isLoading = it.recipe == null, error = null) }
-            recipes
-                .recipe(slug)
-                .catch { error -> mutableState.update { it.copy(isLoading = false, error = error.toAromaError()) } }
-                .collect { loadable ->
-                    val rating = recipes.ratings.value[loadable.data.id]
-                    mutableState.update {
-                        it.copy(
-                            recipe = loadable.data,
-                            isLoading = false,
-                            isOffline = loadable.isOffline,
-                            isFavorite = rating?.isFavorite ?: it.isFavorite,
-                            userRating = if (rating != null) rating.rating else it.userRating,
-                        )
+        loadJob?.cancel()
+        loadJob =
+            viewModelScope.launch {
+                mutableState.update { it.copy(isLoading = it.recipe == null, error = null) }
+                recipes
+                    .recipe(slug)
+                    .catch { error -> mutableState.update { it.copy(isLoading = false, error = error.toAromaError()) } }
+                    .collect { loadable ->
+                        val rating = recipes.ratings.value[loadable.data.id]
+                        mutableState.update {
+                            it.copy(recipe = loadable.data, isLoading = false, isOffline = loadable.isOffline).withRating(rating)
+                        }
                     }
-                }
+            }
+    }
+
+    /**
+     * Shows the recipe with [slug] instead, as the menu of a long press does for each recipe pressed:
+     * the page starts afresh, keeping only what the settings say, and loads.
+     */
+    fun show(slug: String) {
+        if (slug == this.slug) return
+        this.slug = slug
+        mutableState.update {
+            RecipeUiState(
+                measures = it.measures,
+                ingredientsInSteps = it.ingredientsInSteps,
+                amountsInSteps = it.amountsInSteps,
+                aiAvailable = it.aiAvailable,
+                translate = it.translate,
+            )
         }
+        load()
     }
 
     /**
@@ -216,7 +228,18 @@ class RecipeViewModel(
         val saved = state.value.isFavorite
         act { recipe ->
             recipes.setFavorite(recipe.id, recipe.slug, !saved)
-            if (saved) mutableEvents.emit(RecipeEvent.Unsaved)
+            if (saved) outbox.send(RecipeEvent.Unsaved(recipe))
+        }
+    }
+
+    /** Saves [recipe] again, as the snackbar after letting it go offers; it may no longer be the one shown. */
+    fun resave(recipe: Recipe) {
+        viewModelScope.launch {
+            try {
+                recipes.setFavorite(recipe.id, recipe.slug, true)
+            } catch (error: AromaError) {
+                outbox.send(RecipeEvent.Failed(error))
+            }
         }
     }
 
@@ -228,7 +251,7 @@ class RecipeViewModel(
         act { recipe ->
             recipes.rate(recipe.id, recipe.slug, stars)
             if (stars > 0) return@act
-            before?.let { mutableEvents.emit(RecipeEvent.Unrated(it.roundToInt())) }
+            before?.let { outbox.send(RecipeEvent.Unrated(it.roundToInt())) }
             attempt { recipes.recipe(recipe.slug).last() }.onSuccess { fresh ->
                 if (fresh.error == null) mutableState.update { it.copy(recipe = fresh.data) }
             }
@@ -242,7 +265,7 @@ class RecipeViewModel(
                 .onSuccess { mutableLists.value = it }
                 .onFailure {
                     mutableLists.value = emptyList()
-                    mutableEvents.emit(RecipeEvent.Failed(it.toAromaError()))
+                    outbox.send(RecipeEvent.Failed(it.toAromaError()))
                 }
         }
 
@@ -258,14 +281,14 @@ class RecipeViewModel(
             val chosen: List<JsonObject> = raw.filterIndexed { index, _ -> index in ingredientIndexes }
             shopping.addRecipe(list.id, recipe.id, state.value.scale, chosen)
             settings.setLastShoppingList(list.id)
-            mutableEvents.emit(RecipeEvent.AddedToList(list.name))
+            outbox.send(RecipeEvent.AddedToList(list.name))
             confirm(QuickAction.Shop)
         }
 
     fun plan(date: LocalDate, type: MealType) =
         act { recipe ->
             mealPlans.add(date, type, recipe.id, title = "", note = "")
-            mutableEvents.emit(RecipeEvent.Planned(date))
+            outbox.send(RecipeEvent.Planned(date))
             confirm(QuickAction.Plan)
         }
 
@@ -291,7 +314,7 @@ class RecipeViewModel(
             try {
                 recipes.file(recipe.slug, Filing(recipe.categories, recipe.tags))
             } catch (error: AromaError) {
-                mutableEvents.emit(RecipeEvent.Failed(error))
+                outbox.send(RecipeEvent.Failed(error))
                 load()
                 return
             }
@@ -321,7 +344,7 @@ class RecipeViewModel(
     fun delete() =
         act { recipe ->
             recipes.delete(recipe.slug)
-            mutableEvents.emit(RecipeEvent.Deleted)
+            outbox.send(RecipeEvent.Deleted)
         }
 
     /** Has Mealie's AI rework the recipe, into the app's language where [translate] is set, which is remembered for next time. */
@@ -341,11 +364,11 @@ class RecipeViewModel(
             is ReworkOutcome.Reworked -> {
                 slug = outcome.slug
                 load()
-                mutableEvents.tryEmit(RecipeEvent.Reworked(outcome))
+                outbox.trySend(RecipeEvent.Reworked(outcome))
             }
 
             is ReworkOutcome.Failed -> {
-                mutableEvents.tryEmit(RecipeEvent.ReworkFailed(outcome.error))
+                outbox.trySend(RecipeEvent.ReworkFailed(outcome.error))
             }
         }
     }
@@ -357,13 +380,13 @@ class RecipeViewModel(
             load()
         }
 
-    private fun act(block: suspend (app.aroma.core.model.Recipe) -> Unit) {
+    private fun act(block: suspend (Recipe) -> Unit) {
         val recipe = state.value.recipe ?: return
         viewModelScope.launch {
             try {
                 block(recipe)
             } catch (error: AromaError) {
-                mutableEvents.emit(RecipeEvent.Failed(error))
+                outbox.send(RecipeEvent.Failed(error))
             }
         }
     }
@@ -373,3 +396,10 @@ class RecipeViewModel(
         const val SLUG = "recipeSlug"
     }
 }
+
+/** The user's own [rating] of the recipe; a rating taken back is null, so only a recipe Mealie sent nothing for keeps what it showed. */
+private fun RecipeUiState.withRating(rating: UserRating?): RecipeUiState =
+    copy(
+        isFavorite = rating?.isFavorite ?: isFavorite,
+        userRating = if (rating != null) rating.rating else userRating,
+    )

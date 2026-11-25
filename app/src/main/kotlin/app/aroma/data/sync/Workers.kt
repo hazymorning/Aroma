@@ -12,10 +12,10 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.aroma.AromaApplication
+import app.aroma.data.attempt
 import app.aroma.data.session.SessionState
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.cancellation.CancellationException
 
 private val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
@@ -28,13 +28,14 @@ class ShoppingSyncWorker(context: Context, params: WorkerParameters) : Coroutine
     }
 
     companion object {
-        fun enqueue(context: Context) {
+        /** [policy] [ExistingWorkPolicy.KEEP] leaves a sync already waiting as it is, its backoff included. */
+        fun enqueue(context: Context, policy: ExistingWorkPolicy = ExistingWorkPolicy.REPLACE) {
             val request =
                 OneTimeWorkRequestBuilder<ShoppingSyncWorker>()
                     .setConstraints(online)
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                     .build()
-            WorkManager.getInstance(context).enqueueUniqueWork("shopping-sync", ExistingWorkPolicy.REPLACE, request)
+            WorkManager.getInstance(context).enqueueUniqueWork("shopping-sync", policy, request)
         }
     }
 }
@@ -44,14 +45,7 @@ class OfflineRecipesWorker(context: Context, params: WorkerParameters) : Corouti
     override suspend fun doWork(): Result {
         val container = (applicationContext as AromaApplication).container
         if (container.sessions.state.first { it != SessionState.Loading } !is SessionState.SignedIn) return Result.success()
-        return try {
-            container.recipes.downloadAll()
-            Result.success()
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            Result.retry()
-        }
+        return if (attempt { container.recipes.downloadAll() }.isSuccess) Result.success() else Result.retry()
     }
 
     companion object {

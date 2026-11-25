@@ -6,22 +6,18 @@ import app.aroma.core.format.IngredientFormatter
 import app.aroma.core.format.withoutPictographs
 import app.aroma.core.model.Ingredient
 import app.aroma.data.AromaError
-import app.aroma.data.AromaError.ImportFailed.Reason.NoAnswer
-import app.aroma.data.isConnectivity
 import app.aroma.data.mayStillFinish
 import app.aroma.data.remote.MealieJson
 import app.aroma.data.remote.dto.IngredientDto
 import app.aroma.data.remote.toModel
 import app.aroma.data.repository.RecipeRepository
 import app.aroma.ui.components.formatDurationPlain
-import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -66,7 +62,7 @@ class RecipeReworker(
             } catch (failure: AromaError) {
                 if (!failure.mayStillFinish()) throw failure
                 onStep(ImportStep.StillWorking)
-                awaitDraft(known)
+                recipes.awaitAdded(known, source = null, patience, checkEvery)
             }
         return adopt(recipeId, draft, translated = translateTo != null)
     }
@@ -78,7 +74,7 @@ class RecipeReworker(
      */
     suspend fun resume(recipeId: String, translated: Boolean, known: Set<String>, onStep: (ImportStep) -> Unit): ReworkOutcome.Reworked {
         onStep(ImportStep.StillWorking)
-        return adopt(recipeId, awaitDraft(known), translated)
+        return adopt(recipeId, recipes.awaitAdded(known, source = null, patience, checkEvery), translated)
     }
 
     /** Gives the recipe the content of the [draft] and removes the draft; should that fail, the recipe stays as it was. */
@@ -88,7 +84,7 @@ class RecipeReworker(
                 val recipe = recipes.recipeJson(recipeId)
                 recipe to patch(recipe, recipes.recipeJson(draft), translated)
             } catch (failure: AromaError) {
-                deleteQuietly(draft)
+                recipes.deleteQuietly(draft)
                 throw failure
             }
         // The draft goes first: the recipe may take its name, which Mealie gives one recipe only.
@@ -198,32 +194,6 @@ class RecipeReworker(
                 time?.let { "${words.getString(label)}: $it" }
             }.joinToString(" · ")
 
-    /** The draft Mealie saves once it is done: the newest recipe the user added since [known] were the newest. */
-    private suspend fun awaitDraft(known: Set<String>): String {
-        repeat((patience / checkEvery).toInt().coerceAtLeast(1)) {
-            delay(checkEvery)
-            val added =
-                try {
-                    recipes.addedSince(known, source = null)
-                } catch (error: AromaError) {
-                    // A phone between networks answers again shortly; anything else will not change.
-                    if (!error.isConnectivity && !error.mayStillFinish()) throw error
-                    null
-                }
-            if (added != null) return added
-        }
-        throw AromaError.ImportFailed(NoAnswer)
-    }
-
-    /** Removes a draft nobody wants; failing here leaves it for the user to delete. */
-    private suspend fun deleteQuietly(slug: String) {
-        try {
-            recipes.delete(slug)
-        } catch (_: AromaError) {
-            // See above.
-        }
-    }
-
     private companion object {
         /** The fields the recipe takes from the draft wherever the draft fills them. */
         val TAKEN =
@@ -287,9 +257,5 @@ private fun JsonElement.saysSomething(): Boolean =
         is JsonArray -> isNotEmpty()
         is JsonObject -> isNotEmpty()
     }
-
-private fun JsonObject.list(key: String): List<JsonObject> = (this[key] as? JsonArray)?.filterIsInstance<JsonObject>().orEmpty()
-
-private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
 
 private fun JsonObject.number(key: String): Double? = (this[key] as? JsonPrimitive)?.doubleOrNull

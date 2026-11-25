@@ -96,9 +96,6 @@ object Radius {
     val cardImage: Dp = 14.dp
     val thumbnail: Dp = 12.dp
     val sheet: Dp = 28.dp
-
-    /** A shape inside another follows its corner: the outer radius less the room between them, at least 4 dp. */
-    fun inner(outer: Dp, inset: Dp): Dp = (outer - inset).coerceAtLeast(Space.s4)
 }
 
 /**

@@ -11,15 +11,12 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import app.aroma.AromaApplication
 import app.aroma.R
 import app.aroma.data.AromaError
-import app.aroma.data.session.SessionState
 import app.aroma.data.toAromaError
 import app.aroma.ui.components.titleRes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.serialization.json.JsonObject
 import java.io.File
@@ -93,8 +90,14 @@ class RecipeReworks(private val context: Context, private val reworker: RecipeRe
         state.value = null
     }
 
-    /** Forgets all reworks, as when the user signs out and [RecipeImports.cancelAll] drops the work that runs them. */
-    fun forgetAll() = jobs.values.forEach { it.value = null }
+    /**
+     * Forgets all reworks and their notes for a re-run, as when the user signs out and
+     * [RecipeImports.cancelAll] drops the work that runs them.
+     */
+    fun forgetAll() {
+        jobs.values.forEach { it.value = null }
+        File(context.noBackupFilesDir, NOTES_FOLDER).deleteRecursively()
+    }
 
     /**
      * Runs rework [id] for its worker. [rerun] is set when Android ended the app during an earlier
@@ -111,7 +114,7 @@ class RecipeReworks(private val context: Context, private val reworker: RecipeRe
             if (job != null && !seen()) ImportNotifications.running(context, job)
         }
         // The newest recipes from right before the request that makes the draft, kept on disk for a re-run.
-        val sent = File(context.noBackupFilesDir, "reworks/$id")
+        val sent = File(context.noBackupFilesDir, "$NOTES_FOLDER/$id")
         val outcome =
             try {
                 if (rerun && sent.exists()) {
@@ -132,6 +135,10 @@ class RecipeReworks(private val context: Context, private val reworker: RecipeRe
         val job = state.updateAndGet { it?.copy(outcome = outcome) } ?: return
         ImportNotifications.ended(context, job, seen())
     }
+
+    private companion object {
+        const val NOTES_FOLDER = "reworks"
+    }
 }
 
 /** Runs one rework in the background, as a foreground service where Android allows one. */
@@ -139,18 +146,8 @@ class ReworkWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     override suspend fun getForegroundInfo(): ForegroundInfo =
         ImportNotifications.foreground(applicationContext, ReworkJob(id, request(inputData), inputData.startedAt))
 
-    override suspend fun doWork(): Result {
-        val container = (applicationContext as AromaApplication).container
-        if (container.sessions.state.first { it != SessionState.Loading } !is SessionState.SignedIn) return Result.success()
-        try {
-            setForeground(getForegroundInfo())
-        } catch (_: IllegalStateException) {
-            // Android lets no foreground service start from the background; the work runs on without one.
-        }
-        container.reworks.run(id, request(inputData), inputData.startedAt, rerun = runAttemptCount > 0)
-        // Success also when the rework failed: that is told on the recipe's page or in a notification.
-        return Result.success()
-    }
+    override suspend fun doWork(): Result =
+        runSignedIn { it.reworks.run(id, request(inputData), inputData.startedAt, rerun = runAttemptCount > 0) }
 
     private val Data.startedAt: Long get() = getLong(STARTED_AT, System.currentTimeMillis())
 

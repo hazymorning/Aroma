@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -66,9 +66,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-/** Up to this many lists are offered as segments; more scroll by as chips. */
-private const val MAX_SEGMENTS = 3
-
 /** The rating sheet's stars, large enough to hit with a thumb. */
 private val StarSize = 28.dp
 
@@ -86,7 +83,7 @@ fun AddToListSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     preferredListId: String? = null,
-    onScale: (Double) -> Unit = {},
+    onScaleChange: (Double) -> Unit = {},
 ) {
     val locale = currentLocale()
     var selected by rememberSaveable { mutableStateOf(recipe.ingredients.indices.toSet()) }
@@ -99,7 +96,12 @@ fun AddToListSheet(
     val allSelected = selected.size == recipe.ingredients.size
     AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.recipe_add_to_list), modifier = modifier) {
         if (lists != null && lists.size > 1) {
-            ListChoice(lists, selected = list, onSelect = { listId = it.id }, modifier = Modifier.padding(bottom = Space.s16))
+            SelectionRow(
+                options = lists.map { it.name },
+                selectedIndex = lists.indexOf(list),
+                onSelect = { listId = lists[it].id },
+                modifier = Modifier.padding(bottom = Space.s16),
+            )
         }
         // The row on the recipe sits above the servings, so they can be chosen here as well.
         Row(
@@ -111,8 +113,8 @@ fun AddToListSheet(
             // The minus circle, not its touch area, starts on the margin.
             Stepper(
                 label = servingsLabel(recipe.servings, scale, locale),
-                onDecrease = { onScale(Servings.step(recipe.servings, scale, -1)) },
-                onIncrease = { onScale(Servings.step(recipe.servings, scale, +1)) },
+                onDecrease = { onScaleChange(Servings.step(recipe.servings, scale, -1)) },
+                onIncrease = { onScaleChange(Servings.step(recipe.servings, scale, +1)) },
                 canDecrease = Servings.canDecrease(recipe.servings, scale),
                 modifier = Modifier.offset(x = -Space.s4),
             )
@@ -127,7 +129,7 @@ fun AddToListSheet(
                 .weight(1f, fill = false)
                 .padding(top = Space.s8),
         ) {
-            itemsIndexed(shown, key = { _, (index, _) -> index }) { position, (index, ingredient) ->
+            items(shown, key = { (index, _) -> index }) { (index, ingredient) ->
                 IngredientChoice(
                     line = IngredientFormatter.format(ingredient, scale, locale),
                     checked = index in selected,
@@ -152,31 +154,6 @@ fun AddToListSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-    }
-}
-
-/** A few lists as segments, more as a row of chips. */
-@Composable
-private fun ListChoice(
-    lists: List<ShoppingListInfo>,
-    selected: ShoppingListInfo?,
-    onSelect: (ShoppingListInfo) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    if (lists.size <= MAX_SEGMENTS) {
-        SelectionRow(
-            options = lists.map { it.name },
-            selectedIndex = lists.indexOf(selected),
-            onSelect = { onSelect(lists[it]) },
-            modifier = modifier,
-        )
-    } else {
-        SelectionRow(
-            options = lists.map { it.name },
-            selectedIndex = lists.indexOf(selected),
-            onSelect = { onSelect(lists[it]) },
-            modifier = modifier,
-        )
     }
 }
 

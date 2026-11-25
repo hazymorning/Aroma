@@ -8,6 +8,7 @@ import app.aroma.data.remote.MealieClientFactory
 import app.aroma.data.remote.ServerAddress
 import app.aroma.data.remote.dto.ApiTokenRequest
 import app.aroma.data.remote.dto.UserDto
+import app.aroma.data.session.Revocation
 import app.aroma.data.session.Session
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
@@ -23,6 +24,8 @@ class AuthRepository(
     private val sessions: SessionManager,
     private val database: AromaDatabase,
     private val deviceName: String,
+    /** Removes what an account leaves on this device besides the database; see [forgetLocal]. */
+    private val forgetOutsideDatabase: suspend () -> Unit = {},
 ) {
     /**
      * Finds the Mealie server behind what the user typed. Without a scheme, https is tried first;
@@ -41,8 +44,7 @@ class AuthRepository(
             } catch (error: Throwable) {
                 val failure = error.toAromaError()
                 if (failure is AromaError.UnsupportedVersion) throw failure
-                if (failure is AromaError.NotFound) firstError = firstError ?: AromaError.NotMealie()
-                firstError = firstError ?: failure
+                firstError = firstError ?: if (failure is AromaError.NotFound) AromaError.NotMealie() else failure
             }
         }
         throw firstError ?: AromaError.HostNotFound()
@@ -55,14 +57,7 @@ class AuthRepository(
      */
     suspend fun signIn(server: ServerInfo, username: String, password: String) {
         val api = clients.create(SessionManager.baseUrl(server.url))
-        val accessToken =
-            try {
-                api.signIn(username.trim(), password).accessToken
-            } catch (error: HttpException) {
-                throw if (error.code() == 401 || error.code() == 400) AromaError.InvalidCredentials() else error.toAromaError()
-            } catch (error: Throwable) {
-                throw error.toAromaError()
-            }
+        val accessToken = signingIn(401, 400) { api.signIn(username.trim(), password).accessToken }
         val bearer = "Bearer $accessToken"
         val user = mealieCall { api.currentUser(bearer) }
         val apiToken =
@@ -77,16 +72,17 @@ class AuthRepository(
 
     suspend fun signInWithToken(server: ServerInfo, token: String) {
         val api = clients.create(SessionManager.baseUrl(server.url))
-        val user =
-            try {
-                api.currentUser("Bearer ${token.trim()}")
-            } catch (error: HttpException) {
-                throw if (error.code() == 401) AromaError.InvalidCredentials() else error.toAromaError()
-            } catch (error: Throwable) {
-                throw error.toAromaError()
-            }
+        val user = signingIn(401) { api.currentUser("Bearer ${token.trim()}") }
         start(server, token.trim(), null, user)
     }
+
+    /** Runs [block], a sign-in: Mealie answering with one of the [refusals] means the credentials are wrong. */
+    private suspend fun <T> signingIn(vararg refusals: Int, block: suspend () -> T): T =
+        try {
+            block()
+        } catch (error: Throwable) {
+            throw if (error is HttpException && error.code() in refusals) AromaError.InvalidCredentials() else error.toAromaError()
+        }
 
     /** Reads the signed-in user again, so a new name set in Mealie shows here too. */
     suspend fun refreshUser() {
@@ -105,6 +101,7 @@ class AuthRepository(
     }
 
     private suspend fun start(server: ServerInfo, token: String, tokenId: Int?, user: UserDto) {
+        forgetLocal()
         sessions.start(
             Session(
                 serverUrl = server.url,
@@ -123,22 +120,49 @@ class AuthRepository(
 
     /**
      * Ends the session at once, so the screens leave and no request carries the token any more,
-     * forgets everything stored for it, and then revokes the token Aroma created, if Mealie answers
-     * within a few seconds.
+     * forgets everything stored for it, and then revokes the token Aroma created. The token is kept,
+     * encrypted, until Mealie answers: when it is out of reach now, or Android ends the app first,
+     * the token is revoked at a later start or sign-out.
      */
     suspend fun signOut() {
         val session = sessions.current ?: return
-        sessions.end()
+        sessions.end(revoke = session.tokenId?.let { Revocation(session.serverUrl, it, session.token) })
+        forgetLocal()
+        revokeEndedTokens()
+    }
+
+    /**
+     * Removes everything an account stored on this device. Besides at sign-out it runs before every
+     * sign-in and at a start without a session, so what a sign-out cut short, a session that could
+     * not be read any more or an answer that came in late left behind never reaches the next account.
+     * Running it again changes nothing.
+     */
+    suspend fun forgetLocal() {
+        forgetOutsideDatabase()
         withContext(Dispatchers.IO) { database.clearAllTables() }
-        val tokenId = session.tokenId ?: return
-        withTimeoutOrNull(REVOKE_PATIENCE) {
-            try {
-                clients.create(SessionManager.baseUrl(session.serverUrl)).deleteApiToken(tokenId, "Bearer ${session.token}")
-            } catch (_: IOException) {
-                // Unreachable: the token stays valid on the server, as a token deleted there would anyway.
-            } catch (_: HttpException) {
-                // Already revoked in Mealie's settings.
-            }
+    }
+
+    /**
+     * Revokes the tokens of ended sessions, if Mealie answers within a few seconds. A token is
+     * forgotten once Mealie took it back or refused to; one it could not be asked about is tried again later.
+     */
+    suspend fun revokeEndedTokens() {
+        for (revocation in sessions.revocations()) {
+            val api = clients.create(SessionManager.baseUrl(revocation.serverUrl))
+            val answered =
+                withTimeoutOrNull(REVOKE_PATIENCE) {
+                    try {
+                        api.deleteApiToken(revocation.tokenId, "Bearer ${revocation.token}")
+                        true
+                    } catch (_: IOException) {
+                        // Out of reach: many servers answer only at home.
+                        false
+                    } catch (error: HttpException) {
+                        // Mealie refuses a token revoked in its settings already; a 5xx may be a proxy in front of a Mealie that is down.
+                        error.code() !in 500..599
+                    }
+                } ?: false
+            if (answered) sessions.revoked(revocation)
         }
     }
 }

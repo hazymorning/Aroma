@@ -17,17 +17,15 @@ import app.aroma.data.network.ServerConnection
 import app.aroma.data.remote.MealieJson
 import app.aroma.data.remote.dto.AddRecipeToListDto
 import app.aroma.data.remote.dto.CreateShoppingListDto
-import app.aroma.data.remote.dto.FoodDto
-import app.aroma.data.remote.dto.LabelDto
-import app.aroma.data.remote.dto.LabelSettingDto
+import app.aroma.data.remote.dto.ShoppingListDto
 import app.aroma.data.remote.dto.ShoppingListSummaryDto
-import app.aroma.data.remote.dto.UnitDto
 import app.aroma.data.remote.toModel
 import app.aroma.data.session.SessionManager
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -35,7 +33,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -75,10 +72,16 @@ class ShoppingRepository(
             .stream(LISTS_KEY, ListSerializer(ShoppingListSummaryDto.serializer())) { sessions.api().shoppingLists().items }
             .map { loadable -> Loadable(loadable.data.map { it.toInfo() }, loadable.isRefreshing, loadable.error) }
 
+    /** The lists as [lists] last fetched them, and again whenever that changes; null before the first fetch. */
+    fun cachedLists(): Flow<List<ShoppingListInfo>?> =
+        cache.observe(LISTS_KEY, ListSerializer(ShoppingListSummaryDto.serializer())).map { lists -> lists?.map { it.toInfo() } }
+
     /** The cached list; local edits show up here immediately. */
     fun observe(listId: String): Flow<ShoppingList?> =
         cacheDao
             .observe(key(listId))
+            // Room reports every write to the cache, of any key; only a change to this list is worth reading again.
+            .distinctUntilChanged { old, new -> old?.json == new?.json }
             .map { entry -> entry?.let { parse(MealieJson.decodeFromString(ShoppingListDto.serializer(), it.json)) } }
             .flowOn(Dispatchers.Default)
 
@@ -91,7 +94,7 @@ class ShoppingRepository(
     suspend fun refresh(listId: String) =
         connection.whileReachable {
             sync()
-            storeIfSettled(listId, mealieCall { sessions.api().shoppingList(listId) })
+            storeIfSettled(listId) { sessions.api().shoppingList(listId) }
         }
 
     suspend fun add(listId: String, text: String) =
@@ -159,7 +162,7 @@ class ShoppingRepository(
     suspend fun renameList(listId: String, name: String) {
         val current = mealieCall { sessions.api().shoppingList(listId) }
         val body = current.with("name", JsonPrimitive(name.trim()))
-        storeIfSettled(listId, mealieCall { sessions.api().updateShoppingList(listId, body) })
+        storeIfSettled(listId) { sessions.api().updateShoppingList(listId, body) }
         refreshLists()
     }
 
@@ -171,25 +174,24 @@ class ShoppingRepository(
     }
 
     /** Adds a recipe's ingredients: the raw objects the user picked, or all of them when [ingredients] is null. */
-    suspend fun addRecipe(listId: String, recipeId: String, scale: Double, ingredients: List<JsonObject>?) {
-        val updated =
-            mealieCall {
-                sessions.api().addRecipeToList(listId, recipeId, AddRecipeToListDto(scale, ingredients))
-            }
-        storeIfSettled(listId, updated)
-    }
+    suspend fun addRecipe(listId: String, recipeId: String, scale: Double, ingredients: List<JsonObject>?) =
+        storeIfSettled(listId) { sessions.api().addRecipeToList(listId, recipeId, AddRecipeToListDto(scale, ingredients)) }
 
     private suspend fun refreshLists() {
         attempt {
+            val signIn = sessions.current?.token
             val lists = sessions.api().shoppingLists().items
-            cache.write(LISTS_KEY, ListSerializer(ShoppingListSummaryDto.serializer()), lists)
+            if (sessions.current?.token == signIn) cache.write(LISTS_KEY, ListSerializer(ShoppingListSummaryDto.serializer()), lists)
         }
     }
 
     /** Replays queued changes in order. Returns false if something is still waiting for the server. */
     suspend fun sync(): Boolean =
         syncLock.withLock {
+            val signIn = sessions.current?.token
             for (change in pending.all()) {
+                // Changes made for one sign-in never go out with the next one.
+                if (sessions.current?.token != signIn) return@withLock false
                 try {
                     val payload = MealieJson.parseToJsonElement(change.payload).jsonObject
                     when (change.kind) {
@@ -248,11 +250,18 @@ class ShoppingRepository(
 
     private fun changed() = changeCount.update { it + 1 }
 
-    /** Keeps the server's copy of a list, unless changes made here still wait: that copy would hide them. */
-    private suspend fun storeIfSettled(listId: String, list: JsonObject) =
+    /**
+     * Keeps the server's copy of a list that [fetch] gets, unless changes made here still wait: that
+     * copy would hide them. An answer that arrives after its sign-in ended is dropped, so the next
+     * account never sees the list.
+     */
+    private suspend fun storeIfSettled(listId: String, fetch: suspend () -> JsonObject) {
+        val signIn = sessions.current?.token
+        val list = mealieCall { fetch() }
         editLock.withLock {
-            if (!pending.hasAny(listId)) store(listId, list)
+            if (sessions.current?.token == signIn && !pending.hasAny(listId)) store(listId, list)
         }
+    }
 
     private sealed class Change(val kind: String, val itemId: String, val payload: JsonObject) {
         class Create(item: JsonObject) : Change(KIND_CREATE, item.string("id").orEmpty(), item)
@@ -344,34 +353,3 @@ private fun JsonObject.forCreate(): JsonObject {
             }.orEmpty()
     return JsonObject(filterKeys { it in CREATE_FIELDS } + ("recipeReferences" to JsonArray(references)))
 }
-
-@Serializable
-internal data class ShoppingListDto(
-    val id: String,
-    val name: String? = null,
-    val listItems: List<ShoppingItemDto> = emptyList(),
-    val labelSettings: List<LabelSettingDto> = emptyList(),
-    val recipeReferences: List<ListRecipeReferenceDto> = emptyList(),
-)
-
-@Serializable
-internal data class ShoppingItemDto(
-    val id: String,
-    val quantity: Double = 0.0,
-    val unit: UnitDto? = null,
-    val food: FoodDto? = null,
-    val note: String? = null,
-    val checked: Boolean = false,
-    val position: Int = 0,
-    val label: LabelDto? = null,
-    val recipeReferences: List<ItemRecipeReferenceDto> = emptyList(),
-)
-
-@Serializable
-internal data class ItemRecipeReferenceDto(val recipeId: String? = null)
-
-@Serializable
-internal data class ListRecipeReferenceDto(val recipeId: String, val recipe: RecipeNameDto? = null)
-
-@Serializable
-internal data class RecipeNameDto(val name: String? = null)

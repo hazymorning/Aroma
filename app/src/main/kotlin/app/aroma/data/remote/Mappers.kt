@@ -25,7 +25,6 @@ import app.aroma.data.remote.dto.OrganizerDto
 import app.aroma.data.remote.dto.RecipeDto
 import app.aroma.data.remote.dto.RecipeSummaryDto
 import app.aroma.data.remote.dto.UnitDto
-import java.time.Instant
 import java.time.LocalDate
 
 private fun time(seconds: Int?, text: String?): RecipeTime? =
@@ -47,10 +46,6 @@ internal fun servingsFrom(servings: Double?, yieldText: String?): Double =
 private val LeadingNumber = Regex("""^\d+(?:[.,]\d+)?""")
 
 private fun date(value: String?): LocalDate? = value?.take(10)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-
-/** Mealie writes some timestamps without a zone; they are in UTC. */
-private fun instant(value: String?): Instant? =
-    value?.let { runCatching { Instant.parse(if (it.endsWith("Z") || it.contains('+')) it else "${it}Z") }.getOrNull() }
 
 fun OrganizerDto.toModel() = Organizer(id = id, name = name, slug = slug)
 

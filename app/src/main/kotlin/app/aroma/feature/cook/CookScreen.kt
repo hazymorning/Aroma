@@ -75,23 +75,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.format.DurationDetector
-import app.aroma.core.format.IngredientFormatter
 import app.aroma.core.format.Markdown
 import app.aroma.core.format.MeasureSystem
 import app.aroma.core.format.StepAmount
-import app.aroma.core.format.StepMeasures
 import app.aroma.core.format.StepMention
 import app.aroma.core.format.StyledText
-import app.aroma.core.format.UnitSpacing
 import app.aroma.core.format.ingredientsByStep
-import app.aroma.core.format.stepAmounts
-import app.aroma.core.format.stepMentions
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.Step
 import app.aroma.data.AromaError
 import app.aroma.data.settings.IngredientsInSteps
-import app.aroma.feature.settings.labelRes
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.BottomActionBar
 import app.aroma.ui.components.BoxHeader
@@ -101,7 +95,7 @@ import app.aroma.ui.components.GroupHead
 import app.aroma.ui.components.INGREDIENT_TAG
 import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.IconButtonPlace
-import app.aroma.ui.components.IconCircle
+import app.aroma.ui.components.IconButtonReach
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
 import app.aroma.ui.components.PrimaryButton
@@ -118,8 +112,11 @@ import app.aroma.ui.components.breakable
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatClock
 import app.aroma.ui.components.formatDuration
+import app.aroma.ui.components.labelRes
 import app.aroma.ui.components.ratingTouchInset
+import app.aroma.ui.components.rememberIngredientRows
 import app.aroma.ui.components.rememberStepText
+import app.aroma.ui.components.rememberStepTexts
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.ContentMaxWidth
@@ -146,7 +143,8 @@ data class CookUiState(
     val recipe: Recipe? = null,
     val scale: Double = 1.0,
     val timers: List<CookTimerUi> = emptyList(),
-    val rating: Double? = null,
+    /** The user's own rating, which the stars at the end show and take back; not the recipe's average. */
+    val userRating: Double? = null,
     val ratedHere: Boolean = false,
     val markedCooked: Boolean = false,
     val markFailed: Boolean = false,
@@ -165,7 +163,7 @@ data class CookActions(
     val onClose: () -> Unit = {},
     val onStartTimer: (seconds: Int, label: String) -> Unit = { _, _ -> },
     val onToggleIngredient: (Int) -> Unit = {},
-    val onIngredientsInSteps: (IngredientsInSteps) -> Unit = {},
+    val onIngredientsInStepsChange: (IngredientsInSteps) -> Unit = {},
     val onToggleTimer: (Long) -> Unit = {},
     val onDismissTimer: (Long) -> Unit = {},
     val onRate: (Int) -> Unit = {},
@@ -208,33 +206,10 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
     }
     var showIngredients by rememberSaveable { mutableStateOf(false) }
     val locale = currentLocale()
-    val rows =
-        remember(state.recipe, state.scale, state.measures, locale) {
-            state.recipe
-                ?.ingredients
-                .orEmpty()
-                .map { IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale, state.measures)) }
-        }
+    val rows = rememberIngredientRows(state.recipe, state.scale, state.measures)
     // Ingredients are ticked off by their place in the recipe, wherever they show.
     val byStep = remember(state.recipe, locale) { state.recipe?.ingredientsByStep(locale).orEmpty() }
-    // The steps as they read: temperatures and pan sizes in the chosen measures, and the amounts written in where chosen.
-    val texts =
-        remember(state.recipe, state.measures, locale) {
-            steps.map { Markdown.parse(UnitSpacing.apply(StepMeasures.convert(it.text, state.measures, locale))) }
-        }
-    val amounts =
-        remember(state.recipe, texts, state.scale, state.measures, locale, state.amountsInSteps) {
-            val recipe = state.recipe
-            if (recipe == null ||
-                !state.amountsInSteps
-            ) {
-                emptyList()
-            } else {
-                recipe.stepAmounts(texts.map { it.text }, state.scale, locale, state.measures)
-            }
-        }
-    // The words in the steps that tick off an ingredient with a tap.
-    val mentions = remember(state.recipe, texts, locale) { state.recipe?.stepMentions(texts.map { it.text }, locale).orEmpty() }
+    val texts = rememberStepTexts(state.recipe, state.scale, state.measures, state.amountsInSteps)
     Column(
         modifier
             .fillMaxSize()
@@ -279,9 +254,9 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                                 index = page,
                                 count = steps.size,
                                 step = steps[page],
-                                text = texts.getOrNull(page) ?: StyledText(steps[page].text, emptyList()),
-                                amounts = amounts.getOrNull(page).orEmpty(),
-                                mentions = mentions.getOrNull(page).orEmpty(),
+                                text = texts.textOf(page, steps[page]),
+                                amounts = texts.amountsOf(page),
+                                mentions = texts.mentionsOf(page),
                                 next = if (state.showNextStep) steps.getOrNull(page + 1) else null,
                                 onStartTimer = actions.onStartTimer,
                                 ingredients =
@@ -312,7 +287,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
             checked = state.checkedIngredients,
             onToggle = actions.onToggleIngredient,
             inSteps = state.ingredientsInSteps,
-            onInSteps = actions.onIngredientsInSteps,
+            onInStepsChange = actions.onIngredientsInStepsChange,
             onDismiss = { showIngredients = false },
         )
     }
@@ -326,7 +301,7 @@ private fun TopBar(hasIngredients: Boolean, onClose: () -> Unit, onIngredients: 
             Modifier
                 .fillMaxWidth()
                 .height(TopBarHeight)
-                .padding(start = PageMargin - (TouchTarget - IconCircle) / 2, end = PageMargin),
+                .padding(start = PageMargin - IconButtonReach, end = PageMargin),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(R.drawable.ic_close, stringResource(R.string.cook_close), onClose)
@@ -378,7 +353,6 @@ private fun StepPage(
     modifier: Modifier = Modifier,
 ) {
     val resources = LocalResources.current
-    val haptics = LocalHapticFeedback.current
     val stepLabel = stringResource(R.string.cook_step_of, index + 1, count)
     val durations =
         remember(step) {
@@ -407,10 +381,7 @@ private fun StepPage(
                 onDuration = { onStartTimer(it.seconds, stepLabel) },
                 mentions = mentions,
                 checked = checked,
-                onIngredient = { ingredient ->
-                    haptics.performHapticFeedback(if (ingredient in checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
-                    onToggle(ingredient)
-                },
+                onIngredient = onToggle,
             ),
         )
         if (durations.isNotEmpty()) {
@@ -553,7 +524,7 @@ private fun DonePage(state: CookUiState, actions: CookActions) {
         )
         // The stars' touch targets reach beyond the glyphs; the gaps are measured to the glyphs.
         Spacer(Modifier.height(Space.s16 - ratingTouchInset(DoneStarSize)))
-        RatingStars(state.rating, starSize = DoneStarSize, onRate = actions.onRate, clearable = true)
+        RatingStars(state.userRating, starSize = DoneStarSize, onRate = actions.onRate, clearable = true)
         Spacer(Modifier.height(Space.s32 - ratingTouchInset(DoneStarSize)))
         MarkCooked(state.markedCooked, state.markFailed, actions.onMarkCooked)
         Spacer(Modifier.weight(2f))
@@ -740,7 +711,7 @@ private fun IngredientsSheet(
     checked: Set<Int>,
     onToggle: (Int) -> Unit,
     inSteps: IngredientsInSteps,
-    onInSteps: (IngredientsInSteps) -> Unit,
+    onInStepsChange: (IngredientsInSteps) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.recipe_ingredients)) {
@@ -757,7 +728,7 @@ private fun IngredientsSheet(
             SelectionRow(
                 options = IngredientsInSteps.entries.map { stringResource(it.labelRes()) },
                 selectedIndex = inSteps.ordinal,
-                onSelect = { onInSteps(IngredientsInSteps.entries[it]) },
+                onSelect = { onInStepsChange(IngredientsInSteps.entries[it]) },
             )
         }
     }

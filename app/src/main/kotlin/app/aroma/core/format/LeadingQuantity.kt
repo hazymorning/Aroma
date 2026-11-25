@@ -77,12 +77,6 @@ object LeadingQuantityParser {
                 return whole + decimals / 10.0.pow(position - start)
             }
             val afterWhole = position
-            peek()?.let { glyph ->
-                GLYPH_VALUES[glyph]?.let {
-                    advance()
-                    return whole.toDouble() + it
-                }
-            }
             skipSpaces()
             GLYPH_VALUES[peek() ?: ' ']?.let {
                 advance()
