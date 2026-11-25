@@ -351,29 +351,38 @@ val CheckSize: Dp = 24.dp
 private val CheckRing = 1.5.dp
 private val CheckStroke = 1.75.dp
 
-/** A switch: on, a sage track with a paper knob; off, a pressed-paper track with a tertiary knob; no edge. */
+/**
+ * A switch: on, a sage track with a paper knob; off, a pressed-paper track with a tertiary knob; no
+ * edge. The knob glides across in a change of state's time and the track takes on its colour as it
+ * goes; the knob keeps its size, pressed or not. The row it stands in takes the tap.
+ */
 @Composable
-private fun AromaSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier) {
+private fun AromaSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val colors = AromaTheme.colors
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        // Thumb content with a real size keeps the knob as large off as on.
-        thumbContent = { Spacer(Modifier.size(SwitchDefaults.IconSize)) },
-        colors =
-            SwitchDefaults.colors(
-                checkedTrackColor = colors.accent,
-                checkedThumbColor = colors.onInk,
-                checkedBorderColor = Color.Transparent,
-                checkedIconColor = Color.Transparent,
-                uncheckedTrackColor = colors.surfacePressed,
-                uncheckedThumbColor = colors.inkTertiary,
-                uncheckedBorderColor = Color.Transparent,
-                uncheckedIconColor = Color.Transparent,
-            ),
-        modifier = modifier,
+    val on = remember { Animatable(if (checked) 1f else 0f) }
+    LaunchedEffect(checked) { on.animateTo(if (checked) 1f else 0f, Motion.state()) }
+    Spacer(
+        modifier
+            .size(SwitchWidth, SwitchHeight)
+            .drawBehind {
+                val position = on.value
+                val height = size.height
+                drawRoundRect(lerp(colors.surfacePressed, colors.accent, position), cornerRadius = CornerRadius(height / 2))
+                val knob = SwitchKnob.toPx() / 2
+                val inset = height / 2
+                drawCircle(
+                    color = lerp(colors.inkTertiary, colors.onInk, position),
+                    radius = knob,
+                    center = Offset(inset + (size.width - 2 * inset) * position, height / 2),
+                )
+            },
     )
 }
+
+/** The switch's track, and its knob, which stands as large off as on. */
+private val SwitchWidth = 52.dp
+private val SwitchHeight = 32.dp
+private val SwitchKnob = 24.dp
 
 /**
  * A row of settings in a box: a 20 dp glyph in second ink, the title, and a [description] under
@@ -396,11 +405,24 @@ fun SettingsRow(
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val colors = AromaTheme.colors
+    val haptics = LocalHapticFeedback.current
     val tap =
         when {
-            checked != null && onClick != null -> Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = { onClick() })
-            onClick != null -> Modifier.clickable(role = Role.Button, onClick = onClick)
-            else -> Modifier
+            checked != null && onClick != null -> {
+                Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = {
+                    // The phone confirms the switch turning, on or off, as Android's own switches do.
+                    haptics.performHapticFeedback(if (checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
+                    onClick()
+                })
+            }
+
+            onClick != null -> {
+                Modifier.clickable(role = Role.Button, onClick = onClick)
+            }
+
+            else -> {
+                Modifier
+            }
         }
     Row(
         modifier =
@@ -430,7 +452,7 @@ fun SettingsRow(
                 when {
                     checked != null -> {
                         Spacer(Modifier.width(Space.s16))
-                        AromaSwitch(checked = checked, onCheckedChange = null)
+                        AromaSwitch(checked = checked)
                     }
 
                     chevron && trailing == null -> {
