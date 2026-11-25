@@ -47,7 +47,7 @@ class TestEnvironment {
     val sessions: SessionManager = SessionManager(SessionStore(PreferenceDataStoreFactory.create { dataStoreFile }, PlainCipher), clients)
     val connection = ServerConnection(network, scope) { sessions.api().about() }
 
-    private val cache = JsonCache(database.cache(), connection)
+    private val cache = JsonCache(database.cache(), connection, sessions)
     val auth = AuthRepository(clients, sessions, database, deviceName = "Test")
     val recipes = RecipeRepository(sessions, database.recipes(), cache, connection)
     val mealPlans = MealPlanRepository(sessions, cache)

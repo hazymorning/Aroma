@@ -90,8 +90,14 @@ class RecipeReworks(private val context: Context, private val reworker: RecipeRe
         state.value = null
     }
 
-    /** Forgets all reworks, as when the user signs out and [RecipeImports.cancelAll] drops the work that runs them. */
-    fun forgetAll() = jobs.values.forEach { it.value = null }
+    /**
+     * Forgets all reworks and their notes for a re-run, as when the user signs out and
+     * [RecipeImports.cancelAll] drops the work that runs them.
+     */
+    fun forgetAll() {
+        jobs.values.forEach { it.value = null }
+        File(context.noBackupFilesDir, NOTES_FOLDER).deleteRecursively()
+    }
 
     /**
      * Runs rework [id] for its worker. [rerun] is set when Android ended the app during an earlier
@@ -108,7 +114,7 @@ class RecipeReworks(private val context: Context, private val reworker: RecipeRe
             if (job != null && !seen()) ImportNotifications.running(context, job)
         }
         // The newest recipes from right before the request that makes the draft, kept on disk for a re-run.
-        val sent = File(context.noBackupFilesDir, "reworks/$id")
+        val sent = File(context.noBackupFilesDir, "$NOTES_FOLDER/$id")
         val outcome =
             try {
                 if (rerun && sent.exists()) {
@@ -128,6 +134,10 @@ class RecipeReworks(private val context: Context, private val reworker: RecipeRe
         sent.delete()
         val job = state.updateAndGet { it?.copy(outcome = outcome) } ?: return
         ImportNotifications.ended(context, job, seen())
+    }
+
+    private companion object {
+        const val NOTES_FOLDER = "reworks"
     }
 }
 

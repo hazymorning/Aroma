@@ -23,6 +23,8 @@ class AuthRepository(
     private val sessions: SessionManager,
     private val database: AromaDatabase,
     private val deviceName: String,
+    /** Removes what an account leaves on this device besides the database; see [forgetLocal]. */
+    private val forgetOutsideDatabase: suspend () -> Unit = {},
 ) {
     /**
      * Finds the Mealie server behind what the user typed. Without a scheme, https is tried first;
@@ -98,6 +100,7 @@ class AuthRepository(
     }
 
     private suspend fun start(server: ServerInfo, token: String, tokenId: Int?, user: UserDto) {
+        forgetLocal()
         sessions.start(
             Session(
                 serverUrl = server.url,
@@ -122,7 +125,7 @@ class AuthRepository(
     suspend fun signOut() {
         val session = sessions.current ?: return
         sessions.end()
-        withContext(Dispatchers.IO) { database.clearAllTables() }
+        forgetLocal()
         val tokenId = session.tokenId ?: return
         withTimeoutOrNull(REVOKE_PATIENCE) {
             try {
@@ -133,6 +136,17 @@ class AuthRepository(
                 // Already revoked in Mealie's settings.
             }
         }
+    }
+
+    /**
+     * Removes everything an account stored on this device. Besides at sign-out it runs before every
+     * sign-in and at a start without a session, so what a sign-out cut short, a session that could
+     * not be read any more or an answer that came in late left behind never reaches the next account.
+     * Running it again changes nothing.
+     */
+    suspend fun forgetLocal() {
+        forgetOutsideDatabase()
+        withContext(Dispatchers.IO) { database.clearAllTables() }
     }
 }
 

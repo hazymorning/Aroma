@@ -124,6 +124,11 @@ fun forgetCameraPhoto(context: Context, uri: Uri) {
     if (uri.authority == filesAuthority(context)) context.contentResolver.delete(uri, null, null)
 }
 
+/** Removes every photo the camera app saved for Aroma, as when the user signs out. */
+fun forgetCameraPhotos(context: Context) {
+    File(context.cacheDir, CAMERA_FOLDER).deleteRecursively()
+}
+
 private fun filesAuthority(context: Context) = "${context.packageName}.updates"
 
 private const val CAMERA_FOLDER = "camera"

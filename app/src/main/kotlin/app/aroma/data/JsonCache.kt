@@ -4,6 +4,7 @@ import app.aroma.data.local.CacheDao
 import app.aroma.data.local.CacheEntity
 import app.aroma.data.network.ServerConnection
 import app.aroma.data.remote.MealieJson
+import app.aroma.data.session.SessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.KSerializer
 
 /** Stores server responses as JSON so screens have something to show without a connection. */
-class JsonCache(private val dao: CacheDao, private val connection: ServerConnection) {
+class JsonCache(private val dao: CacheDao, private val connection: ServerConnection, private val sessions: SessionManager) {
     suspend fun <T> read(key: String, serializer: KSerializer<T>): T? =
         dao.get(key)?.let { entry ->
             runCatching { MealieJson.decodeFromString(serializer, entry.json) }.getOrNull()
@@ -34,12 +35,14 @@ class JsonCache(private val dao: CacheDao, private val connection: ServerConnect
     /**
      * Emits the cached copy first (if any), then the fresh one. Fails only when there is nothing
      * to show. While Mealie is out of reach, the cached copy is all there is, at once and marked
-     * offline. Decoding runs off the main thread, so screens stay smooth while lists arrive.
+     * offline. Decoding runs off the main thread, so screens stay smooth while lists arrive. An
+     * answer that arrives after its sign-in ended is not kept, so the next account never sees it.
      */
     fun <T> stream(key: String, serializer: KSerializer<T>, fetch: suspend () -> T): Flow<Loadable<T>> =
         flow<Loadable<T>> {
             val cached = read(key, serializer)
             if (cached != null && connection.isReachable.value) emit(Loadable(cached, isRefreshing = true))
+            val signIn = sessions.current?.token
             val fresh =
                 try {
                     connection.whileReachable { fetch() }
@@ -49,7 +52,7 @@ class JsonCache(private val dao: CacheDao, private val connection: ServerConnect
                     emit(Loadable(cached, error = failure))
                     return@flow
                 }
-            write(key, serializer, fresh)
+            if (sessions.current?.token == signIn) write(key, serializer, fresh)
             emit(Loadable(fresh))
         }.flowOn(Dispatchers.Default)
 }

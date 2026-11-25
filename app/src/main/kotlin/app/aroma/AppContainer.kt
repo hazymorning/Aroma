@@ -3,6 +3,7 @@ package app.aroma
 import android.content.Context
 import android.os.Build
 import android.webkit.WebSettings
+import androidx.core.app.NotificationManagerCompat
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.emptyPreferences
@@ -36,6 +37,7 @@ import app.aroma.feature.editor.RecipeImporter
 import app.aroma.feature.editor.RecipeImports
 import app.aroma.feature.editor.RecipeReworker
 import app.aroma.feature.editor.RecipeReworks
+import app.aroma.feature.editor.forgetCameraPhotos
 import app.aroma.timer.CookingTimers
 import coil3.SingletonImageLoader
 import kotlinx.coroutines.CoroutineScope
@@ -62,7 +64,7 @@ class AppContainer(context: Context) {
         PreferenceDataStoreFactory.create(corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }) {
             appContext.preferencesDataStoreFile("aroma")
         }
-    private val database = Room.databaseBuilder(appContext, AromaDatabase::class.java, "aroma.db").build()
+    private val database = Room.databaseBuilder(appContext, AromaDatabase::class.java, DATABASE).build()
 
     val settings = SettingsRepository(dataStore)
 
@@ -83,9 +85,9 @@ class AppContainer(context: Context) {
 
     /** Whether Mealie answers, as the phone's networks and every request tell. */
     val connection = ServerConnection(ConnectivityNetworkMonitor(appContext), scope) { sessions.api().about() }
-    private val cache = JsonCache(database.cache(), connection)
+    private val cache = JsonCache(database.cache(), connection, sessions)
 
-    val auth = AuthRepository(clients, sessions, database, deviceName = Build.MODEL)
+    val auth = AuthRepository(clients, sessions, database, deviceName = Build.MODEL, forgetOutsideDatabase = ::forgetAccount)
     val recipes = RecipeRepository(sessions, database.recipes(), cache, connection)
     val mealPlans = MealPlanRepository(sessions, cache)
     val timeline = TimelineRepository(sessions)
@@ -148,27 +150,49 @@ class AppContainer(context: Context) {
     }
 
     /**
-     * Signs out and removes the account's traces from this device, as the sign-out dialog
-     * promises: cached recipes and photos, offline copies, timers and the rating reminder.
+     * Reads the session kept from the last run. Without one, what an account may have left is removed:
+     * a sign-out the app was ended during, or a session that could not be read any more, would leave
+     * it to the next account.
+     */
+    fun restore() =
+        scope.launch {
+            sessions.restore()
+            // Every account keeps something in the database: without its file, none was ever here.
+            if (sessions.current == null && appContext.getDatabasePath(DATABASE).exists()) auth.forgetLocal()
+        }
+
+    /**
+     * Signs out and removes the account's traces from this device; see [forgetAccount].
      * Runs in the app's scope: the screen that asked goes away as soon as the session ends.
      */
-    fun signOut() =
-        scope.launch {
-            OfflineRecipesWorker.schedule(appContext, enabled = false)
+    fun signOut() = scope.launch { auth.signOut() }
+
+    /**
+     * Removes what an account leaves on this device besides the database, as the sign-out dialog
+     * promises: offline copies, imports and their photos, timers, notifications, cached photos and
+     * the rating reminder. [AuthRepository.forgetLocal] runs it with the database once the session
+     * has ended, when no widget loads a photo any more.
+     */
+    private suspend fun forgetAccount() {
+        OfflineRecipesWorker.schedule(appContext, enabled = false)
+        timers.dismissAll()
+        settings.forgetAccount()
+        ratingReminder.clear()
+        withContext(Dispatchers.IO) {
             imports.cancelAll()
             reworks.forgetAll()
-            timers.dismissAll()
-            settings.forgetAccount()
-            ratingReminder.clear()
-            withContext(Dispatchers.IO) {
-                SingletonImageLoader.get(appContext).run {
-                    memoryCache?.clear()
-                    diskCache?.clear()
-                }
+            forgetCameraPhotos(appContext)
+            SingletonImageLoader.get(appContext).run {
+                memoryCache?.clear()
+                diskCache?.clear()
             }
-            auth.signOut()
         }
+        // Import results and finished timers name the account's recipes.
+        NotificationManagerCompat.from(appContext).cancelAll()
+    }
 }
+
+private const val DATABASE = "aroma.db"
 
 /** Whether [apk] is this app; Android's installer then checks that it carries the same signing key. */
 @Suppress("DEPRECATION") // The flags as an Int still work; the replacement needs Android 13.

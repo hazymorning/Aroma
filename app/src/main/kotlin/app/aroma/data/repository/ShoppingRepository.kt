@@ -94,7 +94,7 @@ class ShoppingRepository(
     suspend fun refresh(listId: String) =
         connection.whileReachable {
             sync()
-            storeIfSettled(listId, mealieCall { sessions.api().shoppingList(listId) })
+            storeIfSettled(listId) { sessions.api().shoppingList(listId) }
         }
 
     suspend fun add(listId: String, text: String) =
@@ -162,7 +162,7 @@ class ShoppingRepository(
     suspend fun renameList(listId: String, name: String) {
         val current = mealieCall { sessions.api().shoppingList(listId) }
         val body = current.with("name", JsonPrimitive(name.trim()))
-        storeIfSettled(listId, mealieCall { sessions.api().updateShoppingList(listId, body) })
+        storeIfSettled(listId) { sessions.api().updateShoppingList(listId, body) }
         refreshLists()
     }
 
@@ -174,25 +174,24 @@ class ShoppingRepository(
     }
 
     /** Adds a recipe's ingredients: the raw objects the user picked, or all of them when [ingredients] is null. */
-    suspend fun addRecipe(listId: String, recipeId: String, scale: Double, ingredients: List<JsonObject>?) {
-        val updated =
-            mealieCall {
-                sessions.api().addRecipeToList(listId, recipeId, AddRecipeToListDto(scale, ingredients))
-            }
-        storeIfSettled(listId, updated)
-    }
+    suspend fun addRecipe(listId: String, recipeId: String, scale: Double, ingredients: List<JsonObject>?) =
+        storeIfSettled(listId) { sessions.api().addRecipeToList(listId, recipeId, AddRecipeToListDto(scale, ingredients)) }
 
     private suspend fun refreshLists() {
         attempt {
+            val signIn = sessions.current?.token
             val lists = sessions.api().shoppingLists().items
-            cache.write(LISTS_KEY, ListSerializer(ShoppingListSummaryDto.serializer()), lists)
+            if (sessions.current?.token == signIn) cache.write(LISTS_KEY, ListSerializer(ShoppingListSummaryDto.serializer()), lists)
         }
     }
 
     /** Replays queued changes in order. Returns false if something is still waiting for the server. */
     suspend fun sync(): Boolean =
         syncLock.withLock {
+            val signIn = sessions.current?.token
             for (change in pending.all()) {
+                // Changes made for one sign-in never go out with the next one.
+                if (sessions.current?.token != signIn) return@withLock false
                 try {
                     val payload = MealieJson.parseToJsonElement(change.payload).jsonObject
                     when (change.kind) {
@@ -251,11 +250,18 @@ class ShoppingRepository(
 
     private fun changed() = changeCount.update { it + 1 }
 
-    /** Keeps the server's copy of a list, unless changes made here still wait: that copy would hide them. */
-    private suspend fun storeIfSettled(listId: String, list: JsonObject) =
+    /**
+     * Keeps the server's copy of a list that [fetch] gets, unless changes made here still wait: that
+     * copy would hide them. An answer that arrives after its sign-in ended is dropped, so the next
+     * account never sees the list.
+     */
+    private suspend fun storeIfSettled(listId: String, fetch: suspend () -> JsonObject) {
+        val signIn = sessions.current?.token
+        val list = mealieCall { fetch() }
         editLock.withLock {
-            if (!pending.hasAny(listId)) store(listId, list)
+            if (sessions.current?.token == signIn && !pending.hasAny(listId)) store(listId, list)
         }
+    }
 
     private sealed class Change(val kind: String, val itemId: String, val payload: JsonObject) {
         class Create(item: JsonObject) : Change(KIND_CREATE, item.string("id").orEmpty(), item)

@@ -111,10 +111,15 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
     /** The screen has shown how import [id] ended; its notification is no longer needed. */
     fun shown(id: UUID) = ImportNotifications.dismiss(context, id)
 
-    /** Drops the imports and reworks still queued, and the imports' photos, as when the user signs out. */
+    /**
+     * Drops the imports and reworks still queued, as when the user signs out, and what imports keep
+     * on disk: photos waiting for an import to start or end, and the notes for a re-run.
+     */
     fun cancelAll() {
         WorkManager.getInstance(context).cancelUniqueWork(QUEUE)
+        File(context.cacheDir, PHOTO_FOLDER).deleteRecursively()
         File(context.noBackupFilesDir, PHOTO_FOLDER).deleteRecursively()
+        File(context.noBackupFilesDir, NOTES_FOLDER).deleteRecursively()
     }
 
     /**
@@ -134,8 +139,8 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
             if (job != null && !seen()) ImportNotifications.running(context, id, job)
         }
         // The newest recipes from right before the last and the first request that creates a recipe, kept on disk for a re-run.
-        val sent = File(context.noBackupFilesDir, "imports/$id")
-        val first = File(context.noBackupFilesDir, "imports/$id.first")
+        val sent = File(context.noBackupFilesDir, "$NOTES_FOLDER/$id")
+        val first = File(context.noBackupFilesDir, "$NOTES_FOLDER/$id.first")
         val outcome =
             try {
                 val known = if (rerun && sent.exists()) sent.ids() else null
@@ -201,6 +206,7 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
          */
         const val QUEUE = "recipe-import"
         private const val PHOTO_FOLDER = "import-photos"
+        private const val NOTES_FOLDER = "imports"
     }
 }
 
