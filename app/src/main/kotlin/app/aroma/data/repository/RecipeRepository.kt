@@ -71,7 +71,9 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
+import retrofit2.Call
 import retrofit2.HttpException
+import retrofit2.await
 import java.io.File
 import java.text.Collator
 import java.text.Normalizer
@@ -495,13 +497,14 @@ class RecipeRepository(
     /** Uses the streaming endpoint where the server has one and maps rejected sources to [AromaError.ImportFailed]. */
     private suspend fun importing(
         onProgress: (String) -> Unit,
-        stream: suspend MealieApi.() -> ResponseBody,
+        stream: MealieApi.() -> Call<ResponseBody>,
         plain: suspend MealieApi.() -> String,
     ): String {
         val api = sessions.api()
         return try {
             try {
-                ImportStream.slugFrom(api.stream(), onProgress)
+                val call = api.stream()
+                ImportStream.slugFrom(call.await(), onProgress, call::cancel)
             } catch (missing: HttpException) {
                 if (missing.code() != 404 && missing.code() != 405) throw missing
                 api.plain()

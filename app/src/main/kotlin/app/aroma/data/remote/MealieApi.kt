@@ -26,6 +26,8 @@ import app.aroma.data.remote.dto.UserDto
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
+import retrofit2.Call
+import retrofit2.SkipCallbackExecutor
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.Field
@@ -117,12 +119,16 @@ interface MealieApi {
         @Body body: ImportRecipeDto,
     ): String
 
-    /** Same as [importRecipe], reporting each step as a server-sent event (Mealie 3.13 and newer). */
+    /**
+     * Same as [importRecipe], reporting each step as a server-sent event (Mealie 3.13 and newer). A call,
+     * so that cancelling the import can end a read waiting on the stream; answered on OkHttp's thread.
+     */
     @Streaming
+    @SkipCallbackExecutor
     @POST("api/recipes/create/url/stream")
-    suspend fun importRecipeStream(
+    fun importRecipeStream(
         @Body body: ImportRecipeDto,
-    ): ResponseBody
+    ): Call<ResponseBody>
 
     /** Builds a recipe from a link, text or both with the group's AI provider (Mealie 3.23 and newer). */
     @Multipart
@@ -133,10 +139,11 @@ interface MealieApi {
 
     @Multipart
     @Streaming
+    @SkipCallbackExecutor
     @POST("api/recipes/create/ai/stream")
-    suspend fun importRecipeWithAiStream(
+    fun importRecipeWithAiStream(
         @Part parts: List<MultipartBody.Part>,
-    ): ResponseBody
+    ): Call<ResponseBody>
 
     @GET("api/groups/self")
     suspend fun group(): GroupDto
