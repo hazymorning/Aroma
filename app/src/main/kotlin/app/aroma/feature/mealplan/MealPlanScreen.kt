@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -36,7 +37,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,9 +49,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -108,6 +114,9 @@ import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.SectionGap
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.IsoFields
@@ -169,10 +178,16 @@ fun MealPlanScreen(
     var sheetEntryId by rememberSaveable { mutableStateOf<Int?>(null) }
     var movingEntryId by rememberSaveable { mutableStateOf<Int?>(null) }
     var confirmShopping by rememberSaveable { mutableStateOf(false) }
-    // A swipe across the page turns the week: to the left the next, to the right the one before.
+    // A swipe across the page turns the week: to the left the next, to the right the one before. The
+    // week under the finger follows it, held back, with a tick once letting go would turn it; let go
+    // short of that, it springs back. The week it turns from leaves from where the finger left it.
     val swipeDistance = with(LocalDensity.current) { SwipeDistance.toPx() }
     val previousWeek by rememberUpdatedState(actions.onPreviousWeek)
     val nextWeek by rememberUpdatedState(actions.onNextWeek)
+    val shownWeek by rememberUpdatedState(state.weekStart)
+    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val pull = remember { WeekPull() }
     AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = modifier.fillMaxSize()) {
         // Another week drifts in a little from the side it comes from.
         // With the system's animations off, the weeks only cross-fade.
@@ -198,7 +213,10 @@ fun MealPlanScreen(
                     .pointerInput(swipeDistance) {
                         var dragged = 0f
                         detectHorizontalDragGestures(
-                            onDragStart = { dragged = 0f },
+                            onDragStart = {
+                                dragged = 0f
+                                pull.start(shownWeek)
+                            },
                             onDragEnd = {
                                 if (abs(dragged) > swipeDistance) {
                                     if (dragged < 0) {
@@ -206,13 +224,34 @@ fun MealPlanScreen(
                                     } else {
                                         previousWeek()
                                     }
+                                    pull.settling = scope.launch { pull.leave() }
+                                } else {
+                                    pull.settling = scope.launch { pull.springBack() }
                                 }
                             },
-                        ) { _, amount -> dragged += amount }
+                            onDragCancel = { pull.settling = scope.launch { pull.springBack() } },
+                        ) { _, amount ->
+                            val armed = abs(dragged) > swipeDistance
+                            dragged += amount
+                            if (!armed &&
+                                abs(dragged) > swipeDistance
+                            ) {
+                                haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                            }
+                            pull.follow(dragged, swipeDistance)
+                        }
                     },
             label = "week",
         ) { week ->
-            WeekPage(week, actions, focus, onFocusConsume, onMore = { sheetEntryId = it.id }, onShopWeek = { confirmShopping = true })
+            WeekPage(
+                week,
+                actions,
+                focus,
+                onFocusConsume,
+                onMore = { sheetEntryId = it.id },
+                onShopWeek = { confirmShopping = true },
+                pulled = { pull.offsetOf(week.weekStart) },
+            )
         }
         StatusBarCover()
     }
@@ -263,6 +302,41 @@ private const val WEEK_SLIDE = 12
 /** How far a finger goes across the page before the week turns. */
 private val SwipeDistance = 64.dp
 
+/**
+ * How far the week under a finger has followed it, held back to [Motion.SWIPE_PULL] of the way and
+ * never further than the distance that turns it. Only the [week] the swipe began on moves.
+ */
+@Stable
+private class WeekPull {
+    private var week by mutableStateOf<LocalDate?>(null)
+    private var offset by mutableFloatStateOf(0f)
+
+    /** What moves it back to rest after a finger let go, cut short by the next touch. */
+    var settling: Job? = null
+
+    fun offsetOf(shown: LocalDate): Float = if (shown == week) offset else 0f
+
+    fun start(shown: LocalDate) {
+        settling?.cancel()
+        week = shown
+        offset = 0f
+    }
+
+    fun follow(dragged: Float, most: Float) {
+        offset = (dragged * Motion.SWIPE_PULL).coerceIn(-most, most)
+    }
+
+    /** Back to rest, at the pace a finger lets go at. */
+    suspend fun springBack() = animate(offset, 0f, animationSpec = Motion.LetGo) { value, _ -> offset = value }
+
+    /** The week turned: the one left keeps its place as it fades, and is at rest by the time it could show again. */
+    suspend fun leave() {
+        delay(Motion.PAGE.toLong())
+        offset = 0f
+        week = null
+    }
+}
+
 @Composable
 private fun WeekPage(
     state: MealPlanUiState,
@@ -271,6 +345,7 @@ private fun WeekPage(
     onFocusConsume: () -> Unit,
     onMore: (MealPlanEntry) -> Unit,
     onShopWeek: () -> Unit,
+    pulled: () -> Float,
 ) {
     val listState = rememberLazyListState()
     ScrollToTopOnReselect(listState)
@@ -291,7 +366,10 @@ private fun WeekPage(
         state = listState,
         contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + EndSpace),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize(),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { translationX = pulled() },
     ) {
         item(key = "header") { Header(state, actions, Modifier.measure()) }
         when {

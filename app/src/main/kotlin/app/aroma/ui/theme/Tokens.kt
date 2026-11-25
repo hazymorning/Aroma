@@ -137,4 +137,7 @@ object Motion {
 
     /** How fast the photo at the head of a page moves as the page scrolls over it, against the page's own pace. */
     const val PARALLAX = 0.5f
+
+    /** How much of a swipe the page under the finger follows, held back, before letting go turns it. */
+    const val SWIPE_PULL = 0.4f
 }
