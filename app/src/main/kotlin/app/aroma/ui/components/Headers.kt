@@ -62,7 +62,6 @@ import app.aroma.ui.theme.NavigationGap
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.SubtitleGap
-import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.layeredShadow
 
 /** The height of the collapsed head, below the status bar. */
@@ -127,14 +126,14 @@ fun LargeHeader(
             Box(
                 Modifier
                     .height(TopBarHeight)
-                    .padding(start = PageMargin - (TouchTarget - IconCircle) / 2),
+                    .padding(start = PageMargin - IconButtonReach),
                 contentAlignment = Alignment.CenterStart,
             ) { navigation() }
             Spacer(Modifier.height(NavigationGap))
         } else {
             Spacer(Modifier.height(HeaderTop))
         }
-        Row(Modifier.padding(start = PageMargin, end = PageMargin - (TouchTarget - IconCircle) / 2)) {
+        Row(Modifier.padding(start = PageMargin, end = PageMargin - IconButtonReach)) {
             Text(
                 text = title,
                 style = AromaTheme.type.display,
@@ -201,8 +200,8 @@ fun TopBar(
                     Modifier
                         .fillMaxWidth()
                         .height(TopBarHeight)
-                        .padding(start = if (navigation != null) PageMargin - (TouchTarget - IconCircle) / 2 else PageMargin)
-                        .padding(end = PageMargin - (TouchTarget - IconCircle) / 2),
+                        .padding(start = if (navigation != null) PageMargin - IconButtonReach else PageMargin)
+                        .padding(end = PageMargin - IconButtonReach),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (navigation != null) {
@@ -224,9 +223,9 @@ fun TopBar(
 }
 
 /**
- * A pushed page: the back button, the large title with an optional [subtitle] and the [content]
- * in one scrolling column no wider than [ContentMaxWidth]; once the title has scrolled beneath the
- * collapsed head, the head takes it up.
+ * A pushed page: the back button, the large title and the [content] in one scrolling column no
+ * wider than [ContentMaxWidth]; once the title has scrolled beneath the collapsed head, the head
+ * takes it up.
  */
 @Composable
 fun DetailPage(
@@ -234,8 +233,6 @@ fun DetailPage(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     scroll: ScrollState = rememberScrollState(),
-    subtitle: (@Composable () -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {},
     bottomBar: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -260,9 +257,7 @@ fun DetailPage(
                 LargeHeader(
                     title = title,
                     state = header,
-                    subtitle = subtitle,
                     navigation = { BackButton(onBack) },
-                    actions = actions,
                 )
                 Spacer(Modifier.height(HeaderGap))
                 content()
@@ -273,7 +268,6 @@ fun DetailPage(
             collapsed = header.collapsed,
             raised = scroll.canScrollBackward,
             navigation = { BackButton(onBack) },
-            actions = actions,
         )
         if (bottomBar != null) Box(Modifier.align(Alignment.BottomCenter).imePadding()) { bottomBar() }
     }

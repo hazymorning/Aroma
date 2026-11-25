@@ -330,9 +330,6 @@
 
     <!-- Cookbooks -->
     <string name="collection_cookbook">Cookbook</string>
-    <string name="collection_category">Category</string>
-    <string name="collection_tag">Tag</string>
-    <string name="collection_tool">Tool</string>
     <string name="cookbook_empty_title">This cookbook is empty</string>
 
     <!-- Timeline -->

@@ -85,11 +85,10 @@ data class RecipeFilter(
     val longAgo: Boolean = false,
     val categories: Set<Organizer> = emptySet(),
     val tags: Set<Organizer> = emptySet(),
-    val tools: Set<Organizer> = emptySet(),
     val sort: RecipeSort = RecipeSort.Newest,
 ) {
     val hasFilters: Boolean
-        get() = favoritesOnly || quick || longAgo || meal != null || categories.isNotEmpty() || tags.isNotEmpty() || tools.isNotEmpty()
+        get() = favoritesOnly || quick || longAgo || meal != null || categories.isNotEmpty() || tags.isNotEmpty()
 
     /** Whether anything narrows or orders the library other than the search: what resetting the filters takes back. */
     val hasFiltersOrSort: Boolean
@@ -99,7 +98,6 @@ data class RecipeFilter(
         when (kind) {
             OrganizerKind.Category -> categories
             OrganizerKind.Tag -> tags
-            OrganizerKind.Tool -> tools
         }
 }
 
@@ -133,12 +131,11 @@ data class RecipesUiState(
     /** The names of the categories and tags the chosen meal goes by in Mealie; null while no meal is chosen. */
     fun mealNames(): List<String>? = filter.meal?.namesIn(Organizers(categories, tags))
 
-    /** Categories and tags to choose from; the tab offers no tools. */
+    /** Categories and tags to choose from. */
     fun options(kind: OrganizerKind): List<Organizer> =
         when (kind) {
             OrganizerKind.Category -> categories
             OrganizerKind.Tag -> tags
-            OrganizerKind.Tool -> emptyList()
         }
 
     /** Whether anything beyond the kind of dish narrows or orders the library: what the filter's dot says. */
@@ -415,7 +412,6 @@ private fun OrganizerKind.labelRes() =
     when (this) {
         OrganizerKind.Category -> R.string.recipes_categories
         OrganizerKind.Tag -> R.string.recipes_tags
-        OrganizerKind.Tool -> R.string.collection_tool
     }
 
 private fun RecipeSort.labelRes() =

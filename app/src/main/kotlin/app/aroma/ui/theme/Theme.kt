@@ -55,7 +55,6 @@ val LocalAromaColors = staticCompositionLocalOf { LightColors }
 val LocalAromaTypography = staticCompositionLocalOf { AromaTypography(LightColors, LocaleList("de-DE")) }
 val LocalAromaShapes = staticCompositionLocalOf { AromaShapes() }
 val LocalAromaShadows = staticCompositionLocalOf { AromaShadows(dark = false) }
-val LocalAromaSpace = staticCompositionLocalOf { Space }
 
 /**
  * The tonal fill of a control where it stands: [AromaColors.surface] on the page,
@@ -64,7 +63,7 @@ val LocalAromaSpace = staticCompositionLocalOf { Space }
  */
 val LocalTonalFill = staticCompositionLocalOf { Color.Unspecified }
 
-/** Aroma's design system: its colours, type, spacing, shapes and shadows. */
+/** Aroma's design system: its colours, type, shapes and shadows; spacing is [Space], the same everywhere. */
 object AromaTheme {
     val colors: AromaColors
         @Composable @ReadOnlyComposable
@@ -73,11 +72,6 @@ object AromaTheme {
     val type: AromaTypography
         @Composable @ReadOnlyComposable
         get() = LocalAromaTypography.current
-
-    /** The spacing scale (4.3); the same everywhere, so most layouts name [Space] and the tokens of Tokens.kt directly. */
-    val space: Space
-        @Composable @ReadOnlyComposable
-        get() = LocalAromaSpace.current
 
     val shapes: AromaShapes
         @Composable @ReadOnlyComposable

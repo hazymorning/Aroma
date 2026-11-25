@@ -101,7 +101,7 @@ import app.aroma.ui.components.GroupHead
 import app.aroma.ui.components.INGREDIENT_TAG
 import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.IconButtonPlace
-import app.aroma.ui.components.IconCircle
+import app.aroma.ui.components.IconButtonReach
 import app.aroma.ui.components.IngredientList
 import app.aroma.ui.components.IngredientRow
 import app.aroma.ui.components.PrimaryButton
@@ -327,7 +327,7 @@ private fun TopBar(hasIngredients: Boolean, onClose: () -> Unit, onIngredients: 
             Modifier
                 .fillMaxWidth()
                 .height(TopBarHeight)
-                .padding(start = PageMargin - (TouchTarget - IconCircle) / 2, end = PageMargin),
+                .padding(start = PageMargin - IconButtonReach, end = PageMargin),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(R.drawable.ic_close, stringResource(R.string.cook_close), onClose)

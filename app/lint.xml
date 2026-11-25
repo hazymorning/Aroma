@@ -2,6 +2,6 @@
 <lint>
     <!-- The floating bar's height and reselection for tab pages, and the theme's extra colours. -->
     <issue id="ComposeCompositionLocalUsage">
-        <option name="allowed-composition-locals" value="LocalBottomBarInset,LocalScrollToTop,LocalAromaColors,LocalAromaTypography,LocalAromaShapes,LocalAromaShadows,LocalAromaSpace,LocalTonalFill" />
+        <option name="allowed-composition-locals" value="LocalBottomBarInset,LocalScrollToTop,LocalAromaColors,LocalAromaTypography,LocalAromaShapes,LocalAromaShadows,LocalTonalFill" />
     </issue>
 </lint>

@@ -67,7 +67,7 @@ rechts oben) werden im selben Stil ergänzt.
 | Ebenen | `AromaBottomSheet`, `SheetAction`, `SheetFooter`, `AromaDropdownMenu`, `AromaMenuItem`, `AromaAlertDialog`, `AromaSnackbarHost`, `AromaPullToRefreshBox` |
 | Inhalt | `RecipeCard`/`PhotoCard` (Bild 1:1 oder 4:5, Name 2 Zeilen), `RecipeListItem`, `RecipeMeta` (Zeit · ★ Bewertung, hält leere Höhe), `RecipeImage`, `IngredientList` (Karten mit Haarlinien), `Avatar` |
 | Zustände | `MessageState` (Icon, Serif-Titel, Text, Button), `ErrorState`, `OfflineNotice`, `Placeholder`, `PlaceholderLines`, `InlineProgress` |
-| Sonstiges | `SwipeToRemove`, `QuietPress`/`PhotoPress` (Abdunkeln), `animateRow`, `fullBleed`, `rememberRichText`/`rememberStepText` |
+| Sonstiges | `SwipeToRemove`, `QuietPress`/`PhotoPress` (Abdunkeln), `animateRow`, `rememberRichText`/`rememberStepText` |
 
 Allein die Rezeptseite nutzt sieben Stile: Foto-Kreise, Mint-Buttons, Chips, Dropdown-Chip,
 Stepper, FAB, Haarlinien-Karten.

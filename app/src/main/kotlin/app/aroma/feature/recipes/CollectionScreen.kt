@@ -38,7 +38,7 @@ import app.aroma.ui.theme.Space
 
 /** What a collection page holds; [app.aroma.ui.navigation.CollectionRoute] names one of these. */
 @Keep
-enum class CollectionKind { Cookbook, Favorites, Category, Tag, Tool, Meal, Quick }
+enum class CollectionKind { Cookbook, Meal }
 
 data class CollectionActions(
     val onBack: () -> Unit = {},
@@ -50,9 +50,9 @@ data class CollectionActions(
 )
 
 /**
- * Recipes that belong together, on a page of their own: a cookbook, the saved ones, one meal, the
- * quick ones, or one category, tag or tool. The name is the large title; under it, what kind of
- * collection it is and how many recipes it holds, then its description.
+ * Recipes that belong together, on a page of their own: a cookbook or one meal. The name is the
+ * large title; under it, what kind of collection it is and how many recipes it holds, then its
+ * description.
  */
 @Composable
 fun CollectionScreen(
@@ -141,11 +141,7 @@ private fun Header(
 private fun CollectionKind.labelRes(): Int? =
     when (this) {
         CollectionKind.Cookbook -> R.string.collection_cookbook
-        CollectionKind.Favorites -> null
-        CollectionKind.Category -> R.string.collection_category
-        CollectionKind.Tag -> R.string.collection_tag
-        CollectionKind.Tool -> R.string.collection_tool
-        CollectionKind.Meal, CollectionKind.Quick -> null
+        CollectionKind.Meal -> null
     }
 
 /** What an empty collection says, in one line. */
@@ -153,5 +149,4 @@ private fun CollectionKind.emptyRes(): Int =
     when (this) {
         CollectionKind.Cookbook -> R.string.cookbook_empty_title
         CollectionKind.Meal -> R.string.recipes_meal_empty_title
-        else -> R.string.recipes_no_results_title
     }

@@ -41,7 +41,6 @@ import app.aroma.R
 import app.aroma.checkNotificationPermission
 import app.aroma.core.model.Filing
 import app.aroma.core.model.Meal
-import app.aroma.core.model.Organizer
 import app.aroma.feature.cook.CookActions
 import app.aroma.feature.cook.CookScreen
 import app.aroma.feature.cook.CookViewModel
@@ -200,44 +199,13 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
 fun CollectionDestination(route: CollectionRoute, nav: NavController, snackbar: SnackbarHostState) {
     val vm =
         aromaViewModel {
-            val organizer = setOf(Organizer(route.id, route.name, ""))
             when (route.kind) {
                 CollectionKind.Cookbook -> {
                     RecipesViewModel(recipes, connection, cookbook = route.id)
                 }
 
-                CollectionKind.Favorites -> {
-                    RecipesViewModel(recipes, connection, RecipeFilter(favoritesOnly = true))
-                }
-
-                CollectionKind.Category -> {
-                    RecipesViewModel(recipes, connection, RecipeFilter(categories = organizer))
-                }
-
-                CollectionKind.Tag -> {
-                    RecipesViewModel(recipes, connection, RecipeFilter(tags = organizer))
-                }
-
-                CollectionKind.Tool -> {
-                    RecipesViewModel(recipes, connection, RecipeFilter(tools = organizer))
-                }
-
                 CollectionKind.Meal -> {
-                    RecipesViewModel(
-                        recipes,
-                        connection,
-                        RecipeFilter(
-                            meal =
-                                Meal.entries.firstOrNull {
-                                    it.name ==
-                                        route.id
-                                },
-                        ),
-                    )
-                }
-
-                CollectionKind.Quick -> {
-                    RecipesViewModel(recipes, connection, RecipeFilter(quick = true))
+                    RecipesViewModel(recipes, connection, RecipeFilter(meal = Meal.entries.firstOrNull { it.name == route.id }))
                 }
             }
         }

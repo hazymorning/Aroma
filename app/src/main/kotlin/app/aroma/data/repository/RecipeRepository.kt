@@ -154,7 +154,6 @@ class RecipeRepository(
                 search = query.search.trim().ifEmpty { null },
                 categories = query.categories.ifEmpty { null },
                 tags = query.tags.ifEmpty { null },
-                tools = query.tools.ifEmpty { null },
                 cookbook = query.cookbook,
                 queryFilter =
                     listOfNotNull(
@@ -226,7 +225,6 @@ class RecipeRepository(
                             (query.mealNames.isEmpty() || (recipe.recipeCategory + recipe.tags).any { it.name in query.mealNames }) &&
                             query.categories.all { wanted -> recipe.recipeCategory.any { it.slug == wanted || it.id == wanted } } &&
                             query.tags.all { wanted -> recipe.tags.any { it.slug == wanted || it.id == wanted } } &&
-                            query.tools.all { wanted -> recipe.tools.any { it.slug == wanted || it.id == wanted } } &&
                             query.cookedBefore.let { day ->
                                 day == null ||
                                     recipe.lastMade?.take(DATE_LENGTH)?.let { it > EARLIEST_MADE && it < day.toString() } == true
@@ -251,7 +249,7 @@ class RecipeRepository(
     /** Whether [this] asks for a whole cookbook, not for some of its recipes. */
     private val RecipeQuery.isWholeCollection: Boolean
         get() =
-            search.isBlank() && !favoritesOnly && categories.isEmpty() && tags.isEmpty() && tools.isEmpty() && mealNames.isEmpty() &&
+            search.isBlank() && !favoritesOnly && categories.isEmpty() && tags.isEmpty() && mealNames.isEmpty() &&
                 readyWithin == null && cookedBefore == null
 
     /**
