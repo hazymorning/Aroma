@@ -25,6 +25,7 @@ import app.aroma.data.toAromaError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -75,6 +76,8 @@ class ShoppingRepository(
     fun observe(listId: String): Flow<ShoppingList?> =
         cacheDao
             .observe(key(listId))
+            // Room reports every write to the cache, of any key; only a change to this list is worth reading again.
+            .distinctUntilChanged { old, new -> old?.json == new?.json }
             .map { entry -> entry?.let { parse(MealieJson.decodeFromString(ShoppingListDto.serializer(), it.json)) } }
             .flowOn(Dispatchers.Default)
 
