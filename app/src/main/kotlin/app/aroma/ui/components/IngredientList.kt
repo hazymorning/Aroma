@@ -1,6 +1,7 @@
 package app.aroma.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,8 +63,10 @@ fun IngredientList(
         val density = LocalDensity.current
         val widest = remember(amounts, amountStyle) { amounts.maxOfOrNull { textMeasurer.measure(it, amountStyle).size.width } ?: 0 }
         val anyAmount = amounts.any { it.isNotEmpty() }
-        val column =
-            if (anyAmount) with(density) { widest.toDp() }.coerceAtLeast(AmountColumn).coerceAtMost(maxWidth * AMOUNT_SHARE) else 0.dp
+        val widestAmount = with(density) { widest.toDp() }
+        val column = if (anyAmount) widestAmount.coerceAtLeast(AmountColumn).coerceAtMost(maxWidth * AMOUNT_SHARE) else 0.dp
+        // Amounts roll where each keeps to one line; one too long for the column breaks onto a second instead.
+        val rolls = widestAmount <= column
         Column {
             rows.forEachIndexed { index, row ->
                 if (!row.section.isNullOrBlank()) {
@@ -82,6 +85,7 @@ fun IngredientList(
                     amount = amounts[index],
                     row = row,
                     amountWidth = column,
+                    rolls = rolls,
                     checked = index in checked,
                     onToggle = onToggle?.let { { it(index) } },
                     check = checks,
@@ -100,6 +104,7 @@ private fun IngredientLineRow(
     amount: AnnotatedString,
     row: IngredientRow,
     amountWidth: Dp,
+    rolls: Boolean,
     checked: Boolean,
     onToggle: (() -> Unit)?,
     check: Boolean,
@@ -131,13 +136,20 @@ private fun IngredientLineRow(
             Spacer(Modifier.width(Space.s12))
         }
         if (amountWidth > 0.dp) {
-            Text(
-                text = amount,
-                style = AromaTheme.type.body.tabular(),
-                color = amountColor,
-                textAlign = TextAlign.End,
-                modifier = Modifier.width(amountWidth),
-            )
+            if (rolls) {
+                // As the servings change, the amounts roll with the stepper's figure: up as they grow.
+                Box(Modifier.width(amountWidth), contentAlignment = Alignment.TopEnd) {
+                    RollingText(amount.text, style = AromaTheme.type.body.tabular(), color = amountColor)
+                }
+            } else {
+                Text(
+                    text = amount,
+                    style = AromaTheme.type.body.tabular(),
+                    color = amountColor,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.width(amountWidth),
+                )
+            }
             Spacer(Modifier.width(Space.s16))
         }
         Text(
