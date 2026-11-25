@@ -1,30 +1,29 @@
 package app.aroma.feature.editor
 
 import android.net.Uri
-import android.os.Looper
 import androidx.lifecycle.SavedStateHandle
 import app.aroma.core.model.Filing
 import app.aroma.core.model.Meal
 import app.aroma.core.model.Organizer
 import app.aroma.data.TestEnvironment
+import app.aroma.data.address
+import app.aroma.data.json
+import app.aroma.data.mealieServer
 import app.aroma.data.session.Session
+import app.aroma.data.until
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
@@ -32,7 +31,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class EditorViewModelTest {
-    private val server = MockWebServer()
     private val requests = CopyOnWriteArrayList<RecordedRequest>()
     private lateinit var env: TestEnvironment
 
@@ -43,53 +41,51 @@ class EditorViewModelTest {
     @Volatile
     private var uploadsWork = false
 
-    @Before
-    fun setUp() {
-        server.dispatcher =
-            object : Dispatcher() {
-                override fun dispatch(request: RecordedRequest): MockResponse {
-                    requests += request
-                    val path = request.url.encodedPath
-                    return when {
-                        path == "/api/recipes/gnocchi" && !renamed && request.method == "GET" -> {
-                            json(recipe("gnocchi", "Gnocchi"))
-                        }
+    private val server =
+        mealieServer { request ->
+            requests += request
+            val path = request.url.encodedPath
+            when {
+                path == "/api/recipes/gnocchi" && !renamed && request.method == "GET" -> {
+                    json(recipe("gnocchi", "Gnocchi"))
+                }
 
-                        path == "/api/recipes/gnocchi" && !renamed && request.method == "PATCH" -> {
-                            renamed = true
-                            json(recipe("tomaten-gnocchi", "Tomaten-Gnocchi"))
-                        }
+                path == "/api/recipes/gnocchi" && !renamed && request.method == "PATCH" -> {
+                    renamed = true
+                    json(recipe("tomaten-gnocchi", "Tomaten-Gnocchi"))
+                }
 
-                        path == "/api/organizers/categories" && request.method == "GET" -> {
-                            json("""{"items":[{"id":"c1","name":"Abendessen","slug":"abendessen"}]}""")
-                        }
+                path == "/api/organizers/categories" && request.method == "GET" -> {
+                    json("""{"items":[{"id":"c1","name":"Abendessen","slug":"abendessen"}]}""")
+                }
 
-                        path == "/api/organizers/categories" && request.method == "POST" -> {
-                            json("""{"id":"c2","name":"Nachtisch","slug":"nachtisch"}""")
-                        }
+                path == "/api/organizers/categories" && request.method == "POST" -> {
+                    json("""{"id":"c2","name":"Nachtisch","slug":"nachtisch"}""")
+                }
 
-                        path == "/api/organizers/tags" && request.method == "POST" -> {
-                            json("""{"id":"t2","name":"Schnell","slug":"schnell"}""")
-                        }
+                path == "/api/organizers/tags" && request.method == "POST" -> {
+                    json("""{"id":"t2","name":"Schnell","slug":"schnell"}""")
+                }
 
-                        path == "/api/organizers/tags" || path == "/api/organizers/tools" -> {
-                            json("""{"items":[]}""")
-                        }
+                path == "/api/organizers/tags" || path == "/api/organizers/tools" -> {
+                    json("""{"items":[]}""")
+                }
 
-                        path == "/api/recipes/tomaten-gnocchi/image" -> {
-                            MockResponse.Builder().code(if (uploadsWork) 200 else 500).build()
-                        }
+                path == "/api/recipes/tomaten-gnocchi/image" -> {
+                    MockResponse.Builder().code(if (uploadsWork) 200 else 500).build()
+                }
 
-                        else -> {
-                            MockResponse.Builder().code(404).build()
-                        }
-                    }
+                else -> {
+                    MockResponse.Builder().code(404).build()
                 }
             }
-        server.start()
+        }
+
+    @Before
+    fun setUp() {
         env = TestEnvironment()
         runBlocking {
-            env.sessions.start(Session(serverUrl = server.url("/").toString().trimEnd('/'), token = "t", userId = "u", username = "mara"))
+            env.sessions.start(Session(serverUrl = server.address, token = "t", userId = "u", username = "mara"))
         }
     }
 
@@ -159,27 +155,10 @@ class EditorViewModelTest {
     }
 
     private fun open(saved: SavedStateHandle): EditorViewModel {
-        val editor = EditorViewModel("gnocchi", env.recipes, server.url("/").toString().trimEnd('/'), Locale.GERMANY, saved)
+        val editor = EditorViewModel("gnocchi", env.recipes, server.address, Locale.GERMANY, saved)
         until { !editor.state.value.isLoading }
         return editor
     }
-
-    /** Lets the main thread run, where the view model's work goes on, until [done]. */
-    private fun until(done: () -> Boolean) {
-        repeat(500) {
-            shadowOf(Looper.getMainLooper()).idle()
-            if (done()) return
-            Thread.sleep(10)
-        }
-        fail("Gave up waiting")
-    }
-
-    private fun json(body: String) =
-        MockResponse
-            .Builder()
-            .addHeader("Content-Type", "application/json")
-            .body(body)
-            .build()
 
     private fun recipe(slug: String, name: String) = """{"id":"r1","slug":"$slug","name":"$name"}"""
 }

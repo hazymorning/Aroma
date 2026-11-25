@@ -3,10 +3,6 @@ package app.aroma.data
 import app.aroma.data.session.Session
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import mockwebserver3.Dispatcher
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -20,31 +16,24 @@ import java.time.LocalDate
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class MealPlanCacheTest {
-    private val server = MockWebServer()
     private lateinit var env: TestEnvironment
 
     /** The days with something planned on the server. */
     private val planned = listOf(DAY, DAY.plusDays(1), DAY.plusDays(6), DAY.plusDays(8))
 
+    private val server =
+        mealieServer { request ->
+            val start = LocalDate.parse(request.url.queryParameter("start_date"))
+            val end = LocalDate.parse(request.url.queryParameter("end_date"))
+            val entries = planned.filter { it in start..end }.joinToString(",") { """{"id":${it.dayOfMonth},"date":"$it"}""" }
+            json("""{"items":[$entries]}""")
+        }
+
     @Before
     fun setUp() {
-        server.dispatcher =
-            object : Dispatcher() {
-                override fun dispatch(request: RecordedRequest): MockResponse {
-                    val start = LocalDate.parse(request.url.queryParameter("start_date"))
-                    val end = LocalDate.parse(request.url.queryParameter("end_date"))
-                    val entries = planned.filter { it in start..end }.joinToString(",") { """{"id":${it.dayOfMonth},"date":"$it"}""" }
-                    return MockResponse
-                        .Builder()
-                        .addHeader("Content-Type", "application/json")
-                        .body("""{"items":[$entries]}""")
-                        .build()
-                }
-            }
-        server.start()
         env = TestEnvironment()
         runBlocking {
-            env.sessions.start(Session(serverUrl = server.url("/").toString().trimEnd('/'), token = "t", userId = "u", username = "mara"))
+            env.sessions.start(Session(serverUrl = server.address, token = "t", userId = "u", username = "mara"))
         }
     }
 
