@@ -34,6 +34,6 @@ Android 8.0 or newer and Mealie 2.0 or newer. AI imports need Mealie 3.23 or new
 
 <br>
 
-Aroma connects only to the configured Mealie server. There are two exceptions, both started manually: importing a social media post reads its preview from the platform, and the update check asks GitHub for the latest release. No analytics, no ads, no tracking.
+Aroma connects only to the configured Mealie server. There are two exceptions: importing a social media post reads its preview from the platform, and the update check asks GitHub for the latest release, when started manually or, if switched on, at app start. No analytics, no ads, no tracking.
 
 </details>
