@@ -2,6 +2,9 @@ package app.aroma.feature.mealplan
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -85,6 +88,7 @@ import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TextAction
 import app.aroma.ui.components.TonalBox
+import app.aroma.ui.components.animateOpenRow
 import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.hideThen
@@ -292,7 +296,7 @@ private fun WeekPage(
         item(key = "header") { Header(state, actions, Modifier.measure()) }
         when {
             state.isLoading -> {
-                item(key = "loading") { Loading(Modifier.measure()) }
+                item(key = "loading") { Loading(Modifier.animateRow(this).measure()) }
             }
 
             state.error != null && state.days.all { it.entries.isEmpty() } -> {
@@ -307,7 +311,7 @@ private fun WeekPage(
                             onOpen = { pastOpen = true },
                             modifier =
                                 Modifier
-                                    .animateRow(this)
+                                    .animateOpenRow(this)
                                     .measure(),
                         )
                     }
@@ -335,11 +339,15 @@ private fun WeekPage(
 /** From how many past days on they fold into one line. */
 private const val FOLD_FROM = 2
 
-/** Where [day] stands in the list: after the head and, where the past is folded, its line. */
+/**
+ * Where [day] starts in the list: after the head and, where the past is folded, its line, and after
+ * the rows of the days before it, one per meal and one for a day with none.
+ */
 private fun shownIndex(state: MealPlanUiState, day: LocalDate, folded: Boolean): Int? {
-    val past = state.days.count { it.date < state.today }
-    val position = state.days.indexOfFirst { it.date == day }.takeIf { it >= 0 } ?: return null
-    return if (folded) 1 + 1 + (position - past) else 1 + position
+    if (state.days.none { it.date == day }) return null
+    val shown = if (folded) state.days.filter { it.date >= state.today } else state.days
+    val before = shown.takeWhile { it.date < day }.sumOf { maxOf(1, it.entries.size) }
+    return 1 + (if (folded) 1 else 0) + before
 }
 
 /** The page keeps a reading measure on wide screens. */
@@ -437,34 +445,56 @@ internal fun formatRange(start: LocalDate, end: LocalDate, locale: Locale): Stri
     }
 }
 
-/** The days, 24 dp apart: a day's meals stand closer together than the days do. */
+/**
+ * The days, 24 dp apart: a day's meals stand closer together than the days do. A day's first line
+ * stays put with its name and date, and what it holds, its first meal or the slot to plan one, fades
+ * through to what takes its place. Each further meal is a row of the list of its own, so a meal
+ * planned fades in where it lands as the days below glide aside, and one removed fades as they glide
+ * back. A meal moved to another day fades out where it was and in where it went, rather than sliding
+ * across the days between.
+ */
 private fun LazyListScope.agenda(days: List<MealPlanDay>, today: LocalDate, actions: MealPlanActions, onMore: (MealPlanEntry) -> Unit) {
     days.forEachIndexed { index, day ->
-        item(key = "day-${day.date}") {
-            DayRow(
+        item(key = "day-${day.date}", contentType = "day") {
+            DayLine(
                 day = day,
                 today = today,
                 actions = actions,
                 onMore = onMore,
                 modifier =
                     Modifier
-                        .animateRow(this)
+                        .animateOpenRow(this)
                         .measure()
                         .padding(top = if (index == 0) 0.dp else DayGap),
             )
+        }
+        day.entries.drop(1).forEach { entry ->
+            item(key = "meal-${day.date}-${entry.id}", contentType = "meal") {
+                MealLine(
+                    entry = entry,
+                    past = day.date < today,
+                    actions = actions,
+                    onMore = onMore,
+                    modifier =
+                        Modifier
+                            .animateOpenRow(this)
+                            .measure()
+                            .padding(top = MealGap),
+                )
+            }
         }
     }
 }
 
 /**
- * A day: its short name over its date on the page margin, and its meals beside it, each row as tall
- * as a meal's picture, so every day keeps the same rhythm and its date stands level with the middle
- * of its first row. An empty day shows a slot to plan a dish in, where a meal's picture would be; a
- * planned one has a plus for one more, its circle ending on the margin like the week switcher's. A
- * day gone by fades and offers nothing more to plan.
+ * A day's first line: its short name over its date on the page margin, and beside it its first meal,
+ * as tall as the meal's picture, so every day keeps the same rhythm and its date stands level with
+ * the middle of the row. A day with nothing planned shows a slot to plan a dish in, where a meal's
+ * picture would be; a planned one has a plus for one more, its circle ending on the margin like the
+ * week switcher's. A day gone by fades and offers nothing more to plan.
  */
 @Composable
-private fun DayRow(
+private fun DayLine(
     day: MealPlanDay,
     today: LocalDate,
     actions: MealPlanActions,
@@ -472,43 +502,73 @@ private fun DayRow(
     modifier: Modifier = Modifier,
 ) {
     val locale = currentLocale()
-    val isToday = day.date == today
     val past = day.date < today
     val markWidth = DayColumn * LocalDensity.current.fontScale.coerceAtLeast(1f)
     val addLabel = stringResource(R.string.plan_add_for, remember(day.date, locale) { weekday(day.date, locale) })
-    val adds = !past && day.entries.isNotEmpty()
-    Column(
-        modifier.padding(start = PageMargin, end = if (adds) PageMargin - IconButtonReach else PageMargin),
-        verticalArrangement = Arrangement.spacedBy(MealGap),
-    ) {
-        if (day.entries.isEmpty()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                DayMark(day.date, isToday, past, locale, Modifier.width(markWidth))
-                Spacer(Modifier.width(MarkGap))
-                if (past) {
-                    NothingPlanned(Modifier.weight(1f))
-                } else {
-                    PlanSlot(addLabel, onClick = { actions.onAdd(day.date) }, modifier = Modifier.weight(1f))
+    Row(modifier.padding(start = PageMargin), verticalAlignment = Alignment.CenterVertically) {
+        DayMark(day.date, day.date == today, past, locale, Modifier.width(markWidth))
+        Spacer(Modifier.width(MarkGap))
+        // The meal with its plus, or the slot, changes as one, so the line keeps its measure as they fade.
+        AnimatedContent(
+            targetState = day.entries.firstOrNull(),
+            contentKey = { it?.id },
+            transitionSpec = {
+                fadeIn(Motion.after()) togetherWith fadeOut(Motion.edge()) using
+                    SizeTransform(clip = false) { _, _ -> snap() }
+            },
+            contentAlignment = Alignment.CenterStart,
+            modifier = Modifier.weight(1f),
+            label = "dayFirst",
+        ) { first ->
+            when {
+                first == null && past -> {
+                    NothingPlanned(Modifier.padding(end = PageMargin))
                 }
-            }
-        }
-        day.entries.forEachIndexed { index, entry ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (index == 0) DayMark(day.date, isToday, past, locale, Modifier.width(markWidth)) else Spacer(Modifier.width(markWidth))
-                Spacer(Modifier.width(MarkGap))
-                Box(Modifier.weight(1f)) { EntryRow(entry, past, actions, onMore) }
-                if (adds) {
-                    Spacer(Modifier.width(Space.s8))
-                    if (index ==
-                        0
-                    ) {
+
+                first == null -> {
+                    PlanSlot(
+                        addLabel,
+                        onClick = { actions.onAdd(day.date) },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(end = PageMargin),
+                    )
+                }
+
+                past -> {
+                    Box(Modifier.padding(end = PageMargin)) { EntryRow(first, past = true, actions, onMore) }
+                }
+
+                else -> {
+                    Row(Modifier.padding(end = PageMargin - IconButtonReach), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) { EntryRow(first, past = false, actions, onMore) }
+                        Spacer(Modifier.width(Space.s8))
                         IconButton(R.drawable.ic_add, addLabel, { actions.onAdd(day.date) })
-                    } else {
-                        Spacer(Modifier.width(TouchTarget))
                     }
                 }
             }
         }
+    }
+}
+
+/** A day's further meal, under the first, in the column the meals stand in. */
+@Composable
+private fun MealLine(
+    entry: MealPlanEntry,
+    past: Boolean,
+    actions: MealPlanActions,
+    onMore: (MealPlanEntry) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val markWidth = DayColumn * LocalDensity.current.fontScale.coerceAtLeast(1f)
+    Row(
+        modifier.padding(start = PageMargin, end = if (past) PageMargin else PageMargin - IconButtonReach),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Spacer(Modifier.width(markWidth + MarkGap))
+        Box(Modifier.weight(1f)) { EntryRow(entry, past, actions, onMore) }
+        if (!past) Spacer(Modifier.width(Space.s8 + TouchTarget))
     }
 }
 

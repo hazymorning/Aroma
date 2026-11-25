@@ -37,6 +37,20 @@ fun Modifier.animateRow(scope: LazyItemScope): Modifier =
     }
 
 /**
+ * [animateRow] for rows that stand open on the page, with no ground of their own to cover what they
+ * glide over: one that leaves fades at once, and one that comes fades in once what stood in its
+ * place has all but faded, so two never show through each other.
+ */
+fun Modifier.animateOpenRow(scope: LazyItemScope): Modifier =
+    with(scope) {
+        animateItem(
+            fadeInSpec = Motion.after(),
+            placementSpec = tween(Motion.STATE, easing = Motion.Decelerate),
+            fadeOutSpec = Motion.edge(),
+        )
+    }
+
+/**
  * Rows in a column, outside a lazy list, that come and go as the rows of a list do: a new row opens
  * its room as it fades in, its top edge first; a row that leaves fades where it stands, then gives
  * its room up. Rows keep their place by [key]; those there from the start are simply there.
