@@ -1,5 +1,6 @@
 package app.aroma.core.model
 
+import java.time.LocalDate
 import java.time.LocalTime
 
 /**
@@ -70,3 +71,27 @@ data class Filing(val categories: List<Organizer>, val tags: List<Organizer>) {
             copy(categories = categories + meal.categoryIn(available, label))
         }
 }
+
+enum class MealType(val apiValue: String) {
+    Breakfast("breakfast"),
+    Lunch("lunch"),
+    Dinner("dinner"),
+    Side("side"),
+    Snack("snack"),
+    Drink("drink"),
+    Dessert("dessert"),
+    ;
+
+    companion object {
+        fun fromApi(value: String?): MealType = entries.firstOrNull { it.apiValue == value } ?: Dinner
+    }
+}
+
+data class MealPlanEntry(
+    val id: Int,
+    val date: LocalDate,
+    val type: MealType,
+    val title: String,
+    val note: String,
+    val recipe: RecipeSummary?,
+)
