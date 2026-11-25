@@ -18,6 +18,7 @@
 - Timers already running ring on time once exact alarms are allowed.
 - Widgets and timer alerts use the language chosen in the app, also on Android 8 to 12.
 - A cancelled import stops at once.
+- With the largest text on a small phone, menus no longer flicker.
 
 ## 0.8.0 – 2026-11-25
 

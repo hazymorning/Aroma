@@ -468,7 +468,8 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
             "shopping_mode",
             interact = {
                 composeRule.onNodeWithContentDescription(t("Weitere Optionen", "More options")).performClick()
-                composeRule.onNodeWithWords(t("Einkaufsmodus starten", "Start shopping mode")).performClick()
+                // At 200 % on a narrow phone the row ends in "…" after its first words.
+                composeRule.onNodeWithWords(t("Einkaufsmodus", "Start shopping"), substring = true).performClick()
             },
             content = shopping(sample.shoppingList),
         )

@@ -90,9 +90,12 @@ fun Text(
                     when {
                         current == null -> if (result.hasVisualOverflow) Cut(wordEnd(prepared.text, result), width) else null
 
-                        current.width != width -> null
+                        // With more room than it was cut for, more of it may fit. With less, the cut
+                        // stands while it fits: a menu as wide as its widest row narrows to the cut,
+                        // and measuring the whole text again would widen it, back and forth for ever.
+                        width > current.width -> null
 
-                        // The "…" did not fit after the last word: one word less.
+                        // The "…" did not fit after the last word, or no longer fits: one word less.
                         current.at != null && result.hasVisualOverflow -> Cut(previousWordEnd(prepared.text, current.at), width)
 
                         else -> current
