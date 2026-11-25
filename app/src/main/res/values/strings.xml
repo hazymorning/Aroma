@@ -71,17 +71,31 @@
     <string name="offline_notice">Offline. Showing your saved copy.</string>
 
     <!-- Home -->
-    <string name="greeting_morning_name">Good morning,\n%1$s</string>
-    <string name="greeting_afternoon_name">Good afternoon,\n%1$s</string>
-    <string name="greeting_evening_name">Good evening,\n%1$s</string>
-    <!-- Kitchen nicknames Home greets with, one a day: for everyone, whoever they are, and long enough to balance the greeting. -->
-    <string-array name="greeting_nicknames">
-        <item>Kitchen genius</item>
-        <item>Home cook</item>
-        <item>Food lover</item>
-        <item>Gourmet</item>
-        <item>Sweet tooth</item>
-        <item>Kitchen hero</item>
+    <!-- What Home greets with, by the time of day: one of them each day. -->
+    <string-array name="greeting_morning">
+        <item>Good morning</item>
+        <item>Had breakfast yet?</item>
+        <item>What’s for breakfast?</item>
+    </string-array>
+    <string-array name="greeting_midday">
+        <item>What’s for lunch?</item>
+        <item>Lunchtime</item>
+        <item>Hungry yet?</item>
+    </string-array>
+    <string-array name="greeting_afternoon">
+        <item>Good afternoon</item>
+        <item>Time for coffee and cake?</item>
+        <item>Any ideas for dinner?</item>
+    </string-array>
+    <string-array name="greeting_evening">
+        <item>Good evening</item>
+        <item>What’s for dinner?</item>
+        <item>What are we cooking tonight?</item>
+    </string-array>
+    <string-array name="greeting_night">
+        <item>Fancy a snack?</item>
+        <item>Still hungry?</item>
+        <item>A little something?</item>
     </string-array>
     <string name="home_open_profile">Profile and settings</string>
     <string name="home_today">Today</string>

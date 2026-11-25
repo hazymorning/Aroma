@@ -69,17 +69,31 @@
     <string name="offline_notice">Offline. Du siehst deine gespeicherte Kopie.</string>
 
     <!-- Home -->
-    <string name="greeting_morning_name">Guten Morgen,\n%1$s</string>
-    <string name="greeting_afternoon_name">Guten Tag,\n%1$s</string>
-    <string name="greeting_evening_name">Guten Abend,\n%1$s</string>
-    <!-- Kitchen nicknames Home greets with, one a day: for everyone, whoever they are, and long enough to balance the greeting. -->
-    <string-array name="greeting_nicknames">
-        <item>Küchengenie</item>
-        <item>Kochtalent</item>
-        <item>Genussmensch</item>
-        <item>Gourmet</item>
-        <item>Naschkatze</item>
-        <item>Schleckermaul</item>
+    <!-- What Home greets with, by the time of day: one of them each day. -->
+    <string-array name="greeting_morning">
+        <item>Guten Morgen</item>
+        <item>Gut geschlafen?</item>
+        <item>Was gibt’s zum Frühstück?</item>
+    </string-array>
+    <string-array name="greeting_midday">
+        <item>Mahlzeit!</item>
+        <item>Was gibt’s heute Mittag?</item>
+        <item>Schon Hunger?</item>
+    </string-array>
+    <string-array name="greeting_afternoon">
+        <item>Guten Tag</item>
+        <item>Zeit für Kaffee und Kuchen?</item>
+        <item>Schon eine Idee fürs Abendessen?</item>
+    </string-array>
+    <string-array name="greeting_evening">
+        <item>Guten Abend</item>
+        <item>Was gibt’s heute Abend?</item>
+        <item>Was kochen wir heute?</item>
+    </string-array>
+    <string-array name="greeting_night">
+        <item>Na, was gibt’s als Snack?</item>
+        <item>Noch Hunger?</item>
+        <item>Lust auf eine Kleinigkeit?</item>
     </string-array>
     <string name="home_open_profile">Profil und Einstellungen</string>
     <string name="home_today">Heute</string>

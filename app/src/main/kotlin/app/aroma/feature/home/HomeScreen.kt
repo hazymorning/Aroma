@@ -119,7 +119,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-enum class Greeting { Morning, Afternoon, Evening }
+enum class Greeting { Morning, Midday, Afternoon, Evening, Night }
 
 /** A recipe cooked lately that still waits for the user's rating; [stars] once tapped. */
 data class RateReminder(
@@ -363,21 +363,24 @@ private const val QUICK_ROWS = 3
 private const val SECTION_LEAST = 3
 
 /**
- * "Guten Abend, Küchengenie" and today's date, with the search and the profile as icon buttons. The
- * greeting calls the user by a kitchen nickname of the day, one for everyone whoever they are, each
- * long enough to balance the greeting on its own line; it changes from day to day, not within one.
+ * A greeting for the time of day, such as "Was gibt's heute Abend?", and today's date, with the
+ * search and the profile as icon buttons. Each time of day has a few greetings; the day picks one,
+ * so it changes from day to day, not within one.
  */
 @Composable
 private fun HomeHeader(state: HomeUiState, actions: HomeActions, modifier: Modifier = Modifier) {
     val name = state.firstName?.takeIf { it.isNotBlank() }
-    val nicknames = stringArrayResource(R.array.greeting_nicknames)
-    val nickname = nicknames[Math.floorMod(state.date.toEpochDay(), nicknames.size.toLong()).toInt()]
-    val greeting =
-        when (state.greeting) {
-            Greeting.Morning -> stringResource(R.string.greeting_morning_name, nickname)
-            Greeting.Afternoon -> stringResource(R.string.greeting_afternoon_name, nickname)
-            Greeting.Evening -> stringResource(R.string.greeting_evening_name, nickname)
-        }
+    val greetings =
+        stringArrayResource(
+            when (state.greeting) {
+                Greeting.Morning -> R.array.greeting_morning
+                Greeting.Midday -> R.array.greeting_midday
+                Greeting.Afternoon -> R.array.greeting_afternoon
+                Greeting.Evening -> R.array.greeting_evening
+                Greeting.Night -> R.array.greeting_night
+            },
+        )
+    val greeting = greetings[Math.floorMod(state.date.toEpochDay(), greetings.size.toLong()).toInt()]
     val locale = currentLocale()
     val date = remember(state.date, locale) { longDate(state.date, locale) }
     val buttons: @Composable () -> Unit = {
@@ -385,24 +388,22 @@ private fun HomeHeader(state: HomeUiState, actions: HomeActions, modifier: Modif
         ProfileButton(name, stringResource(R.string.home_open_profile), actions.onOpenSettings)
     }
     Column(modifier.padding(bottom = HeaderGap)) {
-        // "Guten Morgen," does not fit beside the buttons on the narrowest phones: they then stand in
-        // a row of their own above it, as a pushed page's back button does, and the greeting keeps
-        // its two lines instead of breaking into three.
+        // Beside the buttons the greeting may take two lines. Where it would take three, as a long
+        // one does on the narrowest phones, the buttons stand in a row of their own above it, as a
+        // pushed page's back button does.
         BoxWithConstraints {
             val measurer = rememberTextMeasurer()
             val style = AromaTheme.type.display
             val beside = maxWidth - PageMargin - (PageMargin - IconButtonReach) - Space.s8 - TouchTarget * 2
-            val firstLine = greeting.substringBefore('\n')
             val fits =
                 with(LocalDensity.current) {
-                    remember(firstLine, style, beside) {
+                    remember(greeting, style, beside) {
                         measurer
                             .measure(
-                                firstLine.breakable(),
+                                greeting.breakable(),
                                 style,
                                 constraints = Constraints(maxWidth = beside.roundToPx()),
-                            ).lineCount ==
-                            1
+                            ).lineCount <= 2
                     }
                 }
             if (fits) {
