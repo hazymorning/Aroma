@@ -77,6 +77,7 @@ import app.aroma.ui.components.RecipeCard
 import app.aroma.ui.components.RecipeImage
 import app.aroma.ui.components.RecipeMetaLine
 import app.aroma.ui.components.RecipeRow
+import app.aroma.ui.components.RollingText
 import app.aroma.ui.components.ScrollToTopOnReselect
 import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SectionTitle
@@ -660,7 +661,7 @@ private fun ShoppingBox(open: Int, onOpen: () -> Unit, modifier: Modifier = Modi
                     .padding(start = Space.s12),
             ) {
                 Text(stringResource(R.string.home_shopping_list), style = AromaTheme.type.label)
-                Text(pluralStringResource(R.plurals.home_shopping_open, open, open), style = AromaTheme.type.meta)
+                RollingText(pluralStringResource(R.plurals.home_shopping_open, open, open), style = AromaTheme.type.meta)
             }
             Icon(
                 painterResource(R.drawable.ic_chevron_right),

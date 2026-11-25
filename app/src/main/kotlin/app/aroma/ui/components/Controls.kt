@@ -94,7 +94,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Minus, the value and plus on one 40 dp pill of the tonal fill where it stands; each sign takes a
- * 48 dp target. For servings.
+ * 48 dp target. For servings. The value's figure rolls up as it grows and down as it shrinks, and a
+ * sign that can go no further fades back.
  */
 @Composable
 fun Stepper(
@@ -117,20 +118,8 @@ fun Stepper(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StepperSign(R.drawable.ic_remove, stringResource(R.string.action_decrease), onDecrease, canDecrease)
-        AnimatedContent(
-            targetState = label,
-            transitionSpec = {
-                fadeIn(Motion.edge()) togetherWith fadeOut(Motion.edge()) using SizeTransform { _, _ -> Motion.state() }
-            },
-            label = "stepperValue",
-        ) { value ->
-            Text(
-                text = value,
-                style = AromaTheme.type.label.tabular(),
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                modifier = Modifier.widthIn(min = StepperValueWidth),
-            )
+        Box(Modifier.widthIn(min = StepperValueWidth), contentAlignment = Alignment.Center) {
+            RollingText(label, style = AromaTheme.type.label.tabular())
         }
         StepperSign(R.drawable.ic_add, stringResource(R.string.action_increase), onIncrease, canIncrease)
     }
@@ -143,6 +132,7 @@ private fun StepperSign(
     onClick: () -> Unit,
     enabled: Boolean,
 ) {
+    val shown by animateFloatAsState(if (enabled) 1f else DISABLED_CONTROL, Motion.state(), label = "stepperSign")
     val interaction = remember { MutableInteractionSource() }
     Box(
         Modifier
@@ -160,12 +150,18 @@ private fun StepperSign(
             Icon(
                 painterResource(icon),
                 contentDescription = description,
-                tint = AromaTheme.colors.ink.copy(alpha = if (enabled) 1f else 0.38f),
-                modifier = Modifier.size(Glyph.control),
+                tint = AromaTheme.colors.ink,
+                modifier =
+                    Modifier
+                        .size(Glyph.control)
+                        .graphicsLayer { alpha = shown },
             )
         }
     }
 }
+
+/** How dim a sign is while it can go no further. */
+private const val DISABLED_CONTROL = 0.38f
 
 private val StepperHeight = 40.dp
 

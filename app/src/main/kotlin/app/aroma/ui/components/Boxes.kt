@@ -133,7 +133,7 @@ fun TonalBoxPart(part: BoxPart, modifier: Modifier = Modifier, content: @Composa
 
 /**
  * The head of a box: its title on the left, and on the right a [meta] line, a [chevron] where the
- * box leads somewhere, or both.
+ * box leads somewhere, or both. A count in the meta line rolls as it changes ("5 von 7 geplant").
  */
 @Composable
 fun BoxHeader(
@@ -160,7 +160,7 @@ fun BoxHeader(
         )
         if (meta != null) {
             Spacer(Modifier.width(Space.s12))
-            Text(meta, style = AromaTheme.type.meta, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            RollingText(meta, style = AromaTheme.type.meta)
         }
         if (chevron) {
             Spacer(Modifier.width(Space.s4))

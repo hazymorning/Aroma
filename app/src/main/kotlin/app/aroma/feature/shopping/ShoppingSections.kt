@@ -1,8 +1,11 @@
 package app.aroma.feature.shopping
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -63,6 +66,7 @@ import app.aroma.ui.components.CheckCircle
 import app.aroma.ui.components.CheckSize
 import app.aroma.ui.components.EmptyState
 import app.aroma.ui.components.GroupHead
+import app.aroma.ui.components.RollingText
 import app.aroma.ui.components.Separator
 import app.aroma.ui.components.SwipeToRemove
 import app.aroma.ui.components.Text
@@ -202,7 +206,7 @@ private fun LazyListScope.itemRows(
 
 /**
  * "Done (3)": what is in the basket, folded away until a tap opens it; the way to clear it stands
- * at its end.
+ * at its end, fading in as it opens. The count rolls as items go in and out of the basket.
  */
 @Composable
 private fun DoneHead(
@@ -228,7 +232,11 @@ private fun DoneHead(
                 .semantics { heading() },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.shopping_done_group, count), style = AromaTheme.type.label, color = AromaTheme.colors.inkSecondary)
+            RollingText(
+                stringResource(R.string.shopping_done_group, count),
+                style = AromaTheme.type.label,
+                color = AromaTheme.colors.inkSecondary,
+            )
             Spacer(Modifier.width(Space.s4))
             Icon(
                 painterResource(R.drawable.ic_expand_more),
@@ -240,7 +248,9 @@ private fun DoneHead(
                         .rotate(turn),
             )
         }
-        if (open) TextAction(stringResource(R.string.shopping_clear_checked), onClear)
+        AnimatedVisibility(visible = open, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
+            TextAction(stringResource(R.string.shopping_clear_checked), onClear)
+        }
     }
 }
 

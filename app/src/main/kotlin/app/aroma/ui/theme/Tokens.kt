@@ -128,4 +128,7 @@ object Motion {
     fun <T> state() = tween<T>(STATE, easing = Decelerate)
 
     fun <T> page() = tween<T>(PAGE, easing = Decelerate)
+
+    /** How far a figure that changes drifts as it rolls, a share of its line: up as it counts up, down as it counts down. */
+    const val ROLL = 0.4f
 }
