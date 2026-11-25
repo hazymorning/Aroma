@@ -1,15 +1,20 @@
 package app.aroma.feature.cook
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -53,8 +58,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -101,6 +109,9 @@ import app.aroma.ui.components.IngredientRow
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RatingStars
 import app.aroma.ui.components.RecipeImage
+import app.aroma.ui.components.RoomCloses
+import app.aroma.ui.components.RoomOpens
+import app.aroma.ui.components.RowsInMotion
 import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SelectionRow
 import app.aroma.ui.components.Separator
@@ -130,13 +141,18 @@ import app.aroma.ui.theme.TouchTarget
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
+/** A timer as cook mode shows it; [totalSeconds] is how long it was set for. */
 data class CookTimerUi(
     val id: Long,
     val label: String,
     val remainingSeconds: Long,
     val isRunning: Boolean,
+    val totalSeconds: Long = remainingSeconds,
 ) {
     val isFinished: Boolean get() = remainingSeconds <= 0
+
+    /** How much of the timer is left, from 1 as it starts to 0 once it has run out. */
+    val left: Float get() = if (totalSeconds > 0) (remainingSeconds.toFloat() / totalSeconds).coerceIn(0f, 1f) else 0f
 }
 
 data class CookUiState(
@@ -191,6 +207,7 @@ private const val NEXT_LINES = 2
  * how far the cooking has come, the step's number stands large, its text under it, then what the
  * step uses, to tick off, and the start of the step that follows. Back and next sit in a bar at the
  * foot, as large as targets hit from across the counter; a swipe turns the step too, with a tick.
+ * A timer started from a step is confirmed with a tap of the phone.
  */
 @Composable
 fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Modifier, initialPage: Int = 0) {
@@ -203,6 +220,10 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
     // Every step reached gives a tick, swiped to or tapped to.
     LaunchedEffect(pager) {
         snapshotFlow { pager.settledPage }.drop(1).collect { haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick) }
+    }
+    val startTimer: (Int, String) -> Unit = { seconds, label ->
+        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+        actions.onStartTimer(seconds, label)
     }
     var showIngredients by rememberSaveable { mutableStateOf(false) }
     val locale = currentLocale()
@@ -258,7 +279,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                                 amounts = texts.amountsOf(page),
                                 mentions = texts.mentionsOf(page),
                                 next = if (state.showNextStep) steps.getOrNull(page + 1) else null,
-                                onStartTimer = actions.onStartTimer,
+                                onStartTimer = startTimer,
                                 ingredients =
                                     if (showsIngredients) {
                                         remember(rows, byStep, page, state.ingredientsInSteps) {
@@ -275,7 +296,9 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
                         }
                     }
                     Timers(state.timers, actions)
-                    if (state.exactAlarmHint) ExactAlarmHint(actions.onAllowExactAlarms)
+                    AnimatedVisibility(visible = state.exactAlarmHint, enter = RoomOpens, exit = RoomCloses) {
+                        ExactAlarmHint(actions.onAllowExactAlarms)
+                    }
                 }
             }
         }
@@ -306,7 +329,9 @@ private fun TopBar(hasIngredients: Boolean, onClose: () -> Unit, onIngredients: 
     ) {
         IconButton(R.drawable.ic_close, stringResource(R.string.cook_close), onClose)
         Spacer(Modifier.weight(1f))
-        if (hasIngredients) TextAction(stringResource(R.string.recipe_ingredients), onIngredients)
+        AnimatedVisibility(visible = hasIngredients, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
+            TextAction(stringResource(R.string.recipe_ingredients), onIngredients)
+        }
     }
 }
 
@@ -581,14 +606,22 @@ private fun MarkCooked(marked: Boolean, failed: Boolean, onMark: () -> Unit) {
     }
 }
 
-/** Running timers on a box above the step bar, one row each; they stay while the steps turn. */
+/**
+ * Running timers on a box above the step bar, one row each; they stay while the steps turn. The box
+ * rises from the bar as the first timer starts and sinks back as the last one goes, and each row
+ * opens its room as it fades in and fades before it closes.
+ */
 @Composable
 private fun Timers(timers: List<CookTimerUi>, actions: CookActions) {
-    if (timers.isEmpty()) return
-    TonalBox(Modifier.padding(start = PageMargin, end = PageMargin, bottom = EndSpace), contentPadding = PaddingValues()) {
-        timers.forEachIndexed { index, timer ->
-            if (index > 0) Separator(start = BoxPadding + Glyph.control + Space.s12)
-            TimerRow(timer, onToggle = { actions.onToggleTimer(timer.id) }, onDismiss = { actions.onDismissTimer(timer.id) })
+    AnimatedVisibility(visible = timers.isNotEmpty(), enter = RoomOpens, exit = RoomCloses) {
+        TonalBox(Modifier.padding(start = PageMargin, end = PageMargin, bottom = EndSpace), contentPadding = PaddingValues()) {
+            // By where each stood last, so a row on its way out keeps the line it had.
+            RowsInMotion(timers.withIndex().toList(), key = { it.value.id }) { (index, timer) ->
+                Column {
+                    if (index > 0) Separator(start = BoxPadding + Glyph.control + Space.s12)
+                    TimerRow(timer, onToggle = { actions.onToggleTimer(timer.id) }, onDismiss = { actions.onDismissTimer(timer.id) })
+                }
+            }
         }
     }
 }
@@ -614,12 +647,7 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
                 .padding(start = BoxPadding, end = Space.s8, top = Space.s8, bottom = Space.s8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            painterResource(R.drawable.ic_timer),
-            contentDescription = null,
-            tint = colors.inkSecondary,
-            modifier = Modifier.size(Glyph.control),
-        )
+        TimerDial(timer, breath = { pulse?.value ?: 1f })
         Spacer(Modifier.width(Space.s12))
         Row(
             modifier =
@@ -636,15 +664,30 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Text(
-                text = if (finished) stringResource(R.string.cook_timer_done) else formatClock(timer.remainingSeconds),
-                style = AromaTheme.type.numeral,
-                color = timeColor,
-                maxLines = 1,
-            )
+            // The figures change in place each second; "Fertig" takes their place once they have faded.
+            AnimatedContent(
+                targetState = finished,
+                transitionSpec = {
+                    fadeIn(Motion.after()) togetherWith fadeOut(Motion.edge()) using SizeTransform(clip = false) { _, _ -> Motion.state() }
+                },
+                contentAlignment = Alignment.CenterEnd,
+                label = "timerTime",
+            ) { done ->
+                Text(
+                    text = if (done) stringResource(R.string.cook_timer_done) else formatClock(timer.remainingSeconds),
+                    style = AromaTheme.type.numeral,
+                    color = timeColor,
+                    maxLines = 1,
+                )
+            }
         }
         Spacer(Modifier.width(Space.s8))
-        if (!finished) {
+        // Once the timer has run out there is nothing left to pause: the button fades and the words glide over.
+        AnimatedVisibility(
+            visible = !finished,
+            enter = fadeIn(Motion.state()) + expandHorizontally(Motion.state()),
+            exit = fadeOut(Motion.edge()) + shrinkHorizontally(Motion.state()),
+        ) {
             IconButton(
                 icon = if (timer.isRunning) R.drawable.ic_pause else R.drawable.ic_play_arrow,
                 contentDescription = stringResource(if (timer.isRunning) R.string.cook_timer_pause else R.string.cook_timer_resume),
@@ -654,6 +697,63 @@ private fun TimerRow(timer: CookTimerUi, onToggle: () -> Unit, onDismiss: () -> 
         IconButton(R.drawable.ic_close, stringResource(R.string.cook_timer_stop), onDismiss)
     }
 }
+
+/**
+ * How much of a timer is left, where its glyph would stand: a sage arc on a fine ring that runs
+ * down with the clock, evenly between the seconds rather than in ticks. Paused, it rests in second
+ * ink; run out, the ring stands whole in sage and breathes with the words.
+ */
+@Composable
+private fun TimerDial(timer: CookTimerUi, breath: () -> Float, modifier: Modifier = Modifier) {
+    val colors = AromaTheme.colors
+    // A second's sweep each second while it runs: the clock does not slow down as it ends.
+    val left by animateFloatAsState(
+        if (timer.isFinished) 1f else timer.left,
+        if (timer.isRunning) tween(SECOND, easing = LinearEasing) else Motion.state(),
+        label = "timerLeft",
+    )
+    val arc by animateColorAsState(
+        if (timer.isRunning ||
+            timer.isFinished
+        ) {
+            colors.accent
+        } else {
+            colors.inkSecondary
+        },
+        Motion.state(),
+        label = "timerArc",
+    )
+    Spacer(
+        modifier
+            .size(Glyph.control)
+            .graphicsLayer { alpha = breath() }
+            .drawBehind {
+                val stroke = DialStroke.toPx()
+                val inset = stroke / 2
+                val ring = Size(size.width - stroke, size.height - stroke)
+                drawArc(colors.surfacePressed, 0f, FULL_TURN, useCenter = false, Offset(inset, inset), ring, style = Stroke(stroke))
+                if (left > 0f) {
+                    drawArc(
+                        arc,
+                        startAngle = -QUARTER_TURN,
+                        sweepAngle = FULL_TURN * left,
+                        useCenter = false,
+                        topLeft = Offset(inset, inset),
+                        size = ring,
+                        style = Stroke(stroke, cap = StrokeCap.Round),
+                    )
+                }
+            },
+    )
+}
+
+/** The dial's ring, and the turns its arc is drawn in. */
+private val DialStroke = 2.dp
+private const val FULL_TURN = 360f
+private const val QUARTER_TURN = 90f
+
+/** How long the dial's arc takes to run on to the next second. */
+private const val SECOND = 1000
 
 /** A finished timer breathes slowly, so it catches the eye from across the kitchen. */
 @Composable

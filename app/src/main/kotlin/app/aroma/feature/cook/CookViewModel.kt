@@ -149,4 +149,12 @@ class CookViewModel(
 private const val CHECKED = "checked"
 
 /** Seconds are rounded up so a timer shows 0:01 until it is really done. */
-private fun CookingTimer.toUi(now: Long) = CookTimerUi(id, label, (remaining(now) + 999) / 1000, isRunning)
+private fun CookingTimer.toUi(now: Long) =
+    CookTimerUi(
+        id,
+        label,
+        (remaining(now) + 999) / 1000,
+        isRunning,
+        totalSeconds =
+            durationMillis / 1000,
+    )
