@@ -144,7 +144,7 @@ class AromaTypography(colors: AromaColors, private val locale: LocaleList) {
     /** The step on screen in cook mode, read at arm's length. */
     val cookStep = text(24, 34)
 
-    /** The initial in the profile's 56 dp circle in the settings (6.7). */
+    /** The initial in the profile's 56 dp circle in the settings. */
     val initial = text(22, 28, weight = FontWeight.Medium)
 
     /**

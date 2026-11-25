@@ -350,13 +350,12 @@ class SampleData(private val german: Boolean) {
 }
 
 /**
- * The test texts and cases of the design brief (docs/design/AUFTRAG.md, section 14), in German:
- * long hyphenated titles and the shortest one, times as Mealie keeps them, a recipe with nothing
- * but a name and one with 30 ingredients in four groups, a week under way and one across the turn
- * of the month, and forty things to buy.
+ * German edge cases: long hyphenated titles and the shortest one, times as Mealie keeps them, a
+ * recipe with nothing but a name and one with 30 ingredients in four groups, a week under way and
+ * one across the turn of the month, and forty things to buy.
  */
-object Brief {
-    /** The titles of section 14, longest breaks first. */
+object Extremes {
+    /** Compound titles that have to break well, and the shortest one. */
     private val titles =
         listOf(
             "Zitronen-Baiser-Plätzchen vom Blech",
@@ -368,7 +367,7 @@ object Brief {
             "Ei",
         )
 
-    /** The times of section 14, as Mealie sends them: an ISO duration, free text, or nothing. */
+    /** Times as Mealie sends them: an ISO duration, free text, or nothing. */
     private val times =
         listOf(
             RecipeTime(null, "PT1H20M"),
