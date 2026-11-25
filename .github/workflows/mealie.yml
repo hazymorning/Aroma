@@ -1,0 +1,84 @@
+name: Mealie
+
+# The tests against a real Mealie server, on the oldest Mealie Aroma supports and the newest: every
+# Monday, as Mealie changes on its own, by hand (Actions > Mealie > Run workflow), and for a pull
+# request that changes how Aroma talks to Mealie. CI runs everything else on every push.
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - app/src/main/kotlin/app/aroma/data/remote/**
+      - app/src/main/kotlin/app/aroma/data/repository/**
+      - app/src/main/kotlin/app/aroma/feature/editor/RecipeDraft.kt
+      - app/src/main/kotlin/app/aroma/feature/editor/RecipeImporter.kt
+      - app/src/test/kotlin/app/aroma/data/Live*.kt
+      - app/src/test/kotlin/app/aroma/data/TestEnvironment.kt
+      - .github/workflows/mealie.yml
+
+# A newer push to a pull request replaces its run.
+concurrency:
+  group: mealie-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  live:
+    name: Mealie ${{ matrix.mealie }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Each version reports on its own: one failing says nothing about the other.
+    strategy:
+      fail-fast: false
+      matrix:
+        # The README promises Mealie 2.0 or newer.
+        mealie: [v2.0.0, latest]
+
+    services:
+      mealie:
+        image: ghcr.io/mealie-recipes/mealie:${{ matrix.mealie }}
+        ports:
+          - 9000:9000
+        env:
+          ALLOW_SIGNUP: "false"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Robolectric downloads large Android jars at test time; Maven Central asks clients to cache them.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Wait for Mealie
+        run: |
+          for _ in $(seq 1 60); do
+            curl -sf http://localhost:9000/api/app/about && exit 0
+            sleep 3
+          done
+          exit 1
+
+      # --rerun, as the same code against a newer Mealie must run again rather than come from the
+      # build cache. One import test has Mealie read a page from the internet, which runners allow.
+      - name: Live tests
+        run: ./gradlew :app:testDebugUnitTest --tests 'app.aroma.data.Live*' --rerun
+        env:
+          MEALIE_TEST_URL: http://localhost:9000
+          MEALIE_TEST_USER: changeme@example.com
+          MEALIE_TEST_PASSWORD: MyPassword
+
+      # Which test failed, and why, without reading the whole log.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: live-test-reports-${{ matrix.mealie }}
+          path: app/build/reports/tests

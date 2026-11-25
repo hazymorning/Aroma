@@ -2,13 +2,14 @@ name: CI
 
 # Every push to main and every pull request that touches the app or its build. scripts/check.sh
 # runs the same checks before a push, so a run here passes the first time: a failed run mails the
-# owner. Changes to documents and to the hand-started workflows run nothing.
+# owner. Changes to documents and to the other workflows run nothing.
 on:
   push:
     branches: [main]
     paths-ignore:
       - "**.md"
       - docs/**
+      - .github/workflows/mealie.yml
       - .github/workflows/release.yml
       - .github/workflows/screenshots.yml
       - .github/workflows/prune-releases.yml
@@ -16,6 +17,7 @@ on:
     paths-ignore:
       - "**.md"
       - docs/**
+      - .github/workflows/mealie.yml
       - .github/workflows/release.yml
       - .github/workflows/screenshots.yml
       - .github/workflows/prune-releases.yml
@@ -30,14 +32,6 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
-    services:
-      mealie:
-        image: ghcr.io/mealie-recipes/mealie:v3.31.0
-        ports:
-          - 9000:9000
-        env:
-          ALLOW_SIGNUP: "false"
 
     steps:
       - uses: actions/checkout@v7
@@ -55,23 +49,11 @@ jobs:
           path: ~/.m2/repository/org/robolectric
           key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
 
-      - name: Wait for Mealie
-        run: |
-          for _ in $(seq 1 60); do
-            curl -sf http://localhost:9000/api/app/about && exit 0
-            sleep 3
-          done
-          exit 1
-
       # One Gradle run, so formatting, lint, the tests and the APK build share one compile and run
-      # side by side. The tests exercise the API against the Mealie container. Screenshots are not
-      # rendered here: the Screenshots workflow renders them for a design review, by hand.
+      # side by side. The tests against a real Mealie run in the Mealie workflow, weekly and when
+      # the data layer changes; the screenshots render for a design review, in the Screenshots one.
       - name: Checks, tests and APK
         run: ./gradlew spotlessCheck :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
-        env:
-          MEALIE_TEST_URL: http://localhost:9000
-          MEALIE_TEST_USER: changeme@example.com
-          MEALIE_TEST_PASSWORD: MyPassword
 
       - uses: actions/upload-artifact@v7
         with:
