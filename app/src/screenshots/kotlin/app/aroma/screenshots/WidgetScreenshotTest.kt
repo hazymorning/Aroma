@@ -3,9 +3,7 @@ package app.aroma.screenshots
 import android.appwidget.AppWidgetHostView
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.Shader
 import android.os.Looper
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -38,7 +36,6 @@ import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.Robolectric
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import kotlin.math.roundToInt
 
@@ -47,20 +44,13 @@ import kotlin.math.roundToInt
  * and landscape: each laid out for the declared size the launcher picks, then stretched to its own.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
-@Config(sdk = [36])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class WidgetScreenshotTest(private val variant: Variant) {
-    data class Variant(val locale: String, val dark: Boolean) {
-        val suffix = "${if (dark) "dark" else "light"}_$locale"
-
-        override fun toString() = suffix
-    }
-
-    private val sample = SampleData(german = variant.locale == "de")
+class WidgetScreenshotTest(private val look: Look) {
+    private val sample = SampleData(german = look.locale == "de")
 
     @Before
-    fun applyVariant() {
-        RuntimeEnvironment.setQualifiers("${variant.locale}-w600dp-h1000dp-${if (variant.dark) "night" else "notnight"}-xxhdpi")
+    fun applyLook() {
+        RuntimeEnvironment.setQualifiers("${look.locale}-w600dp-h1000dp-${if (look.dark) "night" else "notnight"}-xxhdpi")
     }
 
     @Test
@@ -72,11 +62,11 @@ class WidgetScreenshotTest(private val variant: Variant) {
                     MealPlanEntry(11, sample.today, MealType.Dessert, "", "", sample.recipes[0]),
                 )
         val plan = todayPlan(entries, sample.today.atTime(18, 0))
-        val photos = entries.mapNotNull { it.recipe }.associate { it.id to photo(it.id, THUMBNAIL) }
+        val photos = entries.mapNotNull { it.recipe }.associate { it.id to widgetPhoto(it.id, THUMBNAIL) }
         val ready =
             TodayState.Ready(
                 plan,
-                photo(
+                widgetPhoto(
                     plan.next
                         ?.recipe
                         ?.id
@@ -98,7 +88,7 @@ class WidgetScreenshotTest(private val variant: Variant) {
         today("cover_bright", COVER) { TodayContent(bright, onRetry = {}) }
 
         // After dinner the widget looks at tomorrow, which starts with a long name.
-        val tomorrow = ready.copy(plan = todayPlan(entries, sample.today.atTime(21, 30)), hero = photo("pancakes", HERO))
+        val tomorrow = ready.copy(plan = todayPlan(entries, sample.today.atTime(21, 30)), hero = widgetPhoto("pancakes", HERO))
         today("tomorrow", WIDE) { TodayContent(tomorrow, onRetry = {}) }
         today("banner_tomorrow", BANNER) { TodayContent(tomorrow, onRetry = {}) }
         today("cover_tomorrow", COVER) { TodayContent(tomorrow, onRetry = {}) }
@@ -167,33 +157,16 @@ class WidgetScreenshotTest(private val variant: Variant) {
         // Collections show only inside a widget host, as on a home screen.
         val host = AppWidgetHostView(activity)
         host.addView(views.apply(activity, host))
-        val wallpaper = FrameLayout(activity).apply { setBackgroundColor(if (variant.dark) DARK_WALLPAPER else LIGHT_WALLPAPER) }
+        val wallpaper = FrameLayout(activity).apply { setBackgroundColor(if (look.dark) DARK_WALLPAPER else LIGHT_WALLPAPER) }
         wallpaper.setPadding(margin, margin, margin, margin)
         wallpaper.addView(host, (size.width.value * density).roundToInt(), (size.height.value * density).roundToInt())
         activity.setContentView(wallpaper, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         shadowOf(Looper.getMainLooper()).idle()
-        wallpaper.captureRoboImage("build/outputs/roborazzi/widget_${name}_${variant.suffix}.png")
+        wallpaper.captureRoboImage("build/outputs/roborazzi/widget_${name}_$look.png")
     }
 
-    /** A soft gradient in place of a recipe photo, so the images stay free of third-party content. */
-    private fun photo(seed: String, size: Int): Bitmap {
-        val palettes =
-            listOf(
-                intArrayOf(0xFFB9A27A.toInt(), 0xFF7E8F62.toInt()),
-                intArrayOf(0xFFCFAE82.toInt(), 0xFF9A6B45.toInt()),
-                intArrayOf(0xFFA9B78F.toInt(), 0xFF5F7353.toInt()),
-                intArrayOf(0xFFD8C3A0.toInt(), 0xFFB07B52.toInt()),
-            )
-        val colors = palettes[Math.floorMod(seed.hashCode(), palettes.size)]
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)
-        val paint =
-            Paint().apply {
-                shader =
-                    LinearGradient(0f, 0f, size.toFloat(), size.toFloat(), colors[0], colors[1], Shader.TileMode.CLAMP)
-            }
-        Canvas(bitmap).drawRect(0f, 0f, size.toFloat(), size.toFloat(), paint)
-        return bitmap
-    }
+    /** A recipe's photo as the widgets load it, with fewer colours. */
+    private fun widgetPhoto(seed: String, size: Int) = photo(seed, size, Bitmap.Config.RGB_565)
 
     /** A white plate on a pale table, the brightest a recipe photo gets. */
     private fun brightPhoto(size: Int): Bitmap {
@@ -210,7 +183,7 @@ class WidgetScreenshotTest(private val variant: Variant) {
     companion object {
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
-        fun variants() = listOf(Variant("en", dark = false), Variant("de", dark = true))
+        fun looks() = listOf(Look("en", dark = false), Look("de", dark = true))
 
         private val MARGIN = 16.dp
         private const val LIGHT_WALLPAPER = 0xFF9FB3C8.toInt()

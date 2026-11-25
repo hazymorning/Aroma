@@ -35,15 +35,18 @@ shapes at least 3 : 1 against their ground.
   grows or travels between screens. Cards and boxes give way to 0.98 when pressed and tint with ink
   at 6 %. With the system's animations off, pages only cross-fade.
 - **Access.** Everything that takes a tap has words or a description for TalkBack; the screenshot
-  tests check it. At 200 % font size nothing is cut off; rows move an action under their words
-  where the column would get too narrow.
+  tool checks it on every screen it renders. At 200 % font size nothing is cut off; rows move an
+  action under their words where the column would get too narrow.
 
 ## Checking a change
 
 `scripts/check.sh` runs what CI runs: formatting, lint, the tests and the APK, in about a minute.
 Screenshots of every screen, sheet and widget render on demand for a design review, with
 `./gradlew :app:recordRoborazziDebug -Pscreenshots --tests 'app.aroma.screenshots.*'` or the
-Screenshots workflow; the images land in `app/build/outputs/roborazzi`.
+Screenshots workflow; the images land in `app/build/outputs/roborazzi`. Each screen shows in
+German, light and dark, in English, and at 200 % font size on a 360 dp phone, with the sample
+content and the brief's test texts. The tool lives in `app/src/screenshots` and builds only with
+`-Pscreenshots`.
 
 The design round that set these rules is written up in `docs/design`: the brief (`AUFTRAG.md`),
 every decision and deviation (`PROGRESS.md`) and the report with before and after images
