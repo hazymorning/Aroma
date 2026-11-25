@@ -27,16 +27,12 @@ Aroma is an Android app for Mealie, available in English and German. It came fro
 
 <br>
 
-- Ingredients and their amounts appear right in the steps, and can be ticked off there
-- Cooking mode shows one step at a time and offers a timer wherever a step mentions a time
-- Units can be converted, in the ingredients and the steps
-- Home suggests recipes that suit the time of day
-- Recipes stay available without an internet connection (offline mode)
-- Recipes can be added from any app by sharing them to Aroma
-- Existing recipes can be cleaned up or translated with Mealie's AI
-- Widgets show the meal plan and the shopping list on the home screen
-- The shopping list can be shown in large text while you shop (shopping mode)
-- After cooking, Aroma asks for a rating
+- Cook step by step, with timers and the ingredients right in each step
+- Get ideas for what to cook, depending on the time of day
+- Save recipes from any app with the Share button
+- Tidy up or translate recipes with AI
+- Use your recipes without internet
+- Keep the meal plan and shopping list on your home screen (widgets)
 
 </details>
 <details>
@@ -44,7 +40,7 @@ Aroma is an Android app for Mealie, available in English and German. It came fro
 
 <br>
 
-Android 8.0 or newer and Mealie 2.0 or newer. AI imports need Mealie 3.23 or newer and a configured AI provider.
+Android 8.0 or newer and Mealie 2.0 or newer. AI imports need Mealie 3.23 or newer and a configured AI provider. Mealie is the recipe manager you host yourself; [mealie.io](https://mealie.io) shows how to set it up.
 
 </details>
 <details>
@@ -52,7 +48,7 @@ Android 8.0 or newer and Mealie 2.0 or newer. AI imports need Mealie 3.23 or new
 
 <br>
 
-Download the APK from the [latest release](https://github.com/hazymorning/Aroma/releases/latest) and install it. Sign in with your Mealie address and your account or an API token. New versions can be installed right from the settings.
+Download the APK from the [latest release](https://github.com/hazymorning/Aroma/releases/latest) and install it. Sign in with your Mealie address and your account or an API token. New versions can be installed right from the settings. Everyone in the household can sign in with their own account and share the meal plan and shopping lists.
 
 </details>
 <details>
@@ -69,5 +65,21 @@ Aroma connects only to the configured Mealie server. There are two exceptions: i
 <br>
 
 Made in Germany, so this part was taken seriously. Your password is only used to sign in, and the access Aroma keeps is encrypted on the phone and only ever sent to your Mealie server. Signing out leaves nothing behind, and only genuine updates of Aroma can be installed.
+
+</details>
+<details>
+<summary><b>Feedback</b></summary>
+
+<br>
+
+Problems and ideas are welcome as [issues on GitHub](https://github.com/hazymorning/Aroma/issues).
+
+</details>
+<details>
+<summary><b>License</b></summary>
+
+<br>
+
+Aroma is free and open source, under the GPL-3.0.
 
 </details>
