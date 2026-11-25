@@ -28,8 +28,9 @@ class QuantitiesTest {
             400.0 / 3 to "133",
             12.5 to "12 ½",
             12.8 to "13",
-            // A remainder no common fraction fits stays a decimal.
+            // A remainder no common fraction fits stays a decimal, and a pinch scaled down is still there.
             1.45 to "1,45",
+            0.02 to "0,02",
         ).forEach { (value, shown) -> assertEquals("$value", shown, plain(value)) }
 
     @Test
@@ -38,6 +39,7 @@ class QuantitiesTest {
         assertEquals("1.5", plain(1.5, fraction = false, locale = Locale.US))
         assertEquals("0,33", plain(1.0 / 3, fraction = false))
         assertEquals("12,5", plain(12.5, fraction = false))
+        assertEquals("0,01", plain(0.004, fraction = false))
     }
 
     @Test

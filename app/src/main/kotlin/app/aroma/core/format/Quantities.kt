@@ -31,9 +31,13 @@ object Quantities {
     private val halves = listOf(1 to 2)
     private const val TOLERANCE = 0.03
 
+    /** The least amount two decimals show. */
+    private const val SMALLEST = 0.01
+
     /**
      * Formats [value] the way a cook would write it down. Large amounts are rounded,
-     * because "133 1/3 g" is never what anyone measures.
+     * because "133 1/3 g" is never what anyone measures. A pinch scaled down never reads as 0:
+     * too small for a fraction, it is a decimal of at least 0.01.
      */
     fun display(value: Double, preferFraction: Boolean, locale: Locale): DisplayQuantity? {
         if (value <= 0.0 || value.isNaN() || value.isInfinite()) return null
@@ -44,13 +48,13 @@ object Quantities {
             if (value >= 10) return DisplayQuantity.Decimal(formatDecimal(value.roundToLong().toDouble(), 0, locale))
         }
         val decimals = if (value >= 10) 1 else 2
-        return DisplayQuantity.Decimal(formatDecimal(value, decimals, locale))
+        return DisplayQuantity.Decimal(formatDecimal(value.coerceAtLeast(SMALLEST), decimals, locale))
     }
 
     private fun fractionOf(value: Double, candidates: List<Pair<Int, Int>>): DisplayQuantity? {
         var whole = floor(value).toLong()
         val rest = value - whole
-        if (rest < TOLERANCE) return DisplayQuantity.Decimal(whole.toString())
+        if (rest < TOLERANCE) return if (whole > 0) DisplayQuantity.Decimal(whole.toString()) else null
         if (rest > 1 - TOLERANCE) return DisplayQuantity.Decimal((whole + 1).toString())
         val match = candidates.minByOrNull { (n, d) -> abs(rest - n.toDouble() / d) } ?: return null
         if (abs(rest - match.first.toDouble() / match.second) > TOLERANCE) return null
