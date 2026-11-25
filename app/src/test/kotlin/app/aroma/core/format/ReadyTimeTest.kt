@@ -20,6 +20,13 @@ class ReadyTimeTest {
     }
 
     @Test
+    fun `a time in text counts as the recipe's page shows it`() {
+        assertEquals(4800, recipe(total = RecipeTime(null, "1:20 h")).readySeconds())
+        assertEquals(2700, recipe(total = RecipeTime(null, "PT45M")).readySeconds())
+        assertTrue(recipe(total = RecipeTime(null, "PT45M")).isReadyWithin(45))
+    }
+
+    @Test
     fun `without a total, preparation and cooking add up`() {
         assertEquals(2100, recipe(prep = RecipeTime(600, null), cook = RecipeTime(null, "25 min")).readySeconds())
         assertEquals(900, recipe(cook = RecipeTime(900, null)).readySeconds())
