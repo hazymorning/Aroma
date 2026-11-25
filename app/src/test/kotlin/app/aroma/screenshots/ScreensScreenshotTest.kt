@@ -532,7 +532,7 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
         applyLocale()
         snapshot("cookdone_${variant.suffix}", variant.dark) {
             CookScreen(
-                state = CookUiState(recipe = sample.recipe, isLoading = false, rating = 4.0),
+                state = CookUiState(recipe = sample.recipe, isLoading = false, userRating = 4.0),
                 actions = CookActions(),
                 initialPage = sample.recipe.steps.size,
             )

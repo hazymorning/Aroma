@@ -91,6 +91,10 @@ data class RecipeFilter(
     val hasFilters: Boolean
         get() = favoritesOnly || quick || longAgo || meal != null || categories.isNotEmpty() || tags.isNotEmpty() || tools.isNotEmpty()
 
+    /** Whether anything narrows or orders the library other than the search: what resetting the filters takes back. */
+    val hasFiltersOrSort: Boolean
+        get() = hasFilters || sort != RecipeSort.Newest
+
     fun selected(kind: OrganizerKind): Set<Organizer> =
         when (kind) {
             OrganizerKind.Category -> categories
@@ -137,11 +141,9 @@ data class RecipesUiState(
             OrganizerKind.Tool -> emptyList()
         }
 
-    /** Whether anything beyond the kind of dish narrows the library: what the filter's dot says. */
+    /** Whether anything beyond the kind of dish narrows or orders the library: what the filter's dot says. */
     val filtersOtherThanMeal: Boolean
-        get() =
-            filter.quick || filter.favoritesOnly || filter.categories.isNotEmpty() || filter.tags.isNotEmpty() ||
-                filter.sort != RecipeSort.Newest
+        get() = filter.copy(meal = null).hasFiltersOrSort
 }
 
 data class RecipesActions(
@@ -153,6 +155,7 @@ data class RecipesActions(
     val onToggleOrganizer: (OrganizerKind, Organizer) -> Unit = { _, _ -> },
     val onSortChange: (RecipeSort) -> Unit = {},
     val onClearFilters: () -> Unit = {},
+    val onResetFilters: () -> Unit = {},
     val onOpenRecipe: (RecipeSummary) -> Unit = {},
     val onRecipeMenu: (RecipeSummary) -> Unit = {},
     val onOpenCookbook: (Cookbook) -> Unit = {},
@@ -397,13 +400,10 @@ private fun FilterSheet(state: RecipesUiState, actions: RecipesActions, onOrgani
                     )
                 }
             }
-            if (state.filter.hasFilters || state.filter.sort != RecipeSort.Newest) {
+            if (state.filter.hasFiltersOrSort) {
                 TextAction(
                     stringResource(R.string.recipes_clear_filters),
-                    onClick = {
-                        actions.onClearFilters()
-                        actions.onSortChange(RecipeSort.Newest)
-                    },
+                    onClick = actions.onResetFilters,
                     modifier = Modifier.padding(start = PageMargin, top = Space.s16),
                 )
             }

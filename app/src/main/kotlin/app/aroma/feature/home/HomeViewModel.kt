@@ -21,13 +21,11 @@ import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
@@ -36,6 +34,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -64,8 +63,8 @@ class HomeViewModel(
     private val mutableState = MutableStateFlow(HomeUiState(greeting = greetingFor(LocalTime.now(clock)), date = LocalDate.now(clock)))
     val state: StateFlow<HomeUiState> = mutableState.asStateFlow()
 
-    private val mutableEvents = MutableSharedFlow<HomeEvent>(extraBufferCapacity = 2)
-    val events: SharedFlow<HomeEvent> = mutableEvents.asSharedFlow()
+    private val outbox = Channel<HomeEvent>(Channel.BUFFERED)
+    val events: Flow<HomeEvent> = outbox.receiveAsFlow()
 
     private var loads: List<Job> = emptyList()
 
@@ -164,10 +163,10 @@ class HomeViewModel(
         viewModelScope.launch {
             try {
                 mealPlans.add(today, state.value.meal.mealType, recipe.id, "", "")
-                mutableEvents.emit(HomeEvent.Planned(today))
+                outbox.send(HomeEvent.Planned(today))
                 load(refreshing = false)
             } catch (error: AromaError) {
-                mutableEvents.emit(HomeEvent.Failed(error))
+                outbox.send(HomeEvent.Failed(error))
             }
         }
     }

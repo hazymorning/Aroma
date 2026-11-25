@@ -146,7 +146,8 @@ data class CookUiState(
     val recipe: Recipe? = null,
     val scale: Double = 1.0,
     val timers: List<CookTimerUi> = emptyList(),
-    val rating: Double? = null,
+    /** The user's own rating, which the stars at the end show and take back; not the recipe's average. */
+    val userRating: Double? = null,
     val ratedHere: Boolean = false,
     val markedCooked: Boolean = false,
     val markFailed: Boolean = false,
@@ -553,7 +554,7 @@ private fun DonePage(state: CookUiState, actions: CookActions) {
         )
         // The stars' touch targets reach beyond the glyphs; the gaps are measured to the glyphs.
         Spacer(Modifier.height(Space.s16 - ratingTouchInset(DoneStarSize)))
-        RatingStars(state.rating, starSize = DoneStarSize, onRate = actions.onRate, clearable = true)
+        RatingStars(state.userRating, starSize = DoneStarSize, onRate = actions.onRate, clearable = true)
         Spacer(Modifier.height(Space.s32 - ratingTouchInset(DoneStarSize)))
         MarkCooked(state.markedCooked, state.markFailed, actions.onMarkCooked)
         Spacer(Modifier.weight(2f))

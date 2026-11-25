@@ -3,6 +3,7 @@ package app.aroma.ui.navigation
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
@@ -10,6 +11,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -96,6 +98,7 @@ import app.aroma.ui.aromaViewModel
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatDurationPlain
 import app.aroma.ui.components.titleRes
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -180,6 +183,7 @@ fun RecipesDestination(nav: NavController, snackbar: SnackbarHostState, focusSea
                 onToggleOrganizer = vm::toggleOrganizer,
                 onSortChange = vm::setSort,
                 onClearFilters = vm::clearFilters,
+                onResetFilters = vm::resetFilters,
                 onOpenRecipe = { nav.navigate(RecipeRoute(it.slug)) },
                 onRecipeMenu = menu::open,
                 onOpenCookbook = { nav.navigate(CollectionRoute(CollectionKind.Cookbook, it.name, it.id, it.description)) },
@@ -261,10 +265,12 @@ fun CollectionDestination(route: CollectionRoute, nav: NavController, snackbar: 
 @Composable
 fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHostState) {
     val target = menu.recipe ?: return
+    // One view model shows whichever recipe was pressed last, rather than one staying behind for every recipe pressed.
     val vm =
-        aromaViewModel(key = "menu-${target.slug}") {
+        aromaViewModel(key = "menu") {
             RecipeViewModel(target.slug, recipes, reworks, shopping, mealPlans, sessions, settings, connection, it)
         }
+    LaunchedEffect(vm, target.slug) { vm.show(target.slug) }
     val state by vm.state.collectAsStateWithLifecycle()
     val lists by vm.shoppingLists.collectAsStateWithLifecycle()
     val preferredList by vm.preferredListId.collectAsStateWithLifecycle()
@@ -314,7 +320,8 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
                     onDismiss = { menu.sheet = null },
                 )
             } else if (state.error != null) {
-                menu.sheet = null
+                // A recipe that could not be loaded has nothing to add.
+                LaunchedEffect(state.error) { menu.sheet = null }
             }
         }
 
@@ -347,16 +354,8 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
                     leave()
                 }
 
-                RecipeEvent.Unsaved -> {
-                    launch {
-                        val result =
-                            snackbar.showSnackbar(
-                                message = resources.getString(R.string.recipe_unsaved),
-                                actionLabel = resources.getString(R.string.action_undo),
-                                duration = SnackbarDuration.Long,
-                            )
-                        if (result == SnackbarResult.ActionPerformed) vm.toggleFavorite()
-                    }
+                is RecipeEvent.Unsaved -> {
+                    showUndo(snackbar, resources, R.string.recipe_unsaved) { vm.resave(event.recipe) }
                 }
 
                 is RecipeEvent.Failed -> {
@@ -364,15 +363,7 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
                 }
 
                 is RecipeEvent.Reworked -> {
-                    launch {
-                        val result =
-                            snackbar.showSnackbar(
-                                message = resources.getString(R.string.recipe_reworked),
-                                actionLabel = resources.getString(R.string.action_undo),
-                                duration = SnackbarDuration.Long,
-                            )
-                        if (result == SnackbarResult.ActionPerformed) vm.undoRework(event.reworked)
-                    }
+                    showUndo(snackbar, resources, R.string.recipe_reworked) { vm.undoRework(event.reworked) }
                 }
 
                 is RecipeEvent.ReworkFailed -> {
@@ -381,15 +372,7 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
                 }
 
                 is RecipeEvent.Unrated -> {
-                    launch {
-                        val result =
-                            snackbar.showSnackbar(
-                                message = resources.getString(R.string.rating_removed),
-                                actionLabel = resources.getString(R.string.action_undo),
-                                duration = SnackbarDuration.Long,
-                            )
-                        if (result == SnackbarResult.ActionPerformed) vm.rate(event.stars)
-                    }
+                    showUndo(snackbar, resources, R.string.rating_removed) { vm.rate(event.stars) }
                 }
             }
         }
@@ -557,9 +540,7 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState, focus: 
         vm.events.collect { event ->
             when (event) {
                 is MealPlanEvent.AddedToList -> {
-                    snackbar.showSnackbar(
-                        resources.getString(R.string.recipe_added_to_list, event.listName),
-                    )
+                    launch { snackbar.showSnackbar(resources.getString(R.string.recipe_added_to_list, event.listName)) }
                 }
 
                 is MealPlanEvent.WeekAddedToList -> {
@@ -571,21 +552,13 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState, focus: 
                 }
 
                 is MealPlanEvent.Removed -> {
-                    // Launched, so a second removal replaces this snackbar instead of queueing behind it.
+                    // A second removal replaces this snackbar instead of queueing behind it.
                     snackbar.currentSnackbarData?.dismiss()
-                    launch {
-                        val result =
-                            snackbar.showSnackbar(
-                                message = resources.getString(R.string.plan_removed),
-                                actionLabel = resources.getString(R.string.action_undo),
-                                duration = SnackbarDuration.Short,
-                            )
-                        if (result == SnackbarResult.ActionPerformed) vm.restore(event.entry)
-                    }
+                    showUndo(snackbar, resources, R.string.plan_removed, SnackbarDuration.Short) { vm.restore(event.entry) }
                 }
 
                 is MealPlanEvent.Failed -> {
-                    snackbar.showSnackbar(resources.getString(event.error.titleRes()))
+                    launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
                 }
             }
         }
@@ -646,17 +619,9 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
         vm.events.collect { event ->
             when (event) {
                 is ShoppingEvent.Deleted -> {
-                    // Launched, so a second deletion replaces this snackbar instead of queueing behind it.
+                    // A second deletion replaces this snackbar instead of queueing behind it.
                     snackbar.currentSnackbarData?.dismiss()
-                    launch {
-                        val result =
-                            snackbar.showSnackbar(
-                                message = resources.getString(R.string.shopping_item_deleted),
-                                actionLabel = resources.getString(R.string.action_undo),
-                                duration = SnackbarDuration.Short,
-                            )
-                        if (result == SnackbarResult.ActionPerformed) vm.undoDelete(event)
-                    }
+                    showUndo(snackbar, resources, R.string.shopping_item_deleted, SnackbarDuration.Short) { vm.undoDelete(event) }
                 }
 
                 is ShoppingEvent.Failed -> {
@@ -829,6 +794,28 @@ fun LicensesDestination(nav: NavController) {
  */
 private fun needsNotificationPermission(context: Context): Boolean =
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !context.checkNotificationPermission()
+
+/**
+ * Shows [message] with an undo, which runs [undo] once tapped. Launched, so the events go on being
+ * collected and the next message never waits behind this one.
+ */
+private fun CoroutineScope.showUndo(
+    snackbar: SnackbarHostState,
+    resources: Resources,
+    @StringRes message: Int,
+    duration: SnackbarDuration = SnackbarDuration.Long,
+    undo: () -> Unit,
+) {
+    launch {
+        val result =
+            snackbar.showSnackbar(
+                message = resources.getString(message),
+                actionLabel = resources.getString(R.string.action_undo),
+                duration = duration,
+            )
+        if (result == SnackbarResult.ActionPerformed) undo()
+    }
+}
 
 private fun shareText(context: Context, text: String) {
     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)

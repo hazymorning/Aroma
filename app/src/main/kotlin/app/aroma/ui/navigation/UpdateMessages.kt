@@ -46,7 +46,9 @@ fun UpdateMessages(updates: Updates, snackbar: SnackbarHostState) {
                     }
 
                     is UpdateMessage.Install -> {
-                        if (!openInstaller(context, message.apk)) snackbar.showSnackbar(resources.getString(R.string.update_no_installer))
+                        if (!openInstaller(context, message.apk)) {
+                            launch { snackbar.showSnackbar(resources.getString(R.string.update_no_installer)) }
+                        }
                     }
 
                     is UpdateMessage.NotDownloaded -> {
@@ -61,7 +63,7 @@ fun UpdateMessages(updates: Updates, snackbar: SnackbarHostState) {
                     }
 
                     is UpdateMessage.NotAroma -> {
-                        snackbar.showSnackbar(resources.getString(R.string.update_not_aroma))
+                        launch { snackbar.showSnackbar(resources.getString(R.string.update_not_aroma)) }
                     }
                 }
             }

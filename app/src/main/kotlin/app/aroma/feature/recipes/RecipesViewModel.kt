@@ -164,6 +164,9 @@ class RecipesViewModel(
 
     fun clearFilters() = changeFilter { RecipeFilter(query = it.query, sort = it.sort) }
 
+    /** Clears the filters and puts the order back to the newest first, in one load; the search stays. */
+    fun resetFilters() = changeFilter { RecipeFilter(query = it.query) }
+
     private fun changeFilter(change: (RecipeFilter) -> RecipeFilter) {
         mutableState.update { it.copy(filter = change(it.filter)) }
         reload()
