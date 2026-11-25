@@ -28,13 +28,14 @@ class ShoppingSyncWorker(context: Context, params: WorkerParameters) : Coroutine
     }
 
     companion object {
-        fun enqueue(context: Context) {
+        /** [policy] [ExistingWorkPolicy.KEEP] leaves a sync already waiting as it is, its backoff included. */
+        fun enqueue(context: Context, policy: ExistingWorkPolicy = ExistingWorkPolicy.REPLACE) {
             val request =
                 OneTimeWorkRequestBuilder<ShoppingSyncWorker>()
                     .setConstraints(online)
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                     .build()
-            WorkManager.getInstance(context).enqueueUniqueWork("shopping-sync", ExistingWorkPolicy.REPLACE, request)
+            WorkManager.getInstance(context).enqueueUniqueWork("shopping-sync", policy, request)
         }
     }
 }

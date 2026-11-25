@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
+import androidx.work.ExistingWorkPolicy
 import app.aroma.data.JsonCache
 import app.aroma.data.attempt
 import app.aroma.data.local.AromaDatabase
@@ -134,6 +135,12 @@ class AppContainer(context: Context) {
 
     /** Sends the shopping list changes waiting for Mealie, or has Android send them once it answers. */
     private fun syncShopping() {
+        // Out of reach, a try would only wait out the connect timeout on every edit, and a sync queued anew
+        // would start over at once; Mealie answering again sends the changes anyway.
+        if (!connection.isReachable.value) {
+            ShoppingSyncWorker.enqueue(appContext, ExistingWorkPolicy.KEEP)
+            return
+        }
         scope.launch {
             val done = attempt { shopping.sync() }.getOrDefault(false)
             if (!done) ShoppingSyncWorker.enqueue(appContext)
