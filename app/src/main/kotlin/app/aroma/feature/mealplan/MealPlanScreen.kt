@@ -94,6 +94,7 @@ import app.aroma.ui.components.recipeTime
 import app.aroma.ui.components.reducedMotion
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.scrolledBeneath
+import app.aroma.ui.components.skeletonRow
 import app.aroma.ui.components.weekday
 import app.aroma.ui.components.weekdayShort
 import app.aroma.ui.theme.AromaTheme
@@ -312,11 +313,13 @@ private fun WeekList(
         item(key = "header") { Header(state, actions, Modifier.measure()) }
         when {
             state.isLoading -> {
-                item(key = "loading") { Loading(Modifier.measure()) }
+                item(key = "loading") { Loading(Modifier.skeletonRow(this).measure()) }
             }
 
             state.error != null && state.days.all { it.entries.isEmpty() } -> {
-                item(key = "error") { ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.measure()) }
+                item(key = "error") {
+                    ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.animateRow(this).measure())
+                }
             }
 
             else -> {

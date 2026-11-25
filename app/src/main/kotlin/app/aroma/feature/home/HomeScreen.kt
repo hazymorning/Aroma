@@ -99,6 +99,7 @@ import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.recipeTime
 import app.aroma.ui.components.rememberTitleLines
 import app.aroma.ui.components.scrolledBeneath
+import app.aroma.ui.components.skeletonRow
 import app.aroma.ui.components.weekdayShort
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxGap
@@ -219,11 +220,13 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
             item(key = "header") { HomeHeader(state, actions, Modifier.measure()) }
             when {
                 state.isLoading -> {
-                    item(key = "loading") { HomeLoading(Modifier.measure()) }
+                    item(key = "loading") { HomeLoading(Modifier.skeletonRow(this).measure()) }
                 }
 
                 state.error != null && state.recent.isEmpty() && state.week.isEmpty() -> {
-                    item(key = "error") { ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.measure()) }
+                    item(key = "error") {
+                        ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.animateRow(this).measure())
+                    }
                 }
 
                 else -> {

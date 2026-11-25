@@ -28,6 +28,7 @@ import app.aroma.ui.components.SEPARATOR
 import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TopBar
+import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.recipeGridSkeletons
 import app.aroma.ui.components.rememberHeaderState
 import app.aroma.ui.components.scrolledBeneath
@@ -87,11 +88,11 @@ fun CollectionScreen(
                         }
 
                         state.error != null && state.recipes.isEmpty() -> {
-                            item(key = "error") { ErrorState(state.error, onRetry = actions.onRetry) }
+                            item(key = "error") { ErrorState(state.error, onRetry = actions.onRetry, modifier = Modifier.animateRow(this)) }
                         }
 
                         state.recipes.isEmpty() -> {
-                            item(key = "empty") { EmptyState(text = stringResource(kind.emptyRes())) }
+                            item(key = "empty") { EmptyState(text = stringResource(kind.emptyRes()), modifier = Modifier.animateRow(this)) }
                         }
                     }
                 },

@@ -2,6 +2,7 @@ package app.aroma.feature.recipe
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -231,39 +232,42 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
         )
     val steps = rememberSteps(recipe, state)
     Box(modifier.fillMaxSize()) {
-        when {
-            recipe != null -> {
-                LazyColumn(
-                    state = listState,
-                    // The last section ends 24 dp above the action bar.
-                    contentPadding = PaddingValues(bottom = actionBarInset() + EndSpace),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    item(key = HERO_KEY) {
-                        if (hasPhoto) {
-                            Hero(recipe, saved = state.isFavorite, onUnsave = actions.onToggleFavorite)
-                        } else {
-                            PageButtons(state.isFavorite, actions, menu)
+        // The page's outline gives way to the recipe by fading into it, and so does it to an error.
+        Crossfade(pageShown(state), animationSpec = Motion.state(), label = "recipePage") { shown ->
+            when {
+                shown == PageShown.Recipe && recipe != null -> {
+                    LazyColumn(
+                        state = listState,
+                        // The last section ends 24 dp above the action bar.
+                        contentPadding = PaddingValues(bottom = actionBarInset() + EndSpace),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        item(key = HERO_KEY) {
+                            if (hasPhoto) {
+                                Hero(recipe, saved = state.isFavorite, onUnsave = actions.onToggleFavorite)
+                            } else {
+                                PageButtons(state.isFavorite, actions, menu)
+                            }
                         }
+                        recipeBody(recipe, state, actions, steps, underPhoto = hasPhoto)
                     }
-                    recipeBody(recipe, state, actions, steps, underPhoto = hasPhoto)
                 }
-            }
 
-            state.isLoading -> {
-                RecipeLoading()
-            }
+                shown == PageShown.Outline -> {
+                    RecipeLoading()
+                }
 
-            state.error != null -> {
-                ErrorState(
-                    state.error,
-                    onRetry = actions.onRetry,
-                    modifier =
-                        Modifier
-                            .statusBarsPadding()
-                            .padding(top = TopBarHeight + HeaderTop),
-                )
+                shown == PageShown.Error && state.error != null -> {
+                    ErrorState(
+                        state.error,
+                        onRetry = actions.onRetry,
+                        modifier =
+                            Modifier
+                                .statusBarsPadding()
+                                .padding(top = TopBarHeight + HeaderTop),
+                    )
+                }
             }
         }
         RecipeHead(recipe, collapsed, overPhoto, state.isFavorite, actions, menu, scrolled = listState::scrolledBeneath)
@@ -301,6 +305,17 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
         )
     }
 }
+
+/** What the page shows: the recipe, its outline while it loads, or why it could not load. */
+private enum class PageShown { Recipe, Outline, Error, Nothing }
+
+private fun pageShown(state: RecipeUiState): PageShown =
+    when {
+        state.recipe != null -> PageShown.Recipe
+        state.isLoading -> PageShown.Outline
+        state.error != null -> PageShown.Error
+        else -> PageShown.Nothing
+    }
 
 private fun LazyListState.bottomOf(key: Any): Int? = layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.let { it.offset + it.size }
 

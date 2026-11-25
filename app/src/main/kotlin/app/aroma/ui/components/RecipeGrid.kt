@@ -170,8 +170,8 @@ fun SkeletonCards(columns: Int, modifier: Modifier = Modifier) {
 
 /** Grid-shaped skeletons that match [RecipeGrid], for a page that is still loading. */
 fun LazyListScope.recipeGridSkeletons(rows: Int = 3) {
-    items(rows) { index ->
-        SkeletonCards(columns = 2, modifier = Modifier.padding(top = if (index == 0) 0.dp else GridRowGap))
+    items(rows, key = { "skeleton$it" }) { index ->
+        SkeletonCards(columns = 2, modifier = Modifier.skeletonRow(this).padding(top = if (index == 0) 0.dp else GridRowGap))
     }
 }
 

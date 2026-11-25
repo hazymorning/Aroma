@@ -72,10 +72,12 @@ import app.aroma.ui.components.SkeletonLine
 import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.TonalBox
 import app.aroma.ui.components.TopBar
+import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.rememberHeaderState
 import app.aroma.ui.components.requestWhenAttached
 import app.aroma.ui.components.scrolledBeneath
+import app.aroma.ui.components.skeletonRow
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.HeaderGap
 import app.aroma.ui.theme.Motion
@@ -312,11 +314,11 @@ private fun LazyListScope.body(
 ) {
     when {
         state.isLoading -> {
-            item(key = "loading") { Loading() }
+            item(key = "loading") { Loading(Modifier.skeletonRow(this)) }
         }
 
         groups == null && state.error != null -> {
-            item(key = "error") { ErrorState(state.error, onRetry = actions.onRefresh) }
+            item(key = "error") { ErrorState(state.error, onRetry = actions.onRefresh, modifier = Modifier.animateRow(this)) }
         }
 
         groups == null -> {
@@ -325,6 +327,7 @@ private fun LazyListScope.body(
                     text = stringResource(R.string.shopping_no_lists_title),
                     actionLabel = stringResource(R.string.shopping_create_list),
                     onAction = onCreateList,
+                    modifier = Modifier.animateRow(this),
                 )
             }
         }
@@ -486,8 +489,8 @@ private val LineWidths = listOf(176.dp, 128.dp, 216.dp, 152.dp, 192.dp)
 
 /** The skeleton of an aisle while the list loads: its head, then a box of checks and lines. */
 @Composable
-private fun Loading() {
-    Column(Modifier.padding(horizontal = PageMargin)) {
+private fun Loading(modifier: Modifier = Modifier) {
+    Column(modifier.padding(horizontal = PageMargin)) {
         SkeletonLine(Modifier.width(HeadWidth))
         Spacer(Modifier.height(Space.s12))
         TonalBox {

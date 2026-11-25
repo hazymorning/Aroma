@@ -143,6 +143,9 @@ object Motion {
     /** How far a sheet follows the back gesture down before it is let go. */
     val SheetBack: Dp = Space.s48
 
+    /** A skeleton waits this long before it fades in, so what loads at once never flashes one. */
+    const val SKELETON_DELAY = 150
+
     /** Spring stiffnesses that come to rest in about the time of an edge, a change of state and a slow move. */
     const val STIFFNESS_EDGE = 1500f
     const val STIFFNESS_STATE = 550f

@@ -1,5 +1,6 @@
 package app.aroma.ui.components
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -17,9 +18,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,7 +88,8 @@ fun ErrorState(error: AromaError, onRetry: () -> Unit, modifier: Modifier = Modi
 
 /**
  * What stands in for content while it loads: a quiet fill in the shape of what is coming, which
- * breathes softly from 60 % to full and back.
+ * breathes softly from 60 % to full and back. It waits a moment and then fades in, so what loads
+ * at once goes straight to the page without a flash of grey.
  */
 @Composable
 fun Skeleton(modifier: Modifier = Modifier, shape: Shape = RectangleShape) {
@@ -95,13 +100,23 @@ fun Skeleton(modifier: Modifier = Modifier, shape: Shape = RectangleShape) {
         animationSpec = infiniteRepeatable(tween(Motion.PULSE / 2, easing = LinearEasing), RepeatMode.Reverse),
         label = "skeletonAlpha",
     )
+    val appear = remember { Animatable(0f) }
+    LaunchedEffect(appear) { appear.animateTo(1f, tween(Motion.EDGE, delayMillis = Motion.SKELETON_DELAY, easing = Motion.Decelerate)) }
     Box(
         modifier
-            .graphicsLayer { this.alpha = alpha }
+            .graphicsLayer { this.alpha = alpha * appear.value }
             .clip(shape)
             .background(AromaTheme.colors.surfacePressed),
     )
 }
+
+/**
+ * A skeleton in a lazy list hands over to what it stood for: it fades out where it stands while
+ * the content fades in over it, instead of vanishing and leaving the page bare for a moment. The
+ * item needs a key of its own.
+ */
+fun Modifier.skeletonRow(scope: LazyItemScope): Modifier =
+    with(scope) { animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = tween(Motion.EDGE, easing = LinearEasing)) }
 
 /** A line of text that is still loading, as long as [modifier] makes it, as tall as an x-height and a half. */
 @Composable
