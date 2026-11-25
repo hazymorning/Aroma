@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="window_background">#FFF8F8F3</color>
+    <!-- The page's paper, as in Color.kt, so the splash and the window behind the app are the first page's ground. -->
+    <color name="window_background">#FFFBF9F7</color>
     <color name="shortcut_background">#FFE6EDE1</color>
 </resources>
