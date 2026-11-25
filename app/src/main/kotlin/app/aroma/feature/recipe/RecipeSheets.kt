@@ -83,7 +83,7 @@ fun AddToListSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     preferredListId: String? = null,
-    onScale: (Double) -> Unit = {},
+    onScaleChange: (Double) -> Unit = {},
 ) {
     val locale = currentLocale()
     var selected by rememberSaveable { mutableStateOf(recipe.ingredients.indices.toSet()) }
@@ -113,8 +113,8 @@ fun AddToListSheet(
             // The minus circle, not its touch area, starts on the margin.
             Stepper(
                 label = servingsLabel(recipe.servings, scale, locale),
-                onDecrease = { onScale(Servings.step(recipe.servings, scale, -1)) },
-                onIncrease = { onScale(Servings.step(recipe.servings, scale, +1)) },
+                onDecrease = { onScaleChange(Servings.step(recipe.servings, scale, -1)) },
+                onIncrease = { onScaleChange(Servings.step(recipe.servings, scale, +1)) },
                 canDecrease = Servings.canDecrease(recipe.servings, scale),
                 modifier = Modifier.offset(x = -Space.s4),
             )

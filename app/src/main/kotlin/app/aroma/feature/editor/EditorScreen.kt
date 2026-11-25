@@ -52,7 +52,9 @@ import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.Filing
 import app.aroma.core.model.ImageSize
+import app.aroma.core.model.Organizer
 import app.aroma.core.model.RecipeImage
+import app.aroma.data.AromaError
 import app.aroma.ui.components.BottomActionBar
 import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.ErrorNote
@@ -79,6 +81,17 @@ import app.aroma.ui.theme.SectionTitleGap
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.tabular
 import coil3.compose.AsyncImage
+
+data class EditorUiState(
+    val form: EditorForm = EditorForm(),
+    val allCategories: List<Organizer> = emptyList(),
+    val allTags: List<Organizer> = emptyList(),
+    val currentImage: RecipeImage? = null,
+    val newImage: Uri? = null,
+    val isLoading: Boolean = true,
+    val isSaving: Boolean = false,
+    val error: AromaError? = null,
+)
 
 data class EditorActions(
     val onBack: () -> Unit = {},

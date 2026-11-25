@@ -235,7 +235,7 @@ fun RecipesScreen(
         )
     }
     organizers?.let { kind ->
-        OrganizerSheet(
+        OrganizerFilterSheet(
             kind = kind,
             options = state.options(kind),
             selected = state.filter.selected(kind),
@@ -419,7 +419,7 @@ private fun RecipeSort.labelRes() =
 /** The categories or tags to narrow by, any number of them. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun OrganizerSheet(
+private fun OrganizerFilterSheet(
     kind: OrganizerKind,
     options: List<Organizer>,
     selected: Set<Organizer>,

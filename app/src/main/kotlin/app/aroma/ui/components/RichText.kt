@@ -110,7 +110,7 @@ private fun richText(
             append(styled.text.substring(position, edit.start))
             val start = length
             append(edit.before)
-            withStyle(amountStyle) { append(measureText(edit.line)) }
+            withStyle(amountStyle) { append(styledMeasure(edit.line)) }
             append(edit.then)
             moves += Triple(edit, start, length)
             position = edit.end

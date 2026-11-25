@@ -102,7 +102,7 @@ data class ShoppingActions(
     val onAddItem: () -> Unit = {},
     val onToggle: (ShoppingItem) -> Unit = {},
     val onDelete: (ShoppingItem) -> Unit = {},
-    val onEdit: (ShoppingItem, String) -> Unit = { _, _ -> },
+    val onRenameItem: (ShoppingItem, String) -> Unit = { _, _ -> },
     val onClearChecked: () -> Unit = {},
     val onSelectList: (String) -> Unit = {},
     val onCreateList: (String) -> Unit = {},
@@ -233,7 +233,7 @@ fun ShoppingScreen(
             title = stringResource(R.string.shopping_edit_item),
             initial = itemLine(item, locale).toPlainText(),
             onConfirm = {
-                actions.onEdit(item, it)
+                actions.onRenameItem(item, it)
                 editingId = null
             },
             onDismiss = { editingId = null },

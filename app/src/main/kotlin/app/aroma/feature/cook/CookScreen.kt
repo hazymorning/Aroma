@@ -163,7 +163,7 @@ data class CookActions(
     val onClose: () -> Unit = {},
     val onStartTimer: (seconds: Int, label: String) -> Unit = { _, _ -> },
     val onToggleIngredient: (Int) -> Unit = {},
-    val onIngredientsInSteps: (IngredientsInSteps) -> Unit = {},
+    val onIngredientsInStepsChange: (IngredientsInSteps) -> Unit = {},
     val onToggleTimer: (Long) -> Unit = {},
     val onDismissTimer: (Long) -> Unit = {},
     val onRate: (Int) -> Unit = {},
@@ -287,7 +287,7 @@ fun CookScreen(state: CookUiState, actions: CookActions, modifier: Modifier = Mo
             checked = state.checkedIngredients,
             onToggle = actions.onToggleIngredient,
             inSteps = state.ingredientsInSteps,
-            onInSteps = actions.onIngredientsInSteps,
+            onInStepsChange = actions.onIngredientsInStepsChange,
             onDismiss = { showIngredients = false },
         )
     }
@@ -711,7 +711,7 @@ private fun IngredientsSheet(
     checked: Set<Int>,
     onToggle: (Int) -> Unit,
     inSteps: IngredientsInSteps,
-    onInSteps: (IngredientsInSteps) -> Unit,
+    onInStepsChange: (IngredientsInSteps) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.recipe_ingredients)) {
@@ -728,7 +728,7 @@ private fun IngredientsSheet(
             SelectionRow(
                 options = IngredientsInSteps.entries.map { stringResource(it.labelRes()) },
                 selectedIndex = inSteps.ordinal,
-                onSelect = { onInSteps(IngredientsInSteps.entries[it]) },
+                onSelect = { onInStepsChange(IngredientsInSteps.entries[it]) },
             )
         }
     }

@@ -279,7 +279,7 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
                     scale = state.scale,
                     lists = lists,
                     preferredListId = preferredList,
-                    onScale = vm::setScale,
+                    onScaleChange = vm::setScale,
                     onAdd = { list, indexes ->
                         vm.addToList(list, indexes)
                         menu.sheet = null
@@ -376,8 +376,8 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 onBack = { nav.popBackStack() },
                 onToggleFavorite = vm::toggleFavorite,
                 onRate = vm::rate,
-                onScale = vm::setScale,
-                onMeasures = vm::setMeasures,
+                onScaleChange = vm::setScale,
+                onMeasuresChange = vm::setMeasures,
                 onToggleIngredient = vm::toggleIngredient,
                 onAddToShoppingList = { sheet = RecipeMenuSheet.Shop },
                 onAddToMealPlan = { sheet = RecipeMenuSheet.Plan },
@@ -420,7 +420,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 scale = state.scale,
                 lists = lists,
                 preferredListId = preferredList,
-                onScale = vm::setScale,
+                onScaleChange = vm::setScale,
                 onAdd = { list, indexes ->
                     vm.addToList(list, indexes)
                     sheet = null
@@ -473,7 +473,7 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
                     vm.startTimer(seconds, label)
                 },
                 onToggleIngredient = vm::toggleIngredient,
-                onIngredientsInSteps = { vm.setIngredientsInSteps(it) },
+                onIngredientsInStepsChange = { vm.setIngredientsInSteps(it) },
                 onToggleTimer = vm::toggleTimer,
                 onDismissTimer = vm::dismissTimer,
                 onRate = vm::rate,
@@ -611,7 +611,7 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
                 onAddItem = vm::addItem,
                 onToggle = vm::toggle,
                 onDelete = vm::delete,
-                onEdit = vm::rename,
+                onRenameItem = vm::rename,
                 onClearChecked = vm::clearChecked,
                 onSelectList = vm::select,
                 onCreateList = { vm.createList(it) },
@@ -725,19 +725,19 @@ fun SettingsDestination(nav: NavController) {
         actions =
             SettingsActions(
                 onBack = { nav.popBackStack() },
-                onThemeMode = { vm.setThemeMode(it) },
-                onDynamicColor = { vm.setDynamicColor(it) },
-                onHomeSection = { section, shown -> vm.setHomeSection(section, shown) },
-                onLanguage = vm::setLanguage,
-                onKeepScreenOn = { vm.setKeepScreenOn(it) },
-                onShowNextStep = { vm.setShowNextStep(it) },
-                onIngredientsInSteps = { vm.setIngredientsInSteps(it) },
-                onAmountsInSteps = { vm.setAmountsInSteps(it) },
-                onMeasures = { vm.setMeasures(it) },
-                onOfflineRecipes = { vm.setOfflineRecipes(it) },
+                onThemeModeChange = { vm.setThemeMode(it) },
+                onDynamicColorChange = { vm.setDynamicColor(it) },
+                onHomeSectionChange = { section, shown -> vm.setHomeSection(section, shown) },
+                onLanguageChange = vm::setLanguage,
+                onKeepScreenOnChange = { vm.setKeepScreenOn(it) },
+                onShowNextStepChange = { vm.setShowNextStep(it) },
+                onIngredientsInStepsChange = { vm.setIngredientsInSteps(it) },
+                onAmountsInStepsChange = { vm.setAmountsInSteps(it) },
+                onMeasuresChange = { vm.setMeasures(it) },
+                onOfflineRecipesChange = { vm.setOfflineRecipes(it) },
                 onCheckForUpdates = vm::checkForUpdates,
                 onInstallUpdate = vm::installUpdate,
-                onCheckUpdatesAtStart = { vm.setCheckUpdatesAtStart(it) },
+                onCheckUpdatesAtStartChange = { vm.setCheckUpdatesAtStart(it) },
                 onOpenLicenses = { nav.navigate(LicensesRoute) },
                 onSignOut = { vm.signOut() },
             ),

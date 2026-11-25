@@ -166,8 +166,8 @@ data class RecipeActions(
     val onBack: () -> Unit = {},
     val onToggleFavorite: () -> Unit = {},
     val onRate: (Int) -> Unit = {},
-    val onScale: (Double) -> Unit = {},
-    val onMeasures: (MeasureSystem) -> Unit = {},
+    val onScaleChange: (Double) -> Unit = {},
+    val onMeasuresChange: (MeasureSystem) -> Unit = {},
     val onToggleIngredient: (Int) -> Unit = {},
     val onAddToShoppingList: () -> Unit = {},
     val onAddToMealPlan: () -> Unit = {},
@@ -792,14 +792,14 @@ private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeAct
             )
             Stepper(
                 label = servingsLabel(recipe.servings, state.scale, locale, yields.stepperUnit),
-                onDecrease = { actions.onScale(Servings.step(recipe.servings, state.scale, -1)) },
-                onIncrease = { actions.onScale(Servings.step(recipe.servings, state.scale, +1)) },
+                onDecrease = { actions.onScaleChange(Servings.step(recipe.servings, state.scale, -1)) },
+                onIncrease = { actions.onScaleChange(Servings.step(recipe.servings, state.scale, +1)) },
                 canDecrease = Servings.canDecrease(recipe.servings, state.scale),
             )
         }
         FlowRow(itemVerticalAlignment = Alignment.CenterVertically) {
             yields.line(state.scale, locale)?.let { Text(it + SEPARATOR, style = AromaTheme.type.meta) }
-            MeasuresLink(state.measures, actions.onMeasures)
+            MeasuresLink(state.measures, actions.onMeasuresChange)
         }
         IngredientList(
             rows = rows,

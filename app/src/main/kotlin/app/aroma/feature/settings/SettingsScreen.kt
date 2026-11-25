@@ -85,19 +85,19 @@ data class SettingsUiState(
 
 data class SettingsActions(
     val onBack: () -> Unit = {},
-    val onThemeMode: (ThemeMode) -> Unit = {},
-    val onDynamicColor: (Boolean) -> Unit = {},
-    val onHomeSection: (HomeSection, Boolean) -> Unit = { _, _ -> },
-    val onLanguage: (AppLanguage) -> Unit = {},
-    val onKeepScreenOn: (Boolean) -> Unit = {},
-    val onShowNextStep: (Boolean) -> Unit = {},
-    val onIngredientsInSteps: (IngredientsInSteps) -> Unit = {},
-    val onAmountsInSteps: (Boolean) -> Unit = {},
-    val onMeasures: (MeasureSystem) -> Unit = {},
-    val onOfflineRecipes: (Boolean) -> Unit = {},
+    val onThemeModeChange: (ThemeMode) -> Unit = {},
+    val onDynamicColorChange: (Boolean) -> Unit = {},
+    val onHomeSectionChange: (HomeSection, Boolean) -> Unit = { _, _ -> },
+    val onLanguageChange: (AppLanguage) -> Unit = {},
+    val onKeepScreenOnChange: (Boolean) -> Unit = {},
+    val onShowNextStepChange: (Boolean) -> Unit = {},
+    val onIngredientsInStepsChange: (IngredientsInSteps) -> Unit = {},
+    val onAmountsInStepsChange: (Boolean) -> Unit = {},
+    val onMeasuresChange: (MeasureSystem) -> Unit = {},
+    val onOfflineRecipesChange: (Boolean) -> Unit = {},
     val onCheckForUpdates: () -> Unit = {},
     val onInstallUpdate: (UpdateState.Available) -> Unit = {},
-    val onCheckUpdatesAtStart: (Boolean) -> Unit = {},
+    val onCheckUpdatesAtStartChange: (Boolean) -> Unit = {},
     val onOpenLicenses: () -> Unit = {},
     val onSignOut: () -> Unit = {},
 )
@@ -126,7 +126,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                         icon = R.drawable.ic_drop,
                         description = stringResource(R.string.settings_dynamic_color_hint),
                         checked = state.dynamicColor,
-                        onClick = { actions.onDynamicColor(!state.dynamicColor) },
+                        onClick = { actions.onDynamicColorChange(!state.dynamicColor) },
                     )
                 }
                 Separator(start = SettingsTextEdge)
@@ -160,7 +160,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     icon = R.drawable.ic_visibility,
                     description = stringResource(R.string.settings_keep_screen_on_hint),
                     checked = state.keepScreenOn,
-                    onClick = { actions.onKeepScreenOn(!state.keepScreenOn) },
+                    onClick = { actions.onKeepScreenOnChange(!state.keepScreenOn) },
                 )
                 Separator(start = SettingsTextEdge)
                 SettingsRow(
@@ -168,7 +168,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     icon = R.drawable.ic_arrow_forward,
                     description = stringResource(R.string.settings_next_step_hint),
                     checked = state.showNextStep,
-                    onClick = { actions.onShowNextStep(!state.showNextStep) },
+                    onClick = { actions.onShowNextStepChange(!state.showNextStep) },
                 )
                 Separator(start = SettingsTextEdge)
                 SettingsRow(
@@ -184,7 +184,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     icon = R.drawable.ic_plate,
                     description = stringResource(R.string.settings_amounts_in_steps_hint),
                     checked = state.amountsInSteps,
-                    onClick = { actions.onAmountsInSteps(!state.amountsInSteps) },
+                    onClick = { actions.onAmountsInStepsChange(!state.amountsInSteps) },
                 )
             }
             Group(stringResource(R.string.settings_offline)) {
@@ -198,7 +198,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                             stringResource(R.string.settings_offline_all_hint)
                         },
                     checked = state.offlineRecipes,
-                    onClick = { actions.onOfflineRecipes(!state.offlineRecipes) },
+                    onClick = { actions.onOfflineRecipesChange(!state.offlineRecipes) },
                 )
             }
             Group(stringResource(R.string.settings_about)) {
@@ -209,7 +209,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     icon = R.drawable.ic_refresh,
                     description = stringResource(R.string.settings_updates_at_start_hint),
                     checked = state.checkUpdatesAtStart,
-                    onClick = { actions.onCheckUpdatesAtStart(!state.checkUpdatesAtStart) },
+                    onClick = { actions.onCheckUpdatesAtStartChange(!state.checkUpdatesAtStart) },
                 )
                 Separator(start = SettingsTextEdge)
                 SettingsRow(
@@ -237,13 +237,13 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                 options = ThemeMode.entries,
                 selected = state.themeMode,
                 optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onThemeMode,
+                onSelect = actions.onThemeModeChange,
                 onDismiss = { choice = null },
             )
         }
 
         SettingsChoice.HomeSections -> {
-            HomeSectionsSheet(state.homeSections, actions.onHomeSection) { choice = null }
+            HomeSectionsSheet(state.homeSections, actions.onHomeSectionChange) { choice = null }
         }
 
         SettingsChoice.Language -> {
@@ -252,7 +252,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                 options = AppLanguage.entries,
                 selected = state.language,
                 optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onLanguage,
+                onSelect = actions.onLanguageChange,
                 onDismiss = { choice = null },
             )
         }
@@ -263,7 +263,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                 options = MeasureSystem.entries,
                 selected = state.measures,
                 optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onMeasures,
+                onSelect = actions.onMeasuresChange,
                 onDismiss = { choice = null },
             )
         }
@@ -274,7 +274,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                 options = IngredientsInSteps.entries,
                 selected = state.ingredientsInSteps,
                 optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onIngredientsInSteps,
+                onSelect = actions.onIngredientsInStepsChange,
                 onDismiss = { choice = null },
             )
         }

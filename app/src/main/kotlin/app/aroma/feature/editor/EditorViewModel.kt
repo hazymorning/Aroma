@@ -4,9 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.aroma.core.model.Organizer
 import app.aroma.core.model.RecipeImage
-import app.aroma.data.AromaError
 import app.aroma.data.attempt
 import app.aroma.data.remote.MealieJson
 import app.aroma.data.repository.RecipeRepository
@@ -25,17 +23,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import java.util.Locale
-
-data class EditorUiState(
-    val form: EditorForm = EditorForm(),
-    val allCategories: List<Organizer> = emptyList(),
-    val allTags: List<Organizer> = emptyList(),
-    val currentImage: RecipeImage? = null,
-    val newImage: Uri? = null,
-    val isLoading: Boolean = true,
-    val isSaving: Boolean = false,
-    val error: AromaError? = null,
-)
 
 class EditorViewModel(
     private var slug: String,
