@@ -134,4 +134,7 @@ object Motion {
 
     /** What takes another's place, a label in its button: it fades in once the other has all but faded, so the two never blur. */
     fun <T> after() = tween<T>(EDGE, delayMillis = EDGE / 2, easing = Decelerate)
+
+    /** How fast the photo at the head of a page moves as the page scrolls over it, against the page's own pace. */
+    const val PARALLAX = 0.5f
 }
