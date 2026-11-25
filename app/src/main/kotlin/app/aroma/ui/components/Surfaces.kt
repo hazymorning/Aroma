@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -40,17 +41,21 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -80,6 +85,7 @@ import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.layeredShadow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 /**
@@ -477,7 +483,11 @@ private fun DialogAction(text: String, onClick: () -> Unit, color: Color, enable
     }
 }
 
-/** Pull to refresh with an indicator on the bars' paper and a sage arc, the same on every page. */
+/**
+ * Pull to refresh with an indicator on the bars' paper and a sage arc, the same on every page. The
+ * indicator comes out from under the status bar, not over the clock, and the phone ticks lightly
+ * as the pull passes the point where letting go refreshes.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AromaPullToRefreshBox(
@@ -487,6 +497,13 @@ fun AromaPullToRefreshBox(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val state = rememberPullToRefreshState()
+    val haptics = LocalHapticFeedback.current
+    val refreshing by rememberUpdatedState(isRefreshing)
+    LaunchedEffect(state, haptics) {
+        snapshotFlow { state.distanceFraction >= 1f }
+            .drop(1)
+            .collect { past -> if (past && !refreshing) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }
+    }
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
@@ -498,7 +515,10 @@ fun AromaPullToRefreshBox(
                 isRefreshing = isRefreshing,
                 containerColor = AromaTheme.colors.bar,
                 color = AromaTheme.colors.accent,
-                modifier = Modifier.align(Alignment.TopCenter),
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding(),
             )
         },
         content = content,
