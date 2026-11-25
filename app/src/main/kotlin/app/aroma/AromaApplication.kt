@@ -21,6 +21,7 @@ class AromaApplication :
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        container.settings.restoreLanguage()
         container.scope.launch { container.sessions.restore() }
         TimerNotifications.createChannel(this)
         ImportNotifications.createChannel(this)

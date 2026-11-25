@@ -33,6 +33,8 @@ class MainActivity : AppCompatActivity() {
         val container = (application as AromaApplication).container
         splash.setKeepOnScreenCondition { container.sessions.state.value == SessionState.Loading || container.appSettings.value == null }
         if (savedInstanceState == null) launch.value = LaunchRequest.from(intent)
+        // AppCompat has read the language chosen by now, also one chosen before Aroma kept it itself.
+        lifecycleScope.launch { container.settings.keepLanguage() }
         Shortcut.publish(this)
         container.updates.checkAtStart {
             container.settings.settings

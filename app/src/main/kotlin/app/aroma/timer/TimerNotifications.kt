@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import app.aroma.MainActivity
 import app.aroma.R
 import app.aroma.checkNotificationPermission
+import app.aroma.data.settings.inAppLanguage
 
 object TimerNotifications {
     private const val CHANNEL = "timers"
@@ -43,7 +44,7 @@ object TimerNotifications {
             NotificationCompat
                 .Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_timer)
-                .setContentTitle(context.getString(R.string.timer_finished_title))
+                .setContentTitle(context.inAppLanguage().getString(R.string.timer_finished_title))
                 .setContentText(listOf(recipeName, label).filter { it.isNotBlank() }.joinToString(" · "))
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
