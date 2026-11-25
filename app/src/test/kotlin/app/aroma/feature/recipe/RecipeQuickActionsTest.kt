@@ -4,7 +4,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import app.aroma.onNodeWithWords
-import app.aroma.screenshots.SampleData
 import app.aroma.ui.theme.AromaTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -12,6 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import app.aroma.TestRecipes as SampleData
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], qualifiers = "en")

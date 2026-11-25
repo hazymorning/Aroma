@@ -1,17 +1,18 @@
 package app.aroma.ui.navigation
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.text.SpannableString
+import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
+import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class LaunchRequestTest {
     private fun shared(text: CharSequence) = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
 
@@ -76,9 +77,24 @@ class LaunchRequestTest {
         assertNull(LaunchRequest.from(intent))
     }
 
+    /** What the shortcuts, the widgets and the import notifications open comes back in the app as the request it was made from. */
     @Test
-    fun eachShortcutOpensWhatItNames() {
-        Shortcut.entries.forEach { assertEquals(it.request, LaunchRequest.from(Intent(it.action))) }
+    fun everyIntentAromaMakesOpensWhatItWasMadeFor() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val made =
+            Shortcut.entries.map { it.request to it.intent(context) } +
+                listOf(
+                    LaunchRequest.Recipe("lentil-soup").let { it to it.intent(context) },
+                    LaunchRequest.ShowImport(UUID(0, 1)).let { it to it.intent(context) },
+                    LaunchRequest.MealPlan to LaunchRequest.MealPlan.intent(context),
+                    LaunchRequest.Shopping("weekly").let { it to it.intent(context) },
+                    LaunchRequest.Shopping("weekly", add = true).let { it to it.intent(context) },
+                )
+        made.forEach { (request, intent) ->
+            assertEquals(request, LaunchRequest.from(intent))
+            // Glance gives each intent of a widget an address of its own.
+            assertEquals(request, LaunchRequest.from(Intent(intent).setData(Uri.parse("glance-action:ACTIVITY?appWidgetId=1&viewId=2"))))
+        }
     }
 
     @Test
