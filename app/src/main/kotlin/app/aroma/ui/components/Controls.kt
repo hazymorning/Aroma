@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -47,19 +49,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -80,9 +88,9 @@ import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
 import app.aroma.ui.theme.tabular
-import kotlinx.coroutines.launch
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /**
  * Minus, the value and plus on one 40 dp pill of the tonal fill where it stands; each sign takes a
@@ -279,40 +287,63 @@ val SegmentGap: Dp = Space.s4
 
 /**
  * The tick of a list to tick off: a ring on the tonal fill that fills with sage and draws its check
- * in paper. The row it sits in is the target, and gives the haptic tick.
+ * in paper. Taken back, the check fades with the sage instead of vanishing, and draws itself anew
+ * the next time. The row it sits in is the target, and gives the haptic tick.
  */
 @Composable
 fun CheckCircle(checked: Boolean, modifier: Modifier = Modifier, size: Dp = CheckSize) {
-    val fill by animateFloatAsState(if (checked) 1f else 0f, Motion.edge(), label = "checkFill")
+    val fill = remember { Animatable(if (checked) 1f else 0f) }
     val draw = remember { Animatable(if (checked) 1f else 0f) }
     LaunchedEffect(checked) {
-        if (checked) draw.animateTo(1f, tween(Motion.STATE, delayMillis = Motion.EDGE, easing = Motion.Decelerate)) else draw.snapTo(0f)
+        if (checked) {
+            launch { fill.animateTo(1f, Motion.edge()) }
+            // A check still standing, taken back and ticked again before it had faded, stays drawn.
+            if (draw.value < 1f) draw.animateTo(1f, tween(Motion.STATE, delayMillis = Motion.EDGE, easing = Motion.Decelerate))
+        } else {
+            fill.animateTo(0f, Motion.edge())
+            draw.snapTo(0f)
+        }
     }
     val colors = AromaTheme.colors
     val ground = AromaTheme.tonalFill
-    Canvas(modifier.size(size)) {
-        val radius = this.size.minDimension / 2
-        val ring = CheckRing.toPx()
-        if (fill < 1f) {
-            drawCircle(ground, radius = radius)
-            drawCircle(colors.inkTertiary.copy(alpha = 1f - fill), radius = radius - ring / 2, style = Stroke(ring))
-        }
-        if (fill > 0f) drawCircle(colors.accent.copy(alpha = fill), radius = radius)
-        if (draw.value > 0f) {
-            val w = this.size.width
-            val h = this.size.height
-            val path =
-                Path().apply {
-                    moveTo(0.29f * w, 0.52f * h)
-                    lineTo(0.44f * w, 0.66f * h)
-                    lineTo(0.71f * w, 0.37f * h)
+    Spacer(
+        modifier
+            .size(size)
+            .drawWithCache {
+                val radius = this.size.minDimension / 2
+                val ring = CheckRing.toPx()
+                val ringStroke = Stroke(ring)
+                val checkStroke = Stroke(width = CheckStroke.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                val w = this.size.width
+                val h = this.size.height
+                val check =
+                    PathMeasure().apply {
+                        setPath(
+                            Path().apply {
+                                moveTo(0.29f * w, 0.52f * h)
+                                lineTo(0.44f * w, 0.66f * h)
+                                lineTo(0.71f * w, 0.37f * h)
+                            },
+                            false,
+                        )
+                    }
+                val drawn = Path()
+                onDrawBehind {
+                    val filled = fill.value
+                    if (filled < 1f) {
+                        drawCircle(ground, radius = radius)
+                        drawCircle(colors.inkTertiary.copy(alpha = 1f - filled), radius = radius - ring / 2, style = ringStroke)
+                    }
+                    if (filled > 0f) drawCircle(colors.accent.copy(alpha = filled), radius = radius)
+                    val stroke = draw.value
+                    if (stroke > 0f && filled > 0f) {
+                        drawn.rewind()
+                        check.getSegment(0f, check.length * stroke, drawn, true)
+                        drawPath(drawn, colors.onInk.copy(alpha = filled), style = checkStroke)
+                    }
                 }
-            val measure = PathMeasure().apply { setPath(path, false) }
-            val partial = Path()
-            measure.getSegment(0f, measure.length * draw.value, partial, true)
-            drawPath(partial, colors.onInk, style = Stroke(width = CheckStroke.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-        }
-    }
+            },
+    )
 }
 
 /** The tick's size, its ring and the stroke of its check. */
