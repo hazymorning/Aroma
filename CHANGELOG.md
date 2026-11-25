@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.8.1 – 2026-11-25
+
+**Better**
+- Signing out leaves nothing of the account on the phone, even when it was cut short, and takes back Aroma's access to Mealie as soon as Mealie answers again.
+- Changes to a shopping list made without a connection wait for Mealie instead of trying again with every edit.
+
+**Fixed**
+- Signing out while Mealie is out of reach no longer closes the app.
+- Cooking mode shows your own rating, not the recipe's average.
+- "2 bis 3 EL Öl" scales both amounts, and a small amount scaled down no longer reads 0.
+- Times like "1:20 h" count as an hour and twenty minutes among the quick recipes, for step timers and in the editor, which now also shows times like "PT45M".
+- Filtering for quick recipes no longer lists one twice, which could close the app.
+- The filter button also marks "long ago", and resetting the filters loads the list once.
+- Messages with an undo no longer go missing.
+- Home shows what is left to buy right after signing in.
+- Timers already running ring on time once exact alarms are allowed.
+- Widgets and timer alerts use the language chosen in the app, also on Android 8 to 12.
+- A cancelled import stops at once.
+
 ## 0.8.0 – 2026-11-25
 
 **New**
