@@ -3,9 +3,11 @@ package app.aroma.ui.theme
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.material3.MotionScheme
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -134,4 +136,33 @@ object Motion {
      * instead of being cut by a line. It comes with the scroll, so nothing at rest stands in it.
      */
     val ScrollEdge: Dp = Space.s16
+
+    /** How far a sheet follows the back gesture down before it is let go. */
+    val SheetBack: Dp = Space.s48
+
+    /** Spring stiffnesses that come to rest in about the time of an edge, a change of state and a slow move. */
+    const val STIFFNESS_EDGE = 1500f
+    const val STIFFNESS_STATE = 550f
+    const val STIFFNESS_SLOW = 300f
+}
+
+/**
+ * Material's parts move as Aroma's own do: sheets, the pull to refresh and the few other parts Aroma
+ * takes from Material come to rest on springs that never overshoot, as quickly as an edge or a
+ * change of state. A sheet that is put away glides off instead of vanishing in a few frames.
+ */
+object AromaMotionScheme : MotionScheme {
+    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = settle(Motion.STIFFNESS_STATE)
+
+    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = settle(Motion.STIFFNESS_EDGE)
+
+    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = settle(Motion.STIFFNESS_SLOW)
+
+    override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = settle(Motion.STIFFNESS_STATE)
+
+    override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = settle(Motion.STIFFNESS_EDGE)
+
+    override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = settle(Motion.STIFFNESS_SLOW)
+
+    private fun <T> settle(stiffness: Float): FiniteAnimationSpec<T> = spring(Spring.DampingRatioNoBouncy, stiffness)
 }

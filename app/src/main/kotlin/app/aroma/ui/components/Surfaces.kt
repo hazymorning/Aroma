@@ -1,6 +1,9 @@
 package app.aroma.ui.components
 
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +26,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -32,7 +36,9 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +64,7 @@ import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.layeredShadow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -65,7 +72,8 @@ import kotlinx.coroutines.launch
  * A bottom sheet on the bars' paper, 28 dp corners at its top, a fine handle and its soft shadow,
  * opening at its full height under its [title] and a [meta] line where it needs one. A recipe's
  * name as the title ([titleStyle]) is set as a recipe's name. Controls on it take the bars' tonal
- * fill. The content is already clear of the navigation bar and the keyboard.
+ * fill. The content is already clear of the navigation bar and the keyboard. The back gesture draws
+ * the sheet down after the finger, where Material would shrink it, and once let go it slides away.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,15 +87,23 @@ fun AromaBottomSheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = AromaTheme.colors
+    val back = remember { Animatable(0f) }
+    // With the system's animations off, the sheet stays put under the gesture and only goes once it is let go.
+    val follow = if (reducedMotion()) 0.dp else Motion.SheetBack
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        modifier = modifier.layeredShadow(AromaTheme.shadows.sheet, AromaTheme.shapes.sheet),
+        modifier =
+            modifier
+                .graphicsLayer { translationY = back.value * follow.toPx() }
+                .layeredShadow(AromaTheme.shadows.sheet, AromaTheme.shapes.sheet),
         sheetState = sheetState,
         shape = AromaTheme.shapes.sheet,
         containerColor = colors.bar,
         contentColor = colors.ink,
         tonalElevation = 0.dp,
         scrimColor = colors.scrim.copy(alpha = if (colors.isDark) 0.6f else 0.32f),
+        // Aroma answers the back gesture itself, below, so the sheet never scales.
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
         dragHandle = {
             val handle = stringResource(R.string.sheet_handle)
             Box(
@@ -99,6 +115,7 @@ fun AromaBottomSheet(
             )
         },
     ) {
+        SheetBackHandler(sheetState, back, onDismissRequest)
         CompositionLocalProvider(LocalTonalFill provides colors.surfaceOnBar) {
             Column(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s4, bottom = Space.s16)) {
                 Text(
@@ -116,6 +133,26 @@ fun AromaBottomSheet(
 }
 
 private val HandleWidth = 32.dp
+
+/**
+ * The back gesture on a sheet: [back] follows the finger from 0 to 1 while it moves, the sheet
+ * slides away once it is let go, and settles back where it was if the gesture is called off.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SheetBackHandler(sheetState: SheetState, back: Animatable<Float, AnimationVector1D>, onDismissRequest: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val dismiss by rememberUpdatedState(onDismissRequest)
+    PredictiveBackHandler(enabled = sheetState.targetValue != SheetValue.Hidden) { gesture ->
+        try {
+            gesture.collect { event -> back.snapTo(event.progress) }
+            scope.hideThen(sheetState) { dismiss() }
+        } catch (cancelled: CancellationException) {
+            scope.launch { back.animateTo(0f, Motion.state()) }
+            throw cancelled
+        }
+    }
+}
 
 /** A sheet that opens at its full height, so its footer is never below the screen's edge. */
 @OptIn(ExperimentalMaterial3Api::class)

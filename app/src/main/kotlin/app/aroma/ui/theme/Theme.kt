@@ -106,7 +106,12 @@ fun AromaTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean
     val locale = LocalLocale.current.platformLocale
     val type = remember(colors, locale) { AromaTypography(colors, textLocale(locale)) }
     val shadows = remember(darkTheme) { AromaShadows(darkTheme) }
-    MaterialTheme(colorScheme = colors.toMaterial(), typography = type.material, shapes = MaterialShapes) {
+    MaterialTheme(
+        colorScheme = colors.toMaterial(),
+        motionScheme = AromaMotionScheme,
+        shapes = MaterialShapes,
+        typography = type.material,
+    ) {
         CompositionLocalProvider(
             LocalAromaColors provides colors,
             LocalAromaTypography provides type,
