@@ -16,7 +16,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -25,7 +24,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class MealPlanViewModelTest {
     private val env = TestEnvironment()
     private val opened = mutableListOf<MealPlanViewModel>()

@@ -30,7 +30,6 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
@@ -39,7 +38,6 @@ import java.util.concurrent.TimeUnit
  * it is offline, and loads again by itself as soon as Mealie answers, sending what waited meanwhile.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class OfflineScreensTest {
     @get:Rule
     val folder = TemporaryFolder()

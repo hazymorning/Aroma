@@ -18,14 +18,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlarmManager
 import org.robolectric.shadows.ShadowSystemClock
 import java.time.Duration
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class CookingTimersTest {
     private val context = ApplicationProvider.getApplicationContext<Application>()
     private val notifications = shadowOf(context.getSystemService(NotificationManager::class.java))

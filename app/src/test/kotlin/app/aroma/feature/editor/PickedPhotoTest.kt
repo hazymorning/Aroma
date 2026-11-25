@@ -19,14 +19,12 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /** Photos are scaled down on the phone, turned upright and written as JPEG before they are sent. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [36])
 class PickedPhotoTest {
     @get:Rule
     val folder = TemporaryFolder()

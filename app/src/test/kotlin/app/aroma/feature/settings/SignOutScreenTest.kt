@@ -18,7 +18,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36], application = TestApp::class)
+@Config(application = TestApp::class)
 class SignOutScreenTest {
     @get:Rule
     val screen = ScreenTest()

@@ -21,14 +21,12 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /** An import keeps its photos where nothing removes them while it runs, and removes them when it ends. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [36])
 class ImportPhotoFilesTest {
     @get:Rule
     val folder = TemporaryFolder()

@@ -26,7 +26,7 @@ import java.time.LocalDate
 
 /** The whole app as someone goes through it once: every tab, a recipe and cooking it, the settings, signing out. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36], application = TestApp::class)
+@Config(application = TestApp::class)
 class AppTourTest {
     @get:Rule(order = 0)
     val screen = ScreenTest()

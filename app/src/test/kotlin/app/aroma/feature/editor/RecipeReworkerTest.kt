@@ -43,7 +43,7 @@ import kotlin.time.Duration.Companion.seconds
  * Some tests make Mealie fail along the way, or cut the connection while it makes the draft.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36], qualifiers = "de")
+@Config(qualifiers = "de")
 class RecipeReworkerTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val requests = CopyOnWriteArrayList<RecordedRequest>()

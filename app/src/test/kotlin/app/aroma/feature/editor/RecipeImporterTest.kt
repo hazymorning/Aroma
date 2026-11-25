@@ -27,7 +27,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import java.net.InetAddress
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration
@@ -40,7 +39,6 @@ import kotlin.time.Duration.Companion.seconds
  * proxy does while Mealie finishes the recipe anyway.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class RecipeImporterTest {
     private val requests = CopyOnWriteArrayList<RecordedRequest>()
     private val server = mealieServer { answer(it.also(requests::add)) }

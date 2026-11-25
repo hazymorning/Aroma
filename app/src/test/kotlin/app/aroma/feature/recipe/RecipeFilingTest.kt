@@ -28,12 +28,10 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import java.util.concurrent.CopyOnWriteArrayList
 
 /** Filing a recipe from its page: the kind of dish, categories and tags, saved as they are chosen. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class RecipeFilingTest {
     private val requests = CopyOnWriteArrayList<RecordedRequest>()
     private val env = TestEnvironment()

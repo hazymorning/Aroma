@@ -28,7 +28,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import java.io.File
 import java.net.InetAddress
 import java.util.concurrent.CopyOnWriteArrayList
@@ -37,7 +36,6 @@ import kotlin.time.Duration.Companion.seconds
 
 /** Photos of a recipe go to Mealie's AI, as images beside the text, and nowhere else. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class PhotoImportTest {
     @get:Rule
     val folder = TemporaryFolder()

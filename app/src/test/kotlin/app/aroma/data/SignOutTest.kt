@@ -20,13 +20,11 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class SignOutTest {
     private val itemsSent = CopyOnWriteArrayList<String>()
     private val revoked = CopyOnWriteArrayList<String>()

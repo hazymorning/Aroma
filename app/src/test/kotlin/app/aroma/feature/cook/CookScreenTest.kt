@@ -12,7 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36], application = TestApp::class)
+@Config(application = TestApp::class)
 class CookScreenTest {
     @get:Rule
     val screen = ScreenTest()

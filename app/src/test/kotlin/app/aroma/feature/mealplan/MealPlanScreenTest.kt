@@ -11,7 +11,7 @@ import org.robolectric.annotation.Config
 import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36], application = TestApp::class)
+@Config(application = TestApp::class)
 class MealPlanScreenTest {
     @get:Rule
     val screen = ScreenTest()
