@@ -4,12 +4,12 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import app.aroma.data.AromaError
 import app.aroma.data.TestEnvironment
-import app.aroma.data.address
-import app.aroma.data.eventStream
-import app.aroma.data.json
-import app.aroma.data.mealieServer
 import app.aroma.data.remote.MealieJson
 import app.aroma.data.session.Session
+import app.aroma.testing.address
+import app.aroma.testing.eventStream
+import app.aroma.testing.json
+import app.aroma.testing.mealieServer
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull

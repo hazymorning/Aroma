@@ -1,4 +1,4 @@
-package app.aroma.data
+package app.aroma.testing
 
 import android.os.Looper
 import org.robolectric.Shadows.shadowOf

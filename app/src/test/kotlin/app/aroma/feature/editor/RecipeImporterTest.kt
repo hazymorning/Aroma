@@ -3,12 +3,12 @@ package app.aroma.feature.editor
 import app.aroma.data.AromaError
 import app.aroma.data.AromaError.ImportFailed.Reason
 import app.aroma.data.TestEnvironment
-import app.aroma.data.address
-import app.aroma.data.eventStream
-import app.aroma.data.json
-import app.aroma.data.mealieServer
 import app.aroma.data.remote.SocialPosts
 import app.aroma.data.session.Session
+import app.aroma.testing.address
+import app.aroma.testing.eventStream
+import app.aroma.testing.json
+import app.aroma.testing.mealieServer
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.RecordedRequest

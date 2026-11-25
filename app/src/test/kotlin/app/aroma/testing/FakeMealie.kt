@@ -81,7 +81,7 @@ class FakeMealie : Closeable {
     private val lists = mutableListOf<ShoppingList>()
 
     init {
-        server.serverSocketFactory = NoDelaySockets
+        server.serverSocketFactory = SendingAtOnce
         server.dispatcher = Answering()
         server.start()
     }
@@ -565,23 +565,6 @@ private object Recorded {
     val wrongPassword = Json.parseToJsonElement("""{"detail":"Unauthorized"}""")
     val unauthorized = Json.parseToJsonElement("""{"detail":"Could not validate credentials"}""")
     val notFound = Json.parseToJsonElement("""{"detail":{"message":"No Entry Found","error":true,"exception":null}}""")
-}
-
-/** Answers on loopback come at once only without Nagle's algorithm, which otherwise waits ~40 ms for a delayed ACK each time. */
-private object NoDelaySockets : ServerSocketFactory() {
-    override fun createServerSocket(): ServerSocket = NoDelayServerSocket()
-
-    override fun createServerSocket(port: Int): ServerSocket = NoDelayServerSocket().also { it.bind(InetSocketAddress(port)) }
-
-    override fun createServerSocket(port: Int, backlog: Int): ServerSocket =
-        NoDelayServerSocket().also { it.bind(InetSocketAddress(port), backlog) }
-
-    override fun createServerSocket(port: Int, backlog: Int, address: InetAddress?): ServerSocket =
-        NoDelayServerSocket().also { it.bind(InetSocketAddress(address, port), backlog) }
-}
-
-private class NoDelayServerSocket : ServerSocket() {
-    override fun accept(): Socket = super.accept().apply { tcpNoDelay = true }
 }
 
 /** Whether a path's parts are [pattern]'s, where "*" stands for any one part. */

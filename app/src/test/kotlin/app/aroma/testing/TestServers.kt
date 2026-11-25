@@ -1,4 +1,4 @@
-package app.aroma.data
+package app.aroma.testing
 
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
@@ -46,7 +46,7 @@ internal fun eventStream(body: String): MockResponse =
         .build()
 
 /** Server sockets whose connections send every write without waiting for Nagle's algorithm. */
-private object SendingAtOnce : ServerSocketFactory() {
+internal object SendingAtOnce : ServerSocketFactory() {
     override fun createServerSocket(): ServerSocket =
         object : ServerSocket() {
             override fun accept(): Socket = super.accept().apply { tcpNoDelay = true }
