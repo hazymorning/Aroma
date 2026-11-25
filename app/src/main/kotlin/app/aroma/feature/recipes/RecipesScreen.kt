@@ -25,9 +25,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -69,6 +67,7 @@ import app.aroma.ui.components.mealLabel
 import app.aroma.ui.components.recipeGridSkeletons
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.rememberHeaderState
+import app.aroma.ui.components.requestWhenAttached
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.HeaderGap
 import app.aroma.ui.theme.PageMargin
@@ -190,13 +189,7 @@ fun RecipesScreen(
     LaunchedEffect(focusSearch) {
         if (!focusSearch) return@LaunchedEffect
         list.scrollToItem(0)
-        repeat(FOCUS_FRAMES) {
-            withFrameNanos {}
-            if (runCatching { searchFocus.requestFocus(FocusDirection.Enter) }.getOrDefault(false)) {
-                consumeFocusSearch()
-                return@LaunchedEffect
-            }
-        }
+        searchFocus.requestWhenAttached()
         consumeFocusSearch()
     }
     val header = rememberHeaderState()
@@ -446,6 +439,3 @@ private fun OrganizerSheet(
         }
     }
 }
-
-/** How many frames the search field is asked for focus while the page settles. */
-private const val FOCUS_FRAMES = 10

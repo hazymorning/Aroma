@@ -5,7 +5,6 @@ import app.aroma.core.format.withoutPictographs
 import app.aroma.data.AromaError
 import app.aroma.data.AromaError.ImportFailed.Reason.NoAnswer
 import app.aroma.data.AromaError.ImportFailed.Reason.PostUnreadable
-import app.aroma.data.isConnectivity
 import app.aroma.data.mayStillFinish
 import app.aroma.data.remote.Photo
 import app.aroma.data.remote.SocialPost
@@ -15,14 +14,11 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import java.io.File
 import java.util.Locale
@@ -124,7 +120,7 @@ class RecipeImporter(
         onStep: (ImportStep) -> Unit,
     ): String {
         onStep(ImportStep.StillWorking)
-        val slug = awaitNewRecipe(known, request.url.ifBlank { null })
+        val slug = recipes.awaitAdded(known, request.url.ifBlank { null }, patience, checkEvery)
         // Photos go to Mealie's AI alone, so nothing of a post is left to finish.
         if (request.photos.isNotEmpty() || !SocialPosts.isPost(request.url)) return slug
         val sending = Sending(onStep, onSending)
@@ -210,7 +206,7 @@ class RecipeImporter(
                     return slug
                 }
             if (!recipe.isLinkPreviewOnly()) return slug
-            deleteQuietly(slug)
+            recipes.deleteQuietly(slug)
             throw AromaError.ImportFailed()
         }
 
@@ -232,7 +228,7 @@ class RecipeImporter(
             val signIn = SocialCaption.isSignInPage(title, description)
             val text = caption.ifBlank { if (signIn) "" else SocialCaption.extract(title, description) }
             val into = preview.takeUnless { signIn }
-            if (into == null || text.isBlank()) deleteQuietly(preview)
+            if (into == null || text.isBlank()) recipes.deleteQuietly(preview)
             if (text.isBlank()) throw AromaError.ImportFailed(PostUnreadable)
             val slug = (if (caption.isBlank()) fromCaption(text, request, into) else null) ?: fromText(text, request.url, from = into)
             // A recipe of its own, where the sign-in page went, still needs the post's photo.
@@ -320,7 +316,7 @@ class RecipeImporter(
                     recipes.update(slug, JsonObject(RecipeDraft.patch(fresh, form, locale) { "" } + extras))
                 } catch (failure: AromaError) {
                     // A new recipe with nothing but a name helps nobody; a link preview stays as Mealie saved it.
-                    deleteQuietly(slug)
+                    recipes.deleteQuietly(slug)
                     throw failure
                 }
             if (from != null) adoptPhoto(from = from, to = saved)
@@ -340,7 +336,7 @@ class RecipeImporter(
             } catch (_: AromaError) {
                 // See above.
             }
-            deleteQuietly(from)
+            recipes.deleteQuietly(from)
         }
 
         /**
@@ -359,26 +355,9 @@ class RecipeImporter(
             } catch (failure: AromaError) {
                 if (!failure.mayStillFinish()) throw failure
                 onStep(ImportStep.StillWorking)
-                awaitNewRecipe(known, source)
+                recipes.awaitAdded(known, source, patience, checkEvery)
             }
         }
-    }
-
-    /** Mealie saves an import's recipe only once it is complete, photo included, so the first sign of it is final. */
-    private suspend fun awaitNewRecipe(known: Set<String>, source: String?): String {
-        repeat((patience / checkEvery).toInt().coerceAtLeast(1)) {
-            delay(checkEvery)
-            val added =
-                try {
-                    recipes.addedSince(known, source)
-                } catch (error: AromaError) {
-                    // A phone between networks answers again shortly; anything else will not change.
-                    if (!error.isConnectivity && !error.mayStillFinish()) throw error
-                    null
-                }
-            if (added != null) return added
-        }
-        throw AromaError.ImportFailed(NoAnswer)
     }
 
     private fun note(text: String): JsonObject =
@@ -386,15 +365,6 @@ class RecipeImporter(
             put("title", "")
             put("text", text)
         }
-
-    /** Cleanup of a recipe nobody wants; failing here leaves a duplicate the user can delete. */
-    private suspend fun deleteQuietly(slug: String) {
-        try {
-            recipes.delete(slug)
-        } catch (_: AromaError) {
-            // See above.
-        }
-    }
 
     /** What Mealie (2.0 to 3.x) saves when it could read no more of a page than its link preview. */
     private fun JsonObject.isLinkPreviewOnly(): Boolean {
@@ -457,10 +427,6 @@ class RecipeImporter(
 
     /** Whether Aroma finds ingredients or steps in [text]. */
     private fun holdsRecipe(text: String): Boolean = SocialCaption.parse(text).let { it.ingredients.isNotEmpty() || it.steps.isNotEmpty() }
-
-    private fun JsonObject.list(key: String): List<JsonObject> = (this[key] as? JsonArray)?.map { it.jsonObject }.orEmpty()
-
-    private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
 
     private companion object {
         /** The lists of a recipe whose words a reader sees, and the fields of their items that hold them. */

@@ -29,9 +29,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -39,7 +36,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,17 +60,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.format.IngredientFormatter
-import app.aroma.core.format.Markdown
 import app.aroma.core.format.MeasureSystem
 import app.aroma.core.format.Quantities
 import app.aroma.core.format.StepAmount
-import app.aroma.core.format.StepMeasures
 import app.aroma.core.format.StepMention
 import app.aroma.core.format.StyledText
-import app.aroma.core.format.UnitSpacing
 import app.aroma.core.format.ingredientsByStep
-import app.aroma.core.format.stepAmounts
-import app.aroma.core.format.stepMentions
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.NutritionKind
 import app.aroma.core.model.NutritionValue
@@ -87,18 +78,16 @@ import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.feature.editor.ReworkJob
 import app.aroma.feature.editor.WorkProgress
 import app.aroma.ui.components.AromaAlertDialog
-import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaDropdownMenu
 import app.aroma.ui.components.AromaMenuItem
 import app.aroma.ui.components.BackButton
 import app.aroma.ui.components.BottomActionBar
-import app.aroma.ui.components.ChoiceRow
+import app.aroma.ui.components.ChoiceSheet
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.IconButtonPlace
 import app.aroma.ui.components.IconButtonReach
 import app.aroma.ui.components.IngredientList
-import app.aroma.ui.components.IngredientRow
 import app.aroma.ui.components.NARROW_NO_BREAK_SPACE
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PrimaryButton
@@ -112,6 +101,7 @@ import app.aroma.ui.components.Skeleton
 import app.aroma.ui.components.SkeletonLine
 import app.aroma.ui.components.StatusBarCover
 import app.aroma.ui.components.StatusBarOverPhoto
+import app.aroma.ui.components.StepTexts
 import app.aroma.ui.components.Stepper
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TextAction
@@ -120,12 +110,13 @@ import app.aroma.ui.components.TopBar
 import app.aroma.ui.components.TopBarHeight
 import app.aroma.ui.components.actionBarInset
 import app.aroma.ui.components.currentLocale
-import app.aroma.ui.components.hideThen
+import app.aroma.ui.components.labelRes
 import app.aroma.ui.components.ratingDescription
 import app.aroma.ui.components.recipeTimeText
-import app.aroma.ui.components.rememberFullSheetState
+import app.aroma.ui.components.rememberIngredientRows
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.components.rememberStepText
+import app.aroma.ui.components.rememberStepTexts
 import app.aroma.ui.components.totalTime
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.ContentMaxWidth
@@ -313,16 +304,8 @@ private fun LazyListState.bottomOf(key: Any): Int? = layoutInfo.visibleItemsInfo
 /** What the menu opens on the page itself: a rework where Mealie's AI is there, the rating and the question before deleting. */
 private class PageMenu(val onRework: (() -> Unit)?, val onRate: () -> Unit, val onDelete: () -> Unit)
 
-/**
- * The steps' [texts] as they read, the [amounts] written into them, the ingredients each [uses], as
- * the list shows them, and the words in them that tick an ingredient off ([mentions]).
- */
-private class Steps(
-    val texts: List<StyledText>,
-    val amounts: List<List<StepAmount>>,
-    val uses: List<List<String>>,
-    val mentions: List<List<StepMention>>,
-)
+/** The steps as they read ([texts]), and the ingredients each [uses], as the list shows them. */
+private class Steps(val texts: StepTexts, val uses: List<List<String>>)
 
 @Composable
 private fun rememberSteps(recipe: Recipe?, state: RecipeUiState): Steps {
@@ -342,21 +325,8 @@ private fun rememberSteps(recipe: Recipe?, state: RecipeUiState): Steps {
                 }
             recipe.ingredientsByStep(locale).map { used -> used.mapNotNull(lines::getOrNull) }
         }
-    // The steps as they read: temperatures and pan sizes in the chosen measures, and the amounts written in where chosen.
-    val texts =
-        remember(recipe, state.measures, locale) {
-            recipe?.steps.orEmpty().map { Markdown.parse(UnitSpacing.apply(StepMeasures.convert(it.text, state.measures, locale))) }
-        }
-    val amounts =
-        remember(recipe, texts, state.scale, state.measures, locale, state.amountsInSteps) {
-            if (recipe == null || !state.amountsInSteps) {
-                emptyList()
-            } else {
-                recipe.stepAmounts(texts.map { it.text }, state.scale, locale, state.measures)
-            }
-        }
-    val mentions = remember(recipe, texts, locale) { recipe?.stepMentions(texts.map { it.text }, locale).orEmpty() }
-    return remember(texts, amounts, uses, mentions) { Steps(texts, amounts, uses, mentions) }
+    val texts = rememberStepTexts(recipe, state.scale, state.measures, state.amountsInSteps)
+    return remember(texts, uses) { Steps(texts, uses) }
 }
 
 /** The page's text keeps a reading measure on wide screens, centred under the photo. */
@@ -637,10 +607,10 @@ private fun LazyListScope.recipeBody(
             StepItem(
                 index = index,
                 step = step,
-                text = steps.texts.getOrNull(index) ?: StyledText(step.text, emptyList()),
-                amounts = steps.amounts.getOrNull(index).orEmpty(),
+                text = steps.texts.textOf(index, step),
+                amounts = steps.texts.amountsOf(index),
                 uses = if (state.ingredientsInSteps == IngredientsInSteps.None) emptyList() else steps.uses.getOrNull(index).orEmpty(),
-                mentions = steps.mentions.getOrNull(index).orEmpty(),
+                mentions = steps.texts.mentionsOf(index),
                 checked = state.checkedIngredients,
                 onToggle = actions.onToggleIngredient,
                 modifier =
@@ -805,10 +775,7 @@ private fun Facts(recipe: Recipe, modifier: Modifier = Modifier) {
 @Composable
 private fun Ingredients(recipe: Recipe, state: RecipeUiState, actions: RecipeActions, modifier: Modifier = Modifier) {
     val locale = currentLocale()
-    val rows =
-        remember(recipe.ingredients, state.scale, state.measures, locale) {
-            recipe.ingredients.map { IngredientRow(it.section, IngredientFormatter.format(it, state.scale, locale, state.measures)) }
-        }
+    val rows = rememberIngredientRows(recipe, state.scale, state.measures)
     val yields = remember(recipe.servings, recipe.yieldText) { RecipeYield(recipe.servings, recipe.yieldText) }
     Column(modifier) {
         // With large text the stepper moves under the title rather than squeezing it.
@@ -869,33 +836,15 @@ private fun MeasuresLink(system: MeasureSystem, onSelect: (MeasureSystem) -> Uni
         onClick = { open = true },
         inline = true,
     )
-    if (open) MeasuresSheet(system, onSelect, onDismiss = { open = false })
-}
-
-/** The three choices of measures; choosing one applies it and lets the sheet slide away. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MeasuresSheet(current: MeasureSystem, onSelect: (MeasureSystem) -> Unit, onDismiss: () -> Unit) {
-    val sheetState = rememberFullSheetState()
-    val scope = rememberCoroutineScope()
-    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.measures_title), sheetState = sheetState) {
-        Column(
-            Modifier
-                .selectableGroup()
-                .padding(bottom = Space.s16),
-        ) {
-            MeasureSystem.entries.forEach { option ->
-                ChoiceRow(
-                    label = stringResource(option.labelRes()),
-                    chosen = option == current,
-                    modifier =
-                        Modifier.selectable(selected = option == current, role = Role.RadioButton) {
-                            onSelect(option)
-                            scope.hideThen(sheetState, onDismiss)
-                        },
-                )
-            }
-        }
+    if (open) {
+        ChoiceSheet(
+            title = stringResource(R.string.measures_title),
+            options = MeasureSystem.entries,
+            selected = system,
+            optionLabel = { stringResource(it.labelRes()) },
+            onSelect = onSelect,
+            onDismiss = { open = false },
+        )
     }
 }
 
@@ -905,14 +854,6 @@ private fun MeasureSystem.shortLabelRes(): Int =
         MeasureSystem.AsWritten -> R.string.measures_short_as_written
         MeasureSystem.Metric -> R.string.measures_short_metric
         MeasureSystem.US -> R.string.measures_short_us
-    }
-
-/** The name of a choice of measures, as the sheet and the setting show it. */
-fun MeasureSystem.labelRes(): Int =
-    when (this) {
-        MeasureSystem.AsWritten -> R.string.measures_as_written
-        MeasureSystem.Metric -> R.string.measures_metric
-        MeasureSystem.US -> R.string.measures_us
     }
 
 /**
@@ -949,7 +890,6 @@ private fun StepItem(
     modifier: Modifier = Modifier,
 ) {
     val number = stringResource(R.string.editor_step, index + 1)
-    val haptics = LocalHapticFeedback.current
     Row(modifier.padding(horizontal = PageMargin)) {
         Text(
             text = (index + 1).toString(),
@@ -971,24 +911,7 @@ private fun StepItem(
             }
             Text(
                 text =
-                    rememberStepText(
-                        text,
-                        amounts,
-                        mentions = mentions,
-                        checked = checked,
-                        onIngredient = { ingredient ->
-                            haptics.performHapticFeedback(
-                                if (ingredient in
-                                    checked
-                                ) {
-                                    HapticFeedbackType.ToggleOff
-                                } else {
-                                    HapticFeedbackType.ToggleOn
-                                },
-                            )
-                            onToggle(ingredient)
-                        },
-                    ),
+                    rememberStepText(text, amounts, mentions = mentions, checked = checked, onIngredient = onToggle),
                 style = AromaTheme.type.body,
             )
             // The ingredients the step uses, as the list shows them, so the step reads on its own.

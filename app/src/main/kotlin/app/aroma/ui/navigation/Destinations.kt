@@ -17,7 +17,6 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,7 +30,6 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.LocalView
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -94,6 +92,7 @@ import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingViewModel
 import app.aroma.ui.appContainer
 import app.aroma.ui.aromaViewModel
+import app.aroma.ui.components.KeepScreenOn
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.formatDurationPlain
 import app.aroma.ui.components.titleRes
@@ -366,7 +365,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
     val reworked = rework?.outcome
     LaunchedEffect(reworked) { if (reworked != null) vm.onReworkShown(reworked) }
     // A rework may outlast the page; a notification then says how it ended.
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val askForNotifications = rememberNotificationPermissionRequest()
     // A translated name gives the recipe a new slug.
     val current = state.recipe?.slug ?: slug
 
@@ -388,7 +387,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 onOpenUrl = { openUrl(context, it) },
                 onDelete = vm::delete,
                 onRework = { translate ->
-                    if (needsNotificationPermission(context)) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    askForNotifications()
                     vm.rework(translate)
                 },
                 onOrganize = {
@@ -456,12 +455,9 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
     val state by vm.state.collectAsStateWithLifecycle()
     val keepScreenOn by vm.keepScreenOn.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val view = LocalView.current
-    DisposableEffect(keepScreenOn) {
-        view.keepScreenOn = keepScreenOn
-        onDispose { view.keepScreenOn = false }
-    }
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    KeepScreenOn(keepScreenOn)
+    // A timer that runs out rings in a notification.
+    val askForNotifications = rememberNotificationPermissionRequest()
     // Back from the settings that allow exact alarms, the timers running meanwhile ring on time too.
     LifecycleResumeEffect(vm) {
         vm.useExactAlarms()
@@ -473,7 +469,7 @@ fun CookDestination(slug: String, scale: Double, nav: NavController) {
             CookActions(
                 onClose = { nav.popBackStack() },
                 onStartTimer = { seconds, label ->
-                    if (needsNotificationPermission(context)) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    askForNotifications()
                     vm.startTimer(seconds, label)
                 },
                 onToggleIngredient = vm::toggleIngredient,
@@ -661,14 +657,11 @@ fun AddRecipeDestination(
         if (outcome != null) vm.onOutcomeShown()
         if (outcome is ImportOutcome.Added) nav.navigate(RecipeRoute(outcome.slug)) { popUpTo<AddRecipeRoute> { inclusive = true } }
     }
-    // An import may outlast the screen; a notification then says how it ended.
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    // An import may outlast the screen; a notification then says how it ended. The screen asks once.
+    val askForNotifications = rememberNotificationPermissionRequest()
     var askedForNotifications by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.isImporting) {
-        if (state.isImporting && needsNotificationPermission(context) && !askedForNotifications) {
-            askedForNotifications = true
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        if (state.isImporting && !askedForNotifications) askedForNotifications = askForNotifications()
     }
     AddRecipeScreen(
         state = state,
@@ -782,6 +775,23 @@ private fun CoroutineScope.showUndo(
                 duration = duration,
             )
         if (result == SnackbarResult.ActionPerformed) undo()
+    }
+}
+
+/**
+ * Asks for leave to post notifications where Android wants it asked and it is not given yet; the
+ * request it returns says whether it asked. Whatever the answer, the work goes on.
+ */
+@Composable
+private fun rememberNotificationPermissionRequest(): () -> Boolean {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    return remember(context, launcher) {
+        {
+            val needsPermission = needsNotificationPermission(context)
+            if (needsPermission) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            needsPermission
+        }
     }
 }
 

@@ -28,6 +28,19 @@ enum class Meal(private val names: List<String>, private val hints: Set<String> 
             .filter { it.key() in names || it.key() in hints }
             .distinct()
 
+    /** The meal plan's meal of the same name. */
+    val mealType: MealType
+        get() =
+            when (this) {
+                Breakfast -> MealType.Breakfast
+                Lunch -> MealType.Lunch
+                Snack -> MealType.Snack
+                Dinner -> MealType.Dinner
+                Dessert -> MealType.Dessert
+                Side -> MealType.Side
+                Drink -> MealType.Drink
+            }
+
     /** Whether [organizer] says a recipe is this meal: named for it, not merely hinting at it. */
     fun matches(organizer: Organizer): Boolean = organizer.name.key() in names
 

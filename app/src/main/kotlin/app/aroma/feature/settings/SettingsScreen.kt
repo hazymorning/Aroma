@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,7 +19,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,11 +41,11 @@ import app.aroma.data.settings.HomeSection
 import app.aroma.data.settings.IngredientsInSteps
 import app.aroma.data.settings.ThemeMode
 import app.aroma.data.update.UpdateState
-import app.aroma.feature.recipe.labelRes
 import app.aroma.ui.components.AromaAlertDialog
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.Avatar
 import app.aroma.ui.components.ChoiceRow
+import app.aroma.ui.components.ChoiceSheet
 import app.aroma.ui.components.DetailPage
 import app.aroma.ui.components.GroupHead
 import app.aroma.ui.components.ProfileAvatarSize
@@ -58,7 +55,7 @@ import app.aroma.ui.components.SettingsRow
 import app.aroma.ui.components.SettingsTextEdge
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TonalBox
-import app.aroma.ui.components.hideThen
+import app.aroma.ui.components.labelRes
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.PageMargin
@@ -235,11 +232,14 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
     }
     when (choice) {
         SettingsChoice.Theme -> {
-            ChoiceSheet(stringResource(R.string.settings_theme), ThemeMode.entries, state.themeMode, {
-                stringResource(it.labelRes())
-            }, actions.onThemeMode) {
-                choice = null
-            }
+            ChoiceSheet(
+                title = stringResource(R.string.settings_theme),
+                options = ThemeMode.entries,
+                selected = state.themeMode,
+                optionLabel = { stringResource(it.labelRes()) },
+                onSelect = actions.onThemeMode,
+                onDismiss = { choice = null },
+            )
         }
 
         SettingsChoice.HomeSections -> {
@@ -248,30 +248,35 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
 
         SettingsChoice.Language -> {
             ChoiceSheet(
-                stringResource(R.string.settings_app_language),
-                AppLanguage.entries,
-                state.language,
-                { stringResource(it.labelRes()) },
-                actions.onLanguage,
-            ) { choice = null }
+                title = stringResource(R.string.settings_app_language),
+                options = AppLanguage.entries,
+                selected = state.language,
+                optionLabel = { stringResource(it.labelRes()) },
+                onSelect = actions.onLanguage,
+                onDismiss = { choice = null },
+            )
         }
 
         SettingsChoice.Measures -> {
-            ChoiceSheet(stringResource(R.string.measures_title), MeasureSystem.entries, state.measures, {
-                stringResource(it.labelRes())
-            }, actions.onMeasures) {
-                choice = null
-            }
+            ChoiceSheet(
+                title = stringResource(R.string.measures_title),
+                options = MeasureSystem.entries,
+                selected = state.measures,
+                optionLabel = { stringResource(it.labelRes()) },
+                onSelect = actions.onMeasures,
+                onDismiss = { choice = null },
+            )
         }
 
         SettingsChoice.IngredientsInSteps -> {
             ChoiceSheet(
-                stringResource(R.string.settings_ingredients_in_steps),
-                IngredientsInSteps.entries,
-                state.ingredientsInSteps,
-                { stringResource(it.labelRes()) },
-                actions.onIngredientsInSteps,
-            ) { choice = null }
+                title = stringResource(R.string.settings_ingredients_in_steps),
+                options = IngredientsInSteps.entries,
+                selected = state.ingredientsInSteps,
+                optionLabel = { stringResource(it.labelRes()) },
+                onSelect = actions.onIngredientsInSteps,
+                onDismiss = { choice = null },
+            )
         }
 
         null -> {}
@@ -414,40 +419,6 @@ private fun HomeSection.labelRes(): Int =
         HomeSection.Newest -> R.string.home_newest
     }
 
-/** The values of a setting on a sheet; choosing one applies it and lets the sheet slide away. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun <T> ChoiceSheet(
-    title: String,
-    options: List<T>,
-    selected: T,
-    optionLabel: @Composable (T) -> String,
-    onSelect: (T) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val sheetState = rememberFullSheetState()
-    val scope = rememberCoroutineScope()
-    AromaBottomSheet(onDismissRequest = onDismiss, title = title, sheetState = sheetState) {
-        Column(
-            Modifier
-                .selectableGroup()
-                .padding(bottom = Space.s16),
-        ) {
-            options.forEach { option ->
-                ChoiceRow(
-                    label = optionLabel(option),
-                    chosen = option == selected,
-                    modifier =
-                        Modifier.selectable(selected = option == selected, role = Role.RadioButton) {
-                            onSelect(option)
-                            scope.hideThen(sheetState, onDismiss)
-                        },
-                )
-            }
-        }
-    }
-}
-
 /**
  * The version and where its updates stand. Tapping the row looks for a newer one; once one is
  * found, its button downloads it and opens Android's installer.
@@ -521,12 +492,4 @@ private fun AppLanguage.labelRes() =
         AppLanguage.System -> R.string.settings_language_system
         AppLanguage.German -> R.string.settings_language_german
         AppLanguage.English -> R.string.settings_language_english
-    }
-
-/** The name of a choice of ingredients under the steps, as the settings and cook mode show it. */
-fun IngredientsInSteps.labelRes(): Int =
-    when (this) {
-        IngredientsInSteps.None -> R.string.ingredients_in_steps_none
-        IngredientsInSteps.Used -> R.string.ingredients_in_steps_used
-        IngredientsInSteps.All -> R.string.ingredients_in_steps_all
     }

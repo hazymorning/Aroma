@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -52,6 +50,7 @@ import app.aroma.ui.components.ErrorNote
 import app.aroma.ui.components.FieldInset
 import app.aroma.ui.components.GroupHead
 import app.aroma.ui.components.IconButton
+import app.aroma.ui.components.KeepScreenOn
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.Segment
@@ -143,12 +142,7 @@ data class AddRecipeActions(
 @Composable
 fun AddRecipeScreen(state: AddRecipeUiState, actions: AddRecipeActions, modifier: Modifier = Modifier) {
     // While the screen is watched, a sleeping phone would only hide the progress; Aroma keeps it lit.
-    val view = LocalView.current
-    val busy = state.isImporting || state.creating
-    DisposableEffect(view, busy) {
-        view.keepScreenOn = busy
-        onDispose { view.keepScreenOn = false }
-    }
+    KeepScreenOn(state.isImporting || state.creating)
     val photoSources = rememberPhotoSources(MAX_IMPORT_PHOTOS - state.photos.size, actions.onAddPhotos)
     var naming by rememberSaveable { mutableStateOf(false) }
     DetailPage(title = stringResource(R.string.recipes_add), onBack = actions.onBack, modifier = modifier) {

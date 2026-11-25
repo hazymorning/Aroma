@@ -3,6 +3,8 @@ package app.aroma.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -35,8 +37,8 @@ fun rememberRichText(
  * A step's [text], as Markdown reads it, with [amounts] written in and set as the ingredient list sets amounts:
  * in sage, in its weight, with tabular figures and real fractions. Durations become timer links where
  * [onDuration] is set; an amount never does. Where [onIngredient] is set, a word that names an
- * ingredient ([mentions]) ticks it off with a tap, with the amount written in before it; a word of an
- * ingredient already ticked off ([checked]) fades like its line in the list.
+ * ingredient ([mentions]) ticks it off with a tap one can feel, with the amount written in before
+ * it; a word of an ingredient already ticked off ([checked]) fades like its line in the list.
  */
 @Composable
 fun rememberStepText(
@@ -49,13 +51,14 @@ fun rememberStepText(
     onIngredient: ((Int) -> Unit)? = null,
 ): AnnotatedString {
     val colors = AromaTheme.colors
+    val haptics = LocalHapticFeedback.current
     val linkStyles =
         TextLinkStyles(
             style = SpanStyle(color = linkColor, fontWeight = FontWeight.Medium, textDecoration = TextDecoration.Underline),
         )
     val amountStyle = SpanStyle(color = colors.accent, fontWeight = FontWeight.Medium)
     val ingredients =
-        remember(mentions, checked, onIngredient, colors) {
+        remember(mentions, checked, onIngredient, colors, haptics) {
             onIngredient?.let { toggle ->
                 val pressed = SpanStyle(background = colors.ink.copy(alpha = PRESSED_TINT))
                 IngredientTaps(
@@ -63,7 +66,11 @@ fun rememberStepText(
                     checked = checked,
                     open = TextLinkStyles(pressedStyle = pressed),
                     done = TextLinkStyles(style = SpanStyle(color = colors.inkTertiary), pressedStyle = pressed),
-                    onToggle = toggle,
+                    onToggle = { ingredient ->
+                        val feel = if (ingredient in checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn
+                        haptics.performHapticFeedback(feel)
+                        toggle(ingredient)
+                    },
                 )
             }
         }

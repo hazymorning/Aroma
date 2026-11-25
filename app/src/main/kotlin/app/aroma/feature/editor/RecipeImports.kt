@@ -6,11 +6,13 @@ import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
+import androidx.work.ListenableWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import app.aroma.AppContainer
 import app.aroma.AromaApplication
 import app.aroma.R
 import app.aroma.data.AromaError
@@ -202,23 +204,29 @@ class RecipeImports(private val context: Context, private val recipes: RecipeRep
     }
 }
 
+/**
+ * Runs [work] for whoever is signed in, as a foreground service where Android allows one; signed out,
+ * there is nothing to run. It succeeds also when the work failed: that is told on its screen or in a
+ * notification, and a failed import or rework must not cancel the ones queued behind it.
+ */
+internal suspend fun CoroutineWorker.runSignedIn(work: suspend (AppContainer) -> Unit): ListenableWorker.Result {
+    val container = (applicationContext as AromaApplication).container
+    if (container.sessions.state.first { it != SessionState.Loading } !is SessionState.SignedIn) return ListenableWorker.Result.success()
+    try {
+        setForeground(getForegroundInfo())
+    } catch (_: IllegalStateException) {
+        // Android lets no foreground service start from the background; the work runs on without one.
+    }
+    work(container)
+    return ListenableWorker.Result.success()
+}
+
 /** Runs one import in the background, as a foreground service where Android allows one. */
 class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun getForegroundInfo(): ForegroundInfo = ImportNotifications.foreground(applicationContext, id, inputData.startedAt)
 
-    override suspend fun doWork(): Result {
-        val container = (applicationContext as AromaApplication).container
-        if (container.sessions.state.first { it != SessionState.Loading } !is SessionState.SignedIn) return Result.success()
-        try {
-            setForeground(getForegroundInfo())
-        } catch (_: IllegalStateException) {
-            // Android lets no foreground service start from the background; the work runs on without one.
-        }
-        container.imports.run(id, request(inputData), inputData.startedAt, rerun = runAttemptCount > 0)
-        // Success also when the import failed: that is told on its screen or in a notification, and
-        // a failed import must not cancel the ones queued behind it.
-        return Result.success()
-    }
+    override suspend fun doWork(): Result =
+        runSignedIn { it.imports.run(id, request(inputData), inputData.startedAt, rerun = runAttemptCount > 0) }
 
     private val Data.startedAt: Long get() = getLong(STARTED_AT, System.currentTimeMillis())
 
