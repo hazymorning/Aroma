@@ -27,14 +27,16 @@ Aroma is an Android app for Mealie, available in English and German. It came fro
 
 <br>
 
-- Steps that show the ingredients they need, to tick off as you go
-- A cooking mode with timers, one step at a time
-- Recipes shared straight to Aroma from Instagram, TikTok, Facebook or the browser
-- Ideas on Home for what to cook today
-- A shopping mode for the supermarket
-- Widgets for the meal plan and the shopping list
-- Recipes tidied up or translated with Mealie's AI
-- Your recipes kept on the phone, for cooking without a connection
+- Ingredients and their amounts appear right in the steps, and can be ticked off there
+- Cooking mode shows one step at a time and offers a timer wherever a step mentions a time
+- Units can be converted, in the ingredients and the steps
+- Home suggests recipes that suit the time of day
+- Recipes stay available without an internet connection (offline mode)
+- Recipes can be added from any app by sharing them to Aroma
+- Existing recipes can be cleaned up or translated with Mealie's AI
+- Widgets show the meal plan and the shopping list on the home screen
+- The shopping list can be shown in large text while you shop (shopping mode)
+- After cooking, Aroma asks for a rating
 
 </details>
 <details>
