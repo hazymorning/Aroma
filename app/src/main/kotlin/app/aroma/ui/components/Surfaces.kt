@@ -4,13 +4,17 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,10 +23,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -36,6 +41,7 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -43,8 +49,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -54,9 +60,17 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import app.aroma.R
+import app.aroma.ui.theme.AromaColors
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.Glyph
 import app.aroma.ui.theme.LocalTonalFill
@@ -101,7 +115,7 @@ fun AromaBottomSheet(
         containerColor = colors.bar,
         contentColor = colors.ink,
         tonalElevation = 0.dp,
-        scrimColor = colors.scrim.copy(alpha = if (colors.isDark) 0.6f else 0.32f),
+        scrimColor = colors.scrim.copy(alpha = colors.scrimAlpha),
         // Aroma answers the back gesture itself, below, so the sheet never scales.
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
         dragHandle = {
@@ -133,6 +147,9 @@ fun AromaBottomSheet(
 }
 
 private val HandleWidth = 32.dp
+
+/** How much a sheet or a dialog dims the page under it: the dark needs more to stand apart. */
+private val AromaColors.scrimAlpha: Float get() = if (isDark) 0.6f else 0.32f
 
 /**
  * The back gesture on a sheet: [back] follows the finger from 0 to 1 while it moves, the sheet
@@ -273,8 +290,10 @@ fun <T> ChoiceSheet(
 }
 
 /**
- * A menu on the bars' paper with the soft shadow of what floats. The popup is padded by the
- * shadow's reach, and moved back by as much, so the shadow is not cut off at the popup's edge.
+ * A menu on the bars' paper with the soft shadow of what floats. It stands under the button that
+ * opens it, or over it where there is no room below, and fades in there, drifting the last few dp
+ * away from the button; it never grows out of it. The popup is padded by the shadow's reach, and
+ * moved back by as much, so the shadow is not cut off at the popup's edge.
  */
 @Composable
 fun AromaDropdownMenu(
@@ -283,34 +302,73 @@ fun AromaDropdownMenu(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val shown = remember { MutableTransitionState(false) }
+    shown.targetState = expanded
+    if (!shown.currentState && !shown.targetState) return
     val colors = AromaTheme.colors
     val shape = AromaTheme.shapes.box
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismissRequest,
-        offset = DpOffset(-ShadowRoom, -ShadowRoom),
-        shape = RectangleShape,
-        containerColor = Color.Transparent,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        modifier = modifier,
-    ) {
+    val density = LocalDensity.current
+    val below = remember { mutableStateOf(true) }
+    val position =
+        remember(density) {
+            MenuPosition(with(density) { ShadowRoom.roundToPx() }, with(density) { MenuMargin.roundToPx() }) { below.value = it }
+        }
+    val drift = if (reducedMotion()) 0.dp else Motion.Drift
+    Popup(popupPositionProvider = position, onDismissRequest = onDismissRequest, properties = PopupProperties(focusable = true)) {
+        val transition = rememberTransition(shown, label = "menu")
+        val alpha = transition.animateFloat({ Motion.edge() }, label = "menuAlpha") { if (it) 1f else 0f }
         Column(
-            Modifier
-                .padding(ShadowRoom)
+            modifier
+                // The layer that fades holds the room for the shadow too, so the shadow is not cut off while it fades.
+                .graphicsLayer {
+                    this.alpha = alpha.value
+                    // From the button's side into place.
+                    translationY = (1f - alpha.value) * drift.toPx() * if (below.value) -1f else 1f
+                }.padding(ShadowRoom)
                 .layeredShadow(AromaTheme.shadows.menu, shape)
                 .clip(shape)
                 .background(colors.bar)
                 .widthIn(min = MenuWidth)
+                .width(IntrinsicSize.Max)
+                .verticalScroll(rememberScrollState())
                 .padding(vertical = Space.s8),
             content = content,
         )
     }
 }
 
-/** How far a menu's shadow reaches beyond it, and how wide a menu is at least. */
+/**
+ * Where a menu stands: under its button, its start on the button's start where it fits and else its
+ * end on the button's end, and over the button where there is no room below. [room] is the space
+ * around the menu kept for its shadow; [margin] keeps it off the window's edges. [onBelow] learns
+ * whether it stands under the button.
+ */
+private class MenuPosition(private val room: Int, private val margin: Int, private val onBelow: (Boolean) -> Unit) :
+    PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset {
+        val width = popupContentSize.width - room * 2
+        val height = popupContentSize.height - room * 2
+        val ltr = layoutDirection == LayoutDirection.Ltr
+        val fromStart = if (ltr) anchorBounds.left else anchorBounds.right - width
+        val fromEnd = if (ltr) anchorBounds.right - width else anchorBounds.left
+        val fits = fromStart >= margin && fromStart + width <= windowSize.width - margin
+        val x = (if (fits) fromStart else fromEnd).coerceIn(margin, maxOf(margin, windowSize.width - margin - width))
+        val below = anchorBounds.bottom + height <= windowSize.height - margin || anchorBounds.top - height < margin
+        val y = if (below) anchorBounds.bottom else anchorBounds.top - height
+        onBelow(below)
+        return IntOffset(x - room, y - room)
+    }
+}
+
+/** How far a menu's shadow reaches beyond it, how wide a menu is at least, and how far it keeps off the window's edges. */
 private val ShadowRoom = 24.dp
 private val MenuWidth = 200.dp
+private val MenuMargin = Space.s8
 
 /**
  * A row of a menu with an optional 20 dp glyph; [destructive] rows read in red. In a menu of
@@ -370,7 +428,8 @@ private val MenuRowHeight = 48.dp
 
 /**
  * A dialog on the bars' paper with text actions: confirm in sage, or in red where it destroys
- * something, and a way back out where there is a [dismissLabel].
+ * something, and a way back out where there is a [dismissLabel]. It dims the page as a sheet does,
+ * and fades in rising the last few dp (the theme's dialog window animation), without zooming.
  */
 @Composable
 fun AromaAlertDialog(
@@ -389,6 +448,7 @@ fun AromaAlertDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         modifier = modifier,
+        properties = DialogProperties(scrimAlpha = colors.scrimAlpha),
         shape = AromaTheme.shapes.box,
         containerColor = colors.bar,
         titleContentColor = colors.ink,

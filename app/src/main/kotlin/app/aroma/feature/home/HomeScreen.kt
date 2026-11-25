@@ -5,8 +5,6 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -796,9 +794,8 @@ private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions, modifier
         targetState = toRate,
         contentKey = { it?.recipeId },
         transitionSpec = {
-            val arrive = fadeIn(Motion.state()) + scaleIn(Motion.state(), RATE_SCALE)
-            val leave = fadeOut(Motion.edge()) + scaleOut(Motion.edge(), RATE_SCALE)
-            arrive togetherWith leave using
+            // It fades in and out where it stands, and never grows or shrinks.
+            fadeIn(Motion.state()) togetherWith fadeOut(Motion.edge()) using
                 SizeTransform(clip = false) { initial, target -> if (target.height < initial.height) snap(Motion.EDGE / 2) else snap() }
         },
         modifier = modifier.fillMaxWidth(),
@@ -807,9 +804,6 @@ private fun RatePromptSlot(toRate: RateReminder?, actions: HomeActions, modifier
         if (reminder != null) RatePrompt(reminder, actions)
     }
 }
-
-/** How small the rate prompt is as it starts to fade in, and once it has faded out. */
-private const val RATE_SCALE = 0.96f
 
 /** Asks, without a notification, how the last recipe cooked turned out. */
 @Composable

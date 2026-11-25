@@ -137,6 +137,9 @@ object Motion {
      */
     val ScrollEdge: Dp = Space.s16
 
+    /** How far a menu, a snackbar or a dialog drifts into place as it fades in. */
+    val Drift: Dp = Space.s8
+
     /** How far a sheet follows the back gesture down before it is let go. */
     val SheetBack: Dp = Space.s48
 

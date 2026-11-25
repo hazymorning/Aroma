@@ -2,11 +2,22 @@
 <resources>
     <style name="Theme.Aroma" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:dialogTheme">@style/ThemeOverlay.Aroma.Dialog</item>
     </style>
 
     <style name="Theme.Aroma.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/window_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
         <item name="postSplashScreenTheme">@style/Theme.Aroma</item>
+    </style>
+
+    <!-- Dialogs fade in and rise the last few dp, on every phone alike, and never zoom. -->
+    <style name="ThemeOverlay.Aroma.Dialog" parent="android:ThemeOverlay.Material.Dialog">
+        <item name="android:windowAnimationStyle">@style/Animation.Aroma.Dialog</item>
+    </style>
+
+    <style name="Animation.Aroma.Dialog" parent="android:Animation">
+        <item name="android:windowEnterAnimation">@anim/dialog_in</item>
+        <item name="android:windowExitAnimation">@anim/dialog_out</item>
     </style>
 </resources>

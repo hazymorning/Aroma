@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A dialog fades in over an edge's 150 ms and rises the last 8 dp into place in 250 ms, as a change of state does. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@interpolator/decelerate"
+    android:shareInterpolator="true">
+    <alpha
+        android:duration="150"
+        android:fromAlpha="0"
+        android:toAlpha="1" />
+    <translate
+        android:duration="250"
+        android:fromYDelta="8dp"
+        android:toYDelta="0" />
+</set>
