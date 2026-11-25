@@ -80,7 +80,8 @@ class TodayPlanTest {
     /** Android lays a widget out for the one of its [sizes] it picks for [size]: that must take the layout of [size] itself. */
     private fun assertShown(size: DpSize, sizes: Set<DpSize>, layoutAt: (DpSize) -> Any) {
         val layout = layoutAt(size)
-        assertEquals("$layout at $size from Android 12", layout, layoutAt(sizes.shownAt(size)))
-        assertEquals("$layout at $size before Android 12", layout, layoutAt(sizes.shownBefore12At(size)))
+        val shown = layoutAt(sizes.shownAt(size)) to layoutAt(sizes.shownBefore12At(size))
+        // Spelling out the sizes of the hundred thousand checks that pass would take most of the test's time.
+        if (shown != layout to layout) assertEquals("$size from Android 12, and before", layout to layout, shown)
     }
 }
