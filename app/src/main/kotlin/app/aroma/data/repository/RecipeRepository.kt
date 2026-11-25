@@ -588,13 +588,12 @@ class RecipeRepository(
                 coroutineScope {
                     val categories = async { api.categories().items }
                     val tags = async { api.tags().items }
-                    val tools = async { api.tools().items }
-                    OrganizersCopy(categories.await(), tags.await(), tools.await())
+                    OrganizersCopy(categories.await(), tags.await())
                 }
             }.map { loadable ->
                 val dto = loadable.data
                 Loadable(
-                    Organizers(dto.categories.map { it.toModel() }, dto.tags.map { it.toModel() }, dto.tools.map { it.toModel() }),
+                    Organizers(dto.categories.map { it.toModel() }, dto.tags.map { it.toModel() }),
                     loadable.isRefreshing,
                     loadable.error,
                 )
@@ -750,13 +749,9 @@ class RecipeRepository(
     @Serializable
     private data class CookbookCoverCopy(val cookbook: CookbookDto, val recipeCount: Int, val cover: RecipeSummaryDto?)
 
-    /** The group's categories, tags and tools as Mealie had them. */
+    /** The group's categories and tags as Mealie had them. */
     @Serializable
-    private data class OrganizersCopy(
-        val categories: List<OrganizerDto> = emptyList(),
-        val tags: List<OrganizerDto> = emptyList(),
-        val tools: List<OrganizerDto> = emptyList(),
-    )
+    private data class OrganizersCopy(val categories: List<OrganizerDto> = emptyList(), val tags: List<OrganizerDto> = emptyList())
 
     companion object {
         const val PAGE_SIZE = 30

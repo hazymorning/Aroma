@@ -32,10 +32,6 @@ data class RecipePage(
     val isOffline: Boolean,
 )
 
-data class Organizers(
-    val categories: List<Organizer> = emptyList(),
-    val tags: List<Organizer> = emptyList(),
-    val tools: List<Organizer> = emptyList(),
-)
+data class Organizers(val categories: List<Organizer> = emptyList(), val tags: List<Organizer> = emptyList())
 
 data class UserRating(val rating: Double?, val isFavorite: Boolean)

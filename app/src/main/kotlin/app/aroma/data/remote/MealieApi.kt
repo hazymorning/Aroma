@@ -82,7 +82,6 @@ interface MealieApi {
         @Query("search") search: String? = null,
         @Query("categories") categories: List<String>? = null,
         @Query("tags") tags: List<String>? = null,
-        @Query("tools") tools: List<String>? = null,
         @Query("cookbook") cookbook: String? = null,
         @Query("queryFilter") queryFilter: String? = null,
         @Query("paginationSeed") paginationSeed: String? = null,
@@ -203,11 +202,6 @@ interface MealieApi {
     suspend fun createTag(
         @Body body: CreateOrganizerDto,
     ): OrganizerDto
-
-    @GET("api/organizers/tools")
-    suspend fun tools(
-        @Query("perPage") perPage: Int = -1,
-    ): PageDto<OrganizerDto>
 
     @GET("api/households/cookbooks")
     suspend fun cookbooks(
