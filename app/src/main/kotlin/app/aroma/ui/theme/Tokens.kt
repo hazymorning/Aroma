@@ -131,4 +131,7 @@ object Motion {
 
     /** How far a figure that changes drifts as it rolls, a share of its line: up as it counts up, down as it counts down. */
     const val ROLL = 0.4f
+
+    /** What takes another's place, a label in its button: it fades in once the other has all but faded, so the two never blur. */
+    fun <T> after() = tween<T>(EDGE, delayMillis = EDGE / 2, easing = Decelerate)
 }
