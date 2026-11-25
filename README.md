@@ -27,12 +27,13 @@ Aroma is an Android app for Mealie, available in English and German. It came fro
 
 <br>
 
-- Cook step by step, with timers and the ingredients right in each step
-- Get ideas for what to cook, depending on the time of day
-- Save recipes from any app with the Share button
-- Tidy up or translate recipes with AI
-- Use your recipes without internet
-- Keep the meal plan and shopping list on your home screen (widgets)
+- Cooking mode with step-by-step instructions and timers
+- Ingredients and amounts shown in each step
+- Recipe suggestions based on the time of day
+- Add recipes from other apps via the share menu
+- Clean up or translate recipes with AI
+- Offline access to your recipes
+- Widgets for the meal plan and shopping list
 
 </details>
 <details>
@@ -48,7 +49,7 @@ Android 8.0 or newer and Mealie 2.0 or newer. AI imports need Mealie 3.23 or new
 
 <br>
 
-Download the APK from the [latest release](https://github.com/hazymorning/Aroma/releases/latest) and install it. Sign in with your Mealie address and your account or an API token. New versions can be installed right from the settings.
+Download the APK from the [latest release](https://github.com/hazymorning/Aroma/releases/latest) and install it. Then sign in with your Mealie address and your account or an API token. Updates can be installed from the settings.
 
 </details>
 <details>
@@ -64,7 +65,7 @@ Aroma connects only to the configured Mealie server. There are two exceptions: i
 
 <br>
 
-Your password is only used to sign in, and the access Aroma keeps is encrypted on the phone and only ever sent to your Mealie server. Signing out leaves nothing behind, and only genuine updates of Aroma can be installed.
+Your password is only used for signing in. Aroma keeps the login encrypted on the phone and only sends it to your Mealie server. Signing out removes your data from the phone, and only official Aroma updates can be installed.
 
 </details>
 <details>
@@ -72,7 +73,7 @@ Your password is only used to sign in, and the access Aroma keeps is encrypted o
 
 <br>
 
-Problems and ideas are welcome as [issues on GitHub](https://github.com/hazymorning/Aroma/issues).
+Bugs and ideas are welcome as [issues on GitHub](https://github.com/hazymorning/Aroma/issues).
 
 </details>
 <details>
@@ -80,6 +81,6 @@ Problems and ideas are welcome as [issues on GitHub](https://github.com/hazymorn
 
 <br>
 
-Aroma is free and open source, under the GPL-3.0.
+Aroma is free and open source (GPL-3.0).
 
 </details>
