@@ -73,7 +73,7 @@ Your password is only used for signing in. Aroma keeps the login encrypted on th
 
 <br>
 
-Bugs and ideas are welcome as [issues on GitHub](https://github.com/hazymorning/Aroma/issues).
+Questions and ideas are welcome in the [Discussions](https://github.com/hazymorning/Aroma/discussions).
 
 </details>
 <details>
