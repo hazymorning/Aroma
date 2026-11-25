@@ -215,13 +215,20 @@
     <string name="recipes_add">Rezept hinzufügen</string>
     <string name="recipes_filter">Filter</string>
     <string name="recipes_all_kinds">Alle</string>
-    <string name="recipes_narrow">Zeigen</string>
+    <string name="recipes_narrow">Eingrenzen auf</string>
     <string name="recipes_saved">Gemerkt</string>
     <string name="recipes_long_ago">Lange nicht gekocht</string>
     <string name="recipes_quick">Schnell</string>
     <string name="recipes_categories">Kategorien</string>
     <string name="recipes_tags">Schlagwörter</string>
     <string name="recipes_clear_filters">Filter zurücksetzen</string>
+    <string name="recipes_reset">Zurücksetzen</string>
+    <string name="recipes_all">Alle Rezepte</string>
+    <string name="recipes_show_all">Rezepte zeigen</string>
+    <plurals name="recipes_show">
+        <item quantity="one">%1$d Rezept zeigen</item>
+        <item quantity="other">%1$d Rezepte zeigen</item>
+    </plurals>
     <string name="recipes_empty_title">Noch keine Rezepte</string>
     <string name="recipes_no_results_title">Nichts gefunden</string>
     <string name="recipes_meal_empty_title">Noch keine Rezepte für diese Mahlzeit</string>

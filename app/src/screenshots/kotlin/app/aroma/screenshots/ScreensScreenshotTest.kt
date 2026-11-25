@@ -339,7 +339,7 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     private fun recipes(state: RecipesUiState): @Composable () -> Unit =
         { TabFrame(Tab.Recipes) { RecipesScreen(state, RecipesActions()) } }
 
-    /** The whole library: the meals and everyday filters, the cookbooks, then every recipe. */
+    /** The whole library: the search, the shelf of cookbooks, then all the recipes. */
     @Test
     fun recipes() =
         shoot(
@@ -357,7 +357,7 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
                 ),
         )
 
-    /** Dinner and quick ones: the cookbooks give way to what matches. */
+    /** Dinner and quick ones: the line under the title says so, and the cookbooks give way to what matches. */
     @Test
     fun recipesFiltered() =
         shoot(
@@ -374,6 +374,45 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
                     ),
                 ),
         )
+
+    /** The filter, one level down: the kind of dish, the everyday ones, categories, tags and the order, and how many it shows. */
+    @Test
+    fun recipesFilter() =
+        shoot("recipes_filter", interact = { composeRule.onNodeWithContentDescription("Filter").performClick() }) {
+            TabFrame(Tab.Recipes) {
+                RecipesScreen(
+                    RecipesUiState(
+                        recipes = sample.recipes.drop(2).take(3),
+                        total = 3,
+                        isLoading = false,
+                        categories = sample.categories,
+                        tags = sample.tags,
+                        cookbooks = sample.cookbookCovers,
+                        filter = RecipeFilter(meal = Meal.Dinner, favoritesOnly = true, tags = setOf(sample.tags.first())),
+                    ),
+                    RecipesActions(),
+                )
+            }
+        }
+
+    /** The filter with nothing chosen: no way to reset it, and the button shows all. */
+    @Test
+    fun recipesFilterUnused() =
+        shoot("recipes_filter_unused", interact = { composeRule.onNodeWithContentDescription("Filter").performClick() }) {
+            TabFrame(Tab.Recipes) {
+                RecipesScreen(
+                    RecipesUiState(
+                        recipes = sample.recipes,
+                        total = 48,
+                        isLoading = false,
+                        categories = sample.categories,
+                        tags = sample.tags,
+                        cookbooks = sample.cookbookCovers,
+                    ),
+                    RecipesActions(),
+                )
+            }
+        }
 
     /** A meal nothing is filed under yet, as on a new server: the page says how to file recipes there. */
     @Test

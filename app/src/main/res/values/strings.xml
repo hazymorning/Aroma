@@ -218,13 +218,20 @@
     <string name="recipes_add">Add recipe</string>
     <string name="recipes_filter">Filter</string>
     <string name="recipes_all_kinds">All</string>
-    <string name="recipes_narrow">Show</string>
+    <string name="recipes_narrow">Narrow to</string>
     <string name="recipes_saved">Saved</string>
     <string name="recipes_long_ago">Not cooked in a while</string>
     <string name="recipes_quick">Quick</string>
     <string name="recipes_categories">Categories</string>
     <string name="recipes_tags">Tags</string>
     <string name="recipes_clear_filters">Clear filters</string>
+    <string name="recipes_reset">Reset</string>
+    <string name="recipes_all">All recipes</string>
+    <string name="recipes_show_all">Show recipes</string>
+    <plurals name="recipes_show">
+        <item quantity="one">Show %1$d recipe</item>
+        <item quantity="other">Show %1$d recipes</item>
+    </plurals>
     <string name="recipes_empty_title">No recipes yet</string>
     <string name="recipes_no_results_title">Nothing found</string>
     <string name="recipes_meal_empty_title">No recipes for this meal yet</string>

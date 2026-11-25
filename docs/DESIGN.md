@@ -49,7 +49,8 @@ shapes at least 3 : 1 against their ground.
 - **Actions.** A screen has at most one primary button, in ink, for its main action. A screen
   without one, such as the plan or the shopping list, has none rather than one made up for it. What
   manages a thing rather than uses it waits a level down, in the ⋯ menu, a sheet or the editor, so
-  pages stay calm and nothing is lost.
+  pages stay calm and nothing is lost. On a sheet of choices, the way to undo them all, such as
+  resetting the filter, stands at the end of its title while there is anything to undo.
 - **States.** Emptiness is quiet: one line and its action, no picture, never taller than what it
   stands for. Where the two do not fit on one line, the action moves under the words instead of
   squeezing them. A page that cannot load says so the same way, with "Try again". An error of a

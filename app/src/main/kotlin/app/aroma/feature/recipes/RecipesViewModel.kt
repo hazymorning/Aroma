@@ -59,7 +59,13 @@ class RecipesViewModel(
         reload()
         observeQuery()
         observeSaved()
-        viewModelScope.launch { recipes.changes.collect { reload() } }
+        viewModelScope.launch {
+            recipes.changes.collect {
+                // A recipe filed anew may have gone into a cookbook or out of one.
+                if (withCookbooks) loadCookbooks()
+                reload()
+            }
+        }
         viewModelScope.launch {
             // Mealie answers again: load anew. Out of reach: what shows is the phone's copy.
             connection.isReachable.drop(1).collect { reachable ->

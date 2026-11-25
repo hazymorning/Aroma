@@ -18,12 +18,14 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -96,6 +98,7 @@ import kotlinx.coroutines.launch
  * fill. The content is already clear of the navigation bar and the keyboard. The back gesture draws
  * the sheet down after the finger, where Material would shrink it, and once let go it slides away.
  * Its shadow goes with it and fades as it leaves, so the page is clear the moment the sheet has gone.
+ * A [titleAction], a text action that undoes what the sheet chose, stands at the end of the title.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +109,7 @@ fun AromaBottomSheet(
     sheetState: SheetState = rememberFullSheetState(),
     titleStyle: TextStyle = AromaTheme.type.labelLarge,
     meta: (@Composable () -> Unit)? = null,
+    titleAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = AromaTheme.colors
@@ -139,15 +143,27 @@ fun AromaBottomSheet(
     ) {
         SheetBackHandler(sheetState, back, onDismissRequest)
         CompositionLocalProvider(LocalTonalFill provides colors.surfaceOnBar) {
-            Column(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s4, bottom = Space.s16)) {
-                Text(
-                    text = title,
-                    style = titleStyle,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.semantics { heading() },
-                )
-                if (meta != null) Box(Modifier.padding(top = Space.s4)) { meta() }
+            Row(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s4, bottom = Space.s16)) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = titleStyle,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    if (meta != null) Box(Modifier.padding(top = Space.s4)) { meta() }
+                }
+                if (titleAction != null) {
+                    // The action's 48 dp target reaches above and below the title's line without making the head taller.
+                    val line = with(LocalDensity.current) { titleStyle.lineHeight.toDp() }
+                    Box(
+                        Modifier
+                            .padding(start = Space.s16)
+                            .height(line)
+                            .wrapContentHeight(unbounded = true),
+                    ) { titleAction() }
+                }
             }
             content()
         }
