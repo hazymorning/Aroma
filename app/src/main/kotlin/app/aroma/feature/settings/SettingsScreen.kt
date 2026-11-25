@@ -55,7 +55,6 @@ import app.aroma.ui.components.SettingsRow
 import app.aroma.ui.components.SettingsTextEdge
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TonalBox
-import app.aroma.ui.components.labelRes
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.PageMargin
@@ -102,13 +101,13 @@ data class SettingsActions(
     val onSignOut: () -> Unit = {},
 )
 
-/** A setting with a few values, chosen on a sheet. */
-private enum class SettingsChoice { Theme, HomeSections, Language, Measures, IngredientsInSteps }
+/** A sheet the settings open: the values of one setting, what Home shows, or everything for cooking. */
+private enum class SettingsSheet { Theme, HomeSections, Language, Cooking }
 
 @Composable
 fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: Modifier = Modifier) {
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
-    var choice by rememberSaveable { mutableStateOf<SettingsChoice?>(null) }
+    var sheet by rememberSaveable { mutableStateOf<SettingsSheet?>(null) }
     DetailPage(title = stringResource(R.string.settings_title), onBack = actions.onBack, modifier = modifier) {
         Column(Modifier.padding(horizontal = PageMargin)) {
             state.user?.let { user -> Profile(user, state.server, state.connected) }
@@ -117,16 +116,16 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     title = stringResource(R.string.settings_theme),
                     icon = R.drawable.ic_contrast,
                     value = stringResource(state.themeMode.labelRes()),
-                    onClick = { choice = SettingsChoice.Theme },
+                    onClick = { sheet = SettingsSheet.Theme },
                 )
                 if (state.dynamicColorAvailable) {
                     Separator(start = SettingsTextEdge)
-                    SettingsRow(
+                    SwitchRow(
                         title = stringResource(R.string.settings_dynamic_color),
                         icon = R.drawable.ic_drop,
                         description = stringResource(R.string.settings_dynamic_color_hint),
                         checked = state.dynamicColor,
-                        onClick = { actions.onDynamicColorChange(!state.dynamicColor) },
+                        onCheckedChange = actions.onDynamicColorChange,
                     )
                 }
                 Separator(start = SettingsTextEdge)
@@ -135,60 +134,24 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     icon = R.drawable.ic_home,
                     description = stringResource(R.string.settings_home_description),
                     value = stringResource(R.string.settings_home_shown, state.homeSections.size, HomeSection.entries.size),
-                    onClick = { choice = SettingsChoice.HomeSections },
+                    onClick = { sheet = SettingsSheet.HomeSections },
                 )
-            }
-            Group(stringResource(R.string.settings_language)) {
+                Separator(start = SettingsTextEdge)
                 SettingsRow(
-                    title = stringResource(R.string.settings_app_language),
+                    title = stringResource(R.string.settings_language),
                     icon = R.drawable.ic_globe,
                     value = stringResource(state.language.labelRes()),
-                    onClick = { choice = SettingsChoice.Language },
+                    onClick = { sheet = SettingsSheet.Language },
                 )
             }
-            Group(stringResource(R.string.settings_cooking)) {
+            Group(stringResource(R.string.settings_recipes)) {
                 SettingsRow(
-                    title = stringResource(R.string.measures_title),
-                    icon = R.drawable.ic_scale,
-                    description = stringResource(R.string.measures_hint),
-                    value = stringResource(state.measures.labelRes()),
-                    onClick = { choice = SettingsChoice.Measures },
+                    title = stringResource(R.string.settings_cooking),
+                    icon = R.drawable.ic_cooking,
+                    onClick = { sheet = SettingsSheet.Cooking },
                 )
                 Separator(start = SettingsTextEdge)
-                SettingsRow(
-                    title = stringResource(R.string.settings_keep_screen_on),
-                    icon = R.drawable.ic_visibility,
-                    description = stringResource(R.string.settings_keep_screen_on_hint),
-                    checked = state.keepScreenOn,
-                    onClick = { actions.onKeepScreenOnChange(!state.keepScreenOn) },
-                )
-                Separator(start = SettingsTextEdge)
-                SettingsRow(
-                    title = stringResource(R.string.settings_next_step),
-                    icon = R.drawable.ic_arrow_forward,
-                    description = stringResource(R.string.settings_next_step_hint),
-                    checked = state.showNextStep,
-                    onClick = { actions.onShowNextStepChange(!state.showNextStep) },
-                )
-                Separator(start = SettingsTextEdge)
-                SettingsRow(
-                    title = stringResource(R.string.settings_ingredients_in_steps),
-                    icon = R.drawable.ic_notes,
-                    description = stringResource(R.string.settings_ingredients_in_steps_hint),
-                    value = stringResource(state.ingredientsInSteps.labelRes()),
-                    onClick = { choice = SettingsChoice.IngredientsInSteps },
-                )
-                Separator(start = SettingsTextEdge)
-                SettingsRow(
-                    title = stringResource(R.string.settings_amounts_in_steps),
-                    icon = R.drawable.ic_plate,
-                    description = stringResource(R.string.settings_amounts_in_steps_hint),
-                    checked = state.amountsInSteps,
-                    onClick = { actions.onAmountsInStepsChange(!state.amountsInSteps) },
-                )
-            }
-            Group(stringResource(R.string.settings_offline)) {
-                SettingsRow(
+                SwitchRow(
                     title = stringResource(R.string.settings_offline_all),
                     icon = R.drawable.ic_download,
                     description =
@@ -198,18 +161,18 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                             stringResource(R.string.settings_offline_all_hint)
                         },
                     checked = state.offlineRecipes,
-                    onClick = { actions.onOfflineRecipesChange(!state.offlineRecipes) },
+                    onCheckedChange = actions.onOfflineRecipesChange,
                 )
             }
             Group(stringResource(R.string.settings_about)) {
                 UpdateRow(state.version, state.update, actions.onCheckForUpdates, actions.onInstallUpdate)
                 Separator(start = SettingsTextEdge)
-                SettingsRow(
+                SwitchRow(
                     title = stringResource(R.string.settings_updates_at_start),
                     icon = R.drawable.ic_refresh,
                     description = stringResource(R.string.settings_updates_at_start_hint),
                     checked = state.checkUpdatesAtStart,
-                    onClick = { actions.onCheckUpdatesAtStartChange(!state.checkUpdatesAtStart) },
+                    onCheckedChange = actions.onCheckUpdatesAtStartChange,
                 )
                 Separator(start = SettingsTextEdge)
                 SettingsRow(
@@ -230,53 +193,35 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             Signature(Modifier.padding(top = SignatureGap))
         }
     }
-    when (choice) {
-        SettingsChoice.Theme -> {
+    when (sheet) {
+        SettingsSheet.Theme -> {
             ChoiceSheet(
                 title = stringResource(R.string.settings_theme),
                 options = ThemeMode.entries,
                 selected = state.themeMode,
                 optionLabel = { stringResource(it.labelRes()) },
                 onSelect = actions.onThemeModeChange,
-                onDismiss = { choice = null },
+                onDismiss = { sheet = null },
             )
         }
 
-        SettingsChoice.HomeSections -> {
-            HomeSectionsSheet(state.homeSections, actions.onHomeSectionChange) { choice = null }
+        SettingsSheet.HomeSections -> {
+            HomeSectionsSheet(state.homeSections, actions.onHomeSectionChange) { sheet = null }
         }
 
-        SettingsChoice.Language -> {
+        SettingsSheet.Language -> {
             ChoiceSheet(
-                title = stringResource(R.string.settings_app_language),
+                title = stringResource(R.string.settings_language),
                 options = AppLanguage.entries,
                 selected = state.language,
                 optionLabel = { stringResource(it.labelRes()) },
                 onSelect = actions.onLanguageChange,
-                onDismiss = { choice = null },
+                onDismiss = { sheet = null },
             )
         }
 
-        SettingsChoice.Measures -> {
-            ChoiceSheet(
-                title = stringResource(R.string.measures_title),
-                options = MeasureSystem.entries,
-                selected = state.measures,
-                optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onMeasuresChange,
-                onDismiss = { choice = null },
-            )
-        }
-
-        SettingsChoice.IngredientsInSteps -> {
-            ChoiceSheet(
-                title = stringResource(R.string.settings_ingredients_in_steps),
-                options = IngredientsInSteps.entries,
-                selected = state.ingredientsInSteps,
-                optionLabel = { stringResource(it.labelRes()) },
-                onSelect = actions.onIngredientsInStepsChange,
-                onDismiss = { choice = null },
-            )
+        SettingsSheet.Cooking -> {
+            CookingSheet(state, actions, onDismiss = { sheet = null })
         }
 
         null -> {}

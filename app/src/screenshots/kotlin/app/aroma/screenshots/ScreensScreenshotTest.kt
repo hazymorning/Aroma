@@ -564,6 +564,13 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     @Test
     fun settings() = shoot("settings") { SettingsScreen(settings("Mara Berger", "mara@example.com"), SettingsActions()) }
 
+    /** The settings for cooking on a sheet of their own, opened from the page. */
+    @Test
+    fun settingsCooking() =
+        shoot("settings_cooking", interact = { composeRule.onNodeWithWords(t("Kochen", "Cooking")).performScrollTo().performClick() }) {
+            SettingsScreen(settings("Mara Berger", "mara@example.com"), SettingsActions())
+        }
+
     /** A long name and address, all of the page. */
     @Test
     fun settingsExtreme() =
@@ -575,7 +582,11 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     fun settingsUpdate() =
         shoot("settings_update", interact = { composeRule.onNodeWithWords("Version 0.3.0").performScrollTo() }) {
             SettingsScreen(
-                SettingsUiState(version = "0.3.0", update = UpdateState.Available("0.4.0", "", 1), checkUpdatesAtStart = true),
+                settings("Mara Berger", "mara@example.com").copy(
+                    version = "0.3.0",
+                    update = UpdateState.Available("0.4.0", "", 1),
+                    checkUpdatesAtStart = true,
+                ),
                 SettingsActions(),
             )
         }

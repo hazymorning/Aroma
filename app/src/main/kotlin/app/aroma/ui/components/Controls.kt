@@ -322,7 +322,7 @@ private val CheckStroke = 1.75.dp
 
 /** A switch: on, a sage track with a paper knob; off, a pressed-paper track with a tertiary knob; no edge. */
 @Composable
-private fun AromaSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier) {
+fun AromaSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier) {
     val colors = AromaTheme.colors
     Switch(
         checked = checked,
