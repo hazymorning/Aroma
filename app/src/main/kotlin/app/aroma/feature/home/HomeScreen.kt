@@ -39,6 +39,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -52,6 +54,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.ImageSize
@@ -118,6 +121,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.roundToInt
 
 enum class Greeting { Morning, Midday, Afternoon, Evening, Night }
 
@@ -626,9 +630,10 @@ private fun WeekDay(
                 .then(if (isToday) Modifier.background(colors.ink, CircleShape) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
+            val figureStyle = AromaTheme.type.cardTitle.tabular()
             Text(
                 text = day.dayOfMonth.toString(),
-                style = AromaTheme.type.cardTitle.tabular(),
+                style = figureStyle,
                 color =
                     when {
                         isToday -> colors.onInk
@@ -636,6 +641,7 @@ private fun WeekDay(
                         else -> colors.ink
                     },
                 textAlign = TextAlign.Center,
+                modifier = Modifier.figuresCentred(figureStyle.fontSize),
             )
         }
         Box(
@@ -650,6 +656,22 @@ private fun WeekDay(
 /** Today's figure stands in a circle this large; a planned day has a dot this large under it. */
 private val TodayCircle = 32.dp
 private val PlannedDot = 4.dp
+
+/**
+ * Sets figures of [fontSize] with their middle on the middle of the space they get. Centring the
+ * line instead would set them too high, as figures stand on the baseline, below the line's middle.
+ */
+private fun Modifier.figuresCentred(fontSize: TextUnit): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val middle = placeable[FirstBaseline] - fontSize.toPx() * FIGURE_HEIGHT / 2
+        layout(width, height) { placeable.place((width - placeable.width) / 2, (height / 2f - middle).roundToInt()) }
+    }
+
+/** How high the serif's figures stand over the baseline, as a share of the type size. */
+private const val FIGURE_HEIGHT = 0.7f
 
 /** The shopping list, while something is still to buy on it. */
 @Composable
