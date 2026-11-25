@@ -72,6 +72,10 @@ class ShoppingRepository(
             .stream(LISTS_KEY, ListSerializer(ShoppingListSummaryDto.serializer())) { sessions.api().shoppingLists().items }
             .map { loadable -> Loadable(loadable.data.map { it.toInfo() }, loadable.isRefreshing, loadable.error) }
 
+    /** The lists as [lists] last fetched them, and again whenever that changes; null before the first fetch. */
+    fun cachedLists(): Flow<List<ShoppingListInfo>?> =
+        cache.observe(LISTS_KEY, ListSerializer(ShoppingListSummaryDto.serializer())).map { lists -> lists?.map { it.toInfo() } }
+
     /** The cached list; local edits show up here immediately. */
     fun observe(listId: String): Flow<ShoppingList?> =
         cacheDao
