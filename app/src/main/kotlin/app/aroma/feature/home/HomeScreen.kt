@@ -37,7 +37,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
@@ -215,7 +217,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
             item(key = "header") { HomeHeader(state, actions, Modifier.measure()) }
             when {
                 state.isLoading -> {
-                    item(key = "loading") { HomeLoading(Modifier.measure()) }
+                    item(key = "loading") { HomeLoading(Modifier.animateRow(this).measure()) }
                 }
 
                 state.error != null && state.recent.isEmpty() && state.week.isEmpty() -> {
@@ -429,16 +431,33 @@ private fun longDate(date: LocalDate, locale: Locale): String =
 
 /**
  * Today: the next meal planned, its photo across the top of the box, ready to cook, and the other
- * meals of the day as rows below. With nothing planned, three suggestions to plan for today.
+ * meals of the day as rows below. With nothing planned, three suggestions to plan for today. Once
+ * one is planned, or the next meal is another, the box fades through to what it shows now while
+ * the page glides to its new room.
  */
 @Composable
 private fun TodayBox(state: HomeUiState, suggestions: List<RecipeSummary>, actions: HomeActions, modifier: Modifier = Modifier) {
     val todays = state.todays
     val next = todays.firstOrNull { it.type.hour >= state.meal.mealType.hour } ?: todays.lastOrNull()
-    if (next == null) {
-        NothingPlanned(suggestions, actions, modifier)
-        return
+    AnimatedContent(
+        // Whole, so the box on its way out still shows what it held.
+        targetState = Today(next, if (next == null) emptyList() else todays - next, suggestions),
+        contentKey = { it.next?.id },
+        transitionSpec = { fadeIn(Motion.after()) togetherWith fadeOut(Motion.edge()) using roomAtOnce() },
+        modifier = modifier,
+        label = "today",
+    ) { today ->
+        val meal = today.next
+        if (meal == null) NothingPlanned(today.suggestions, actions) else PlannedToday(meal, today.others, actions)
     }
+}
+
+/** What today's box shows: the [next] meal and the [others] of the day, or [suggestions] where nothing is planned. */
+private data class Today(val next: MealPlanEntry?, val others: List<MealPlanEntry>, val suggestions: List<RecipeSummary>)
+
+/** The next meal planned for today, its photo across the top of the box, and the other meals of the day under it. */
+@Composable
+private fun PlannedToday(next: MealPlanEntry, others: List<MealPlanEntry>, actions: HomeActions, modifier: Modifier = Modifier) {
     val recipe = next.recipe
     TonalBox(modifier, contentPadding = PaddingValues()) {
         if (recipe != null) {
@@ -497,7 +516,6 @@ private fun TodayBox(state: HomeUiState, suggestions: List<RecipeSummary>, actio
                 }
             }
         }
-        val others = todays - next
         if (others.isNotEmpty()) {
             Column(
                 Modifier.padding(start = BoxPadding, end = BoxPadding, bottom = BoxPadding),
@@ -532,9 +550,10 @@ private fun todayMealLabel(type: MealType): String =
         else -> stringResource(R.string.home_today_other, mealTypeLabel(type))
     }
 
-/** Nothing planned for today: three suggestions as rows, each to plan with a tap. */
+/** Nothing planned for today: three suggestions as rows, each to plan with a tap one can feel. */
 @Composable
 private fun NothingPlanned(suggestions: List<RecipeSummary>, actions: HomeActions, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
     TonalBox(modifier) {
         BoxHeader(stringResource(R.string.home_today_empty))
         if (suggestions.isEmpty()) {
@@ -546,7 +565,12 @@ private fun NothingPlanned(suggestions: List<RecipeSummary>, actions: HomeAction
                         recipe = recipe,
                         onClick = { actions.onOpenRecipe(recipe.slug) },
                         onLongClick = { actions.onRecipeMenu(recipe) },
-                        trailing = { TextAction(stringResource(R.string.recipe_action_plan), { actions.onPlanToday(recipe) }) },
+                        trailing = {
+                            TextAction(stringResource(R.string.recipe_action_plan), {
+                                haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                                actions.onPlanToday(recipe)
+                            })
+                        },
                     )
                 }
             }
