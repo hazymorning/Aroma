@@ -11,15 +11,18 @@ import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 
-class AromaApplication :
+open class AromaApplication :
     Application(),
     SingletonImageLoader.Factory {
     lateinit var container: AppContainer
         private set
 
+    /** The app's long-lived objects; a test's app builds them on stand-ins for what only a phone has. */
+    protected open fun createContainer(): AppContainer = AppContainer(this)
+
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this)
+        container = createContainer()
         container.settings.restoreLanguage()
         container.restore()
         TimerNotifications.createChannel(this)
