@@ -72,13 +72,14 @@ shapes at least 3 : 1 against their ground.
 - **Motion.** 150 ms for edges, 250 ms for a change of state and the selection pill, 220 ms for a
   page: the old page fades out, the new one fades in and drifts a few dp into place. The back
   gesture plays the same under the finger, and the tab bar comes and goes with its page. Nothing
-  zooms, grows or travels between screens. Sheets follow the back gesture down. Menus, snackbars
-  and dialogs fade in and drift 8 dp into place, and Material's parts settle on springs that never
-  overshoot. Content scrolls into a soft 16 dp edge under the status bar, and the collapsed head
-  fades in with its paper. A skeleton shows only after 150 ms and fades out as the content fades
-  in. A new look dissolves in 250 ms. Cards and boxes give way to 0.98 when pressed and tint with
-  ink at 6 %, and a quick tap shows the whole press. With the system's animations off, pages only
-  cross-fade.
+  zooms, grows or travels between screens. Sheets follow the back gesture down. A sheet's shadow
+  goes with it and fades as it leaves, so the page is clear the moment the sheet has gone. Menus,
+  snackbars and dialogs fade in and drift 8 dp into place, and Material's parts settle on springs
+  that never overshoot. Content scrolls into a soft 16 dp edge under the status bar, and the
+  collapsed head fades in with its paper. A skeleton shows only after 150 ms and fades out as the
+  content fades in. A new look dissolves in 250 ms. Cards and boxes give way to 0.98 when pressed
+  and tint with ink at 6 %, and a quick tap shows the whole press. With the system's animations
+  off, pages only cross-fade.
 - **Motion in a page.** A change happens where it is. A figure that changes rolls 40 % of its line,
   up as it counts up and down as it counts down, and the words around it stand still. A label that
   changes in its place fades out before the new one fades in. A row that comes fades in where it
