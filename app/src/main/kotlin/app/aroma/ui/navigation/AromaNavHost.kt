@@ -1,8 +1,13 @@
 package app.aroma.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -17,14 +22,23 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -42,6 +56,7 @@ import app.aroma.ui.components.LocalScrollToTop
 import app.aroma.ui.components.reducedMotion
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.Space
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -51,7 +66,7 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val destination = backStack?.destination
-    // Hidden while typing, so it never rides on top of the keyboard.
+    // A message stands above the tab bar where there is one. The bar hides while typing.
     val showBar = destination?.isTab() == true && !WindowInsets.isImeVisible
     val reselected = remember { MutableSharedFlow<Tab>(extraBufferCapacity = 1) }
     val snackbar = remember { SnackbarHostState() }
@@ -121,11 +136,13 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
     ) {
-        // Only tab pages lie under the bar, so only they keep its space free.
-        val underBar: @Composable (Tab, @Composable () -> Unit) -> Unit = { tab, page ->
-            val scrollToTop = remember(tab) { reselected.filter { it == tab }.map { } }
-            CompositionLocalProvider(LocalBottomBarInset provides barInset, LocalScrollToTop provides scrollToTop, content = page)
+        // Only tab pages lie under the bar, so only they keep its space free. Every page tells the bar
+        // that it is in view, and a tab page how far it shows.
+        val presence = remember { PagesInView() }
+        val underBar: @Composable AnimatedVisibilityScope.(NavBackStackEntry, Tab, @Composable () -> Unit) -> Unit = { entry, tab, page ->
+            TabPage(entry, tab, presence, reselected, barInset, page)
         }
+        val pushed: @Composable (NavBackStackEntry, @Composable () -> Unit) -> Unit = { entry, page -> PushedPage(entry, presence, page) }
         val planFocus = remember { PlanFocus() }
         // With the system's animations off, pages only cross-fade.
         val quiet = reducedMotion()
@@ -137,50 +154,66 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
             exitTransition = if (quiet) Transitions.fadeOut else Transitions.exit,
             popEnterTransition = if (quiet) Transitions.fadeIn else Transitions.popEnter,
             popExitTransition = if (quiet) Transitions.fadeOut else Transitions.popExit,
-            predictivePopEnterTransition = Transitions.predictivePopEnter,
-            predictivePopExitTransition = Transitions.predictivePopExit,
+            predictivePopEnterTransition = if (quiet) Transitions.predictiveFadeIn else Transitions.predictivePopEnter,
+            predictivePopExitTransition = if (quiet) Transitions.predictiveFadeOut else Transitions.predictivePopExit,
         ) {
-            composable<HomeRoute> {
-                underBar(Tab.Home) {
+            composable<HomeRoute> { entry ->
+                underBar(entry, Tab.Home) {
                     HomeDestination(nav, snackbar, planFocus) {
                         focusSearch.value = true
                         nav.navigateToTab(Tab.Recipes)
                     }
                 }
             }
-            composable<RecipesRoute> {
-                underBar(
-                    Tab.Recipes,
-                ) { RecipesDestination(nav, snackbar, focusSearch.value, onFocusSearchConsume = { focusSearch.value = false }) }
+            composable<RecipesRoute> { entry ->
+                underBar(entry, Tab.Recipes) {
+                    RecipesDestination(nav, snackbar, focusSearch.value, onFocusSearchConsume = { focusSearch.value = false })
+                }
             }
-            composable<MealPlanRoute> { underBar(Tab.MealPlan) { MealPlanDestination(nav, snackbar, planFocus) } }
-            composable<ShoppingRoute> {
-                underBar(Tab.Shopping) { ShoppingDestination(shoppingRequest.value, onRequestConsume = { shoppingRequest.value = null }) }
+            composable<MealPlanRoute> { entry -> underBar(entry, Tab.MealPlan) { MealPlanDestination(nav, snackbar, planFocus) } }
+            composable<ShoppingRoute> { entry ->
+                underBar(entry, Tab.Shopping) {
+                    ShoppingDestination(shoppingRequest.value, onRequestConsume = { shoppingRequest.value = null })
+                }
             }
-            composable<RecipeRoute> { RecipeDestination(it.toRoute<RecipeRoute>().slug, nav, snackbar) }
+            composable<RecipeRoute> { entry ->
+                pushed(entry) { RecipeDestination(entry.toRoute<RecipeRoute>().slug, nav, snackbar) }
+            }
             composable<CookRoute> { entry ->
                 val route = entry.toRoute<CookRoute>()
-                CookDestination(route.slug, route.scale, nav)
+                pushed(entry) { CookDestination(route.slug, route.scale, nav) }
             }
-            composable<CollectionRoute> { CollectionDestination(it.toRoute(), nav, snackbar) }
-            composable<AddRecipeRoute> { AddRecipeDestination(it.toRoute(), nav, sharedRecipe.value) { sharedRecipe.value = null } }
-            composable<EditorRoute> { EditorDestination(it.toRoute<EditorRoute>().slug, nav) }
-            composable<SettingsRoute> { SettingsDestination(nav) }
-            composable<LicensesRoute> { LicensesDestination(nav) }
+            composable<CollectionRoute> { entry -> pushed(entry) { CollectionDestination(entry.toRoute(), nav, snackbar) } }
+            composable<AddRecipeRoute> { entry ->
+                pushed(entry) { AddRecipeDestination(entry.toRoute(), nav, sharedRecipe.value) { sharedRecipe.value = null } }
+            }
+            composable<EditorRoute> { entry -> pushed(entry) { EditorDestination(entry.toRoute<EditorRoute>().slug, nav) } }
+            composable<SettingsRoute> { entry -> pushed(entry) { SettingsDestination(nav) } }
+            composable<LicensesRoute> { entry -> pushed(entry) { LicensesDestination(nav) } }
         }
-        // The bar comes and goes in step with the tab pages it belongs to.
-        AnimatedVisibility(
-            visible = showBar,
-            enter = Transitions.barEnter,
-            exit = Transitions.barExit,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        ) {
-            TabBar(
-                selected = Tab.entries.firstOrNull { destination?.isTab(it) == true },
-                onSelect = nav::navigateToTab,
-                navigationInset = navigationInset,
-                onReselect = { reselected.tryEmit(it) },
-            )
+        // The bar is there while a tab page is, and shows as much as that page does: it leaves with
+        // its page and comes back with it, also while the back gesture brings the page back.
+        val tabPage = presence.tabPages.values.firstOrNull()
+        if (tabPage != null) {
+            // Between two tabs it stays; between a tab and a pushed page it follows the tab page.
+            val betweenTabs = presence.pushedPages.isEmpty()
+            val follow = if (betweenTabs) null else tabPage.shown
+            val barTab = if (betweenTabs) destination?.tab() else tabPage.tab
+            // Hidden while typing, so it never rides on top of the keyboard.
+            AnimatedVisibility(
+                visible = !WindowInsets.isImeVisible,
+                enter = fadeIn(Motion.edge()),
+                exit = fadeOut(Motion.edge()),
+                modifier = Modifier.align(Alignment.BottomCenter),
+            ) {
+                TabBar(
+                    selected = barTab,
+                    onSelect = nav::navigateToTab,
+                    navigationInset = navigationInset,
+                    onReselect = { reselected.tryEmit(it) },
+                    modifier = Modifier.graphicsLayer { alpha = if (betweenTabs) 1f else follow?.value ?: 0f },
+                )
+            }
         }
         UpdateMessages(appContainer().updates, snackbar)
         // A message still showing as the page changes glides to its place on the new page.
@@ -206,6 +239,58 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
 }
 
 private fun NavDestination.isTab(tab: Tab): Boolean = hasRoute(tab.route::class)
+
+private fun NavDestination.tab(): Tab? = Tab.entries.firstOrNull { isTab(it) }
+
+/**
+ * A tab page: it keeps the bar's space free, scrolls back to its top when its tab is tapped again,
+ * and tells [presence] how far it shows while it comes and goes.
+ */
+@Composable
+private fun AnimatedVisibilityScope.TabPage(
+    entry: NavBackStackEntry,
+    tab: Tab,
+    presence: PagesInView,
+    reselected: Flow<Tab>,
+    barInset: Dp,
+    page: @Composable () -> Unit,
+) {
+    val shown =
+        transition.animateFloat(transitionSpec = { Transitions.barFade(this) }, label = "tabBar") { state ->
+            if (state == EnterExitState.Visible) 1f else 0f
+        }
+    DisposableEffect(presence, entry.id, tab, shown) {
+        presence.tabPages[entry.id] = TabPageShown(tab, shown)
+        onDispose { presence.tabPages.remove(entry.id) }
+    }
+    val scrollToTop = remember(tab, reselected) { reselected.filter { it == tab }.map { } }
+    CompositionLocalProvider(LocalBottomBarInset provides barInset, LocalScrollToTop provides scrollToTop, content = page)
+}
+
+/** A page pushed over the tabs, which tells [presence] while it is in view. */
+@Composable
+private fun PushedPage(entry: NavBackStackEntry, presence: PagesInView, page: @Composable () -> Unit) {
+    DisposableEffect(presence, entry.id) {
+        presence.pushedPages += entry.id
+        onDispose { presence.pushedPages -= entry.id }
+    }
+    page()
+}
+
+/**
+ * The pages in view, as the navigation draws them, also those coming and going and the one a back
+ * gesture brings back: tab pages with how far they show, and pages pushed over them. The tab bar
+ * follows them.
+ */
+@Stable
+private class PagesInView {
+    val tabPages = mutableStateMapOf<String, TabPageShown>()
+    val pushedPages = mutableStateSetOf<String>()
+}
+
+/** A tab page in view, and how far it shows. */
+@Immutable
+private class TabPageShown(val tab: Tab, val shown: State<Float>)
 
 /** Switches tabs the way Android users expect: one copy per tab, state kept when coming back. */
 fun NavController.navigateToTab(tab: Tab) {
