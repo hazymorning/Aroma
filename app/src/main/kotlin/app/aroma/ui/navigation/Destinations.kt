@@ -347,7 +347,7 @@ private fun RecipeFeedback(vm: RecipeViewModel, snackbar: SnackbarHostState, onD
 }
 
 @Composable
-fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostState) {
+fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostState, onTop: Boolean = true) {
     val vm = aromaViewModel { RecipeViewModel(slug, recipes, reworks, shopping, mealPlans, sessions, settings, connection, it) }
     val state by vm.state.collectAsStateWithLifecycle()
     val rework by vm.rework.collectAsStateWithLifecycle()
@@ -400,6 +400,7 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 },
                 onRetry = vm::load,
             ),
+        onTop = onTop,
     )
     val recipe = state.recipe
     when {

@@ -202,9 +202,10 @@ private const val PHOTO_SHADE = 0.45f
  * The recipe as a cookbook page: the photo to the edges, the title and what it is, the headnote,
  * the times, the ingredients and the steps, open on paper. Cooking is the page's one main action, in
  * the bar at its foot beside planning and shopping. All that manages the recipe waits in the menu.
+ * [onTop] is false once another page is on its way in, which then has the status bar to itself.
  */
 @Composable
-fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifier = Modifier) {
+fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifier = Modifier, onTop: Boolean = true) {
     val listState = rememberLazyListState()
     val recipe = state.recipe
     var rateOpen by rememberSaveable { mutableStateOf(false) }
@@ -276,8 +277,9 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
             )
         }
     }
-    // Light icons over the photo's shade; the theme's own once the photo has gone beneath the head.
-    StatusBarOverPhoto(overPhoto)
+    // Light icons over the photo's shade; the theme's own once the photo has gone beneath the head,
+    // or as soon as the page is leaving, so the page coming in has its own at once.
+    StatusBarOverPhoto(overPhoto && onTop)
     if (rateOpen && recipe != null) {
         RatingSheet(rating = state.userRating, onRate = actions.onRate, onDismiss = { rateOpen = false })
     }

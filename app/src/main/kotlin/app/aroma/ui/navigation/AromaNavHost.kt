@@ -177,7 +177,10 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
                 }
             }
             composable<RecipeRoute> { entry ->
-                pushed(entry) { RecipeDestination(entry.toRoute<RecipeRoute>().slug, nav, snackbar) }
+                pushed(entry) {
+                    // As soon as another page is on top, the recipe gives the status bar back.
+                    RecipeDestination(entry.toRoute<RecipeRoute>().slug, nav, snackbar, onTop = backStack?.id == entry.id)
+                }
             }
             composable<CookRoute> { entry ->
                 val route = entry.toRoute<CookRoute>()
