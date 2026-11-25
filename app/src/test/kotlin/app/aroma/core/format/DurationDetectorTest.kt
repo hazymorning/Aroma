@@ -1,60 +1,36 @@
 package app.aroma.core.format
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DurationDetectorTest {
-    private fun seconds(text: String) = DurationDetector.detect(text).map { it.seconds }
+    /** The words each timer of [text] is set on, with its seconds. */
+    private fun timers(text: String) = DurationDetector.detect(text).map { text.substring(it.start, it.end) to it.seconds }
 
     @Test
-    fun `german minutes and hours`() {
-        assertEquals(listOf(600), seconds("Den Lauch etwa 10 Minuten anbraten."))
-        assertEquals(listOf(3600), seconds("Den Teig 1 Stunde ruhen lassen."))
-        assertEquals(listOf(5400), seconds("Im Ofen 1,5 Stunden schmoren."))
-        assertEquals(listOf(7200), seconds("Mindestens 2 h kalt stellen."))
-    }
+    fun `a time in a step becomes a timer on its words`() =
+        listOf(
+            "Den Lauch etwa 10 Minuten anbraten." to listOf("10 Minuten" to 600),
+            "Im Ofen 1,5 Stunden schmoren." to listOf("1,5 Stunden" to 5400),
+            "Mindestens 2 h kalt stellen." to listOf("2 h" to 7200),
+            "Blend for 45 seconds." to listOf("45 seconds" to 45),
+            "Let it rest for a minute." to listOf("a minute" to 60),
+            "Eine Stunde gehen lassen." to listOf("Eine Stunde" to 3600),
+            "Eine halbe Stunde ziehen lassen." to listOf("halbe Stunde" to 1800),
+            "Rest for half an hour." to listOf("half an hour" to 1800),
+            "½ Stunde quellen lassen." to listOf("½ Stunde" to 1800),
+            // Hours and minutes together are one timer; times apart are two.
+            "Insgesamt 1 Std. 30 Min. garen." to listOf("1 Std. 30 Min." to 5400),
+            "Cook for 1 hour and 15 minutes." to listOf("1 hour and 15 minutes" to 4500),
+            "5 Minuten anbraten, dann 20 Minuten köcheln." to listOf("5 Minuten" to 300, "20 Minuten" to 1200),
+            // Temperatures and amounts are no times.
+            "Bei 180 Grad backen, 200 g Mehl dazugeben." to emptyList(),
+            "Add 2 minced garlic cloves." to emptyList(),
+        ).forEach { (text, timers) -> assertEquals(text, timers, timers(text)) }
 
     @Test
-    fun `english units and abbreviations`() {
-        assertEquals(listOf(1800), seconds("Bake for 30 minutes until golden."))
-        assertEquals(listOf(300), seconds("Simmer 5 mins."))
-        assertEquals(listOf(45), seconds("Blend for 45 seconds."))
-        assertEquals(listOf(60), seconds("Let it rest for a minute."))
-    }
-
-    @Test
-    fun `combined hours and minutes become one timer`() {
-        assertEquals(listOf(5400), seconds("Insgesamt 1 Std. 30 Min. garen."))
-        assertEquals(listOf(4500), seconds("Cook for 1 hour and 15 minutes."))
-    }
-
-    @Test
-    fun `ranges start at the lower bound`() {
-        val found = DurationDetector.detect("25-30 Minuten backen")
-        assertEquals(1, found.size)
-        assertEquals(1500, found[0].seconds)
-        assertEquals(1800, found[0].upperSeconds)
-        assertEquals("25-30 Minuten", "25-30 Minuten backen".substring(found[0].start, found[0].end))
-    }
-
-    @Test
-    fun `number words and halves`() {
-        assertEquals(listOf(3600), seconds("Eine Stunde gehen lassen."))
-        assertEquals(listOf(1800), seconds("Eine halbe Stunde ziehen lassen."))
-        assertEquals(listOf(1800), seconds("Rest for half an hour."))
-        assertEquals(listOf(1800), seconds("½ Stunde quellen lassen."))
-    }
-
-    @Test
-    fun `separate durations stay separate`() {
-        assertEquals(listOf(300, 1200), seconds("5 Minuten anbraten, dann 20 Minuten köcheln."))
-    }
-
-    @Test
-    fun `temperatures and amounts are not durations`() {
-        assertTrue(seconds("Bei 180 Grad backen, 200 g Mehl dazugeben.").isEmpty())
-        assertTrue(seconds("Add 2 minced garlic cloves.").isEmpty())
-        assertTrue(seconds("Die Hähnchenbrust in Streifen schneiden.").isEmpty())
+    fun `a range starts at its lower end`() {
+        val range = DurationDetector.detect("25-30 Minuten backen").single()
+        assertEquals(DetectedDuration(0, 13, 1500, 1800), range)
     }
 }

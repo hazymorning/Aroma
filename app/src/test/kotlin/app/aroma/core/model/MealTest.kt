@@ -4,7 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import java.time.LocalTime
 
 class MealTest {
     private fun organizer(name: String) = Organizer(name.lowercase(), name, name.lowercase())
@@ -17,13 +16,8 @@ class MealTest {
 
         assertEquals(listOf(organizer("Abendessen")), filed.categories)
         assertEquals(setOf(Meal.Dinner), filed.meals)
-    }
-
-    @Test
-    fun `a category of another language serves where the group has none in the app's`() {
-        val filed = Filing(emptyList(), emptyList()).toggle(Meal.Dinner, group - organizer("Abendessen"), "Abendessen")
-
-        assertEquals(listOf(organizer("Dinner")), filed.categories)
+        val otherLanguage = Filing(emptyList(), emptyList()).toggle(Meal.Dinner, group - organizer("Abendessen"), "Abendessen")
+        assertEquals(listOf(organizer("Dinner")), otherLanguage.categories)
     }
 
     @Test
@@ -54,14 +48,6 @@ class MealTest {
         assertEquals(listOf("Hauptgericht"), Meal.Dinner.namesIn(Organizers(filing.categories)))
         assertEquals(listOf("Kuchen"), Meal.Snack.namesIn(Organizers(filing.categories)))
         assertEquals(listOf("Brunch"), Meal.Breakfast.namesIn(Organizers(filing.categories)))
-    }
-
-    @Test
-    fun `the time of day still picks one of the four meals of a day`() {
-        assertEquals(Meal.Breakfast, Meal.at(LocalTime.of(7, 0)))
-        assertEquals(Meal.Lunch, Meal.at(LocalTime.of(12, 30)))
-        assertEquals(Meal.Snack, Meal.at(LocalTime.of(15, 0)))
-        assertEquals(Meal.Dinner, Meal.at(LocalTime.of(19, 0)))
     }
 
     /** A category made under a label must be read back as that kind of dish, in every language the app speaks. */

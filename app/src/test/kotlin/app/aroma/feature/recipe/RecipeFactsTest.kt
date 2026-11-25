@@ -1,7 +1,7 @@
 package app.aroma.feature.recipe
 
 import app.aroma.core.model.Organizer
-import app.aroma.core.model.Recipe
+import app.aroma.testing.sampleRecipe
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -11,32 +11,25 @@ import java.util.Locale
 
 class RecipeFactsTest {
     private val german = Locale.GERMANY
-    private val nnbsp = " "
+    private val nnbsp = "\u202F"
 
     @Test
-    fun `a yield that counts the servings gives the stepper its words`() {
-        val yields = RecipeYield(servings = 1.0, text = "1 Blech")
-        assertEquals("Blech", yields.stepperUnit)
-        assertNull(yields.line(2.0, german))
+    fun `a yield that counts the servings gives the stepper its words, unless they are servings`() {
+        val sheet = RecipeYield(servings = 1.0, text = "1 Blech")
+        assertEquals("Blech", sheet.stepperUnit)
+        assertNull(sheet.line(2.0, german))
+        val servings = RecipeYield(servings = 4.0, text = "4 Portionen")
+        assertNull(servings.stepperUnit)
+        assertNull(servings.line(1.0, german))
     }
 
     @Test
-    fun `servings by name are counted as servings`() {
-        val yields = RecipeYield(servings = 4.0, text = "4 Portionen")
-        assertNull(yields.stepperUnit)
-        assertNull(yields.line(1.0, german))
-    }
-
-    @Test
-    fun `a yield of its own stands in the line, scaled`() {
-        val yields = RecipeYield(servings = 4.0, text = "ca. 24 Stück")
-        assertNull(yields.stepperUnit)
-        assertEquals("ca. 24${nnbsp}Stück", yields.line(1.0, german))
-        assertEquals("ca. 48${nnbsp}Stück", yields.line(2.0, german))
-    }
-
-    @Test
-    fun `a yield without a count shows nothing on its own`() {
+    fun `a yield of its own stands in the line, scaled, and one without a count does not`() {
+        val biscuits = RecipeYield(servings = 4.0, text = "ca. 24 Stück")
+        assertNull(biscuits.stepperUnit)
+        assertEquals("ca. 24${nnbsp}Stück", biscuits.line(1.0, german))
+        assertEquals("ca. 48${nnbsp}Stück", biscuits.line(2.0, german))
+        assertEquals("8–12${nnbsp}Portionen", RecipeYield(servings = 0.0, text = "4–6 Portionen").line(2.0, german))
         assertNull(RecipeYield(servings = 4.0, text = "Stück").line(1.0, german))
         assertNull(RecipeYield(servings = 0.0, text = null).line(1.0, german))
     }
@@ -52,24 +45,5 @@ class RecipeFactsTest {
     }
 
     private fun recipe(name: String, categories: List<String> = emptyList()) =
-        Recipe(
-            id = name,
-            slug = name,
-            name = name,
-            description = "",
-            image = null,
-            totalTime = null,
-            prepTime = null,
-            cookTime = null,
-            servings = 0.0,
-            rating = null,
-            categories = categories.map { Organizer(it, it, it) },
-            tags = emptyList(),
-            tools = emptyList(),
-            sourceUrl = null,
-            ingredients = emptyList(),
-            steps = emptyList(),
-            notes = emptyList(),
-            nutrition = emptyList(),
-        )
+        sampleRecipe(name, categories = categories.map { Organizer(it, it, it) })
 }

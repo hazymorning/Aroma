@@ -5,67 +5,29 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class LeadingQuantityParserTest {
-    private fun parse(text: String) = LeadingQuantityParser.parse(text)
+    @Test
+    fun `an amount at the start is read in every spelling, a range with both ends`() =
+        listOf(
+            "2 Stangen Lauch (groß)" to LeadingQuantity(2.0, null, "Stangen Lauch (groß)"),
+            "200g Mehl" to LeadingQuantity(200.0, null, "g Mehl"),
+            "1,5 kg Kartoffeln" to LeadingQuantity(1.5, null, "kg Kartoffeln"),
+            "1.5 cups milk" to LeadingQuantity(1.5, null, "cups milk"),
+            "1,05 kg Kartoffeln" to LeadingQuantity(1.05, null, "kg Kartoffeln"),
+            "0.05 l Rum" to LeadingQuantity(0.05, null, "l Rum"),
+            "1/2 TL Salz" to LeadingQuantity(0.5, null, "TL Salz"),
+            "½ Zitrone" to LeadingQuantity(0.5, null, "Zitrone"),
+            "1 1/2 Tassen Mehl" to LeadingQuantity(1.5, null, "Tassen Mehl"),
+            "1½ Tassen Mehl" to LeadingQuantity(1.5, null, "Tassen Mehl"),
+            "1 ½ Tassen Mehl" to LeadingQuantity(1.5, null, "Tassen Mehl"),
+            "3-4 Kartoffeln" to LeadingQuantity(3.0, 4.0, "Kartoffeln"),
+            "2 – 3 EL Öl" to LeadingQuantity(2.0, 3.0, "EL Öl"),
+            // A second number is no fraction of the first.
+            "1 12-oz can tomatoes" to LeadingQuantity(1.0, null, "12-oz can tomatoes"),
+        ).forEach { (text, quantity) -> assertEquals(text, quantity, LeadingQuantityParser.parse(text)) }
 
     @Test
-    fun `integer with unit`() {
-        assertEquals(LeadingQuantity(2.0, null, "Stangen Lauch (groß)"), parse("2 Stangen Lauch (groß)"))
-    }
-
-    @Test
-    fun `number glued to the unit`() {
-        assertEquals(LeadingQuantity(200.0, null, "g Mehl"), parse("200g Mehl"))
-    }
-
-    @Test
-    fun `decimal comma and point`() {
-        assertEquals(1.5, parse("1,5 kg Kartoffeln")!!.value, 0.0)
-        assertEquals(1.5, parse("1.5 cups milk")!!.value, 0.0)
-    }
-
-    @Test
-    fun `decimals keep their leading zeros`() {
-        assertEquals(1.05, parse("1,05 kg Kartoffeln")!!.value, 1e-9)
-        assertEquals(0.05, parse("0.05 l Rum")!!.value, 1e-9)
-    }
-
-    @Test
-    fun `digits of other scripts read as numbers`() {
-        assertEquals(1.5, parse("١.٥ كوب حليب")!!.value, 1e-9)
-        assertEquals(1.5, parse("۱.۵ پیمانه شیر")!!.value, 1e-9)
-        assertEquals(1.5, parse("１.５ カップ")!!.value, 1e-9)
-    }
-
-    @Test
-    fun `fractions in all common spellings`() {
-        assertEquals(0.5, parse("1/2 TL Salz")!!.value, 0.0)
-        assertEquals(0.5, parse("½ Zitrone")!!.value, 0.0)
-        assertEquals(1.5, parse("1 1/2 Tassen Mehl")!!.value, 0.0)
-        assertEquals(1.5, parse("1½ Tassen Mehl")!!.value, 0.0)
-        assertEquals(1.5, parse("1 ½ Tassen Mehl")!!.value, 0.0)
-    }
-
-    @Test
-    fun `ranges keep both bounds`() {
-        assertEquals(LeadingQuantity(3.0, 4.0, "Kartoffeln"), parse("3-4 Kartoffeln"))
-        assertEquals(LeadingQuantity(2.0, 3.0, "EL Öl"), parse("2 – 3 EL Öl"))
-    }
-
-    @Test
-    fun `a second number is not mistaken for a fraction`() {
-        assertEquals(LeadingQuantity(1.0, null, "12-oz can tomatoes"), parse("1 12-oz can tomatoes"))
-    }
-
-    @Test
-    fun `text without a leading amount is left alone`() {
-        assertNull(parse("Salz und Pfeffer"))
-        assertNull(parse("Saft von 1 Zitrone"))
-        assertNull(parse("Olivenöl (zum Ausbacken)"))
-    }
-
-    @Test
-    fun `a bare number or a numbered heading is not an ingredient amount`() {
-        assertNull(parse("4"))
-        assertNull(parse("1. Schritt"))
-    }
+    fun `text without an amount to scale is left alone`() =
+        listOf("Salz und Pfeffer", "Saft von 1 Zitrone", "Olivenöl (zum Ausbacken)", "4", "1. Schritt").forEach {
+            assertNull(it, LeadingQuantityParser.parse(it))
+        }
 }

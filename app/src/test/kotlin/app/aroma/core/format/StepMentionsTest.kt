@@ -3,6 +3,7 @@ package app.aroma.core.format
 import app.aroma.core.model.Ingredient
 import app.aroma.core.model.Recipe
 import app.aroma.core.model.Step
+import app.aroma.testing.sampleRecipe
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Locale
@@ -12,26 +13,7 @@ class StepMentionsTest {
     private fun line(text: String, reference: String? = null) = Ingredient(reference, null, 0.0, null, null, text, text, null)
 
     private fun recipe(ingredients: List<Ingredient>, step: String, references: List<String> = emptyList()) =
-        Recipe(
-            id = "r",
-            slug = "r",
-            name = "R",
-            description = "",
-            image = null,
-            totalTime = null,
-            prepTime = null,
-            cookTime = null,
-            servings = 4.0,
-            rating = null,
-            categories = emptyList(),
-            tags = emptyList(),
-            tools = emptyList(),
-            sourceUrl = null,
-            ingredients = ingredients,
-            steps = listOf(Step(null, null, step, references, null)),
-            notes = emptyList(),
-            nutrition = emptyList(),
-        )
+        sampleRecipe(ingredients = ingredients, steps = listOf(Step(null, null, step, references, null)))
 
     private fun Recipe.words(): List<Pair<String, Int>> =
         stepMentions(
