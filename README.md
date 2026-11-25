@@ -13,7 +13,7 @@ Aroma is an Android app for Mealie, available in English and German. It came fro
 <br>
 
 <details>
-<summary><b>What it does</b></summary>
+<summary><b>Why Aroma</b></summary>
 
 <br>
 
@@ -27,13 +27,14 @@ Aroma is an Android app for Mealie, available in English and German. It came fro
 
 <br>
 
-- Recipes scale to any number of servings, with units converted to metric or US
-- A cooking mode that guides you step by step, with the ingredients and timers each step needs
-- Ideas for what to cook, depending on the time of day
-- A weekly meal plan whose ingredients go on the shopping list in one go
-- Shopping lists that work offline too
-- Widgets for today's meal and the shopping list
-- Recipes imported from websites, social media and photos, and tidied up or translated by Mealie's AI if you like
+- Steps that show the ingredients they need, to tick off as you go
+- A cooking mode with timers, one step at a time
+- Recipes shared straight to Aroma from Instagram, TikTok, Facebook or the browser
+- Ideas on Home for what to cook today
+- A shopping mode for the supermarket
+- Widgets for the meal plan and the shopping list
+- Recipes tidied up or translated with Mealie's AI
+- Your recipes kept on the phone, for cooking without a connection
 
 </details>
 <details>
@@ -65,8 +66,6 @@ Aroma connects only to the configured Mealie server. There are two exceptions: i
 
 <br>
 
-Aroma was made in Germany, which may explain the following.
-
-Your password is only used to sign in, and the access Aroma keeps is encrypted on the phone. It goes to your Mealie server and nowhere else, over https wherever the server offers it. Signing out leaves nothing behind, and updates install only if they really come from Aroma.
+Made in Germany, so this part was taken seriously. Your password is only used to sign in, and the access Aroma keeps is encrypted on the phone and only ever sent to your Mealie server. Signing out leaves nothing behind, and only genuine updates of Aroma can be installed.
 
 </details>
