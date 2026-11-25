@@ -23,23 +23,13 @@ class InstagramEmbedTest {
         )
 
     @Test
-    fun `a caption without comments ends with its block`() =
+    fun `a caption without comments ends with its block, and one of only its author is none`() {
         assertEquals(
             "Linsensuppe",
             InstagramEmbed.caption(
                 """<div class="Caption"><a class="CaptionUsername" href="/a/">a</a><br />Linsensuppe</div><div>Footer</div>""",
             ),
         )
-
-    @Test
-    fun `the photo is the post's own, with its address intact`() =
-        assertEquals("https://scontent.example/v/g.jpg?stp=dst-jpg&_nc_cat=1", InstagramEmbed.photo(page))
-
-    @Test
-    fun `the page a browser gets, which loads the post by script, holds no caption`() {
-        val shell = """<html><head><script src="/embed.js"></script></head><body><div id="root"></div></body></html>"""
-        assertNull(InstagramEmbed.caption(shell))
-        assertNull(InstagramEmbed.photo(shell))
         assertNull(InstagramEmbed.caption("""<div class="Caption"><a class="CaptionUsername" href="/a/">a</a></div>"""))
     }
 

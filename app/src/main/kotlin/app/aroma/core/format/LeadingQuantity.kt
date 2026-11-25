@@ -3,12 +3,14 @@ package app.aroma.core.format
 import kotlin.math.pow
 
 /**
- * Quantity found at the start of free text such as "2 1/2 EL Olivenöl" or "3-4 Kartoffeln".
+ * Quantity found at the start of free text such as "2 1/2 EL Olivenöl", "3-4 Kartoffeln" or "2 bis 3 EL Öl".
  * Mealie keeps unparsed ingredients as plain notes; this makes them scalable anyway.
  */
 data class LeadingQuantity(val value: Double, val upper: Double?, val rest: String)
 
 object LeadingQuantityParser {
+    private val rangeWords = listOf("bis", "to")
+
     fun parse(text: String): LeadingQuantity? {
         val reader = Reader(text)
         reader.skipSpaces()
@@ -16,8 +18,7 @@ object LeadingQuantityParser {
         val afterValue = reader.position
         reader.skipSpaces()
         var upper: Double? = null
-        if (reader.peek() == '-' || reader.peek() == '–') {
-            reader.advance()
+        if (reader.skipRangeSign()) {
             reader.skipSpaces()
             upper = reader.readAmount()
             if (upper == null || upper <= value) {
@@ -49,6 +50,17 @@ object LeadingQuantityParser {
 
         fun skipSpaces() {
             while (peek()?.isWhitespace() == true) position++
+        }
+
+        /** Skips what joins the ends of a range: a dash, or "bis" or "to" before a space. Only a second amount after it makes one. */
+        fun skipRangeSign(): Boolean {
+            if (peek() == '-' || peek() == '–') {
+                advance()
+                return true
+            }
+            val word = rangeWords.firstOrNull { text.startsWith("$it ", position, ignoreCase = true) } ?: return false
+            position += word.length
+            return true
         }
 
         /** Reads "1", "1.5", "1,5", "1/2", "½", "1 1/2" or "1½". */

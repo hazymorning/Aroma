@@ -4,7 +4,6 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
-import androidx.compose.ui.test.SemanticsNodeInteractionCollection
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 
 /**
@@ -28,10 +27,3 @@ fun SemanticsNodeInteractionsProvider.onNodeWithWords(
     substring: Boolean = false,
     useUnmergedTree: Boolean = false,
 ): SemanticsNodeInteraction = onNode(hasWords(text, substring), useUnmergedTree)
-
-/** Like `onAllNodesWithText`, for text as it reads. */
-fun SemanticsNodeInteractionsProvider.onAllNodesWithWords(
-    text: String,
-    substring: Boolean = false,
-    useUnmergedTree: Boolean = false,
-): SemanticsNodeInteractionCollection = onAllNodes(hasWords(text, substring), useUnmergedTree)

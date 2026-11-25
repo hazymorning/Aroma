@@ -1,12 +1,12 @@
 package app.aroma.data
 
 import app.aroma.data.session.Session
+import app.aroma.testing.address
+import app.aroma.testing.json
+import app.aroma.testing.mealieServer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -15,13 +15,10 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import java.util.concurrent.CopyOnWriteArrayList
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class OfflineCopyTest {
-    private val server = MockWebServer()
     private val fetched = CopyOnWriteArrayList<String>()
     private lateinit var env: TestEnvironment
 
@@ -29,24 +26,22 @@ class OfflineCopyTest {
     @Volatile
     private var onServer = mapOf("gnocchi" to "2026-11-01T10:00:00", "linsensuppe" to "2026-11-01T10:00:00")
 
+    private val server =
+        mealieServer { request ->
+            val path = request.url.encodedPath
+            val slug = path.removePrefix("/api/recipes/")
+            when {
+                path == "/api/recipes" -> json(listing())
+                onServer.containsKey(slug) -> json(recipe(slug, onServer.getValue(slug))).also { fetched += slug }
+                else -> MockResponse.Builder().code(404).build()
+            }
+        }
+
     @Before
     fun setUp() {
-        server.dispatcher =
-            object : Dispatcher() {
-                override fun dispatch(request: RecordedRequest): MockResponse {
-                    val path = request.url.encodedPath
-                    val slug = path.removePrefix("/api/recipes/")
-                    return when {
-                        path == "/api/recipes" -> json(listing())
-                        onServer.containsKey(slug) -> json(recipe(slug, onServer.getValue(slug))).also { fetched += slug }
-                        else -> MockResponse.Builder().code(404).build()
-                    }
-                }
-            }
-        server.start()
         env = TestEnvironment()
         runBlocking {
-            env.sessions.start(Session(serverUrl = server.url("/").toString().trimEnd('/'), token = "t", userId = "u", username = "mara"))
+            env.sessions.start(Session(serverUrl = server.address, token = "t", userId = "u", username = "mara"))
         }
     }
 
@@ -82,11 +77,4 @@ class OfflineCopyTest {
         }
 
     private fun recipe(slug: String, updatedAt: String) = """{"id":"id-$slug","slug":"$slug","name":"$slug","updatedAt":"$updatedAt"}"""
-
-    private fun json(body: String) =
-        MockResponse
-            .Builder()
-            .addHeader("Content-Type", "application/json")
-            .body(body)
-            .build()
 }

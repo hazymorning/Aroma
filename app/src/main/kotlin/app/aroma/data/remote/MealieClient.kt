@@ -13,6 +13,8 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 val MealieJson =
     Json {
@@ -32,6 +34,8 @@ data class Credentials(val server: HttpUrl, val token: String)
 class MealieClientFactory(
     private val userAgent: String,
     private val answers: (Boolean) -> Unit = {},
+    /** How long a request waits for Mealie to answer; a test's Mealie that never does need not hold one a minute. */
+    answerTimeout: Duration = ANSWER_TIMEOUT,
     private val credentials: () -> Credentials?,
 ) {
     /**
@@ -43,8 +47,8 @@ class MealieClientFactory(
         OkHttpClient
             .Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .writeTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(answerTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
+            .writeTimeout(answerTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
             .addInterceptor(AnswerInterceptor())
             .addInterceptor(HeadersInterceptor())
             .addInterceptor(ImportTimeouts)
@@ -91,6 +95,10 @@ class MealieClientFactory(
             }
             return chain.proceed(builder.build())
         }
+    }
+
+    companion object {
+        val ANSWER_TIMEOUT = 60.seconds
     }
 }
 

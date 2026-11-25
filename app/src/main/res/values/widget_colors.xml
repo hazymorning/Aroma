@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The app's colour roles (ui/theme) that the widgets use, under the same names: for their Glance
-    layouts, their loading and error layouts and their previews. WidgetPaletteTest keeps them in step.
+    The app's colour roles (ui/theme/Color.kt) that the widgets use, under the same names: for their
+    Glance layouts, their loading and error layouts and their previews. A role changed there is changed here too.
 -->
 <resources>
     <color name="widget_background">#FFFBF9F7</color>

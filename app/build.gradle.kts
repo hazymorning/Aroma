@@ -9,6 +9,8 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
+val screenshots = providers.gradleProperty("screenshots").isPresent
+
 android {
     namespace = "app.aroma"
     compileSdk {
@@ -69,14 +71,16 @@ android {
         }
     }
 
+    // Screenshots are for design reviews, not for every build: the tool that renders them compiles
+    // and runs only with -Pscreenshots (see the Screenshots workflow).
+    if (screenshots) sourceSets.getByName("test").kotlin.directories += "src/screenshots/kotlin"
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
             all { test ->
-                test.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
-                // Screenshots are for design reviews, not for every push: they render only with
-                // -Pscreenshots (see the Screenshots workflow), the other tests run on every build.
-                if (!providers.gradleProperty("screenshots").isPresent) test.exclude("app/aroma/screenshots/**")
+                // Renders the screenshots as a phone's hardware renderer does, shadows included; no other test captures pixels.
+                if (screenshots) test.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
                 // The live tests read these; another server must mean another test run, not a cached one.
                 listOf("MEALIE_TEST_URL", "MEALIE_TEST_USER").forEach { name ->
                     test.inputs.property(name, providers.environmentVariable(name).orElse(""))

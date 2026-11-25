@@ -12,12 +12,16 @@ data class DetectedDuration(
 object DurationDetector {
     private const val NUMBER =
         """\d+(?:[.,]\d+)?(?:/\d+)?|[½¼¾⅓⅔]|ein(?:e|er|en)?|one|a|an|zwei|two|drei|three|vier|four|fünf|five|sechs|six|zehn|ten|zwanzig|twenty|dreißig|thirty"""
-    private const val UNIT =
-        """stunden|stunde|std\.?|hours|hour|hrs\.?|hr\.?|h|minuten|minute|min\.?|mins\.?|minutes|sekunden|sekunde|sek\.?|seconds|second|secs\.?|sec\.?"""
+    private const val HOURS = """stunden|stunde|std\.?|hours|hour|hrs\.?|hr\.?|h"""
+    private const val MINUTES = """minuten|minute|min\.?|mins\.?|minutes"""
+    private const val UNIT = """$HOURS|$MINUTES|sekunden|sekunde|sek\.?|seconds|second|secs\.?|sec\.?"""
 
+    // A number after a colon belongs to the one before it: "1:20 h" is an hour and twenty minutes, "1:30 min" a minute
+    // and a half.
     private val single =
         Regex(
-            """(?<![\p{L}\d])(?:($NUMBER)\s*(?:(?:-|–|bis|to)\s*($NUMBER)\s*)?($UNIT)(?![\p{L}])|(halbe[nr]?\s+stunde|half\s+an\s+hour))""",
+            """(?<![\p{L}\d]|\d:)(?:(\d{1,2}):([0-5]\d)\s*($HOURS|$MINUTES)(?![\p{L}])|""" +
+                """($NUMBER)\s*(?:(?:-|–|bis|to)\s*($NUMBER)\s*)?($UNIT)(?![\p{L}])|(halbe[nr]?\s+stunde|half\s+an\s+hour))""",
             RegexOption.IGNORE_CASE,
         )
     private val joiner = Regex("""^\s*(?:,|und|and)?\s*$""", RegexOption.IGNORE_CASE)
@@ -53,7 +57,10 @@ object DurationDetector {
     val numberWords: Set<String> = words.keys
 
     fun detect(text: String): List<DetectedDuration> {
-        val parts = single.findAll(text).mapNotNull { match -> toDuration(match) }.toList()
+        // Steps bind a number to its unit with a narrow no-break space (see UnitSpacing), which not every regex engine
+        // counts as `\s`. Read as plain spaces, of the same length, no-break spaces leave every duration where it is.
+        val spaced = text.replace(NO_BREAK_SPACE, ' ').replace(NARROW_NO_BREAK_SPACE, ' ')
+        val parts = single.findAll(spaced).mapNotNull { match -> toDuration(match) }.toList()
         if (parts.isEmpty()) return emptyList()
         val merged = mutableListOf<DetectedDuration>()
         for (part in parts) {
@@ -63,7 +70,7 @@ object DurationDetector {
                     previous.upperSeconds == null &&
                     part.upperSeconds == null &&
                     previous.seconds > part.seconds &&
-                    joiner.matches(text.substring(previous.end, part.start))
+                    joiner.matches(spaced.substring(previous.end, part.start))
             if (canMerge) {
                 merged[merged.lastIndex] = previous.copy(end = part.end, seconds = previous.seconds + part.seconds)
             } else {
@@ -75,10 +82,15 @@ object DurationDetector {
 
     private fun toDuration(match: MatchResult): DetectedDuration? {
         val range = match.range
-        if (match.groupValues[4].isNotEmpty()) return DetectedDuration(range.first, range.last + 1, 1800, null)
-        val amount = number(match.groupValues[1]) ?: return null
-        val upper = match.groupValues[2].takeIf { it.isNotEmpty() }?.let(::number)
-        val factor = unitSeconds(match.groupValues[3]) ?: return null
+        val groups = match.groupValues
+        if (groups[7].isNotEmpty()) return DetectedDuration(range.first, range.last + 1, 1800, null)
+        if (groups[1].isNotEmpty()) {
+            val factor = unitSeconds(groups[3]) ?: return null
+            return DetectedDuration(range.first, range.last + 1, groups[1].toInt() * factor + groups[2].toInt() * factor / 60, null)
+        }
+        val amount = number(groups[4]) ?: return null
+        val upper = groups[5].takeIf { it.isNotEmpty() }?.let(::number)
+        val factor = unitSeconds(groups[6]) ?: return null
         val seconds = (amount * factor).toInt()
         val upperSeconds = upper?.let { (it * factor).toInt() }?.takeIf { it > seconds }
         return DetectedDuration(range.first, range.last + 1, seconds, upperSeconds)
@@ -102,4 +114,7 @@ object DurationDetector {
             else -> null
         }
     }
+
+    private const val NO_BREAK_SPACE = '\u00A0'
+    private const val NARROW_NO_BREAK_SPACE = '\u202F'
 }

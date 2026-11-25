@@ -1,0 +1,171 @@
+{
+  "name": "Wocheneinkauf",
+  "extras": {},
+  "createdAt": "2026-11-25T10:18:49.500421Z",
+  "updatedAt": "2026-11-25T10:18:49.806886Z",
+  "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+  "userId": "77e299b6-ab5c-474c-ba3b-13f7bcbdc63f",
+  "id": "22873efb-a0d6-4c35-8cf0-17a5819edfe2",
+  "listItems": [
+    {
+      "quantity": 0.0,
+      "unit": null,
+      "food": null,
+      "referencedRecipe": null,
+      "note": "Milch",
+      "display": "Milch",
+      "shoppingListId": "22873efb-a0d6-4c35-8cf0-17a5819edfe2",
+      "checked": false,
+      "position": 0,
+      "foodId": null,
+      "labelId": null,
+      "unitId": null,
+      "extras": {},
+      "id": "856220b4-3faa-41d5-873f-8bc684f9eb42",
+      "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+      "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+      "label": null,
+      "recipeReferences": [],
+      "createdAt": "2026-11-25T10:18:49.590669Z",
+      "updatedAt": "2026-11-25T10:18:49.590675Z"
+    },
+    {
+      "quantity": 200.0,
+      "unit": null,
+      "food": null,
+      "referencedRecipe": null,
+      "note": "g rote Linsen",
+      "display": "200 g rote Linsen",
+      "shoppingListId": "22873efb-a0d6-4c35-8cf0-17a5819edfe2",
+      "checked": false,
+      "position": 0,
+      "foodId": null,
+      "labelId": null,
+      "unitId": null,
+      "extras": {},
+      "id": "8986273a-e6a9-465a-bcc4-6f6682034acb",
+      "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+      "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+      "label": null,
+      "recipeReferences": [
+        {
+          "recipeId": "284219a7-34cd-4a9e-801f-44cb1099b150",
+          "recipeQuantity": 200.0,
+          "recipeScale": 1.0,
+          "recipeNote": "g rote Linsen",
+          "id": "25dbce31-41da-4fb4-a688-a7914e724a0c",
+          "shoppingListItemId": "8986273a-e6a9-465a-bcc4-6f6682034acb"
+        }
+      ],
+      "createdAt": "2026-11-25T10:18:49.805408Z",
+      "updatedAt": "2026-11-25T10:18:49.805413Z"
+    },
+    {
+      "quantity": 1.0,
+      "unit": null,
+      "food": null,
+      "referencedRecipe": null,
+      "note": "Zwiebel",
+      "display": "1 Zwiebel",
+      "shoppingListId": "22873efb-a0d6-4c35-8cf0-17a5819edfe2",
+      "checked": false,
+      "position": 0,
+      "foodId": null,
+      "labelId": null,
+      "unitId": null,
+      "extras": {},
+      "id": "0ef585d3-6bb0-47d5-ad30-b3d7fca37174",
+      "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+      "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+      "label": null,
+      "recipeReferences": [
+        {
+          "recipeId": "284219a7-34cd-4a9e-801f-44cb1099b150",
+          "recipeQuantity": 1.0,
+          "recipeScale": 1.0,
+          "recipeNote": "Zwiebel",
+          "id": "bfd9662f-2a2b-4418-94b7-383d5f203549",
+          "shoppingListItemId": "0ef585d3-6bb0-47d5-ad30-b3d7fca37174"
+        }
+      ],
+      "createdAt": "2026-11-25T10:18:49.805416Z",
+      "updatedAt": "2026-11-25T10:18:49.805417Z"
+    },
+    {
+      "quantity": 1.0,
+      "unit": null,
+      "food": null,
+      "referencedRecipe": null,
+      "note": "Brot",
+      "display": "1 Brot",
+      "shoppingListId": "22873efb-a0d6-4c35-8cf0-17a5819edfe2",
+      "checked": true,
+      "position": 1,
+      "foodId": null,
+      "labelId": null,
+      "unitId": null,
+      "extras": {},
+      "id": "addbd128-9fdd-4534-8b02-020628791d14",
+      "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+      "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+      "label": null,
+      "recipeReferences": [],
+      "createdAt": "2026-11-25T10:18:49.690043Z",
+      "updatedAt": "2026-11-25T10:18:49.690049Z"
+    }
+  ],
+  "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+  "recipeReferences": [
+    {
+      "id": "f7dba780-7e80-422b-9b71-71a13fa5e50a",
+      "shoppingListId": "22873efb-a0d6-4c35-8cf0-17a5819edfe2",
+      "recipeId": "284219a7-34cd-4a9e-801f-44cb1099b150",
+      "recipeQuantity": 1.0,
+      "recipe": {
+        "id": "284219a7-34cd-4a9e-801f-44cb1099b150",
+        "userId": "77e299b6-ab5c-474c-ba3b-13f7bcbdc63f",
+        "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+        "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+        "name": "Linsensuppe Fixture",
+        "slug": "linsensuppe-fixture",
+        "image": null,
+        "recipeServings": 4.0,
+        "recipeYieldQuantity": 0.0,
+        "recipeYield": "4 Portionen",
+        "totalTime": "1 hour 20 minutes",
+        "prepTime": "20 minutes",
+        "performTime": "1 hour",
+        "totalTimeSeconds": null,
+        "prepTimeSeconds": null,
+        "performTimeSeconds": null,
+        "description": "Rote Linsen mit Kokosmilch",
+        "recipeCategory": [
+          {
+            "id": "05698063-1f81-4fcd-a18d-b3a657bbfc98",
+            "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+            "name": "Abendessen",
+            "slug": "abendessen",
+            "recipeCount": 0
+          }
+        ],
+        "tags": [
+          {
+            "id": "59635319-4580-40b1-a368-5eff4de4899e",
+            "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+            "name": "Schnell",
+            "slug": "schnell",
+            "recipeCount": 0
+          }
+        ],
+        "tools": [],
+        "rating": 4.0,
+        "orgURL": "https://example.com/linsensuppe",
+        "dateAdded": "2026-11-25",
+        "dateUpdated": "2026-11-25T10:18:48.714748Z",
+        "createdAt": "2026-11-25T10:18:48.545955Z",
+        "updatedAt": "2026-11-25T10:18:49.111824Z"
+      }
+    }
+  ],
+  "labelSettings": []
+}

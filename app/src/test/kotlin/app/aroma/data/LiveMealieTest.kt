@@ -6,304 +6,66 @@ import app.aroma.core.model.MealType
 import app.aroma.core.model.Organizer
 import app.aroma.core.model.RecipeQuery
 import app.aroma.core.model.RecipeSort
+import app.aroma.data.repository.AuthRepository
+import app.aroma.data.repository.TimelineRepository
+import app.aroma.data.session.SessionManager
 import app.aroma.feature.editor.RecipeDraft
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.Request
 import org.junit.After
+import org.junit.AfterClass
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
-import java.net.HttpURLConnection
-import java.net.URI
+import retrofit2.HttpException
 import java.time.LocalDate
 import java.util.Locale
 import java.util.UUID
 
-/**
- * Runs the data layer against a real Mealie server. Skipped unless the server is configured:
- *
- *     MEALIE_TEST_URL=http://localhost:9000 MEALIE_TEST_USER=... MEALIE_TEST_PASSWORD=... ./gradlew testDebugUnitTest
- *
- * The tests create and remove their own data, so an empty server is fine.
- */
+/** Aroma's data layer against a real Mealie server (see [LiveMealie]): what it writes, Mealie keeps, and what it asks for, Mealie finds. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class LiveMealieTest {
-    private val url: String? = System.getenv("MEALIE_TEST_URL")
-    private val user: String? = System.getenv("MEALIE_TEST_USER")
-    private val password: String? = System.getenv("MEALIE_TEST_PASSWORD")
     private lateinit var env: TestEnvironment
-    private lateinit var recipeSlug: String
-    private val recipeName = "Aromatestrezept ${UUID.randomUUID().toString().take(8)}"
+
+    /** Makes the names of what a test creates its own, on a server other runs may share. */
+    private val mark = UUID.randomUUID().toString().take(8)
 
     @Before
     fun setUp() {
-        assumeTrue("MEALIE_TEST_URL is not set", !url.isNullOrBlank())
+        LiveMealie.assumeConfigured()
         env = TestEnvironment()
-        runBlocking {
-            val server = env.auth.probe(url!!.removePrefix("http://").removePrefix("https://"))
-            env.auth.signIn(server, user!!, password!!)
-            recipeSlug = createRecipe(recipeName)
-        }
     }
 
     @After
     fun tearDown() {
-        if (::env.isInitialized) {
-            runBlocking {
-                if (env.sessions.current != null && ::recipeSlug.isInitialized) runCatching { env.recipes.delete(recipeSlug) }
-                env.auth.signOut()
-            }
-            env.close()
-        }
-    }
-
-    /** A recipe with plain-text ingredients and steps, written the way the editor saves it. */
-    private suspend fun createRecipe(name: String): String {
-        val slug = env.recipes.create(name)
-        val original = env.recipes.recipeJson(slug)
-        val form =
-            RecipeDraft.formFrom(original, Locale.GERMANY).copy(
-                servings = "4",
-                ingredients = "2 Stangen Lauch\n3 Eier\n200 g Mehl",
-                steps = listOf("Lauch in Ringe schneiden.", "Alles verrühren und 10 Minuten ruhen lassen."),
-            )
-        return env.recipes.update(slug, RecipeDraft.patch(original, form, Locale.GERMANY) { "${it / 60} Min." })
+        if (::env.isInitialized) env.close()
     }
 
     @Test
-    fun `sign in creates a device token that is revoked on sign out`() =
+    fun `a recipe saved as the editor writes it comes back, is found and cooked, and signing out revokes the token`() =
         runBlocking {
-            val session = env.sessions.current
-            assertNotNull(session)
-            assertNotNull("a long-lived API token was created", session!!.tokenId)
-            assertTrue(
-                env.sessions
-                    .api()
-                    .currentUser()
-                    .id == session.userId,
-            )
-        }
-
-    @Test
-    fun `recipes load page by page and in full`() =
-        runBlocking {
-            val first = env.recipes.page(RecipeQuery(sort = RecipeSort.Name), page = 1, perPage = 5)
-            assertTrue(first.items.isNotEmpty())
-            assertFalse(first.isOffline)
-            val recipe =
-                env.recipes
-                    .recipe(recipeSlug)
-                    .first { !it.isRefreshing }
-                    .data
-            assertEquals(recipeName, recipe.name)
-            assertEquals(3, recipe.ingredients.size)
-            assertEquals(2, recipe.steps.size)
-            assertEquals(4.0, recipe.servings, 0.0)
-            val organizers =
-                env.recipes
-                    .organizers()
-                    .first { !it.isRefreshing }
-                    .data
-            assertNotNull(organizers)
-        }
-
-    @Test
-    fun `a recipe is filed under a kind of dish, a new category and a new tag, each made only once`() =
-        runBlocking {
-            val before =
-                env.recipes
-                    .organizers()
-                    .first { !it.isRefreshing }
-                    .data
-            val suffix = UUID.randomUUID().toString().take(6)
-            val category = Organizer.new("Aromatestkategorie $suffix")
-            val tag = Organizer.new("Aromatestschlagwort $suffix")
-            try {
-                val filing = Filing(listOf(category), listOf(tag)).toggle(Meal.Dessert, before.categories, "Nachtisch")
-                val saved = env.recipes.file(recipeSlug, filing)
-                assertTrue((saved.categories + saved.tags).none { it.isNew })
-
-                val recipe =
-                    env.recipes
-                        .recipe(recipeSlug)
-                        .first { !it.isRefreshing }
-                        .data
-                assertEquals(setOf(Meal.Dessert), Filing(recipe.categories, recipe.tags).meals)
-                assertEquals(saved.categories.map { it.id }.toSet(), recipe.categories.map { it.id }.toSet())
-                assertEquals(listOf(tag.name), recipe.tags.map { it.name })
-
-                // The home and recipes tabs find it by the kind of dish.
-                val organizers =
-                    env.recipes
-                        .organizers()
-                        .first { !it.isRefreshing }
-                        .data
-                val desserts = env.recipes.page(RecipeQuery(mealNames = Meal.Dessert.namesIn(organizers)), page = 1, perPage = -1)
-                assertTrue(desserts.items.any { it.slug == recipeSlug })
-
-                // Named again in other letters, it is the category made before; taking the kind of dish off keeps it.
-                val again = Filing(recipe.categories + Organizer.new(category.name.uppercase()), recipe.tags)
-                val refiled = env.recipes.file(recipeSlug, again.toggle(Meal.Dessert, organizers.categories, "Nachtisch"))
-                assertEquals(listOf(saved.categories.single { it.name == category.name }.id), refiled.categories.map { it.id })
-                val form = RecipeDraft.formFrom(env.recipes.recipeJson(recipeSlug), Locale.GERMANY)
-                assertEquals(listOf(category.name), form.categories.map { it.name })
-                assertEquals(listOf(tag.name), form.tags.map { it.name })
-            } finally {
-                // Only what this test made goes again.
-                val after =
-                    env.recipes
-                        .organizers()
-                        .first { !it.isRefreshing }
-                        .data
-                (after.categories - before.categories.toSet()).forEach { deleteOrganizer("categories", it.id) }
-                (after.tags - before.tags.toSet()).forEach { deleteOrganizer("tags", it.id) }
-            }
-        }
-
-    private fun deleteOrganizer(kind: String, id: String) {
-        val connection = URI("${url!!.trimEnd('/')}/api/organizers/$kind/$id").toURL().openConnection() as HttpURLConnection
-        connection.requestMethod = "DELETE"
-        connection.setRequestProperty("Authorization", "Bearer ${env.sessions.current!!.token}")
-        assertEquals(200, connection.responseCode)
-        connection.disconnect()
-    }
-
-    @Test
-    fun `search finds a recipe by name`() =
-        runBlocking {
-            val result = env.recipes.page(RecipeQuery(search = recipeName.substringAfter(' ')), page = 1)
-            assertEquals(listOf(recipeSlug), result.items.map { it.slug })
-        }
-
-    @Test
-    fun `favorites round trip`() =
-        runBlocking {
-            val recipe =
-                env.recipes
-                    .recipe(recipeSlug)
-                    .first { !it.isRefreshing }
-                    .data
-            val before = env.recipes.loadRatings(fresh = true)[recipe.id]?.isFavorite ?: false
-            env.recipes.setFavorite(recipe.id, recipe.slug, !before)
-            assertEquals(!before, env.recipes.loadRatings(fresh = true)[recipe.id]?.isFavorite ?: false)
-            val favorites = env.recipes.page(RecipeQuery(favoritesOnly = true), page = 1)
-            assertEquals(!before, favorites.items.any { it.id == recipe.id })
-            env.recipes.setFavorite(recipe.id, recipe.slug, before)
-        }
-
-    @Test
-    fun `meal plan entries can be added and removed`() =
-        runBlocking {
-            val day = LocalDate.now().plusDays(30)
-            val title = "Aroma test ${UUID.randomUUID()}"
-            val created = env.mealPlans.add(day, MealType.Lunch, recipeId = null, title = title, note = "")
-            val week =
-                env.mealPlans
-                    .range(day, 1)
-                    .first { !it.isRefreshing }
-                    .data
-            assertTrue(week.any { it.title == title && it.type == MealType.Lunch })
-            env.mealPlans.delete(created.id)
-            assertTrue(
-                env.mealPlans
-                    .range(day, 1)
-                    .first { !it.isRefreshing }
-                    .data
-                    .none { it.title == title },
-            )
-        }
-
-    @Test
-    fun `shopping changes are queued, synced and survive a refresh`() =
-        runBlocking {
-            val listId = env.shopping.createList("Aroma test ${UUID.randomUUID()}")
-            try {
-                env.shopping.refresh(listId)
-                env.shopping.add(listId, "2 Zitronen")
-                env.shopping.add(listId, "Kaffee")
-                val local = env.shopping.observe(listId).first()!!
-                assertEquals(2, local.items.size)
-                assertEquals(2, env.shopping.pendingCount(listId).first())
-
-                assertTrue(env.shopping.sync())
-                env.shopping.refresh(listId)
-                val synced = env.shopping.observe(listId).first()!!
-                assertEquals(setOf("2 Zitronen", "Kaffee"), synced.items.map { it.note }.toSet())
-
-                val coffee = synced.items.first { it.note == "Kaffee" }
-                env.shopping.toggle(listId, coffee.id)
-                env.shopping.sync()
-                env.shopping.refresh(listId)
-                assertTrue(
-                    env.shopping
-                        .observe(listId)
-                        .first()!!
-                        .items
-                        .first { it.id == coffee.id }
-                        .checked,
-                )
-
-                env.shopping.clearChecked(listId)
-                env.shopping.sync()
-                env.shopping.refresh(listId)
-                assertEquals(
-                    listOf("2 Zitronen"),
-                    env.shopping
-                        .observe(listId)
-                        .first()!!
-                        .items
-                        .map { it.note },
-                )
-            } finally {
-                env.shopping.deleteList(listId)
-            }
-        }
-
-    @Test
-    fun `recipe ingredients can be added to a list`() =
-        runBlocking {
-            val listId = env.shopping.createList("Aroma test ${UUID.randomUUID()}")
-            try {
-                val recipe =
-                    env.recipes
-                        .recipe(recipeSlug)
-                        .first { !it.isRefreshing }
-                        .data
-                val raw =
-                    env.recipes
-                        .recipeJson(recipe.slug)["recipeIngredient"]!!
-                        .jsonArray
-                        .map { it.jsonObject }
-                env.shopping.addRecipe(listId, recipe.id, 1.0, raw.take(2))
-                env.shopping.refresh(listId)
-                val list = env.shopping.observe(listId).first()!!
-                assertTrue(list.items.isNotEmpty())
-                assertTrue(list.items.all { it.recipeNames.contains(recipe.name) })
-            } finally {
-                env.shopping.deleteList(listId)
-            }
-        }
-
-    @Test
-    fun `editing keeps structured ingredients that were not touched`() =
-        runBlocking {
-            var slug = env.recipes.create("Aroma test ${UUID.randomUUID()}")
+            // A phone of its own name: Mealie gives a user's tokens of one name made within a second the same
+            // value, and taking this one back would leave it working as the token of the class's other sign-in.
+            val auth = AuthRepository(env.clients, env.sessions, env.database, deviceName = "Test $mark")
+            auth.signIn(auth.probe(LiveMealie.host), LiveMealie.user, LiveMealie.password)
+            val session = env.sessions.current!!
+            assertNotNull("signing in made a token for this phone", session.tokenId)
+            val name = "Aromatestrezept $mark"
+            var slug = env.recipes.create(name)
             try {
                 val original = env.recipes.recipeJson(slug)
                 val form =
                     RecipeDraft.formFrom(original, Locale.GERMANY).copy(
-                        description = "Ein Testrezept.",
                         servings = "2",
                         prepMinutes = "15",
                         ingredients = "# Teig\n200 g Mehl\n2 Eier",
@@ -315,29 +77,215 @@ class LiveMealieTest {
                         .recipe(slug)
                         .first { !it.isRefreshing }
                         .data
+                assertEquals(name, saved.name)
                 assertEquals(listOf("200 g Mehl", "2 Eier"), saved.ingredients.map { it.note })
                 assertEquals("Teig", saved.ingredients.first().section)
-                assertEquals(2, saved.steps.size)
-                val prep = saved.prepTime
-                assertTrue(
-                    "prep time is stored as seconds (Mealie 3) or text (Mealie 2): $prep",
-                    prep?.seconds == 900 || prep?.text == "15 Min.",
-                )
+                assertEquals(listOf("Alles verrühren.", "10 Minuten backen."), saved.steps.map { it.text })
                 assertEquals(2.0, saved.servings, 0.0)
-
+                assertTrue(
+                    "Mealie keeps the prep time as seconds (3) or as text (2): ${saved.prepTime}",
+                    saved.prepTime?.seconds == 900 || saved.prepTime?.text == "15 Min.",
+                )
                 val again = env.recipes.recipeJson(slug)
-                val unchanged = RecipeDraft.patch(again, RecipeDraft.formFrom(again, Locale.GERMANY), Locale.GERMANY) { "" }
-                assertTrue("saving without changes sends nothing", unchanged.isEmpty())
+                assertTrue(
+                    "saving without a change sends nothing",
+                    RecipeDraft.patch(again, RecipeDraft.formFrom(again, Locale.GERMANY), Locale.GERMANY) { "" }.isEmpty(),
+                )
+
+                val first = env.recipes.page(RecipeQuery(sort = RecipeSort.Name), page = 1, perPage = 1)
+                assertEquals(1, first.items.size)
+                assertEquals((first.total ?: 0) > 1, first.hasMore)
+                assertEquals(listOf(slug), found(RecipeQuery(search = mark)))
+
+                // Cooked now, it is left out of the recipes cooked before yesterday and found among those cooked
+                // before the day after tomorrow, with a day to spare for the server's time zone.
+                TimelineRepository(env.sessions).cooked(saved.id, slug, "Tester made this")
+                val today = LocalDate.now()
+                assertEquals(emptyList<String>(), found(RecipeQuery(search = mark, cookedBefore = today.minusDays(1))))
+                assertEquals(listOf(slug), found(RecipeQuery(search = mark, cookedBefore = today.plusDays(2))))
+            } finally {
+                env.recipes.delete(slug)
+            }
+            auth.signOut()
+            val api = env.clients.create(SessionManager.baseUrl(session.serverUrl))
+            val refused = runCatching { api.currentUser("Bearer ${session.token}") }.exceptionOrNull()
+            assertEquals("Mealie took the token back", 401, (refused as? HttpException)?.code())
+        }
+
+    @Test
+    fun `a recipe is filed under a new category, a new tag and a meal, and found by each, among favourites too`() =
+        runBlocking {
+            live.signIn(env)
+            val slug = env.recipes.create("Aromatestrezept $mark")
+            val id =
+                env.recipes
+                    .recipeJson(slug)["id"]!!
+                    .jsonPrimitive.content
+            val before = organizers()
+            try {
+                val category = Organizer.new("Aromatestkategorie $mark")
+                val tag = Organizer.new("Aromatestschlagwort $mark")
+                val saved =
+                    env.recipes.file(
+                        slug,
+                        Filing(listOf(category), listOf(tag)).toggle(Meal.Dessert, before.categories, "Nachtisch"),
+                    )
+                assertTrue("Mealie made the new category and tag", (saved.categories + saved.tags).none { it.isNew })
+                val recipe =
+                    env.recipes
+                        .recipe(slug)
+                        .first { !it.isRefreshing }
+                        .data
+                assertEquals(setOf(Meal.Dessert), Filing(recipe.categories, recipe.tags).meals)
+                assertEquals(saved.categories.map { it.id }.toSet(), recipe.categories.map { it.id }.toSet())
+                assertEquals(listOf(tag.name), recipe.tags.map { it.name })
+
+                // A meal is a category or a tag of its name.
+                assertEquals(listOf(slug), found(RecipeQuery(search = mark, mealNames = Meal.Dessert.namesIn(organizers()))))
+                assertEquals(listOf(slug), found(RecipeQuery(search = mark, mealNames = listOf(category.name))))
+                assertEquals(listOf(slug), found(RecipeQuery(search = mark, mealNames = listOf(tag.name))))
+
+                env.recipes.setFavorite(id, slug, true)
+                assertEquals(true, env.recipes.loadRatings(fresh = true)[id]?.isFavorite)
+                assertEquals(listOf(slug), found(RecipeQuery(search = mark, favoritesOnly = true)))
+                assertEquals(listOf(slug), found(RecipeQuery(favoritesOnly = true, mealNames = listOf(tag.name))))
+            } finally {
+                // Mealie 2.0 cannot delete a recipe while it is someone's favourite.
+                env.recipes.setFavorite(id, slug, false)
+                env.recipes.delete(slug)
+                // Only what this test made goes again.
+                val after = organizers()
+                (after.categories - before.categories.toSet()).forEach { delete("api/organizers/categories/${it.id}") }
+                (after.tags - before.tags.toSet()).forEach { delete("api/organizers/tags/${it.id}") }
+            }
+        }
+
+    @Test
+    fun `a planned recipe moves to another day and meal, shows in its days and goes again`() =
+        runBlocking {
+            live.signIn(env)
+            val slug = env.recipes.create("Aromatestrezept $mark")
+            val day = LocalDate.now().plusDays(40)
+            try {
+                val recipe =
+                    env.recipes
+                        .recipe(slug)
+                        .first { !it.isRefreshing }
+                        .data
+                val planned = env.mealPlans.add(day, MealType.Lunch, recipeId = recipe.id, title = "", note = "")
+                try {
+                    env.mealPlans.move(planned.id, day.plusDays(1), MealType.Dinner)
+                    val moved = plannedFrom(day).single { it.id == planned.id }
+                    assertEquals(day.plusDays(1), moved.date)
+                    assertEquals(MealType.Dinner, moved.type)
+                    assertEquals(slug, moved.recipe?.slug)
+                } finally {
+                    env.mealPlans.delete(planned.id)
+                }
+                assertTrue(plannedFrom(day).none { it.id == planned.id })
             } finally {
                 env.recipes.delete(slug)
             }
         }
 
     @Test
-    fun `signing out forgets the session`() =
+    fun `a list syncs what is added, ticked off and cleared on the phone, takes a recipe's ingredients and goes again`() =
         runBlocking {
-            env.auth.signOut()
-            assertNull(env.sessions.current)
-            env.auth.signIn(env.auth.probe(url!!), user!!, password!!)
+            live.signIn(env)
+            val listId = env.shopping.createList("Aromatestliste $mark")
+            val slug = env.recipes.create("Aromatestrezept $mark")
+            try {
+                assertTrue(lists().any { it.id == listId })
+                env.shopping.add(listId, "2 Zitronen")
+                env.shopping.add(listId, "Kaffee")
+                assertEquals(2, env.shopping.pendingCount(listId).first())
+                assertTrue(env.shopping.sync())
+                env.shopping.refresh(listId)
+                val coffee = items(listId).single { it.note == "Kaffee" }
+
+                env.shopping.toggle(listId, coffee.id)
+                assertTrue(env.shopping.sync())
+                env.shopping.refresh(listId)
+                assertTrue(items(listId).single { it.id == coffee.id }.checked)
+
+                env.shopping.clearChecked(listId)
+                assertTrue(env.shopping.sync())
+                env.shopping.refresh(listId)
+                assertEquals(listOf("2 Zitronen"), items(listId).map { it.note })
+
+                val original = env.recipes.recipeJson(slug)
+                val form = RecipeDraft.formFrom(original, Locale.GERMANY).copy(ingredients = "2 Stangen Lauch\n3 Eier\n200 g Mehl")
+                env.recipes.update(slug, RecipeDraft.patch(original, form, Locale.GERMANY) { "" })
+                val recipe = env.recipes.recipeJson(slug)
+                val ingredients = recipe["recipeIngredient"]!!.jsonArray.map { it.jsonObject }
+                env.shopping.addRecipe(listId, recipe["id"]!!.jsonPrimitive.content, 1.0, ingredients.take(2))
+                env.shopping.refresh(listId)
+                val name = recipe["name"]!!.jsonPrimitive.content
+                assertEquals(listOf("2 Zitronen"), items(listId).filter { name !in it.recipeNames }.map { it.note })
+                assertEquals(2, items(listId).count { name in it.recipeNames })
+            } finally {
+                env.recipes.delete(slug)
+                env.shopping.deleteList(listId)
+            }
+            assertTrue(lists().none { it.id == listId })
         }
+
+    /** The slugs of all recipes [query] finds. */
+    private suspend fun found(query: RecipeQuery) =
+        env.recipes
+            .page(query, page = 1, perPage = -1)
+            .items
+            .map { it.slug }
+
+    private suspend fun organizers() =
+        env.recipes
+            .organizers()
+            .first { !it.isRefreshing }
+            .data
+
+    private suspend fun plannedFrom(day: LocalDate) =
+        env.mealPlans
+            .range(day, 2)
+            .first { !it.isRefreshing }
+            .data
+
+    private suspend fun lists() =
+        env.shopping
+            .lists()
+            .first { !it.isRefreshing }
+            .data
+
+    private suspend fun items(listId: String) =
+        env.shopping
+            .observe(listId)
+            .first()!!
+            .items
+
+    private suspend fun delete(path: String) =
+        withContext(Dispatchers.IO) {
+            val url =
+                env.sessions
+                    .credentials()!!
+                    .server
+                    .resolve(path)!!
+            env.clients.httpClient
+                .newCall(
+                    Request
+                        .Builder()
+                        .url(url)
+                        .delete()
+                        .build(),
+                ).execute()
+                .use { response ->
+                    assertTrue("Mealie answered ${response.code}", response.isSuccessful)
+                }
+        }
+
+    companion object {
+        private val live = LiveMealie()
+
+        @JvmStatic
+        @AfterClass
+        fun signOut() = live.signOut()
+    }
 }

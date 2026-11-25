@@ -18,12 +18,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
 import java.util.UUID
 
 /** How an import tells that it ended: on its screen when that is open, otherwise in a notification. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class RecipeImportsTest {
     private val context = ApplicationProvider.getApplicationContext<Application>()
     private val env = TestEnvironment()

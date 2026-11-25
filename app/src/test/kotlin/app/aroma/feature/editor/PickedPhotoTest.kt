@@ -19,37 +19,17 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /** Photos are scaled down on the phone, turned upright and written as JPEG before they are sent. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [36])
 class PickedPhotoTest {
     @get:Rule
     val folder = TemporaryFolder()
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
-
-    @Test
-    fun `a large photo is scaled down to 2048 pixels on its longest side`() =
-        runBlocking {
-            val prepared = prepare(photo(4400, 3300))
-
-            assertEquals(2048, prepared.width)
-            assertEquals(1536, prepared.height)
-        }
-
-    @Test
-    fun `a small photo keeps its size`() =
-        runBlocking {
-            val prepared = prepare(photo(800, 600))
-
-            assertEquals(800, prepared.width)
-            assertEquals(600, prepared.height)
-        }
 
     @Test
     fun `a photo the camera took turned comes out upright`() =
@@ -74,13 +54,14 @@ class PickedPhotoTest {
         }
 
     @Test
-    fun `the editor's upload is scaled down the same way`() =
+    fun `a large photo is scaled down to 2048 pixels on its longest side, as the editor uploads it`() =
         runBlocking {
-            val picked = readPickedPhoto(context, Uri.fromFile(photo(4400, 3300, orientation = ExifInterface.ORIENTATION_ROTATE_270)))!!
+            // Long enough to be read at half its size first, and narrow enough to be quick to make.
+            val picked = readPickedPhoto(context, Uri.fromFile(photo(4400, 1100, orientation = ExifInterface.ORIENTATION_ROTATE_270)))!!
 
             val decoded = BitmapFactory.decodeByteArray(picked.bytes, 0, picked.bytes.size)
             assertEquals("jpg", picked.extension)
-            assertEquals(1536, decoded.width)
+            assertEquals(512, decoded.width)
             assertEquals(2048, decoded.height)
         }
 

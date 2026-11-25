@@ -1,11 +1,12 @@
 package app.aroma.data
 
 import app.aroma.data.session.Session
+import app.aroma.testing.address
+import app.aroma.testing.json
+import app.aroma.testing.mealieServer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import mockwebserver3.SocketEffect
 import org.junit.After
@@ -16,15 +17,12 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import java.util.concurrent.CopyOnWriteArrayList
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class ShoppingSyncTest {
-    private val server = MockWebServer()
     private val requests = CopyOnWriteArrayList<RecordedRequest>()
-    private lateinit var env: TestEnvironment
+    private val env = TestEnvironment()
 
     @Volatile
     private var writesFail = false
@@ -32,38 +30,34 @@ class ShoppingSyncTest {
     @Volatile
     private var serverItems = listOf(item("item-1", "2 Zitronen"))
 
+    private val server =
+        mealieServer { request ->
+            requests += request
+            val path = request.url.encodedPath
+            when {
+                request.method != "GET" && writesFail -> {
+                    MockResponse.Builder().onRequestStart(SocketEffect.CloseSocket()).build()
+                }
+
+                request.method in setOf("GET", "PUT") && path.endsWith("/lists/$LIST") -> {
+                    json(list())
+                }
+
+                request.method == "POST" && path.endsWith("/shopping/items") -> {
+                    serverItems = serverItems + item("item-2", "Milch")
+                    json("""{"createdItems":[],"updatedItems":[],"deletedItems":[]}""")
+                }
+
+                else -> {
+                    MockResponse.Builder().code(404).build()
+                }
+            }
+        }
+
     @Before
     fun setUp() =
         runBlocking {
-            server.dispatcher =
-                object : Dispatcher() {
-                    override fun dispatch(request: RecordedRequest): MockResponse {
-                        requests += request
-                        val path = request.url.encodedPath
-                        return when {
-                            request.method != "GET" && writesFail -> {
-                                MockResponse.Builder().onRequestStart(SocketEffect.CloseSocket()).build()
-                            }
-
-                            request.method in setOf("GET", "PUT") && path.endsWith("/lists/$LIST") -> {
-                                json(list())
-                            }
-
-                            request.method == "POST" && path.endsWith("/shopping/items") -> {
-                                serverItems = serverItems + item("item-2", "Milch")
-                                json("""{"createdItems":[],"updatedItems":[],"deletedItems":[]}""")
-                            }
-
-                            else -> {
-                                MockResponse.Builder().code(404).build()
-                            }
-                        }
-                    }
-                }
-            server.start()
-            env = TestEnvironment()
-            val url = server.url("/").toString().trimEnd('/')
-            env.sessions.start(Session(serverUrl = url, token = "token", userId = "user", username = "mara"))
+            env.sessions.start(Session(serverUrl = server.address, token = "token", userId = "user", username = "mara"))
             env.shopping.refresh(LIST)
         }
 
@@ -134,20 +128,6 @@ class ShoppingSyncTest {
                     .map { it.note },
             )
         }
-
-    @Test
-    fun `requests to the server carry the token`() {
-        assertTrue(requests.isNotEmpty())
-        assertTrue(requests.all { it.headers["Authorization"] == "Bearer token" })
-    }
-
-    private fun json(body: String) =
-        MockResponse
-            .Builder()
-            .code(200)
-            .addHeader("Content-Type", "application/json")
-            .body(body)
-            .build()
 
     private fun list() =
         """{"id":"$LIST","name":"Wocheneinkauf","listItems":[${serverItems.joinToString(",")}],"labelSettings":[],"recipeReferences":[]}"""

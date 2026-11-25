@@ -6,12 +6,13 @@ import org.junit.Test
 
 class LinkPreviewTest {
     @Test
-    fun `reads an Instagram post's caption with its lines and its photo`() {
+    fun `reads an Instagram post's caption with its lines and its photo, and leaves references it does not know`() {
         val html =
             """
             <html><head>
             <meta property="og:title"
               content="Koch mit mir on Instagram: &quot;Gnocchi &#x1f345;&#10;- 500 g Gnocchi&#10;1. Braten, bis sie &gt; goldbraun sind&quot;" />
+            <meta property="og:description" content="Salz &amp Pfeffer &hellip;" />
             <meta property="og:image" content="https://scontent.cdninstagram.com/a.jpg?stp=1&amp;oh=2" />
             </head><body></body></html>
             """.trimIndent()
@@ -19,6 +20,7 @@ class LinkPreviewTest {
         val preview = LinkPreview.parse(html)
 
         assertEquals("Koch mit mir on Instagram: \"Gnocchi 🍅\n- 500 g Gnocchi\n1. Braten, bis sie > goldbraun sind\"", preview.title)
+        assertEquals("Salz &amp Pfeffer &hellip;", preview.description)
         assertEquals("https://scontent.cdninstagram.com/a.jpg?stp=1&oh=2", preview.image)
     }
 
@@ -45,14 +47,6 @@ class LinkPreviewTest {
         assertEquals(
             LinkPreview("Linsensuppe", "Wärmt von innen", "https://example.com/suppe.jpg"),
             LinkPreview.parse(html),
-        )
-    }
-
-    @Test
-    fun `references Aroma does not know stay as they are`() {
-        assertEquals(
-            "Salz &amp Pfeffer &hellip;",
-            LinkPreview.parse("""<meta property="og:title" content="Salz &amp Pfeffer &hellip;">""").title,
         )
     }
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# CI's checks, run before every push so the run on GitHub passes the first time. The live tests
-# use the Mealie server in MEALIE_TEST_URL, MEALIE_TEST_USER and MEALIE_TEST_PASSWORD, like CI's.
+# CI's checks, run before every push so the run on GitHub passes the first time. Where
+# MEALIE_TEST_URL, MEALIE_TEST_USER and MEALIE_TEST_PASSWORD name a Mealie server, the live tests
+# run against it too, as the Mealie workflow runs them for changes to the data layer.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if [ -z "${MEALIE_TEST_URL:-}" ]; then

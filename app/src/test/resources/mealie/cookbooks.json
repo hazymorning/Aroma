@@ -1,0 +1,28 @@
+{
+  "page": 1,
+  "per_page": 1,
+  "total": 1,
+  "total_pages": 1,
+  "items": [
+    {
+      "name": "Suppen",
+      "description": "Warm und gut",
+      "slug": "suppen",
+      "position": 1,
+      "public": false,
+      "queryFilterString": "",
+      "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+      "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+      "id": "0285ca60-32a9-4163-9216-b14c4f3d306b",
+      "queryFilter": {
+        "parts": []
+      },
+      "household": {
+        "id": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+        "name": "Family"
+      }
+    }
+  ],
+  "next": null,
+  "previous": null
+}

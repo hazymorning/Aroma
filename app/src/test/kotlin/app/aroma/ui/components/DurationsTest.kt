@@ -11,7 +11,7 @@ import org.robolectric.annotation.Config
 
 /** Every time a recipe comes with reads the same way on every page, the test times of the design brief included. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36], qualifiers = "de")
+@Config(qualifiers = "de")
 class DurationsTest {
     private val resources = ApplicationProvider.getApplicationContext<android.content.Context>().resources
 

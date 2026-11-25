@@ -85,33 +85,19 @@ class SocialPostsTest {
         }
 
     @Test
-    fun `a post shown only after signing in reads as no post`() =
+    fun `a sign-in page, wherever it is shown, or a page without a link preview reads as no post`() =
         runBlocking {
-            pages["/p/Gnocchi/"] = redirect("/accounts/login/?next=%2Fp%2FGnocchi%2F")
+            pages["/p/Sent/"] = redirect("/accounts/login/?next=%2Fp%2FSent%2F")
             pages["/accounts/login/"] =
                 page("""<meta property="og:title" content="Instagram"><meta property="og:description" content="Melde dich an">""")
-
-            assertNull(posts.read(link("/p/Gnocchi/")))
-        }
-
-    @Test
-    fun `a sign-in page shown at the post's own address reads as no post`() =
-        runBlocking {
-            pages["/p/Gnocchi/"] =
+            pages["/p/Shown/"] =
                 page(
                     """<meta property="og:title" content="Instagram">""" +
                         """<meta property="og:description" content="Create an account or log in to Instagram.">""",
                 )
+            pages["/p/Bare/"] = page("<title>Instagram</title>")
 
-            assertNull(posts.read(link("/p/Gnocchi/")))
-        }
-
-    @Test
-    fun `a page without a link preview reads as no post`() =
-        runBlocking {
-            pages["/p/Gnocchi/"] = page("<title>Instagram</title>")
-
-            assertNull(posts.read(link("/p/Gnocchi/")))
+            listOf("/p/Sent/", "/p/Shown/", "/p/Bare/").forEach { assertNull(it, posts.read(link(it))) }
         }
 
     @Test

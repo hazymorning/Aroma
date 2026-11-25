@@ -1,8 +1,8 @@
 name: Screenshots
 
 # Started by hand (Actions > Screenshots > Run workflow) for a design review: renders every screen,
-# sheet and widget with Roborazzi and uploads the images. CI does not render them, as they compare
-# nothing and take most of a test run.
+# sheet and widget with Roborazzi and uploads the images. CI neither builds nor renders them, as
+# they compare nothing and would take most of a test run.
 on:
   workflow_dispatch:
 

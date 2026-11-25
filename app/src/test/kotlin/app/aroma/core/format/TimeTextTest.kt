@@ -2,6 +2,7 @@ package app.aroma.core.format
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TimeTextTest {
@@ -14,22 +15,27 @@ class TimeTextTest {
     }
 
     @Test
-    fun `free text reads in German and English`() {
-        assertEquals(ReadTime(45), TimeText.read("45 min"))
-        assertEquals(ReadTime(45), TimeText.read("45 Minuten"))
-        assertEquals(ReadTime(80), TimeText.read("1 Std. 20 Min."))
-        assertEquals(ReadTime(80), TimeText.read("1 hour 20 minutes"))
-        assertEquals(ReadTime(80), TimeText.read("1:20 h"))
-        assertEquals(ReadTime(90), TimeText.read("1,5 Stunden"))
+    fun `free text reads in German and English, on a recipe's page as in the timers of its steps`() {
+        listOf(
+            "45 min" to ReadTime(45),
+            "45 Minuten" to ReadTime(45),
+            "1 Std. 20 Min." to ReadTime(80),
+            "1 hour 20 minutes" to ReadTime(80),
+            "1:20 h" to ReadTime(80),
+            "1,5 Stunden" to ReadTime(90),
+            "10–15 Minuten" to ReadTime(10, 15),
+            "10-15 min" to ReadTime(10, 15),
+            "10 bis 15 Minuten" to ReadTime(10, 15),
+            "1–2 Std." to ReadTime(60, 120),
+        ).forEach { (text, time) ->
+            assertEquals(text, time, TimeText.read(text))
+            val timer = DurationDetector.detect(text).single()
+            assertEquals(text, time, ReadTime(timer.seconds / 60, timer.upperSeconds?.div(60)))
+            assertEquals(text, text, text.substring(timer.start, timer.end))
+        }
+        // Mealie may keep a time as a bare number of minutes; in a step, a number alone is no timer.
         assertEquals(ReadTime(30), TimeText.read("30"))
-    }
-
-    @Test
-    fun `a span keeps both ends`() {
-        assertEquals(ReadTime(10, 15), TimeText.read("10–15 Minuten"))
-        assertEquals(ReadTime(10, 15), TimeText.read("10-15 min"))
-        assertEquals(ReadTime(10, 15), TimeText.read("10 bis 15 Minuten"))
-        assertEquals(ReadTime(60, 120), TimeText.read("1–2 Std."))
+        assertTrue(DurationDetector.detect("30").isEmpty())
     }
 
     @Test

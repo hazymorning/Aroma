@@ -1,0 +1,83 @@
+{
+  "page": 1,
+  "per_page": 2,
+  "total": 2,
+  "total_pages": 1,
+  "items": [
+    {
+      "date": "2026-11-25",
+      "endDate": null,
+      "entryType": "dinner",
+      "title": "",
+      "text": "",
+      "recipeId": "284219a7-34cd-4a9e-801f-44cb1099b150",
+      "recipeScale": 1.0,
+      "id": 1,
+      "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+      "userId": "77e299b6-ab5c-474c-ba3b-13f7bcbdc63f",
+      "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+      "recipe": {
+        "id": "284219a7-34cd-4a9e-801f-44cb1099b150",
+        "userId": "77e299b6-ab5c-474c-ba3b-13f7bcbdc63f",
+        "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+        "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+        "name": "Linsensuppe Fixture",
+        "slug": "linsensuppe-fixture",
+        "image": null,
+        "recipeServings": 4.0,
+        "recipeYieldQuantity": 0.0,
+        "recipeYield": "4 Portionen",
+        "totalTime": "1 hour 20 minutes",
+        "prepTime": "20 minutes",
+        "performTime": "1 hour",
+        "totalTimeSeconds": null,
+        "prepTimeSeconds": null,
+        "performTimeSeconds": null,
+        "description": "Rote Linsen mit Kokosmilch",
+        "recipeCategory": [
+          {
+            "id": "05698063-1f81-4fcd-a18d-b3a657bbfc98",
+            "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+            "name": "Abendessen",
+            "slug": "abendessen",
+            "recipeCount": 0
+          }
+        ],
+        "tags": [
+          {
+            "id": "59635319-4580-40b1-a368-5eff4de4899e",
+            "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+            "name": "Schnell",
+            "slug": "schnell",
+            "recipeCount": 0
+          }
+        ],
+        "tools": [],
+        "rating": 4.0,
+        "orgURL": "https://example.com/linsensuppe",
+        "dateAdded": "2026-11-25",
+        "dateUpdated": "2026-11-25T10:18:48.714748Z",
+        "createdAt": "2026-11-25T10:18:48.545955Z",
+        "updatedAt": "2026-11-25T10:18:49.111824Z"
+      },
+      "updatedAt": "2026-11-25T10:18:49.301878Z"
+    },
+    {
+      "date": "2026-11-25",
+      "endDate": null,
+      "entryType": "lunch",
+      "title": "Reste",
+      "text": "vom Vortag",
+      "recipeId": null,
+      "recipeScale": 1.0,
+      "id": 2,
+      "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+      "userId": "77e299b6-ab5c-474c-ba3b-13f7bcbdc63f",
+      "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+      "recipe": null,
+      "updatedAt": "2026-11-25T10:18:49.374213Z"
+    }
+  ],
+  "next": null,
+  "previous": null
+}

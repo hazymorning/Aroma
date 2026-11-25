@@ -1,14 +1,10 @@
 package app.aroma.screenshots
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.LinearGradient
-import android.graphics.Paint
-import android.graphics.Shader
+import android.content.Context
+import android.graphics.BitmapFactory
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasClickAction
@@ -29,46 +25,64 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.robolectric.annotation.GraphicsMode
+import java.io.File
+import kotlin.math.roundToInt
+
+/** How a screenshot is taken: in which language and theme, at which font size, on a phone how wide. */
+data class Look(
+    val locale: String,
+    val dark: Boolean,
+    val fontScale: Float = 1f,
+    val width: Int = PHONE_WIDTH,
+) {
+    val suffix =
+        "${if (dark) "dark" else "light"}_$locale" +
+            (if (fontScale == 1f) "" else "_${(fontScale * 100).roundToInt()}") +
+            (if (width == PHONE_WIDTH) "" else "_${width}dp")
+
+    override fun toString() = suffix
+
+    companion object {
+        /** A typical phone's window, in dp. */
+        const val PHONE_WIDTH = 411
+        const val PHONE_HEIGHT = 891
+    }
+}
 
 /**
- * Base for screenshot tests. Recipe photos are replaced by soft generated gradients,
- * so the images are deterministic and free of third-party content.
+ * Base for the screenshots of screens. Recipe photos are drawn as soft gradients ([photo]), from
+ * the server's addresses and from files on the phone alike, so the images stay alike from run to run.
  */
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 abstract class ScreenshotTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    protected open fun photoFor(url: String): Bitmap = gradient(url)
-
     @OptIn(DelicateCoilApi::class)
     @Before
-    fun installImages() {
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+    fun installPhotos() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
         val engine =
             FakeImageLoaderEngine
                 .Builder()
-                .intercept({ it is String && it.startsWith(SampleData.SERVER) }) { chain ->
-                    SuccessResult(
-                        image = photoFor(chain.request.data as String).asImage(),
-                        request = chain.request,
-                        dataSource = DataSource.MEMORY,
-                    )
+                .intercept({ it is String && it.startsWith(SERVER) }) { chain ->
+                    SuccessResult(photo(chain.request.data as String).asImage(), chain.request, DataSource.MEMORY)
+                }.intercept({ it is File }) { chain ->
+                    SuccessResult(BitmapFactory.decodeFile((chain.request.data as File).path).asImage(), chain.request, DataSource.DISK)
                 }.build()
-        val loader =
+        SingletonImageLoader.setUnsafe(
             ImageLoader
                 .Builder(context)
                 .components { add(engine) }
                 .coroutineContext(Dispatchers.Unconfined)
-                .build()
-        SingletonImageLoader.setUnsafe(loader)
+                .build(),
+        )
     }
 
-    protected fun snapshot(name: String, dark: Boolean, interact: () -> Unit = {}, content: @Composable () -> Unit) {
+    /** Renders [content] in [look]'s theme as build/outputs/roborazzi/[name].png, after [interact] had its way with it. */
+    protected fun snapshot(name: String, look: Look, interact: () -> Unit = {}, content: @Composable () -> Unit) {
         composeRule.setContent {
-            AromaTheme(darkTheme = dark) {
-                Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier) { content() }
-            }
+            AromaTheme(darkTheme = look.dark) { Surface(color = MaterialTheme.colorScheme.background) { content() } }
         }
         composeRule.waitForIdle()
         interact()
@@ -95,20 +109,5 @@ abstract class ScreenshotTest {
                     words.isBlank() && description.isBlank() && !config.contains(SemanticsProperties.EditableText)
                 }.map { node -> "${node.boundsInRoot} ${node.config}" }
         assertTrue("$name: taps without a name for TalkBack:\n" + unnamed.joinToString("\n"), unnamed.isEmpty())
-    }
-
-    private fun gradient(seed: String): Bitmap {
-        val palettes =
-            listOf(
-                intArrayOf(0xFFB9A27A.toInt(), 0xFF7E8F62.toInt()),
-                intArrayOf(0xFFCFAE82.toInt(), 0xFF9A6B45.toInt()),
-                intArrayOf(0xFFA9B78F.toInt(), 0xFF5F7353.toInt()),
-                intArrayOf(0xFFD8C3A0.toInt(), 0xFFB07B52.toInt()),
-            )
-        val colors = palettes[Math.floorMod(seed.hashCode(), palettes.size)]
-        val bitmap = Bitmap.createBitmap(400, 400, Bitmap.Config.ARGB_8888)
-        val paint = Paint().apply { shader = LinearGradient(0f, 0f, 400f, 400f, colors[0], colors[1], Shader.TileMode.CLAMP) }
-        Canvas(bitmap).drawRect(0f, 0f, 400f, 400f, paint)
-        return bitmap
     }
 }

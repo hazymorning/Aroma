@@ -7,6 +7,7 @@ import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
 import app.aroma.data.Loadable
+import app.aroma.data.attempt
 import app.aroma.data.isConnectivity
 import app.aroma.data.network.ServerConnection
 import app.aroma.data.reminder.RatingReminder
@@ -16,6 +17,7 @@ import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.session.SessionManager
 import app.aroma.data.session.SessionState
+import app.aroma.data.settings.HomeSection
 import app.aroma.data.settings.SettingsRepository
 import app.aroma.data.toAromaError
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -229,21 +232,26 @@ class HomeViewModel(
                 }
             }
 
-    /** What is still to buy on the list in use: the one last opened, or the first. */
+    /**
+     * What is still to buy on the list in use: the one last opened, or the first. The phone keeps a list
+     * only once something fetched it, so where Home shows the list, Home fetches it too, once it knows
+     * Mealie's lists: right after signing in the count is already there.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun openItems(): Flow<Loadable<Int>> =
         settings.settings
-            .map { it.lastShoppingList }
+            .map { it.lastShoppingList to (HomeSection.Shopping in it.homeSections) }
             .distinctUntilChanged()
-            .flatMapLatest { preferred ->
+            .flatMapLatest { (preferred, shown) ->
                 shopping.lists().flatMapLatest { lists ->
                     val id = (lists.data.firstOrNull { it.id == preferred } ?: lists.data.firstOrNull())?.id
                     if (id == null) {
                         flowOf(Loadable(0, lists.isRefreshing, lists.error))
                     } else {
-                        shopping.observe(id).map { list ->
-                            Loadable(list?.items?.count { !it.checked } ?: 0, lists.isRefreshing, lists.error)
-                        }
+                        shopping
+                            .observe(id)
+                            .map { list -> Loadable(list?.items?.count { !it.checked } ?: 0, lists.isRefreshing, lists.error) }
+                            .onStart { if (shown && !lists.isRefreshing) viewModelScope.launch { attempt { shopping.refresh(id) } } }
                     }
                 }
             }

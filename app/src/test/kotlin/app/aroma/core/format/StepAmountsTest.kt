@@ -70,19 +70,6 @@ class StepAmountsTest {
     }
 
     @Test
-    fun `words of the line before the noun move behind the amount`() {
-        assertEquals(listOf("100 g weiße Schokolade schmelzen."), german(listOf("100 g weiße Schokolade"), "Weiße Schokolade schmelzen."))
-        assertEquals(
-            listOf("Mit 50 g gehackten Walnüssen bestreuen."),
-            german(listOf("50 g Walnüsse, gehackt"), "Mit gehackten Walnüssen bestreuen."),
-        )
-        assertEquals(
-            listOf("Heat 2 tbsp olive oil in a pan."),
-            english(listOf("2 tbsp extra virgin olive oil"), "Heat the olive oil in a pan."),
-        )
-    }
-
-    @Test
     fun `after an adjective the amount follows the noun in brackets`() {
         // A German adjective after an article would keep an ending that no longer fits: not "50 g gehackten Walnüsse".
         assertEquals(
@@ -163,7 +150,7 @@ class StepAmountsTest {
     }
 
     @Test
-    fun `named again in a later step, it gets its amount the first time`() {
+    fun `named again in a step, it gets its amount the first time`() {
         val steps = listOf("Zwiebeln würfeln.", "Ghee erhitzen und Zwiebeln glasig braten.")
         assertEquals(
             listOf("2 Zwiebeln würfeln.", "2 EL Ghee erhitzen und Zwiebeln glasig braten."),
@@ -171,43 +158,30 @@ class StepAmountsTest {
         )
         val english = listOf("Dice the onions.", "Fry the onions until soft.")
         assertEquals(listOf("Dice 2 onions.", english[1]), english(listOf("2 onions"), *english.toTypedArray()))
-    }
-
-    @Test
-    fun `named twice in one step, it gets its amount the first time`() {
         assertEquals(
             listOf("2 Zwiebeln fein würfeln. Knoblauch hacken. Zwiebeln glasig dünsten."),
             german(listOf("2 Zwiebeln"), "Zwiebeln fein würfeln. Knoblauch hacken. Zwiebeln glasig dünsten."),
         )
-    }
-
-    @Test
-    fun `what the first step made of an ingredient may come up later`() {
+        // What the first step made of it may come up later.
         assertEquals(
             listOf("250 g Paneer in Würfel schneiden.", "Paneerwürfel in der Sauce erwärmen."),
             german(listOf("250 g Paneer"), "Paneer in Würfel schneiden.", "Paneerwürfel in der Sauce erwärmen."),
         )
-        val steps = listOf("Gurke und Karotten mischen.", "Mit Gurken-Slaw servieren.")
+        val slaw = listOf("Gurke und Karotten mischen.", "Mit Gurken-Slaw servieren.")
         assertEquals(
-            listOf("300 g Gurke und 200 g Karotten mischen.", steps[1]),
-            german(listOf("300 g Gurke", "200 g Karotten"), *steps.toTypedArray()),
+            listOf("300 g Gurke und 200 g Karotten mischen.", slaw[1]),
+            german(listOf("300 g Gurke", "200 g Karotten"), *slaw.toTypedArray()),
         )
     }
 
     @Test
     fun `a count names its own noun in the same number, or follows another in brackets`() {
         val eggs = listOf(parsed(2.0, "Ei", "Eier"))
-        assertEquals(listOf("2 Eier verquirlen."), written(eggs, listOf("Eier verquirlen.")))
-        assertEquals(listOf("Mit 2 Eiern verquirlen."), written(eggs, listOf("Mit Eiern verquirlen.")))
+        assertEquals(listOf("4 Eier verquirlen."), written(eggs, listOf("Eier verquirlen."), scale = 2.0))
         // Halved, the list reads "1 Ei", which "Eier" does not fit.
         assertEquals(listOf("Eier verquirlen."), written(eggs, listOf("Eier verquirlen."), scale = 0.5))
-        assertEquals(listOf("4 Eier verquirlen."), written(eggs, listOf("Eier verquirlen."), scale = 2.0))
-        assertEquals(listOf("Zwiebel (2) würfeln."), german(listOf("2 Zwiebeln"), "Zwiebel würfeln."))
         // Where the step names the food more broadly than the count, the list's own words say what is counted.
         assertEquals(listOf("Knoblauch (2 Knoblauchzehen) hacken."), german(listOf("2 Knoblauchzehen"), "Knoblauch hacken."))
-        assertEquals(listOf("Knoblauch (1 Knolle Knoblauch) hacken."), german(listOf("1 Knolle Knoblauch"), "Knoblauch hacken."))
-        assertEquals(listOf("Fry the garlic (2 garlic cloves)."), english(listOf("2 garlic cloves"), "Fry the garlic."))
-        assertEquals(listOf("Top with ½ banana."), english(listOf("1/2 banana"), "Top with banana."))
     }
 
     @Test

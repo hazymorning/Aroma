@@ -14,6 +14,7 @@ import app.aroma.data.JsonCache
 import app.aroma.data.attempt
 import app.aroma.data.local.AromaDatabase
 import app.aroma.data.network.ConnectivityNetworkMonitor
+import app.aroma.data.network.NetworkMonitor
 import app.aroma.data.network.ServerConnection
 import app.aroma.data.reminder.RatingReminder
 import app.aroma.data.remote.MealieClientFactory
@@ -24,6 +25,7 @@ import app.aroma.data.repository.RecipeRepository
 import app.aroma.data.repository.ShoppingRepository
 import app.aroma.data.repository.TimelineRepository
 import app.aroma.data.session.KeystoreCipher
+import app.aroma.data.session.SecretCipher
 import app.aroma.data.session.SessionManager
 import app.aroma.data.session.SessionState
 import app.aroma.data.session.SessionStore
@@ -53,9 +55,20 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.time.Duration
 
-/** Creates and holds the app's long-lived objects. */
-class AppContainer(context: Context) {
+/**
+ * Creates and holds the app's long-lived objects. A test's app replaces what only a phone has: the
+ * Keystore behind [cipher], the phone's [networks] and the file behind [database]; its fake Mealie
+ * answers within [answerTimeout] or not at all.
+ */
+class AppContainer(
+    context: Context,
+    cipher: SecretCipher = KeystoreCipher(),
+    networks: NetworkMonitor = ConnectivityNetworkMonitor(context.applicationContext),
+    private val database: AromaDatabase = Room.databaseBuilder(context.applicationContext, AromaDatabase::class.java, DATABASE).build(),
+    answerTimeout: Duration = MealieClientFactory.ANSWER_TIMEOUT,
+) {
     private val appContext = context.applicationContext
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -64,7 +77,6 @@ class AppContainer(context: Context) {
         PreferenceDataStoreFactory.create(corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }) {
             appContext.preferencesDataStoreFile("aroma")
         }
-    private val database = Room.databaseBuilder(appContext, AromaDatabase::class.java, DATABASE).build()
 
     val settings = SettingsRepository(dataStore)
 
@@ -78,13 +90,13 @@ class AppContainer(context: Context) {
     // The client reads the session, and tells the connection what became of a request, only when it
     // sends one, after all three exist.
     val clients: MealieClientFactory =
-        MealieClientFactory(appUserAgent, answers = { if (it) connection.answered() else connection.unanswered() }) {
+        MealieClientFactory(appUserAgent, answers = { if (it) connection.answered() else connection.unanswered() }, answerTimeout) {
             sessions.credentials()
         }
-    val sessions: SessionManager = SessionManager(SessionStore(dataStore, KeystoreCipher()), clients)
+    val sessions: SessionManager = SessionManager(SessionStore(dataStore, cipher), clients)
 
     /** Whether Mealie answers, as the phone's networks and every request tell. */
-    val connection = ServerConnection(ConnectivityNetworkMonitor(appContext), scope) { sessions.api().about() }
+    val connection = ServerConnection(networks, scope) { sessions.api().about() }
     private val cache = JsonCache(database.cache(), connection, sessions)
 
     val auth = AuthRepository(clients, sessions, database, deviceName = Build.MODEL, forgetOutsideDatabase = ::forgetAccount)

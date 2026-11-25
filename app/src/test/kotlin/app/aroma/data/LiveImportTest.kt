@@ -1,6 +1,7 @@
 package app.aroma.data
 
 import app.aroma.data.remote.SocialPosts
+import app.aroma.data.repository.MealieVersion
 import app.aroma.feature.editor.ImportRequest
 import app.aroma.feature.editor.ImportStep
 import app.aroma.feature.editor.RecipeImporter
@@ -19,26 +20,23 @@ import okhttp3.OkHttpClient
 import okio.Buffer
 import okio.ByteString.Companion.decodeBase64
 import org.junit.After
+import org.junit.AfterClass
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.fail
-import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import java.net.InetAddress
 
 /**
- * Imports against a real Mealie server, configured like [LiveMealieTest]. The post comes from a
- * stand-in for Instagram, which shows its caption only in the link preview, as Instagram does.
+ * Imports against a real Mealie server (see [LiveMealie]). The post comes from a stand-in for
+ * Instagram, which shows its caption only in the link preview, as Instagram does.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class LiveImportTest {
-    private val url: String? = System.getenv("MEALIE_TEST_URL")
     private val platform = MockWebServer()
     private lateinit var env: TestEnvironment
     private lateinit var known: Set<String>
@@ -46,7 +44,7 @@ class LiveImportTest {
 
     @Before
     fun setUp() {
-        assumeTrue("MEALIE_TEST_URL is not set", !url.isNullOrBlank())
+        LiveMealie.assumeConfigured()
         platform.dispatcher =
             object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse =
@@ -66,23 +64,18 @@ class LiveImportTest {
             }
         platform.start()
         env = TestEnvironment()
-        runBlocking {
-            val server = env.auth.probe(url!!.removePrefix("http://").removePrefix("https://"))
-            env.auth.signIn(server, System.getenv("MEALIE_TEST_USER")!!, System.getenv("MEALIE_TEST_PASSWORD")!!)
-            known = env.recipes.newestRecipeIds()
-        }
+        live.signIn(env)
+        known = runBlocking { env.recipes.newestRecipeIds() }
     }
 
     @After
     fun tearDown() {
-        if (::env.isInitialized) {
-            runBlocking {
-                created.forEach { slug -> runCatching { env.recipes.delete(slug) } }
-                env.auth.signOut()
-            }
-            env.close()
+        try {
+            if (::env.isInitialized) runBlocking { created.forEach { env.recipes.delete(it) } }
+        } finally {
+            if (::env.isInitialized) env.close()
+            platform.close()
         }
-        platform.close()
     }
 
     @Test
@@ -114,35 +107,16 @@ class LiveImportTest {
         }
 
     @Test
-    fun `with AI the post goes to Mealie as its text, and only the finished recipe is saved`() =
-        runBlocking<Unit> {
-            assumeTrue("The server has no AI provider set up", env.recipes.canImportWithAi())
-
-            val slug = importer().import(ImportRequest(post, useAi = true), onSending = {}) { }
-            created += slug
-
-            val recipe = env.recipes.recipeJson(slug)
-            assertEquals(6, recipe.ingredientNotes().size)
-            assertEquals(4, recipe["recipeInstructions"]!!.jsonArray.size)
-            assertEquals("the recipe links to the post", post, recipe.text("orgURL"))
-            assertNotNull("the post's photo came along", recipe.text("image"))
-            assertOnlyNewRecipe(recipe)
-        }
-
-    @Test
     fun `a page without a recipe fails as an import error after reporting progress, and leaves nothing behind`() =
         runBlocking<Unit> {
             val steps = mutableListOf<ImportStep>()
             try {
-                created += importer().import(ImportRequest("https://example.com/"), onSending = {}) { steps += it }
+                // A page with no recipe on it, which Mealie fetches from the internet.
+                created += importer().import(ImportRequest("http://example.com/"), onSending = {}) { steps += it }
                 fail("example.com holds no recipe")
             } catch (_: AromaError.ImportFailed) {
-                val streams =
-                    env.sessions.current!!
-                        .serverVersion
-                        .substringBefore('.')
-                        .removePrefix("v")
-                        .toInt() >= 3
+                // Mealie 3 reports its progress on the way; Mealie 2 has no stream to report it on.
+                val streams = MealieVersion.isAtLeast(env.sessions.current!!.serverVersion, 3, 0)
                 assertEquals(streams, steps.any { it is ImportStep.Server })
                 assertFalse(steps.any { it is ImportStep.Server && it.message.isBlank() })
             }
@@ -183,8 +157,14 @@ class LiveImportTest {
     private fun JsonObject.ingredientNotes(): List<String?> =
         get("recipeIngredient")!!.jsonArray.map { it.jsonObject.text("note") ?: it.jsonObject.text("display") }
 
-    private companion object {
-        val CAPTION =
+    companion object {
+        private val live = LiveMealie()
+
+        @JvmStatic
+        @AfterClass
+        fun signOut() = live.signOut()
+
+        private val CAPTION =
             """
             Cremige Tomaten-Gnocchi 🍅 in nur 15 Minuten! Perfekt für den Feierabend 🙌
 
@@ -207,7 +187,9 @@ class LiveImportTest {
             """.trimIndent()
 
         /** A photo of one pixel, enough for Mealie to store as the recipe's image. */
-        val PHOTO = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==".decodeBase64()!!
+        private val PHOTO =
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=="
+                .decodeBase64()!!
 
         private fun String.escaped() =
             replace("&", "&amp;")

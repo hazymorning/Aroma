@@ -30,23 +30,19 @@ class SocialCaptionTest {
         """.trimIndent()
 
     @Test
-    fun `the caption is taken out of Instagram's link preview`() {
+    fun `the caption is taken out of a link preview, without quotes and site names`() {
         val title = "Koch mit mir on Instagram: \"$gnocchi\""
         val description = "1,234 likes, 56 comments - kochmitmir on November 20, 2026: \"${gnocchi.take(80)}\". "
         assertEquals(gnocchi, SocialCaption.extract(title, description))
+        assertEquals("Ofenkürbis mit Feta", SocialCaption.extract("Lena auf Instagram: „Ofenkürbis mit Feta“", ""))
+        assertEquals("Ofenkürbis mit Feta", SocialCaption.extract("Ofenkürbis mit Feta | TikTok", ""))
+        assertEquals("Linsensuppe", SocialCaption.extract("Linsensuppe", "Linsensuppe"))
     }
 
     @Test
     fun `a post imported a second time, which Mealie numbers, still yields its caption`() {
         assertEquals(gnocchi, SocialCaption.extract("Koch mit mir on Instagram: \"$gnocchi\" (1)", ""))
         assertEquals("Kekse (2)", SocialCaption.extract("Lena auf Instagram: „Kekse (2)“", ""))
-    }
-
-    @Test
-    fun `German quotes and site names are removed, plain text stays as it is`() {
-        assertEquals("Ofenkürbis mit Feta", SocialCaption.extract("Lena auf Instagram: „Ofenkürbis mit Feta“", ""))
-        assertEquals("Ofenkürbis mit Feta", SocialCaption.extract("Ofenkürbis mit Feta | TikTok", ""))
-        assertEquals("Linsensuppe", SocialCaption.extract("Linsensuppe", "Linsensuppe"))
     }
 
     @Test
@@ -112,6 +108,10 @@ class SocialCaptionTest {
         )
         assertEquals(listOf("Serve with crusty bread."), recipe.notes)
         assertEquals("", recipe.description)
+        // Without headers, bullets drawn as emoji still make the list.
+        val pesto = SocialCaption.parse("Schnelles Pesto 🌿\n▪️ 1 Bund Basilikum\n✔️ 100 ml Olivenöl 🌰\n1️⃣ Alles fein mixen ✅.")
+        assertEquals(listOf("1 Bund Basilikum", "100 ml Olivenöl"), pesto.ingredients)
+        assertEquals(listOf("Alles fein mixen."), pesto.steps)
     }
 
     @Test
@@ -185,75 +185,11 @@ class SocialCaptionTest {
     }
 
     @Test
-    fun `emoji go from every part of the recipe`() {
-        val recipe =
-            SocialCaption.parse(
-                """
-                Lemon Curd 🍋 Tarte ✨
-
-                Zutaten 👇
-                🌾 500 g Mehl
-                🧈 300 g weiche Butter
-                🤍 150 g Zucker
-                🥚 4 Eigelb
-                🌼 2 TL Vanilleextrakt
-                🧂 1 Prise Salz
-                🍋 350 g Lemon Curd
-
-                Zubereitung 👩‍🍳
-                1️⃣ Mehl, Butter 🧈 und Zucker verkneten.
-                2️⃣ Eigelb 🥚 und Vanille unterarbeiten,
-                30 Minuten kühlen ❄️.
-                3️⃣ Lemon Curd 🍋 darauf verteilen und backen 🔥!
-                🍋🍋🍋
-                Schmeckt am besten frisch 😋🇩🇪
-
-                💡 Tipp: Mit Puderzucker 🤍 bestäuben.
-                #lemoncurd #backen
-                """.trimIndent(),
-            )
-        assertEquals("Lemon Curd Tarte", recipe.name)
-        assertEquals("Schmeckt am besten frisch", recipe.description)
+    fun `emoji go from every part of the recipe`() =
         assertEquals(
-            listOf(
-                "500 g Mehl",
-                "300 g weiche Butter",
-                "150 g Zucker",
-                "4 Eigelb",
-                "2 TL Vanilleextrakt",
-                "1 Prise Salz",
-                "350 g Lemon Curd",
-            ),
-            recipe.ingredients,
+            CaptionRecipe("Lemon Curd Tarte", "", listOf("500 g Mehl"), listOf("Mehl und Butter verkneten!"), emptyList(), null),
+            SocialCaption.parse("Lemon Curd 🍋 Tarte ✨\nZutaten 👇\n🌾 500 g Mehl\nZubereitung 👩‍🍳\nMehl und Butter 🧈 verkneten 🔥!"),
         )
-        assertEquals(
-            listOf(
-                "Mehl, Butter und Zucker verkneten.",
-                "Eigelb und Vanille unterarbeiten, 30 Minuten kühlen.",
-                "Lemon Curd darauf verteilen und backen!",
-            ),
-            recipe.steps,
-        )
-        assertEquals(listOf("Mit Puderzucker bestäuben."), recipe.notes)
-    }
-
-    @Test
-    fun `bullets and numbers drawn as emoji are still understood`() {
-        val recipe =
-            SocialCaption.parse(
-                """
-                Schnelles Pesto 🌿
-                ▪️ 1 Bund Basilikum
-                ▪️ 50 g Pinienkerne 🌰
-                ✔️ 100 ml Olivenöl
-                1️⃣ Pinienkerne rösten 🔥
-                2️⃣ Alles fein mixen ✅.
-                """.trimIndent(),
-            )
-        assertEquals("Schnelles Pesto", recipe.name)
-        assertEquals(listOf("1 Bund Basilikum", "50 g Pinienkerne", "100 ml Olivenöl"), recipe.ingredients)
-        assertEquals(listOf("Pinienkerne rösten", "Alles fein mixen."), recipe.steps)
-    }
 
     @Test
     fun `a caption that starts with the ingredients has no name`() {

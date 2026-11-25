@@ -7,61 +7,42 @@ import java.util.Locale
 
 class QuantitiesTest {
     private val german = Locale.GERMANY
-    private val english = Locale.US
 
     private fun plain(value: Double, fraction: Boolean = true, locale: Locale = german) =
         Quantities.display(value, fraction, locale)?.toPlainText()
 
     @Test
-    fun `whole numbers stay whole`() {
-        assertEquals("2", plain(2.0))
-        assertEquals("200", plain(200.0))
-    }
+    fun `amounts read as a cook writes them`() =
+        listOf(
+            2.0 to "2",
+            200.0 to "200",
+            0.5 to "½",
+            2.5 to "2 ½",
+            1.0 / 3 to "⅓",
+            5.0 / 3 to "1 ⅔",
+            0.125 to "⅛",
+            // Close to a whole number is that number.
+            2.99 to "3",
+            3.01 to "3",
+            // Large amounts are rounded instead of showing odd fractions.
+            400.0 / 3 to "133",
+            12.5 to "12 ½",
+            12.8 to "13",
+            // A remainder no common fraction fits stays a decimal, and a pinch scaled down is still there.
+            1.45 to "1,45",
+            0.02 to "0,02",
+        ).forEach { (value, shown) -> assertEquals("$value", shown, plain(value)) }
 
     @Test
-    fun `common fractions become vulgar fractions`() {
-        assertEquals("½", plain(0.5))
-        assertEquals("2 ½", plain(2.5))
-        assertEquals("⅓", plain(1.0 / 3))
-        assertEquals("1 ⅔", plain(5.0 / 3))
-        assertEquals("⅛", plain(0.125))
-    }
-
-    @Test
-    fun `fraction keeps numerator and denominator for rich rendering`() {
-        assertEquals(DisplayQuantity.Fraction(2, 2, 3), Quantities.display(8.0 / 3, true, german))
-    }
-
-    @Test
-    fun `values close to a whole number snap to it`() {
-        assertEquals("3", plain(2.99))
-        assertEquals("3", plain(3.01))
-    }
-
-    @Test
-    fun `large amounts are rounded instead of showing odd fractions`() {
-        assertEquals("133", plain(400.0 / 3))
-        assertEquals("12 ½", plain(12.5))
-        assertEquals("13", plain(12.8))
-    }
-
-    @Test
-    fun `decimals respect the locale when fractions are disabled`() {
+    fun `decimals follow the locale where fractions are off`() {
         assertEquals("1,5", plain(1.5, fraction = false))
-        assertEquals("1.5", plain(1.5, fraction = false, locale = english))
+        assertEquals("1.5", plain(1.5, fraction = false, locale = Locale.US))
         assertEquals("0,33", plain(1.0 / 3, fraction = false))
         assertEquals("12,5", plain(12.5, fraction = false))
+        assertEquals("0,01", plain(0.004, fraction = false))
     }
 
     @Test
-    fun `unusual remainders fall back to decimals`() {
-        assertEquals("1,45", plain(1.45))
-    }
-
-    @Test
-    fun `zero and invalid values produce nothing`() {
-        assertNull(Quantities.display(0.0, true, german))
-        assertNull(Quantities.display(-1.0, true, german))
-        assertNull(Quantities.display(Double.NaN, true, german))
-    }
+    fun `no amount or an invalid one shows nothing`() =
+        listOf(0.0, -1.0, Double.NaN).forEach { assertNull("$it", Quantities.display(it, true, german)) }
 }

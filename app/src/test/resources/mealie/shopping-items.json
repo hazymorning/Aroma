@@ -1,0 +1,28 @@
+{
+  "createdItems": [
+    {
+      "quantity": 0.0,
+      "unit": null,
+      "food": null,
+      "referencedRecipe": null,
+      "note": "Milch",
+      "display": "Milch",
+      "shoppingListId": "22873efb-a0d6-4c35-8cf0-17a5819edfe2",
+      "checked": false,
+      "position": 0,
+      "foodId": null,
+      "labelId": null,
+      "unitId": null,
+      "extras": {},
+      "id": "856220b4-3faa-41d5-873f-8bc684f9eb42",
+      "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+      "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+      "label": null,
+      "recipeReferences": [],
+      "createdAt": "2026-11-25T10:18:49.590669Z",
+      "updatedAt": "2026-11-25T10:18:49.590675Z"
+    }
+  ],
+  "updatedItems": [],
+  "deletedItems": []
+}

@@ -1,0 +1,129 @@
+{
+  "id": "284219a7-34cd-4a9e-801f-44cb1099b150",
+  "userId": "77e299b6-ab5c-474c-ba3b-13f7bcbdc63f",
+  "householdId": "ee1bbfc2-f23e-4670-b377-d8234334418d",
+  "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+  "name": "Linsensuppe Fixture",
+  "slug": "linsensuppe-fixture",
+  "image": null,
+  "recipeServings": 4.0,
+  "recipeYieldQuantity": 0.0,
+  "recipeYield": "4 Portionen",
+  "totalTime": "1 hour 20 minutes",
+  "prepTime": "20 minutes",
+  "performTime": "1 hour",
+  "totalTimeSeconds": null,
+  "prepTimeSeconds": null,
+  "performTimeSeconds": null,
+  "description": "Rote Linsen mit Kokosmilch",
+  "recipeCategory": [
+    {
+      "id": "05698063-1f81-4fcd-a18d-b3a657bbfc98",
+      "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+      "name": "Abendessen",
+      "slug": "abendessen",
+      "recipeCount": 0
+    }
+  ],
+  "tags": [
+    {
+      "id": "59635319-4580-40b1-a368-5eff4de4899e",
+      "groupId": "c3b17873-0c47-4d53-84cd-3cf8a5951b84",
+      "name": "Schnell",
+      "slug": "schnell",
+      "recipeCount": 0
+    }
+  ],
+  "tools": [],
+  "rating": 4.0,
+  "orgURL": "https://example.com/linsensuppe",
+  "dateAdded": "2026-11-25",
+  "dateUpdated": "2026-11-25T10:18:48.714748Z",
+  "createdAt": "2026-11-25T10:18:48.545955Z",
+  "updatedAt": "2026-11-25T10:18:49.111824Z",
+  "recipeIngredient": [
+    {
+      "quantity": 200.0,
+      "unit": null,
+      "food": null,
+      "referencedRecipe": null,
+      "note": "g rote Linsen",
+      "display": "200 g rote Linsen",
+      "title": "Suppe",
+      "originalText": "200 g rote Linsen",
+      "substitutions": [],
+      "referenceId": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "quantity": 1.0,
+      "unit": null,
+      "food": null,
+      "referencedRecipe": null,
+      "note": "Zwiebel",
+      "display": "1 Zwiebel",
+      "title": null,
+      "originalText": "1 Zwiebel",
+      "substitutions": [],
+      "referenceId": "22222222-2222-4222-8222-222222222222"
+    }
+  ],
+  "recipeInstructions": [
+    {
+      "id": "c9d4634a-390f-44a9-bc72-88bdc7406fe8",
+      "title": "",
+      "summary": "",
+      "text": "Zwiebel würfeln und anschwitzen.",
+      "ingredientReferences": [
+        {
+          "referenceId": "22222222-2222-4222-8222-222222222222"
+        }
+      ],
+      "noteReferences": [],
+      "durationSeconds": null
+    },
+    {
+      "id": "e2913e12-9846-4f2b-b306-33e1035981cd",
+      "title": "",
+      "summary": "",
+      "text": "Linsen zugeben und 20 Minuten köcheln.",
+      "ingredientReferences": [
+        {
+          "referenceId": "11111111-1111-4111-8111-111111111111"
+        }
+      ],
+      "noteReferences": [],
+      "durationSeconds": null
+    }
+  ],
+  "nutrition": {
+    "calories": "320",
+    "carbohydrateContent": null,
+    "cholesterolContent": null,
+    "fatContent": null,
+    "fiberContent": null,
+    "proteinContent": null,
+    "saturatedFatContent": null,
+    "sodiumContent": null,
+    "sugarContent": null,
+    "transFatContent": null,
+    "unsaturatedFatContent": null
+  },
+  "settings": {
+    "public": false,
+    "showNutrition": false,
+    "showAssets": false,
+    "landscapeView": false,
+    "disableComments": false,
+    "locked": false
+  },
+  "assets": [],
+  "notes": [
+    {
+      "title": "Tipp",
+      "text": "Mit Zitrone abschmecken.",
+      "referenceId": "65add13c-3d9f-4ea6-92c1-a34c2c8b96cb"
+    }
+  ],
+  "extras": {},
+  "comments": []
+}
