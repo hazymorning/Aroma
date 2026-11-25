@@ -39,6 +39,8 @@ class IngredientFormatterTest {
         val potatoes = format(ingredient(note = "3-4 Kartoffeln"), scale = 2.0)
         assertEquals("6–8", potatoes.measureText())
         assertEquals("Kartoffeln", potatoes.text)
+        assertEquals("4–6 EL Öl", format(ingredient(note = "2 bis 3 EL Öl"), scale = 2.0).toPlainText())
+        assertEquals("4–6 tbsp oil", format(ingredient(note = "2 to 3 tbsp oil"), scale = 2.0).toPlainText())
     }
 
     @Test

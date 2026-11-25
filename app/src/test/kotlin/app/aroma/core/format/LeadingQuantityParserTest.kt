@@ -21,6 +21,11 @@ class LeadingQuantityParserTest {
             "1 ½ Tassen Mehl" to LeadingQuantity(1.5, null, "Tassen Mehl"),
             "3-4 Kartoffeln" to LeadingQuantity(3.0, 4.0, "Kartoffeln"),
             "2 – 3 EL Öl" to LeadingQuantity(2.0, 3.0, "EL Öl"),
+            "2 bis 3 EL Öl" to LeadingQuantity(2.0, 3.0, "EL Öl"),
+            "2 to 3 tbsp oil" to LeadingQuantity(2.0, 3.0, "tbsp oil"),
+            // "bis" and "to" join two numbers only.
+            "4 Tomaten" to LeadingQuantity(4.0, null, "Tomaten"),
+            "1 Biskuitboden" to LeadingQuantity(1.0, null, "Biskuitboden"),
             // A second number is no fraction of the first.
             "1 12-oz can tomatoes" to LeadingQuantity(1.0, null, "12-oz can tomatoes"),
         ).forEach { (text, quantity) -> assertEquals(text, quantity, LeadingQuantityParser.parse(text)) }
