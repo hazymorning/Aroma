@@ -31,9 +31,14 @@ shapes at least 3 : 1 against their ground.
   group labels, figures. Everything else is the sans. Titles hyphenate and break balanced; words of
   four to seven letters are never hyphenated.
 - **Motion.** 150 ms for edges, 250 ms for a change of state and the selection pill, 220 ms for a
-  page: the old page fades out, the new one fades in and drifts a few dp into place. Nothing zooms,
-  grows or travels between screens. Cards and boxes give way to 0.98 when pressed and tint with ink
-  at 6 %. With the system's animations off, pages only cross-fade.
+  page: the old page fades out, the new one fades in and drifts a few dp into place. The back
+  gesture plays the same under the finger, and the tab bar comes and goes with its page. Nothing
+  zooms, grows or travels between screens. Sheets follow the back gesture down. Menus, snackbars
+  and dialogs fade in and drift 8 dp into place, and Material's parts settle on springs that never
+  overshoot. Content scrolls into a soft 16 dp edge under the status bar, and the collapsed head
+  fades in with its paper. A skeleton shows only after 150 ms and fades out as the content fades
+  in. A new look dissolves in 250 ms. Cards and boxes give way to 0.98 when pressed and tint with
+  ink at 6 %. With the system's animations off, pages only cross-fade.
 - **Access.** Everything that takes a tap has words or a description for TalkBack; the screenshot
   tool checks it on every screen it renders. Up to 130 % font size, Android's largest before
   version 14, text reads in full; rows move an action under their words where the column would get
