@@ -42,15 +42,16 @@ fun RollingText(text: String, modifier: Modifier = Modifier, style: TextStyle = 
         val bounded = constraints.hasBoundedWidth
 
         fun room(taken: Int) = if (bounded) Constraints(maxWidth = (constraints.maxWidth - taken).coerceAtLeast(0)) else Constraints()
-        val first = before.first().measure(room(0))
-        val second = middle.first().measure(room(first.width))
-        val third = after.first().measure(room(first.width + second.width))
-        val width = (first.width + second.width + third.width).coerceIn(constraints.minWidth, constraints.maxWidth)
-        val height = maxOf(first.height, second.height, third.height).coerceIn(constraints.minHeight, constraints.maxHeight)
+        val first = before.firstOrNull()?.measure(room(0))
+        val start = first?.width ?: 0
+        val second = middle.first().measure(room(start))
+        val third = after.firstOrNull()?.measure(room(start + second.width))
+        val width = (start + second.width + (third?.width ?: 0)).coerceIn(constraints.minWidth, constraints.maxWidth)
+        val height = maxOf(first?.height ?: 0, second.height, third?.height ?: 0).coerceIn(constraints.minHeight, constraints.maxHeight)
         layout(width, height) {
-            first.placeRelative(0, 0)
-            second.placeRelative(first.width, 0)
-            third.placeRelative(first.width + second.width, 0)
+            first?.placeRelative(0, 0)
+            second.placeRelative(start, 0)
+            third?.placeRelative(start + second.width, 0)
         }
     }
 }
@@ -67,20 +68,21 @@ private fun Rolling(roll: Roll, style: TextStyle, color: Color) {
     Layout(
         contents = listOf({ Part(roll.was, style, color) }, { Part(roll.now, style, color) }),
     ) { (was, now), constraints ->
-        val old = was.first().measure(constraints)
-        val new = now.first().measure(constraints)
+        val old = was.firstOrNull()?.measure(constraints)
+        val new = now.firstOrNull()?.measure(constraints)
         val way = roll.direction
         val gone = progress.value
         // The room changes as quickly as the old part fades, so the new one never crowds what follows.
-        layout(lerp(old.width, new.width, (gone / OLD_FADES).coerceAtMost(1f)), maxOf(old.height, new.height)) {
+        val width = lerp(old?.width ?: 0, new?.width ?: 0, (gone / OLD_FADES).coerceAtMost(1f))
+        layout(width, maxOf(old?.height ?: 0, new?.height ?: 0)) {
             if (gone < 1f) {
-                old.placeRelativeWithLayer(0, 0) {
+                old?.placeRelativeWithLayer(0, 0) {
                     val shown = progress.value
                     alpha = (1f - shown / OLD_FADES).coerceAtLeast(0f)
                     translationY = -way * Motion.ROLL * size.height * shown
                 }
             }
-            new.placeRelativeWithLayer(0, 0) {
+            new?.placeRelativeWithLayer(0, 0) {
                 val shown = progress.value
                 alpha = shown
                 translationY = way * Motion.ROLL * size.height * (1f - shown)
@@ -92,9 +94,10 @@ private fun Rolling(roll: Roll, style: TextStyle, color: Color) {
 /** The old part is gone by the time an edge's fade would end: this share of the roll. */
 private val OLD_FADES = Motion.EDGE.toFloat() / Motion.STATE
 
+/** A part of the line; one with nothing in it is left out rather than set as an empty text. */
 @Composable
 private fun Part(text: String, style: TextStyle, color: Color) {
-    Text(text, style = style, color = color, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+    if (text.isNotEmpty()) Text(text, style = style, color = color, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
 }
 
 /**
