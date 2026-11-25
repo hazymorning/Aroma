@@ -27,17 +27,13 @@ Aroma is an Android app for Mealie, available in English and German. It came fro
 
 <br>
 
-- Recipes laid out like a cookbook page, with the times at a glance and the amounts in their own column
-- Servings that scale every amount, including the ones written in the steps
-- Measures as written, metric or US, down to oven temperatures and pan sizes in the steps
-- Cooking mode with one step at a time, the ingredients it uses, timers from the times in the text and the screen kept on
-- Ingredients ticked off with a tap where a step names them
-- A meal plan for the week, whose ingredients go on the shopping list in one go
-- A shopping list that works offline, and a shopping mode with large text for the supermarket
-- Widgets for today's meal and the shopping list, and shortcuts on the app icon
-- Imports from websites, from Instagram, TikTok and Facebook posts and from photos, with Mealie's AI where it helps
-
-The little details are things like these: a cup of flour becomes 120 g and a cup of sugar 198 g, amounts read ½ rather than 0.5, "1:20 h" in a step starts a timer of an hour and twenty minutes, and a link shared to Aroma leaves its tracking behind.
+- Recipes scale to any number of servings, with units converted to metric or US
+- A cooking mode that guides you step by step, with the ingredients and timers each step needs
+- Ideas for what to cook, depending on the time of day
+- A weekly meal plan whose ingredients go on the shopping list in one go
+- Shopping lists that work offline too
+- Widgets for today's meal and the shopping list
+- Recipes imported from websites, social media and photos, and tidied up or translated by Mealie's AI if you like
 
 </details>
 <details>
@@ -45,7 +41,7 @@ The little details are things like these: a cup of flour becomes 120 g and a cup
 
 <br>
 
-Android 8.0 or newer and Mealie 2.0 or newer. AI imports need Mealie 3.23 or newer and a configured AI provider. A server with a certificate from your own authority works once that authority is installed on the phone.
+Android 8.0 or newer and Mealie 2.0 or newer. AI imports need Mealie 3.23 or newer and a configured AI provider.
 
 </details>
 <details>
@@ -53,9 +49,7 @@ Android 8.0 or newer and Mealie 2.0 or newer. AI imports need Mealie 3.23 or new
 
 <br>
 
-Download the APK from the [latest release](https://github.com/hazymorning/Aroma/releases/latest) and open it; Android asks once whether your browser may install apps. Then sign in with your Mealie address and account, or with an API token.
-
-Later versions come through the settings, where Aroma looks for them on GitHub when you ask, or at every start if you like.
+Download the APK from the [latest release](https://github.com/hazymorning/Aroma/releases/latest) and install it. Sign in with your Mealie address and your account or an API token. New versions can be installed right from the settings.
 
 </details>
 <details>
@@ -73,8 +67,6 @@ Aroma connects only to the configured Mealie server. There are two exceptions: i
 
 Aroma was made in Germany, which may explain the following.
 
-Your password is only used to sign in. After that Aroma works with a token of its own, named after the phone, encrypted with a key that never leaves it and kept out of backups. The token only ever goes to your Mealie server. Connections use https, and plain http only for addresses in your home network or when you type it yourself, and never quietly.
-
-Photos are uploaded without their location. Signing out removes everything the account left on the phone and revokes the token as soon as Mealie can be reached. Updates install only when they carry the same signature as the app you have.
+Your password is only used to sign in, and the access Aroma keeps is encrypted on the phone. It goes to your Mealie server and nowhere else, over https wherever the server offers it. Signing out leaves nothing behind, and updates install only if they really come from Aroma.
 
 </details>
