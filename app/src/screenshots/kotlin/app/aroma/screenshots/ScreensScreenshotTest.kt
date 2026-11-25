@@ -468,7 +468,7 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
             "shopping_mode",
             interact = {
                 composeRule.onNodeWithContentDescription(t("Weitere Optionen", "More options")).performClick()
-                // At 200 % on a narrow phone the row ends in "…" after its first words.
+                // With very large text on a narrow phone the row may end in "…" after its first words.
                 composeRule.onNodeWithWords(t("Einkaufsmodus", "Start shopping"), substring = true).performClick()
             },
             content = shopping(sample.shoppingList),
@@ -721,7 +721,7 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
 
         /**
          * German light and dark, whose words run longest; English; and the narrowest phone the brief
-         * aims at, 360 dp, with the largest font size Android offers, 200 %.
+         * aims at, 360 dp, with large text: 130 %, Android's largest before version 14.
          */
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
@@ -730,7 +730,7 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
                 Look("de", dark = false),
                 Look("de", dark = true),
                 Look("en", dark = false),
-                Look("de", dark = false, fontScale = 2f, width = 360),
+                Look("de", dark = false, fontScale = 1.3f, width = 360),
             )
     }
 }

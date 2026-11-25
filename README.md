@@ -11,16 +11,31 @@ Aroma is an Android app for Mealie, available in English and German. It came fro
 </picture>
 
 <br>
-<br>
 
-**What it does:**
+<details>
+<summary><b>Why Aroma</b></summary>
+
+<br>
 
 - Pleasant UI, designed like a cookbook
 - Features made for everyday cooking
 - Care for the little details (like widgets)
 
+</details>
+<details>
+<summary><b>Features</b></summary>
+
 <br>
 
+- Cooking mode with step-by-step instructions and timers
+- Ingredients and amounts shown in each step
+- Recipe suggestions based on the time of day
+- Add recipes from other apps via the share menu
+- Clean up or translate recipes with AI
+- Offline access to your recipes
+- Widgets for the meal plan and shopping list
+
+</details>
 <details>
 <summary><b>Requirements</b></summary>
 
@@ -30,10 +45,42 @@ Android 8.0 or newer and Mealie 2.0 or newer. AI imports need Mealie 3.23 or new
 
 </details>
 <details>
+<summary><b>Installation</b></summary>
+
+<br>
+
+Download the APK from the [latest release](https://github.com/hazymorning/Aroma/releases/latest) and install it. Then sign in with your Mealie address and your account or an API token. Updates can be installed from the settings.
+
+</details>
+<details>
 <summary><b>Privacy</b></summary>
 
 <br>
 
 Aroma connects only to the configured Mealie server. There are two exceptions: importing a social media post reads its preview from the platform, and the update check asks GitHub for the latest release, when started manually or, if switched on, at app start. No analytics, no ads, no tracking.
+
+</details>
+<details>
+<summary><b>Security</b></summary>
+
+<br>
+
+Your password is only used for signing in. Aroma keeps the login encrypted on the phone and only sends it to your Mealie server. Signing out removes your data from the phone, and only official Aroma updates can be installed.
+
+</details>
+<details>
+<summary><b>Feedback</b></summary>
+
+<br>
+
+Bugs and ideas are welcome as [issues on GitHub](https://github.com/hazymorning/Aroma/issues).
+
+</details>
+<details>
+<summary><b>License</b></summary>
+
+<br>
+
+Aroma is free and open source (GPL-3.0).
 
 </details>
