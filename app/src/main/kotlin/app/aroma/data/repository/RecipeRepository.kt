@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.last
@@ -283,9 +284,9 @@ class RecipeRepository(
      * A choice of recipes ready in [minutes] or less, new each [day]. Mealie cannot compare its times,
      * so the phone picks them from a larger choice, in an order of the day of their own.
      */
-    fun quick(day: LocalDate, minutes: Int = QUICK_MINUTES, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> {
-        val server = sessions.requireServerUrl()
-        return summaries("home:quick") {
+    fun quick(day: LocalDate, minutes: Int = QUICK_MINUTES, limit: Int = 12): Flow<Loadable<List<RecipeSummary>>> =
+        summaries("home:quick") {
+            val server = sessions.requireServerUrl()
             sessions
                 .api()
                 .recipes(
@@ -298,7 +299,6 @@ class RecipeRepository(
                 .filter { it.toModel(server).isReadyWithin(minutes) }
                 .take(limit)
         }
-    }
 
     /**
      * Mealie's filter for recipes cooked before, but not since, [day]. Recipes never cooked compare as
@@ -314,13 +314,17 @@ class RecipeRepository(
         return "recipe_category.name IN $list OR tags.name IN $list"
     }
 
-    private fun summaries(key: String, fetch: suspend () -> List<RecipeSummaryDto>): Flow<Loadable<List<RecipeSummary>>> {
-        val server = sessions.requireServerUrl()
-        return cache
-            .stream(key, ListSerializer(RecipeSummaryDto.serializer())) {
-                fetch().also { items -> dao.upsertSummaries(items.map { it.toEntity() }) }
-            }.map { loadable -> Loadable(loadable.data.map { it.toModel(server) }, loadable.isRefreshing, loadable.error) }
-    }
+    private fun summaries(key: String, fetch: suspend () -> List<RecipeSummaryDto>): Flow<Loadable<List<RecipeSummary>>> =
+        flow {
+            // Looked up once collected, not when asked for, so signed out the flow fails where collectors catch it.
+            val server = sessions.requireServerUrl()
+            val summaries =
+                cache
+                    .stream(key, ListSerializer(RecipeSummaryDto.serializer())) {
+                        fetch().also { items -> dao.upsertSummaries(items.map { it.toEntity() }) }
+                    }.map { loadable -> Loadable(loadable.data.map { it.toModel(server) }, loadable.isRefreshing, loadable.error) }
+            emitAll(summaries)
+        }
 
     /**
      * Cached copy first, then the server's. Keeps working offline for recipes opened before, and
@@ -656,9 +660,10 @@ class RecipeRepository(
         MealieJson.encodeToJsonElement(ListSerializer(OrganizerDto.serializer()), items.map { OrganizerDto(it.id, it.name, it.slug) })
 
     /** The household's cookbooks, each with its number of recipes and the photo of its newest one. */
-    fun cookbooks(): Flow<Loadable<List<CookbookCover>>> {
-        val server = sessions.requireServerUrl()
-        return cache
+    fun cookbooks(): Flow<Loadable<List<CookbookCover>>> = flow { emitAll(cookbooks(sessions.requireServerUrl())) }
+
+    private fun cookbooks(server: String): Flow<Loadable<List<CookbookCover>>> =
+        cache
             .stream("cookbook-covers", ListSerializer(CookbookCoverCopy.serializer())) {
                 val api = sessions.api()
                 val requests = Semaphore(PARALLEL_DOWNLOADS)
@@ -687,7 +692,6 @@ class RecipeRepository(
                 val covers = loadable.data.map { CookbookCover(it.cookbook.toModel(), it.recipeCount, it.cover?.toModel(server)?.image) }
                 Loadable(covers, loadable.isRefreshing, loadable.error)
             }
-    }
 
     /**
      * Keeps a copy of every recipe for offline use: fetches new and changed ones a few at a time

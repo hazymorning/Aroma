@@ -12,7 +12,9 @@ import app.aroma.data.session.SessionManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNot
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.Serializable
@@ -31,8 +33,11 @@ class MealPlanRepository(private val sessions: SessionManager, private val cache
      * The entries of [days] days from [start] on. One copy is kept per length of range and filtered
      * to the days asked for, so offline on a new day the week cached the day before still shows.
      */
-    fun range(start: LocalDate, days: Long): Flow<Loadable<List<MealPlanEntry>>> {
-        val server = sessions.requireServerUrl()
+    fun range(start: LocalDate, days: Long): Flow<Loadable<List<MealPlanEntry>>> =
+        // The server is looked up once collected, not when asked for, so signed out the flow fails where collectors catch it.
+        flow { emitAll(range(start, days, sessions.requireServerUrl())) }
+
+    private fun range(start: LocalDate, days: Long, server: String): Flow<Loadable<List<MealPlanEntry>>> {
         val end = start.plusDays(days - 1)
         return cache
             .stream("mealplan:$days", PlanCopy.serializer()) {
@@ -54,10 +59,11 @@ class MealPlanRepository(private val sessions: SessionManager, private val cache
      * The week ahead as [refreshUpcoming] last fetched it, and again whenever that changes; null
      * before the first fetch. It is a copy of its own, so a week browsed in the app never takes its place.
      */
-    fun upcoming(): Flow<List<MealPlanEntry>?> {
-        val server = sessions.requireServerUrl()
-        return cache.observe(UPCOMING_KEY, EntriesSerializer).map { it?.toEntries(server) }
-    }
+    fun upcoming(): Flow<List<MealPlanEntry>?> =
+        flow {
+            val server = sessions.requireServerUrl()
+            emitAll(cache.observe(UPCOMING_KEY, EntriesSerializer).map { it?.toEntries(server) })
+        }
 
     /**
      * Fetches [today] and the [UPCOMING_DAYS] days after it for [upcoming]. An answer that arrives
