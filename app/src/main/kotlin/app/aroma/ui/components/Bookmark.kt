@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
@@ -57,8 +58,9 @@ enum class RibbonSize(val size: DpSize) {
 /**
  * The bookmark ribbon of a saved recipe, in sage, hanging from the top edge of its photo. It
  * replaces the heart everywhere. Where it comes and goes in view ([animated]), it slides down from
- * the edge as the recipe is saved, and back up as it is let go. On a photo under the status bar it
- * reaches up behind it by [hang], so its own length shows below; with [onClick], a tap lets it go.
+ * the edge as the recipe is saved, and back up as it is let go, never showing above the edge. On a
+ * photo under the status bar it reaches up behind it by [hang], so its own length shows below; with
+ * [onClick], a tap lets it go.
  */
 @Composable
 fun Ribbon(
@@ -93,7 +95,7 @@ fun Ribbon(
     }
     AnimatedVisibility(
         visible = saved,
-        modifier = modifier,
+        modifier = modifier.clipToBounds(),
         enter = slideInVertically(Motion.state()) { -it },
         exit = slideOutVertically(Motion.state()) { -it },
     ) { strip() }

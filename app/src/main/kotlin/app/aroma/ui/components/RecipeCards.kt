@@ -45,7 +45,8 @@ private const val MAX_TITLE_LINES = 3
 
 /**
  * A recipe as a card: its photo, 4:5 with 14 dp corners, its name under it and a meta line, all
- * flush with the photo's edge. A saved recipe wears the bookmark ribbon on its photo. The name keeps
+ * flush with the photo's edge. A saved recipe wears the bookmark ribbon on its photo, which slides
+ * down from the photo's edge as the recipe is saved and back up as it is let go. The name keeps
  * room for [titleLines] lines, so the meta lines of cards side by side stand on one line (see
  * [rememberTitleLines]). Pressing shrinks the card a little and tints its photo.
  */
@@ -86,7 +87,7 @@ fun RecipeCard(
                         .matchParentSize()
                         .indication(interaction, PressTint),
             )
-            Ribbon(saved, Modifier.align(Alignment.TopEnd).padding(end = Space.s12))
+            Ribbon(saved, Modifier.align(Alignment.TopEnd).padding(end = Space.s12), animated = true)
         }
         Spacer(Modifier.height(Space.s8))
         Text(
