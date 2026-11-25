@@ -118,7 +118,7 @@ fun AddToListSheet(
             )
             Spacer(Modifier.weight(1f))
             TextAction(
-                text = stringResource(if (allSelected) R.string.select_none else R.string.select_all),
+                text = stringResource(if (allSelected) R.string.deselect_all else R.string.select_all),
                 onClick = { selected = if (allSelected) emptySet() else recipe.ingredients.indices.toSet() },
             )
         }

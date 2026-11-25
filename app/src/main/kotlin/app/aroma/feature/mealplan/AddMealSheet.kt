@@ -101,7 +101,7 @@ fun AddMealSheet(
             options = listOf(stringResource(R.string.plan_mode_recipe), stringResource(R.string.plan_mode_note)),
             selectedIndex = if (noteMode) 1 else 0,
             onSelect = { noteMode = it == 1 },
-            modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
+            modifier = Modifier.padding(top = Space.s16),
         )
         // The sheet grows or shrinks with the form instead of jumping to its new height.
         AnimatedContent(
@@ -149,7 +149,7 @@ private fun RecipePicker(search: PlanSearchState, onSearch: (String) -> Unit, on
             text = stringResource(R.string.plan_tap_recipe),
             style = AromaTheme.type.bodySmall,
             color = AromaTheme.colors.inkSecondary,
-            modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s8, bottom = Space.s4),
+            modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s8),
         )
         when {
             search.isLoading && search.results.isEmpty() -> {
@@ -166,8 +166,10 @@ private fun RecipePicker(search: PlanSearchState, onSearch: (String) -> Unit, on
             }
 
             else -> {
+                // Rows on the page margin and 12 dp apart, as recipe rows stand everywhere.
                 LazyColumn(
-                    contentPadding = PaddingValues(bottom = Space.s8),
+                    contentPadding = PaddingValues(start = PageMargin, end = PageMargin, top = Space.s16, bottom = Space.s16),
+                    verticalArrangement = Arrangement.spacedBy(Space.s12),
                     modifier =
                         Modifier
                             .fillMaxWidth()
@@ -191,9 +193,12 @@ private val ResultWidth = 160.dp
 /** Rows shaped like the results, while the first ones load. */
 @Composable
 private fun ResultsPlaceholder() {
-    Column(Modifier.padding(bottom = Space.s8)) {
+    Column(
+        Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16, bottom = Space.s16),
+        verticalArrangement = Arrangement.spacedBy(Space.s12),
+    ) {
         repeat(3) {
-            Row(Modifier.padding(horizontal = PageMargin, vertical = Space.s12), verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Skeleton(Modifier.size(ThumbnailSize), shape = AromaTheme.shapes.thumbnail)
                 Spacer(Modifier.width(Space.s16))
                 SkeletonLine(Modifier.width(ResultWidth))

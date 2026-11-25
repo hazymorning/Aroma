@@ -50,10 +50,12 @@ import app.aroma.feature.login.LoginActions
 import app.aroma.feature.login.LoginScreen
 import app.aroma.feature.login.LoginStep
 import app.aroma.feature.login.LoginUiState
+import app.aroma.feature.mealplan.AddMealSheet
 import app.aroma.feature.mealplan.MealPlanActions
 import app.aroma.feature.mealplan.MealPlanDay
 import app.aroma.feature.mealplan.MealPlanScreen
 import app.aroma.feature.mealplan.MealPlanUiState
+import app.aroma.feature.mealplan.PlanSearchState
 import app.aroma.feature.recipe.OrganizerSheet
 import app.aroma.feature.recipe.RatingSheet
 import app.aroma.feature.recipe.RecipeActions
@@ -393,6 +395,21 @@ open class ScreensScreenshotTest(private val variant: Variant) : ScreenshotTest(
                     actions = MealPlanActions(),
                 )
             }
+        }
+    }
+
+    /** Planning a dish for a day: the meal, recipe or note, and the recipes to tap, on the margin and 12 dp apart. */
+    @Test
+    fun mealPlanAdd() {
+        applyLocale()
+        snapshot("mealplan_add_${variant.suffix}", variant.dark) {
+            AddMealSheet(
+                date = sample.today.plusDays(3),
+                search = PlanSearchState(results = sample.recipes),
+                onSearch = {},
+                onAdd = { _, _, _, _ -> },
+                onDismiss = {},
+            )
         }
     }
 

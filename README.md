@@ -1,18 +1,16 @@
 <p align="center">
-  <img src="docs/assets/aroma-hero.png" alt="Aroma – Good enough to eat" width="100%">
+  <img src="docs/assets/aroma-hero-v2.png" alt="Aroma – Good enough to eat" width="100%">
 </p>
 
 <br>
 
-Aroma is a Mealie client for Android, in English and German.
+Aroma is an Android app for Mealie, available in English and German. It came from wanting a recipe app that's easy to use every day and as nice to look at as the food.
 
-It came from wanting an app that's nice to use every day and looks as good as the food in it. Years of self-hosted recipe managers showed that, in this household at least, they only get used when they actually make things easier, not when they feel like one more chore.
+**What it does:**
 
-**The ideas behind it:**
-
-- A tasteful, uncluttered design, like a good cookbook
-- Features shaped by everyday cooking
-- Love for the small details, because they make the difference
+- A warm, calm design that feels like a cookbook
+- Features made for everyday cooking at home
+- Care for the little details that make the difference
 
 <br>
 
