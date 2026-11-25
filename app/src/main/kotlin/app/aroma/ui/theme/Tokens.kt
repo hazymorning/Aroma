@@ -128,4 +128,10 @@ object Motion {
     fun <T> state() = tween<T>(STATE, easing = Decelerate)
 
     fun <T> page() = tween<T>(PAGE, easing = Decelerate)
+
+    /**
+     * The soft edge under the status bar: content that scrolls beneath it fades out over this much
+     * instead of being cut by a line. It comes with the scroll, so nothing at rest stands in it.
+     */
+    val ScrollEdge: Dp = Space.s16
 }

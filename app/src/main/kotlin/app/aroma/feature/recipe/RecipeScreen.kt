@@ -99,7 +99,7 @@ import app.aroma.ui.components.SEPARATOR
 import app.aroma.ui.components.SectionTitle
 import app.aroma.ui.components.Skeleton
 import app.aroma.ui.components.SkeletonLine
-import app.aroma.ui.components.StatusBarCover
+import app.aroma.ui.components.StatusBarEdge
 import app.aroma.ui.components.StatusBarOverPhoto
 import app.aroma.ui.components.StepTexts
 import app.aroma.ui.components.Stepper
@@ -117,6 +117,7 @@ import app.aroma.ui.components.rememberIngredientRows
 import app.aroma.ui.components.rememberRichText
 import app.aroma.ui.components.rememberStepText
 import app.aroma.ui.components.rememberStepTexts
+import app.aroma.ui.components.scrolledBeneath
 import app.aroma.ui.components.totalTime
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.ContentMaxWidth
@@ -264,7 +265,7 @@ fun RecipeScreen(state: RecipeUiState, actions: RecipeActions, modifier: Modifie
                 )
             }
         }
-        RecipeHead(recipe, collapsed, overPhoto, state.isFavorite, actions, menu)
+        RecipeHead(recipe, collapsed, overPhoto, state.isFavorite, actions, menu, scrolled = listState::scrolledBeneath)
         if (recipe != null) {
             RecipeActionBar(
                 canShop = recipe.ingredients.isNotEmpty(),
@@ -345,9 +346,10 @@ private fun RecipeHead(
     saved: Boolean,
     actions: RecipeActions,
     menu: PageMenu,
+    scrolled: () -> Float,
 ) {
     // Without a photo, the page's own paper keeps the status bar clear until the head collapses.
-    if (!collapsed && !overPhoto) StatusBarCover()
+    if (!collapsed && !overPhoto) StatusBarEdge(scrolled)
     AnimatedVisibility(visible = collapsed, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
         TopBar(
             title = recipe?.name.orEmpty(),

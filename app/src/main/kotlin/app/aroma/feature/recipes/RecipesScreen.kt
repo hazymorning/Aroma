@@ -68,6 +68,7 @@ import app.aroma.ui.components.recipeGridSkeletons
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.rememberHeaderState
 import app.aroma.ui.components.requestWhenAttached
+import app.aroma.ui.components.scrolledBeneath
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.HeaderGap
 import app.aroma.ui.theme.PageMargin
@@ -223,6 +224,7 @@ fun RecipesScreen(
             title = stringResource(R.string.nav_recipes),
             collapsed = header.collapsed,
             raised = list.canScrollBackward,
+            scrolled = list::scrolledBeneath,
             actions = { headActions() },
         )
     }

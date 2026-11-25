@@ -75,6 +75,7 @@ import app.aroma.ui.components.TopBar
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.rememberHeaderState
 import app.aroma.ui.components.requestWhenAttached
+import app.aroma.ui.components.scrolledBeneath
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.HeaderGap
 import app.aroma.ui.theme.Motion
@@ -210,6 +211,7 @@ fun ShoppingScreen(
             title = title,
             collapsed = header.collapsed,
             raised = listState.canScrollBackward,
+            scrolled = listState::scrolledBeneath,
             actions = { headActions() },
         )
         AromaSnackbarHost(

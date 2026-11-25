@@ -87,7 +87,7 @@ import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SectionTitle
 import app.aroma.ui.components.Skeleton
 import app.aroma.ui.components.SkeletonLine
-import app.aroma.ui.components.StatusBarCover
+import app.aroma.ui.components.StatusBarEdge
 import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TextAction
@@ -100,6 +100,7 @@ import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.recipeTime
 import app.aroma.ui.components.rememberTitleLines
+import app.aroma.ui.components.scrolledBeneath
 import app.aroma.ui.components.weekdayShort
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxGap
@@ -325,7 +326,7 @@ fun HomeScreen(state: HomeUiState, actions: HomeActions, modifier: Modifier = Mo
                 }
             }
         }
-        StatusBarCover()
+        StatusBarEdge(scrolled = listState::scrolledBeneath)
     }
 }
 

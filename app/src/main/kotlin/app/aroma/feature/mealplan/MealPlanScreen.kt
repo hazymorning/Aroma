@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -80,7 +81,7 @@ import app.aroma.ui.components.SecondaryButton
 import app.aroma.ui.components.SheetAction
 import app.aroma.ui.components.Skeleton
 import app.aroma.ui.components.SkeletonLine
-import app.aroma.ui.components.StatusBarCover
+import app.aroma.ui.components.StatusBarEdge
 import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.Text
 import app.aroma.ui.components.TextAction
@@ -92,6 +93,7 @@ import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.recipeTime
 import app.aroma.ui.components.reducedMotion
 import app.aroma.ui.components.rememberFullSheetState
+import app.aroma.ui.components.scrolledBeneath
 import app.aroma.ui.components.weekday
 import app.aroma.ui.components.weekdayShort
 import app.aroma.ui.theme.AromaTheme
@@ -210,7 +212,6 @@ fun MealPlanScreen(
         ) { week ->
             WeekPage(week, actions, focus, onFocusConsume, onMore = { sheetEntryId = it.id }, onShopWeek = { confirmShopping = true })
         }
-        StatusBarCover()
     }
     val sheetEntry = state.entry(sheetEntryId)
     if (sheetEntry != null) {
@@ -283,6 +284,25 @@ private fun WeekPage(
         shownIndex(state, day, folded = day >= state.today && folded)?.let { listState.animateScrollToItem(it) }
         focused()
     }
+    // The status bar's edge belongs to the week, so it moves with it as the week turns.
+    Box(Modifier.fillMaxSize()) {
+        WeekList(state, listState, actions, past, folded, shown, onOpenPast = { pastOpen = true }, onMore, onShopWeek)
+        StatusBarEdge(scrolled = listState::scrolledBeneath)
+    }
+}
+
+@Composable
+private fun WeekList(
+    state: MealPlanUiState,
+    listState: LazyListState,
+    actions: MealPlanActions,
+    past: List<MealPlanDay>,
+    folded: Boolean,
+    shown: List<MealPlanDay>,
+    onOpenPast: () -> Unit,
+    onMore: (MealPlanEntry) -> Unit,
+    onShopWeek: () -> Unit,
+) {
     LazyColumn(
         state = listState,
         contentPadding = PaddingValues(bottom = LocalBottomBarInset.current + EndSpace),
@@ -304,7 +324,7 @@ private fun WeekPage(
                     item(key = "past") {
                         PastDays(
                             past,
-                            onOpen = { pastOpen = true },
+                            onOpen = onOpenPast,
                             modifier =
                                 Modifier
                                     .animateRow(this)

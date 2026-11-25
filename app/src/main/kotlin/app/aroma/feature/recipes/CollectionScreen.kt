@@ -30,6 +30,7 @@ import app.aroma.ui.components.Text
 import app.aroma.ui.components.TopBar
 import app.aroma.ui.components.recipeGridSkeletons
 import app.aroma.ui.components.rememberHeaderState
+import app.aroma.ui.components.scrolledBeneath
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.EndSpace
 import app.aroma.ui.theme.HeaderGap
@@ -100,6 +101,7 @@ fun CollectionScreen(
             title = name,
             collapsed = header.collapsed,
             raised = list.canScrollBackward,
+            scrolled = list::scrolledBeneath,
             navigation = { BackButton(actions.onBack) },
         )
     }
