@@ -62,6 +62,7 @@ import app.aroma.ui.components.SelectionRow
 import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.TextAction
 import app.aroma.ui.components.TopBar
+import app.aroma.ui.components.animateOpenRow
 import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealLabel
 import app.aroma.ui.components.recipeGridSkeletons
@@ -252,7 +253,7 @@ private fun LazyListScope.body(state: RecipesUiState, actions: RecipesActions) {
         }
 
         state.error != null && state.recipes.isEmpty() -> {
-            item(key = "error") { ErrorState(state.error, onRetry = actions.onRetry) }
+            item(key = "error") { ErrorState(state.error, onRetry = actions.onRetry, modifier = Modifier.animateOpenRow(this)) }
         }
 
         state.recipes.isEmpty() && state.mealNames()?.isEmpty() == true -> {
@@ -261,6 +262,7 @@ private fun LazyListScope.body(state: RecipesUiState, actions: RecipesActions) {
                     text = stringResource(R.string.recipes_meal_empty_title),
                     actionLabel = stringResource(R.string.recipes_clear_filters),
                     onAction = actions.onClearFilters,
+                    modifier = Modifier.animateOpenRow(this),
                 )
             }
         }
@@ -274,6 +276,7 @@ private fun LazyListScope.body(state: RecipesUiState, actions: RecipesActions) {
                         actions.onQueryChange("")
                         actions.onClearFilters()
                     },
+                    modifier = Modifier.animateOpenRow(this),
                 )
             }
         }
@@ -284,6 +287,7 @@ private fun LazyListScope.body(state: RecipesUiState, actions: RecipesActions) {
                     text = stringResource(R.string.recipes_empty_title),
                     actionLabel = stringResource(R.string.recipes_add),
                     onAction = actions.onAddRecipe,
+                    modifier = Modifier.animateOpenRow(this),
                 )
             }
         }

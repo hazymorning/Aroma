@@ -39,7 +39,9 @@ import kotlin.math.max
  * rows. The cards of a row keep room for the longest name among them, so their meta lines stand on
  * one line. It asks for the next page shortly before the end is reached. [header] comes before the
  * grid in the same list. A long press on a card asks for its [onLongPress] actions; [saved] recipes
- * wear the ribbon.
+ * wear the ribbon. A row is known by all of its cards: a row that holds others once the recipes
+ * change fades into the new one, rather than gliding across the page with its cards swapped, and
+ * the cards and the rows of a search fade into each other.
  */
 @Composable
 fun RecipeGrid(
@@ -77,7 +79,7 @@ fun RecipeGrid(
         LazyColumn(state = state, contentPadding = contentPadding, horizontalAlignment = Alignment.CenterHorizontally) {
             header()
             if (asRows) {
-                itemsIndexed(recipes, key = { _, recipe -> recipe.id }) { index, recipe ->
+                itemsIndexed(recipes, key = { _, recipe -> "row-${recipe.id}" }, contentType = { _, _ -> "row" }) { index, recipe ->
                     RecipeRow(
                         recipe = recipe,
                         onClick = { onOpen(recipe) },
@@ -93,7 +95,15 @@ fun RecipeGrid(
                 }
             }
             if (!asRows) {
-                itemsIndexed(rows, key = { _, row -> row.first().id }) { index, row ->
+                itemsIndexed(rows, key = {
+                    _,
+                    row,
+                    ->
+                    row.joinToString(",", prefix = "cards-") { it.id }
+                }, contentType = { _, _ -> "cards" }) {
+                    index,
+                    row,
+                    ->
                     val lines = rememberTitleLines(row.map { it.name }, cardWidth)
                     Row(
                         Modifier
@@ -119,7 +129,15 @@ fun RecipeGrid(
                 }
             }
             if (isLoadingMore) {
-                item(key = "more") { SkeletonCards(columns, Modifier.padding(top = GridRowGap)) }
+                // The next page's outline fades in at the end, and fades under the cards as they come.
+                item(key = "more") {
+                    SkeletonCards(
+                        columns,
+                        Modifier
+                            .animateRow(this)
+                            .padding(top = GridRowGap),
+                    )
+                }
             }
         }
     }
@@ -168,10 +186,16 @@ fun SkeletonCards(columns: Int, modifier: Modifier = Modifier) {
     }
 }
 
-/** Grid-shaped skeletons that match [RecipeGrid], for a page that is still loading. */
+/** Grid-shaped skeletons that match [RecipeGrid], for a page that is still loading; they fade under the cards as they come. */
 fun LazyListScope.recipeGridSkeletons(rows: Int = 3) {
-    items(rows) { index ->
-        SkeletonCards(columns = 2, modifier = Modifier.padding(top = if (index == 0) 0.dp else GridRowGap))
+    items(rows, key = { "skeleton-$it" }, contentType = { "skeleton" }) { index ->
+        SkeletonCards(
+            columns = 2,
+            modifier =
+                Modifier
+                    .animateRow(this)
+                    .padding(top = if (index == 0) 0.dp else GridRowGap),
+        )
     }
 }
 
