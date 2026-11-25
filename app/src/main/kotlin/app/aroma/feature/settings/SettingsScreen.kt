@@ -1,6 +1,7 @@
 package app.aroma.feature.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -57,7 +60,9 @@ import app.aroma.ui.components.Text
 import app.aroma.ui.components.TonalBox
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.theme.AromaTheme
+import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.PageMargin
+import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.SectionGap
 import app.aroma.ui.theme.Space
 
@@ -110,7 +115,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
     var sheet by rememberSaveable { mutableStateOf<SettingsSheet?>(null) }
     DetailPage(title = stringResource(R.string.settings_title), onBack = actions.onBack, modifier = modifier) {
         Column(Modifier.padding(horizontal = PageMargin)) {
-            state.user?.let { user -> Profile(user, state.server, state.connected) }
+            Account(state.user, state.server, state.connected, onSignOut = { confirmSignOut = true })
             Group(stringResource(R.string.settings_appearance)) {
                 SettingsRow(
                     title = stringResource(R.string.settings_theme),
@@ -181,15 +186,6 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                     onClick = actions.onOpenLicenses,
                 )
             }
-            TonalBox(Modifier.padding(top = SectionGap), contentPadding = PaddingValues()) {
-                SettingsRow(
-                    title = stringResource(R.string.settings_sign_out),
-                    icon = R.drawable.ic_logout,
-                    titleColor = AromaTheme.colors.error,
-                    chevron = false,
-                    onClick = { confirmSignOut = true },
-                )
-            }
             Signature(Modifier.padding(top = SignatureGap))
         }
     }
@@ -243,57 +239,105 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
 }
 
 /**
- * Who is signed in where: their initial on a 56 dp circle, their name and address, and the server,
- * with a sage dot while it answers.
+ * The account, in one box: who is signed in, where, whether the server answers, and the way out.
+ * The person's initial stands on a 56 dp circle; the words of every row start on one edge after it.
  */
 @Composable
-private fun Profile(user: User, server: ServerInfo?, connected: Boolean) {
-    val name = user.fullName.ifBlank { user.username }
-    val colors = AromaTheme.colors
-    TonalBox {
-        Row(
-            Modifier.semantics(mergeDescendants = true) {},
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Avatar(name, ProfileAvatarSize)
-            Spacer(Modifier.width(Space.s16))
-            Column(Modifier.weight(1f)) {
-                Text(name, style = AromaTheme.type.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (user.email.isNotBlank()) {
-                    Text(user.email, style = AromaTheme.type.meta, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun Account(
+    user: User?,
+    server: ServerInfo?,
+    connected: Boolean,
+    onSignOut: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Without a person to show, nothing stands in the circle's column, and the words take its place.
+    val circle = user != null
+    val edge = if (circle) AccountTextEdge else BoxPadding
+    TonalBox(modifier, contentPadding = PaddingValues()) {
+        user?.let { person ->
+            val name = person.fullName.ifBlank { person.username }
+            // The circle keeps the box's padding all around, as the box's own content would.
+            AccountRow(
+                circle = true,
+                leading = { Avatar(name, ProfileAvatarSize) },
+                modifier =
+                    Modifier
+                        .padding(vertical = BoxPadding - Space.s12)
+                        .semantics(mergeDescendants = true) {},
+            ) {
+                // A long name or address takes a second line rather than losing its end.
+                Text(name, style = AromaTheme.type.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (person.email.isNotBlank()) {
+                    Text(person.email, style = AromaTheme.type.meta, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
+            Separator(start = edge)
         }
         server?.let {
-            Row(Modifier.padding(top = Space.s16), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(StatusDot)
-                        .background(if (connected) colors.accent else colors.inkTertiary, CircleShape),
-                )
-                Spacer(Modifier.width(Space.s8))
+            AccountRow(circle = circle, modifier = Modifier.semantics(mergeDescendants = true) {}) {
                 Text(
-                    text =
-                        stringResource(
-                            if (connected) R.string.settings_server_connected else R.string.settings_server_offline,
-                            it.version,
-                        ),
-                    style = AromaTheme.type.meta,
-                    maxLines = 1,
+                    text = it.url.removePrefix("https://").removePrefix("http://"),
+                    style = AromaTheme.type.body,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                ServerStatus(it.version, connected)
             }
-            Text(
-                text = it.url.removePrefix("https://").removePrefix("http://"),
-                style = AromaTheme.type.meta,
-                color = colors.inkTertiary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = StatusDot + Space.s8),
-            )
+            Separator(start = edge)
+        }
+        AccountRow(circle = circle, modifier = Modifier.clickable(role = Role.Button, onClick = onSignOut)) {
+            Text(stringResource(R.string.settings_sign_out), style = AromaTheme.type.body, color = AromaTheme.colors.error)
         }
     }
 }
+
+/** Whether the server answers, and its version: after a sage dot while it does, a dot in third ink while it does not. */
+@Composable
+private fun ServerStatus(version: String, connected: Boolean) {
+    val colors = AromaTheme.colors
+    val style = AromaTheme.type.bodySmall
+    val line = with(LocalDensity.current) { style.lineHeight.toDp() }
+    Row {
+        // The dot stands on the middle of the first line, however large the text is.
+        Box(
+            Modifier
+                .padding(top = (line - StatusDot) / 2)
+                .size(StatusDot)
+                .background(if (connected) colors.accent else colors.inkTertiary, CircleShape),
+        )
+        Spacer(Modifier.width(Space.s8))
+        Text(
+            text = stringResource(if (connected) R.string.settings_server_connected else R.string.settings_server_offline, version),
+            style = style,
+        )
+    }
+}
+
+/** A row of the account's box: the words after the [circle]'s column, where there is one, and [leading] in it. */
+@Composable
+private fun AccountRow(
+    circle: Boolean,
+    modifier: Modifier = Modifier,
+    leading: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = RowHeight.oneLine)
+            .padding(horizontal = BoxPadding, vertical = Space.s12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (circle) {
+            Box(Modifier.width(ProfileAvatarSize), contentAlignment = Alignment.Center) { leading?.invoke() }
+            Spacer(Modifier.width(Space.s16))
+        }
+        Column(Modifier.weight(1f), content = content)
+    }
+}
+
+/** Where the words of the account's rows start, after the circle: its separators start there. */
+private val AccountTextEdge = BoxPadding + ProfileAvatarSize + Space.s16
 
 /** The dot that says whether the server answers. */
 private val StatusDot = 8.dp
