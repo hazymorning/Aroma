@@ -216,7 +216,6 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
             selected = form.categories,
             onChange = { picked -> change { it.copy(categories = picked) } },
             newLabel = stringResource(R.string.organizers_new_category),
-            modifier = Modifier.padding(top = Space.s8),
         )
         SectionTitle(stringResource(R.string.recipes_tags), Modifier.padding(top = SectionGap, bottom = SectionTitleGap))
         OrganizerChips(
@@ -224,7 +223,6 @@ private fun Form(state: EditorUiState, actions: EditorActions, scroll: ScrollSta
             selected = form.tags,
             onChange = { picked -> change { it.copy(tags = picked) } },
             newLabel = stringResource(R.string.organizers_new_tag),
-            modifier = Modifier.padding(top = Space.s8),
         )
     }
 }

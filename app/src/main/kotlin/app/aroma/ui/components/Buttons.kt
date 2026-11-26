@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -36,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -239,7 +241,8 @@ fun ButtonProgress(color: Color, modifier: Modifier = Modifier) {
 
 /**
  * A text action in sage, with no fill: "Alle", "Einplanen", "Erneut versuchen". Its text, or the
- * [icon] before it, stands on the edge; the touch area grows away from it to 48 dp. An [inline]
+ * [icon] before it, stands on the edge; the touch area grows away from it to 48 dp. One with long
+ * words, as large text makes them, takes a second line rather than losing its end. An [inline]
  * action stands within a line of meta text, in its size.
  */
 @Composable
@@ -254,6 +257,8 @@ fun TextAction(
     val accent = AromaTheme.colors.accent
     val interaction = remember { MutableInteractionSource() }
     val shown by animateFloatAsState(if (enabled) 1f else DISABLED, Motion.state(), label = "textAction")
+    val style = if (inline) AromaTheme.type.meta else AromaTheme.type.label
+    val line = with(LocalDensity.current) { style.lineHeight.toDp() }
     Row(
         modifier =
             modifier
@@ -265,11 +270,12 @@ fun TextAction(
     ) {
         Row(
             Modifier
-                .clip(CircleShape)
+                // The tint reaches a little past the words on either side; the words stay on the edge.
+                .offset(x = -Space.s4)
+                // Its ends are as round as a line is tall, so a second line keeps its first letters whole.
+                .clip(RoundedCornerShape(line / 2))
                 .indication(interaction, PressTint)
-                // The tint reaches a little past the words; the words stay on the edge.
-                .padding(horizontal = Space.s4)
-                .offset(x = -Space.s4),
+                .padding(horizontal = Space.s4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             icon?.let {
@@ -278,9 +284,9 @@ fun TextAction(
             }
             Text(
                 text,
-                style = if (inline) AromaTheme.type.meta else AromaTheme.type.label,
+                style = style,
                 color = accent,
-                maxLines = 1,
+                maxLines = if (inline) 1 else 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }

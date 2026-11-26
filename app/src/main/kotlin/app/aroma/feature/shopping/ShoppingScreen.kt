@@ -396,11 +396,11 @@ private fun AddField(state: ShoppingUiState, addFocus: FocusRequester, actions: 
     )
 }
 
-/** That the list is the offline copy, and how many changes wait to be sent, in quiet lines. */
+/** That the list is the offline copy, and how many changes wait to be sent, in quiet lines 12 dp under the head, as on every page. */
 @Composable
 private fun SyncStatus(offline: Boolean, pendingChanges: Int, modifier: Modifier = Modifier) {
     Column(
-        modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
+        modifier.padding(start = PageMargin, end = PageMargin, top = Space.s12),
         verticalArrangement = Arrangement.spacedBy(Space.s4),
     ) {
         if (offline) OfflineNotice()

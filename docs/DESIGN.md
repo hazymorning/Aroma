@@ -44,7 +44,9 @@ shapes at least 3 : 1 against their ground.
   is drawn the same way, so they stay one set. A chosen tab's icon has 2 dp strokes. An icon that
   stands alone and takes a tap stands on a circle, so it reads as a button: 40 dp on the page, on
   photos and in the heads, 48 in the bottom bars and 56 beside cook mode's taller buttons, always in
-  a 48 dp target. The heads keep 40, with 12 dp of air above and below in the 64 dp collapsed head,
+  a 48 dp target. A field's button stands in the middle of the field's round end, as far from the
+  end as from the top and the foot, and a field of one line stays 48 dp as long as its line fits
+  in it. The heads keep 40, with 12 dp of air above and below in the 64 dp collapsed head,
   and the back button keeps one size and place as the head collapses: over a recipe's photo, its
   buttons stand in the row the collapsed head will have. Icons in a button with words, a row or a
   line of meta have no circle of their own.

@@ -860,9 +860,11 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                 Spacer(Modifier.width(Space.s16))
                 // The words keep clear of the close button; the stars may pass under it, so five fit on a small phone.
                 Column(Modifier.weight(1f)) {
+                    // The eyebrow over the recipe's name, as today's box sets its own.
                     Text(
                         text = stringResource(R.string.cook_rate_question),
-                        style = AromaTheme.type.bodySmall,
+                        style = AromaTheme.type.label,
+                        color = AromaTheme.colors.inkSecondary,
                         modifier = Modifier.padding(end = TouchTarget, bottom = EyebrowGap),
                     )
                     Text(

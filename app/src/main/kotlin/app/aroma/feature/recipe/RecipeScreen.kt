@@ -979,7 +979,8 @@ private fun Notes(notes: List<RecipeNote>, modifier: Modifier = Modifier) {
         notes.forEachIndexed { index, note ->
             Column(Modifier.padding(start = PageMargin, end = PageMargin, top = if (index == 0) 0.dp else Space.s24)) {
                 if (note.title.isNotBlank()) {
-                    Text(note.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = Space.s4))
+                    // As far over its words as a step's title stands over the step's.
+                    Text(note.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = EyebrowGap))
                 }
                 Text(text = rememberRichText(note.text), style = AromaTheme.type.body)
             }

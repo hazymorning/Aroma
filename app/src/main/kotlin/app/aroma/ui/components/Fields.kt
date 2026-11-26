@@ -1,6 +1,7 @@
 package app.aroma.ui.components
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,14 +24,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.hintText
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.LocalTonalFill
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.TouchTarget
 
 /**
  * Fields on the tonal fill where they stand, with no edge: the field with the cursor takes the
@@ -91,11 +96,55 @@ private fun FieldNote(text: String, isError: Boolean) {
 /** Where a field's text starts, and its label and note above and below it: notes set under a field outside it stand there too. */
 val FieldInset = Space.s16
 
-/**
- * The room around a field's text: [FieldInset] at the sides, and as much above and below as makes
- * a field of one line of body text exactly a button's 48 dp, like the button beside it.
- */
+/** The room around the text of a field for several lines: [FieldInset] at the sides, 12 dp above and below. */
 private val FieldPadding = PaddingValues(horizontal = FieldInset, vertical = Space.s12)
+
+/**
+ * The least room above and below the text of a field of one line. The field is a button's 48 dp,
+ * like the button beside it and the search field, with its line in the middle, and grows past that
+ * only where the reader's text is so large that the line and this room no longer fit.
+ */
+private val SingleLineRoom = Space.s4
+
+/** The room around a field's text: [FieldInset] at the sides, and above and below as a field of one line or several keeps it. */
+private fun fieldPadding(singleLine: Boolean): PaddingValues =
+    if (singleLine) PaddingValues(horizontal = FieldInset, vertical = SingleLineRoom) else FieldPadding
+
+/**
+ * How tall a field of one line stands: a button's 48 dp, or its line and the least room around it
+ * where the reader's text is larger. The line is measured as the field sets it, since Android
+ * scales large text less than its line height would say.
+ */
+@Composable
+private fun singleLineFieldHeight(): Dp {
+    val measurer = rememberTextMeasurer(cacheSize = 1)
+    val style = AromaTheme.type.body
+    val density = LocalDensity.current
+    val line =
+        remember(measurer, style, density) {
+            with(density) {
+                measurer
+                    .measure("H", style)
+                    .size.height
+                    .toDp()
+            }
+        }
+    return maxOf(ButtonHeight, line + SingleLineRoom * 2)
+}
+
+/**
+ * A field's button at its end: a 40 dp circle on the box's paper in a 48 dp target, in the middle of
+ * the field's round end. Where the largest text makes the field taller than its 48 dp, the button
+ * moves in from the end by half as much as the field grew, so its circle keeps as much air at the
+ * end as above and below.
+ */
+@Composable
+private fun FieldButton(icon: @Composable () -> Unit) {
+    val grown = (singleLineFieldHeight() - TouchTarget) / 2
+    Box(Modifier.padding(end = grown.coerceAtLeast(0.dp))) {
+        CompositionLocalProvider(LocalTonalFill provides AromaTheme.colors.surfaceInBox) { icon() }
+    }
+}
 
 /** Where a field for several lines starts. */
 private val MultiLineFieldHeight = 112.dp
@@ -154,11 +203,15 @@ fun LabeledTextField(
                     trailingIcon =
                         trailingIcon?.let { icon ->
                             {
-                                CompositionLocalProvider(LocalTonalFill provides AromaTheme.colors.surfaceInBox) { icon() }
+                                if (singleLine) {
+                                    FieldButton(icon)
+                                } else {
+                                    CompositionLocalProvider(LocalTonalFill provides AromaTheme.colors.surfaceInBox) { icon() }
+                                }
                             }
                         },
                     colors = colors,
-                    contentPadding = FieldPadding,
+                    contentPadding = fieldPadding(singleLine),
                     container = {
                         OutlinedTextFieldDefaults.Container(
                             enabled = enabled,
@@ -216,15 +269,10 @@ fun LabeledSecureTextField(
                     outputTransformation = null,
                     interactionSource = interaction,
                     labelPosition = TextFieldLabelPosition.Attached(),
-                    trailingIcon =
-                        trailingIcon?.let { icon ->
-                            {
-                                CompositionLocalProvider(LocalTonalFill provides AromaTheme.colors.surfaceInBox) { icon() }
-                            }
-                        },
+                    trailingIcon = trailingIcon?.let { icon -> { FieldButton(icon) } },
                     isError = isError,
                     colors = colors,
-                    contentPadding = FieldPadding,
+                    contentPadding = fieldPadding(singleLine = true),
                     container = {
                         OutlinedTextFieldDefaults.Container(
                             enabled = true,

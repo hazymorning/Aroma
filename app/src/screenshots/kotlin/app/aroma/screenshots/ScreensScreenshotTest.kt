@@ -72,9 +72,11 @@ import app.aroma.feature.mealplan.MealPlanActions
 import app.aroma.feature.mealplan.MealPlanScreen
 import app.aroma.feature.mealplan.MealPlanUiState
 import app.aroma.feature.mealplan.PlanSearchState
+import app.aroma.feature.recipe.AddToListSheet
 import app.aroma.feature.recipe.CookbookChoice
 import app.aroma.feature.recipe.CookbookSheet
 import app.aroma.feature.recipe.OrganizerSheet
+import app.aroma.feature.recipe.PlanSheet
 import app.aroma.feature.recipe.RatingSheet
 import app.aroma.feature.recipe.RecipeActions
 import app.aroma.feature.recipe.RecipeActionsSheet
@@ -294,6 +296,32 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
             )
         shoot("recipe_reworking", content = recipe(recipeState(recipe).copy(aiAvailable = true, rework = rework)))
     }
+
+    /** Planning a recipe: the day of the coming week and the meal. */
+    @Test
+    fun recipePlan() =
+        shoot("recipe_plan") {
+            RecipeScreen(recipeState(sample.recipe), RecipeActions())
+            PlanSheet(today = sample.today, onPlan = { _, _ -> }, onDismiss = {})
+        }
+
+    /** Putting a recipe on a list: which list, the servings, and what is already at home left out. */
+    @Test
+    fun recipeShop() =
+        shoot("recipe_shop") {
+            RecipeScreen(recipeState(sample.recipe), RecipeActions())
+            AddToListSheet(
+                recipe = sample.recipe,
+                scale = 1.0,
+                lists =
+                    listOf(
+                        ShoppingListInfo("l1", t("Wocheneinkauf", "Weekly shop")),
+                        ShoppingListInfo("l2", t("Drogerie", "Drugstore")),
+                    ),
+                onAdd = { _, _ -> },
+                onDismiss = {},
+            )
+        }
 
     /** The cookbooks to put a recipe into: one it is in, one to put it into, and one Mealie fills by its rules. */
     @Test
@@ -533,7 +561,12 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
             )
         }
 
-    private fun shopping(list: ShoppingList?, settling: Map<String, Boolean> = emptyMap()): @Composable () -> Unit =
+    private fun shopping(
+        list: ShoppingList?,
+        settling: Map<String, Boolean> = emptyMap(),
+        offline: Boolean = false,
+        pending: Int = 0,
+    ): @Composable () -> Unit =
         {
             TabFrame(Tab.Shopping) {
                 ShoppingScreen(
@@ -545,12 +578,18 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
                             ),
                         list = list,
                         isLoading = false,
+                        isOffline = offline,
+                        pendingChanges = pending,
                         settlingChecks = settling,
                     ),
                     ShoppingActions(),
                 )
             }
         }
+
+    /** The phone's own copy while Mealie is out of reach, with changes waiting: quiet lines 12 dp under the head, as on every page. */
+    @Test
+    fun shoppingOffline() = shoot("shopping_offline", content = shopping(sample.shoppingList, offline = true, pending = 2))
 
     /** The list, one of it just checked: drawn and struck through, a moment before it moves into the basket. */
     @Test
