@@ -110,7 +110,8 @@ jobs:
           DRAFT: ${{ inputs.draft }}
           DRAFTED: ${{ needs.version.outputs.drafted }}
         run: |
-          apk="Aroma-$VERSION.apk"
+          # One name for every version, so the README's button always downloads the newest.
+          apk="aroma.apk"
           cp app/build/outputs/apk/release/app-release.apk "$apk"
           awk -v heading="## $VERSION " 'index($0, heading) == 1 { found = 1; next } /^## / { found = 0 } found' CHANGELOG.md > notes.md
           if [ "$DRAFT" = true ]; then

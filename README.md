@@ -8,6 +8,8 @@
 
 Aroma is an Android app for Mealie, available in English and German. It's designed like a cookbook and builds on years of using other recipe apps.
 
+<a href="https://github.com/hazymorning/Aroma/releases/latest/download/aroma.apk"><img src="docs/assets/download.png" width="260" alt="Download for Android"></a>
+
 <br>
 
 <picture>
