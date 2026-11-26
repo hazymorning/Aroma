@@ -120,3 +120,23 @@ jobs:
           else
             gh release create "v$VERSION" "$apk" --title "Aroma $VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest
           fi
+
+  # Once: the APK of a version already out takes the name the README's button downloads.
+  name-the-apk:
+    needs: version
+    if: needs.version.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Name the APK aroma.apk
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          names=$(gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          if grep -qx "aroma.apk" <<< "$names"; then echo "v$VERSION already offers aroma.apk"; exit 0; fi
+          old=$(grep -m1 '\.apk$' <<< "$names")
+          gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" --pattern "$old" --output aroma.apk
+          gh release upload "v$VERSION" aroma.apk --repo "$GITHUB_REPOSITORY"
+          gh release delete-asset "v$VERSION" "$old" --repo "$GITHUB_REPOSITORY" --yes
+          echo "v$VERSION offers aroma.apk instead of $old"
