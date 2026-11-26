@@ -11,6 +11,7 @@ import app.aroma.core.model.ShoppingListInfo
 import app.aroma.onNodeWithWords
 import app.aroma.ui.theme.AromaTheme
 import org.junit.After
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -20,10 +21,11 @@ import org.robolectric.RuntimeEnvironment
 import java.util.concurrent.TimeUnit
 
 /**
- * Shopping mode at 200 % font size on a 360 dp phone. The list's menu is too narrow there for some
+ * The shopping list at 200 % font size on a 360 dp phone. The list's menu is too narrow there for some
  * of its rows, which end in "…"; the menu narrows to the shortened rows and has to come to rest
- * there, rather than widen for the whole words again, and narrow, frame after frame. It shows only
- * with real fonts, which the tests draw with (robolectric.properties).
+ * there, rather than widen for the whole words again, and narrow, frame after frame. Shopping mode,
+ * its own page, has to come to rest too, with its large rows. It shows only with real fonts, which
+ * the tests draw with (robolectric.properties).
  */
 @RunWith(RobolectricTestRunner::class)
 class ShoppingModeLargeTextTest {
@@ -43,28 +45,49 @@ class ShoppingModeLargeTextTest {
     fun waitAsBefore() = IdlingPolicies.setMasterPolicyTimeout(idling.idleTimeout, idling.idleTimeoutUnit)
 
     @Test
-    fun `the menu and shopping mode come to rest in German`() =
-        startShoppingMode("de", more = "Weitere Optionen", toggle = "Einkaufsmodus", hint = "Große Schrift, der Bildschirm bleibt an.")
+    fun `the menu comes to rest in German`() = openMenu("de", more = "Weitere Optionen", choice = "Alles abhaken")
 
     @Test
-    fun `the menu and shopping mode come to rest in English`() =
-        startShoppingMode("en", more = "More options", toggle = "Start shopping", hint = "Large text, and the screen stays on.")
+    fun `the menu comes to rest in English`() = openMenu("en", more = "More options", choice = "Check off")
 
-    private fun startShoppingMode(locale: String, more: String, toggle: String, hint: String) {
+    @Test
+    fun `shopping mode comes to rest in German`() = shop("de", basket = "0 von 3 im Korb")
+
+    @Test
+    fun `shopping mode comes to rest in English`() = shop("en", basket = "0 of 3 in the basket")
+
+    private fun openMenu(locale: String, more: String, choice: String) {
+        var checkedAll = false
         RuntimeEnvironment.setQualifiers("$locale-w360dp-h800dp-xxhdpi")
         RuntimeEnvironment.setFontScale(2f)
         compose.setContent {
             AromaTheme(darkTheme = false) {
                 ShoppingScreen(
                     state = ShoppingUiState(lists = listOf(ShoppingListInfo(LIST.id, LIST.name)), list = LIST, isLoading = false),
-                    actions = ShoppingActions(),
+                    actions = ShoppingActions(onCheckAll = { checkedAll = true }),
                 )
             }
         }
         compose.onNodeWithContentDescription(more).performClick()
         // Each lookup waits for the page to rest first. The row is shortened, so it is found by the words it keeps.
-        compose.onNodeWithWords(toggle, substring = true).performClick()
-        compose.onNodeWithWords(hint).assertExists()
+        compose.onNodeWithWords(choice, substring = true).performClick()
+        compose.waitForIdle()
+        assertTrue(checkedAll)
+    }
+
+    private fun shop(locale: String, basket: String) {
+        RuntimeEnvironment.setQualifiers("$locale-w360dp-h800dp-xxhdpi")
+        RuntimeEnvironment.setFontScale(2f)
+        compose.setContent {
+            AromaTheme(darkTheme = false) {
+                ShoppingModeScreen(
+                    state = ShoppingUiState(lists = listOf(ShoppingListInfo(LIST.id, LIST.name)), list = LIST, isLoading = false),
+                    onToggle = {},
+                    onClose = {},
+                )
+            }
+        }
+        compose.onNodeWithWords(basket).assertExists()
     }
 
     private companion object {

@@ -23,6 +23,7 @@ import app.aroma.data.remote.dto.RecipeSummaryDto
 import app.aroma.data.remote.dto.ShoppingListSummaryDto
 import app.aroma.data.remote.dto.TokenDto
 import app.aroma.data.remote.dto.UserDto
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
@@ -265,6 +266,13 @@ interface MealieApi {
     suspend fun deleteShoppingList(
         @Path("id") id: String,
     )
+
+    /** The order of a list's aisles: every one of its label settings, each with its new position. */
+    @PUT("api/households/shopping/lists/{id}/label-settings")
+    suspend fun updateLabelSettings(
+        @Path("id") id: String,
+        @Body body: JsonArray,
+    ): JsonObject
 
     /** Single-recipe endpoint: Mealie 2.0 has no bulk variant, newer versions support both. */
     @POST("api/households/shopping/lists/{id}/recipe/{recipeId}")

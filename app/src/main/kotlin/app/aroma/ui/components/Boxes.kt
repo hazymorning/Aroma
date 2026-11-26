@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -35,6 +36,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import app.aroma.R
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxPadding
@@ -115,10 +117,11 @@ enum class BoxPart(internal val isTop: Boolean, internal val isBottom: Boolean) 
  * corners, nothing more; each row pads itself. What it holds takes the box's own tonal fill. As a
  * row next to it comes or goes, a part's corners ease into their new shape: they square at once to
  * meet a row that comes, and round only as a row that goes fades, so the box shows no notch where
- * the row still stands.
+ * the row still stands. While its row is lifted out of the box by a finger, the part keeps its
+ * place in the box, empty, and does not [clip] the row that floats above it.
  */
 @Composable
-fun TonalBoxPart(part: BoxPart, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun TonalBoxPart(part: BoxPart, modifier: Modifier = Modifier, clip: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     val top by animateDpAsState(if (part.isTop) Radius.box else 0.dp, cornerSpec(part.isTop), label = "topCorners")
     val bottom by animateDpAsState(if (part.isBottom) Radius.box else 0.dp, cornerSpec(part.isBottom), label = "bottomCorners")
     val shape =
@@ -129,11 +132,22 @@ fun TonalBoxPart(part: BoxPart, modifier: Modifier = Modifier, content: @Composa
     Column(
         modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(fill),
+            .then(if (clip) Modifier.clip(shape).background(fill) else Modifier.background(fill, shape)),
     ) {
         CompositionLocalProvider(LocalTonalFill provides inner) { content() }
     }
+}
+
+/**
+ * The shape of a row lifted out of this part of its box, [lift] of the way up: its corners round
+ * from the part's own to a box's as it rises, and back as it settles, so it leaves the box and
+ * returns to it without a seam.
+ */
+fun BoxPart.liftedShape(lift: Float): Shape {
+    val top = if (isTop) Radius.box else lerp(0.dp, Radius.box, lift)
+    val bottom = if (isBottom) Radius.box else lerp(0.dp, Radius.box, lift)
+    return androidx.compose.foundation.shape
+        .RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom)
 }
 
 /** Corners round as the row that leaves begins to fade, which a list does after an edge's time; they square at once. */

@@ -173,8 +173,11 @@ fun AromaNavHost(launch: LaunchRequest?, onLaunchConsume: () -> Unit, modifier: 
             composable<MealPlanRoute> { entry -> underBar(entry, Tab.MealPlan) { MealPlanDestination(nav, snackbar, planFocus) } }
             composable<ShoppingRoute> { entry ->
                 underBar(entry, Tab.Shopping) {
-                    ShoppingDestination(shoppingRequest.value, onRequestConsume = { shoppingRequest.value = null })
+                    ShoppingDestination(nav, shoppingRequest.value, onRequestConsume = { shoppingRequest.value = null })
                 }
+            }
+            composable<ShoppingModeRoute> { entry ->
+                pushed(entry) { ShoppingModeDestination(entry.toRoute<ShoppingModeRoute>().listId, nav) }
             }
             composable<RecipeRoute> { entry ->
                 pushed(entry) {

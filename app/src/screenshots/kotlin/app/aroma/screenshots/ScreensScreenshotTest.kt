@@ -11,9 +11,14 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToKeyAction
@@ -22,6 +27,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import app.aroma.core.format.MeasureSystem
@@ -94,7 +100,10 @@ import app.aroma.feature.settings.LicensesScreen
 import app.aroma.feature.settings.SettingsActions
 import app.aroma.feature.settings.SettingsScreen
 import app.aroma.feature.settings.SettingsUiState
+import app.aroma.feature.shopping.AislesSheet
+import app.aroma.feature.shopping.ItemSheet
 import app.aroma.feature.shopping.ShoppingActions
+import app.aroma.feature.shopping.ShoppingModeScreen
 import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingUiState
 import app.aroma.onNodeWithWords
@@ -587,6 +596,21 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
             }
         }
 
+    /** Shopping mode over [list], with [tick] ticked off once shopping has begun, so they stay where they are. */
+    @Composable
+    private fun ShoppingModeFrame(list: ShoppingList, tick: Set<String>) {
+        var shown by remember { mutableStateOf(list) }
+        LaunchedEffect(Unit) {
+            withFrameNanos { }
+            shown = shown.copy(items = shown.items.map { if (it.id in tick) it.copy(checked = true) else it })
+        }
+        ShoppingModeScreen(
+            state = ShoppingUiState(lists = listOf(ShoppingListInfo(list.id, list.name)), list = shown, isLoading = false),
+            onToggle = {},
+            onClose = {},
+        )
+    }
+
     /** The phone's own copy while Mealie is out of reach, with changes waiting: quiet lines 12 dp under the head, as on every page. */
     @Test
     fun shoppingOffline() = shoot("shopping_offline", content = shopping(sample.shoppingList, offline = true, pending = 2))
@@ -595,14 +619,68 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
     @Test
     fun shopping() = shoot("shopping", content = shopping(sample.shoppingList, mapOf(sample.shoppingList.items[1].id to true)))
 
+    /** The list's menu: the changes to the whole list first, then the lists themselves. */
     @Test
-    fun shoppingMode() =
+    fun shoppingMenu() =
         shoot(
-            "shopping_mode",
+            "shopping_menu",
+            interact = { composeRule.onNodeWithContentDescription(t("Weitere Optionen", "More options")).performClick() },
+            content = shopping(sample.shoppingList),
+        )
+
+    /** Shopping mode a few rows in: three ticked off and struck through where they stand, the bar a third full. */
+    @Test
+    fun shoppingMode() = shoot("shopping_mode") { ShoppingModeFrame(sample.shoppingList, tick = setOf("i1", "i2", "i5")) }
+
+    /** Shopping mode with everything in the basket: the head says so, and "Done" stands at the foot. */
+    @Test
+    fun shoppingModeDone() =
+        shoot("shopping_mode_done") {
+            ShoppingModeFrame(
+                sample.shoppingList,
+                tick =
+                    sample.shoppingList.items
+                        .map { it.id }
+                        .toSet(),
+            )
+        }
+
+    /** Shopping mode well into a long list: the aisle's name stays at the top while its rows go by. */
+    @Test
+    fun shoppingModeScrolled() =
+        shoot(
+            "shopping_mode_scrolled",
+            // A row deep in an aisle comes to the top, under the aisle's name.
+            interact = { composeRule.onNode(hasScrollToKeyAction()).performScrollToKey(Extremes.longList.items[SCROLLED_INTO_AISLE].id) },
+        ) { ShoppingModeFrame(Extremes.longList, tick = setOf("i1", "i2")) }
+
+    /** An item to edit: its text, and the aisles to put it in, with what Aroma remembers. */
+    @Test
+    fun shoppingItem() =
+        shoot("shopping_item") {
+            shopping(sample.shoppingList)()
+            ItemSheet(sample.shoppingList.items.last(), aisles = sample.shoppingList.labels, onSave = { _, _ -> }, onDismiss = {})
+        }
+
+    /** The aisles in the order of the shop, each with its handle to drag it by. */
+    @Test
+    fun shoppingAisles() =
+        shoot("shopping_aisles") {
+            shopping(sample.shoppingList)()
+            AislesSheet(sample.shoppingList.labels, onOrder = {}, onDismiss = {})
+        }
+
+    /** An item held and dragged down its aisle: lifted out of its box with its shadow, the row it passed gliding up. */
+    @Test
+    fun shoppingDrag() =
+        shoot(
+            "shopping_drag",
             interact = {
-                composeRule.onNodeWithContentDescription(t("Weitere Optionen", "More options")).performClick()
-                // With very large text on a narrow phone the row may end in "…" after its first words.
-                composeRule.onNodeWithWords(t("Einkaufsmodus", "Start shopping"), substring = true).performClick()
+                val avocados = composeRule.onNodeWithWords(t("2 Avocados", "2 avocados"), substring = true)
+                avocados.performTouchInput { down(center) }
+                composeRule.mainClock.advanceTimeBy(HOLD_MILLIS)
+                avocados.performTouchInput { moveBy(Offset(0f, 80.dp.toPx())) }
+                composeRule.mainClock.advanceTimeBy(HOLD_MILLIS)
             },
             content = shopping(sample.shoppingList),
         )
@@ -864,6 +942,12 @@ class ScreensScreenshotTest(private val look: Look) : ScreenshotTest() {
 
     companion object {
         private const val WHOLE_PAGE = 4200
+
+        /** Longer than a long press, so a row is held. */
+        private const val HOLD_MILLIS = 700L
+
+        /** A row well inside one of the long list's aisles, so its aisle's name stands at the top. */
+        private const val SCROLLED_INTO_AISLE = 22
         private const val SCROLL_TO_END = 100_000f
         private const val JPEG_QUALITY = 90
         private val SNACKBAR_LIFT = 96.dp

@@ -315,7 +315,6 @@
     <!-- Shopping -->
     <string name="shopping_mode_on">Einkaufsmodus starten</string>
     <string name="shopping_mode_off">Einkaufsmodus beenden</string>
-    <string name="shopping_mode_hint">Große Schrift, der Bildschirm bleibt an.</string>
     <string name="shopping_add_hint">Artikel hinzufügen</string>
     <string name="shopping_add">Hinzufügen</string>
     <plurals name="shopping_open">
@@ -345,6 +344,30 @@
     <plurals name="shopping_pending">
         <item quantity="one">%1$d Änderung wird übertragen, sobald du online bist.</item>
         <item quantity="other">%1$d Änderungen werden übertragen, sobald du online bist.</item>
+    </plurals>
+    <string name="shopping_check_all">Alles abhaken</string>
+    <string name="shopping_put_back_all">Alles zurücklegen</string>
+    <string name="shopping_order_aisles">Gänge sortieren</string>
+    <string name="shopping_order_aisles_hint">Zieh sie in die Reihenfolge deines Ladens.</string>
+    <string name="shopping_share">Liste teilen</string>
+    <string name="shopping_aisle">Gang</string>
+    <string name="shopping_aisle_hint">Aroma merkt sich den Gang für das nächste Mal, wenn du den Artikel hinzufügst.</string>
+    <string name="shopping_all_in_basket">Alles ist im Korb.</string>
+    <string name="shopping_in_basket">%1$d von %2$d im Korb</string>
+    <string name="shopping_move_up">Nach oben</string>
+    <string name="shopping_move_down">Nach unten</string>
+    <string name="shopping_drag_hint">Ziehen zum Verschieben</string>
+    <plurals name="shopping_checked_all">
+        <item quantity="one">%1$d Artikel abgehakt</item>
+        <item quantity="other">%1$d Artikel abgehakt</item>
+    </plurals>
+    <plurals name="shopping_put_back">
+        <item quantity="one">%1$d Artikel zurückgelegt</item>
+        <item quantity="other">%1$d Artikel zurückgelegt</item>
+    </plurals>
+    <plurals name="shopping_cleared">
+        <item quantity="one">%1$d Artikel entfernt</item>
+        <item quantity="other">%1$d Artikel entfernt</item>
     </plurals>
 
     <!-- Cookbooks -->

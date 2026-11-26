@@ -22,6 +22,10 @@ data class RecipeRoute(val slug: String)
 @Serializable
 data class CookRoute(val slug: String, val scale: Double)
 
+/** Shopping mode for one list, over everything else, as cook mode is for a recipe. */
+@Serializable
+data class ShoppingModeRoute(val listId: String)
+
 /** Recipes that belong together, on a page of their own; [id] names the cookbook or the meal. */
 @Serializable
 data class CollectionRoute(

@@ -54,7 +54,14 @@ shapes at least 3 : 1 against their ground.
   without one, such as the plan or the shopping list, has none rather than one made up for it. What
   manages a thing rather than uses it waits a level down, in the ⋯ menu, a sheet or the editor, so
   pages stay calm and nothing is lost. On a sheet of choices, the way to undo them all, such as
-  resetting the filter, stands at the end of its title while there is anything to undo.
+  resetting the filter, stands at the end of its title while there is anything to undo. A change to
+  many things at once, such as ticking off a whole list, says what it did and offers to undo it.
+- **Modes.** Cook mode and shopping mode are pages of their own, over the bars: a close button in
+  the head, large type and large targets, the screen kept on, and nothing to remove or edit by
+  mistake. Shopping mode keeps every row where it stood as shopping began: a row ticked off is
+  struck through in its place, the aisle's name stays at the top while its rows go by, and the head
+  counts what is in the basket, in words and in a fine sage bar. Once all of it is, "Done" stands at
+  the foot.
 - **States.** Emptiness is quiet: one line and its action, no picture, never taller than what it
   stands for. Where the two do not fit on one line, the action moves under the words instead of
   squeezing them. A page that cannot load says so the same way, with "Try again". An error of a
@@ -89,7 +96,9 @@ shapes at least 3 : 1 against their ground.
   up as it counts up and down as it counts down, and the words around it stand still. A label that
   changes in its place fades out before the new one fades in. A row that comes fades in where it
   lands while the rows after it glide aside, or, outside a list, opens its room as it fades in. A row
-  that goes fades, then gives its room up. A tick fades with its circle. A switch's knob glides and
+  that goes fades, then gives its room up. A row held a moment rises out of its box a step lighter,
+  with the soft shadow of what floats, and follows the finger; the rows it passes glide aside, and
+  let go, it settles into its place. A tick fades with its circle. A switch's knob glides and
   its track takes on its colour. A row that scrolls sideways fades out over the margin where more of
   it lies beyond. A recipe's photo slides away at half the page's pace. A week swiped sideways
   follows the finger, held back, and springs back where letting go would not turn it. A timer's dial

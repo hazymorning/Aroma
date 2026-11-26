@@ -3,6 +3,7 @@ package app.aroma.feature.shopping
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aroma.core.model.ShoppingItem
+import app.aroma.core.model.ShoppingLabel
 import app.aroma.core.model.ShoppingList
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
@@ -39,6 +40,12 @@ sealed interface ShoppingEvent {
     /** [item] is gone from list [listId]; [ShoppingViewModel.undoDelete] puts it back. */
     data class Deleted(val listId: String, val item: JsonObject) : ShoppingEvent
 
+    /** What was ticked off left list [listId]; [ShoppingViewModel.undoClear] puts it back. */
+    data class Cleared(val listId: String, val items: List<JsonObject>) : ShoppingEvent
+
+    /** The items [ids] were all ticked off, or all put back where [checked] is false; [ShoppingViewModel.undoChecks] turns them back. */
+    data class CheckedAll(val listId: String, val ids: List<String>, val checked: Boolean) : ShoppingEvent
+
     /** The ingredients of [count] planned recipes went onto list [listName]. */
     data class AddedFromPlan(val count: Int, val listName: String) : ShoppingEvent
 
@@ -51,6 +58,8 @@ class ShoppingViewModel(
     connection: ServerConnection,
     private val mealPlans: MealPlanRepository? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
+    /** The list to show from the start, as shopping mode shows the list it was opened for. */
+    initialList: String? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(ShoppingUiState())
     val state: StateFlow<ShoppingUiState> = mutableState.asStateFlow()
@@ -67,6 +76,7 @@ class ShoppingViewModel(
     private val settling = mutableMapOf<String, Job>()
 
     init {
+        initialList?.let(::select)
         loadLists()
         viewModelScope.launch {
             // Mealie answers again: the lists and the list shown load anew. Out of reach: what shows is the phone's copy.
@@ -146,12 +156,17 @@ class ShoppingViewModel(
 
     fun onNewItemChange(text: String) = mutableState.update { it.copy(newItem = text) }
 
+    /** Adds what was typed; a list pasted line by line becomes an item per line. */
     fun addItem() {
-        val text = state.value.newItem.trim()
+        val lines =
+            state.value.newItem
+                .lines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
         val listId = state.value.list?.id ?: return
-        if (text.isEmpty()) return
+        if (lines.isEmpty()) return
         mutableState.update { it.copy(newItem = "") }
-        edit { shopping.add(listId, text) }
+        edit { lines.forEach { shopping.add(listId, it) } }
     }
 
     /**
@@ -198,12 +213,71 @@ class ShoppingViewModel(
             shopping.delete(item.listId, item.id)?.let { removed -> outbox.send(ShoppingEvent.Deleted(item.listId, removed)) }
         }
 
-    fun undoDelete(deleted: ShoppingEvent.Deleted) = edit { shopping.restore(deleted.listId, deleted.item) }
+    fun undoDelete(deleted: ShoppingEvent.Deleted) = edit { shopping.restore(deleted.listId, listOf(deleted.item)) }
 
+    /** Takes what is ticked off the list, so it can be put back. */
     fun clearChecked() {
         val listId = state.value.list?.id ?: return
-        edit { shopping.clearChecked(listId) }
+        settleNow()
+        edit {
+            val removed = shopping.clearChecked(listId)
+            if (removed.isNotEmpty()) outbox.send(ShoppingEvent.Cleared(listId, removed))
+        }
     }
+
+    fun undoClear(cleared: ShoppingEvent.Cleared) = edit { shopping.restore(cleared.listId, cleared.items) }
+
+    /** Ticks off everything still open, as after a delivery or a shop done without the phone. */
+    fun checkAll() = checkEvery(checked = true)
+
+    /** Puts everything ticked off back on the list, for a list bought again and again. */
+    fun putAllBack() = checkEvery(checked = false)
+
+    private fun checkEvery(checked: Boolean) {
+        val shown = state.value
+        val list = shown.list ?: return
+        // As the rows show them: a row ticked a moment ago counts as ticked.
+        val ids = list.items.filter { shown.isChecked(it) != checked }.map { it.id }
+        settleNow()
+        if (ids.isEmpty()) return
+        edit {
+            val changed = shopping.setChecked(list.id, ids, checked)
+            if (changed.isNotEmpty()) outbox.send(ShoppingEvent.CheckedAll(list.id, changed, checked))
+        }
+    }
+
+    fun undoChecks(event: ShoppingEvent.CheckedAll) = edit { shopping.setChecked(event.listId, event.ids, !event.checked) }
+
+    /** Checks that are still on their way are sent at once, so what follows starts from them. */
+    private fun settleNow() {
+        val waiting = state.value.settlingChecks
+        if (waiting.isEmpty()) return
+        settling.values.forEach { it.cancel() }
+        settling.clear()
+        val list = state.value.list ?: return
+        val changed = list.items.filter { item -> waiting[item.id]?.let { it != item.checked } == true }
+        mutableState.update { it.copy(settlingChecks = emptyMap()) }
+        edit {
+            changed.groupBy { waiting.getValue(it.id) }.forEach { (checked, items) ->
+                shopping.setChecked(list.id, items.map { it.id }, checked)
+            }
+        }
+    }
+
+    /** The open items of one aisle, [orderedIds], in the order they were dragged into. */
+    fun reorder(orderedIds: List<String>) {
+        val listId = state.value.list?.id ?: return
+        edit { shopping.reorder(listId, orderedIds) }
+    }
+
+    /** The list's aisles in the order of the shop, [labelIds]. */
+    fun orderAisles(labelIds: List<String>) {
+        val listId = state.value.list?.id ?: return
+        edit { shopping.orderAisles(listId, labelIds) }
+    }
+
+    /** New [text] for [item], where it changed, and the aisle it belongs in, [label], or none. */
+    fun editItem(item: ShoppingItem, text: String?, label: ShoppingLabel?) = edit { shopping.editItem(item.listId, item.id, text, label) }
 
     /** Puts the ingredients of every recipe planned for the coming week on the list shown. */
     fun addFromPlan() {

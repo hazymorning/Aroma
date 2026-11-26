@@ -333,7 +333,16 @@ class SampleData(private val german: Boolean) {
                     item("i9", t("Küchenrolle", "Paper towels"), null, checked = true),
                     item("i10", t("Ahornsirup", "Maple syrup"), null),
                 ),
-            labelOrder = listOf("produce", "dairy", "bakery", "pantry"),
+            labelOrder = listOf("produce", "dairy", "bakery", "pantry", "frozen", "drinks"),
+            labels =
+                listOf(
+                    produce,
+                    dairy,
+                    bakery,
+                    pantry,
+                    ShoppingLabel("frozen", t("Tiefkühl", "Frozen")),
+                    ShoppingLabel("drinks", t("Getränke", "Drinks")),
+                ),
         )
 
     /** Photos of a recipe to import: a page of a cookbook and a handwritten card. */
