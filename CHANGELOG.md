@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.0.0 – 2026-11-26
+
+**New**
+- Shopping mode is a page of its own, made for the shop. Its rows are large, nothing moves under your thumb, each aisle's name stays in view and a bar fills as the basket does.
+- An item held a moment moves within its aisle, and the aisles can follow the order of your shop.
+- Everything can be ticked off or put back at once. Both can be undone, and so can clearing what is done.
+- Items are edited in a sheet that also sets their aisle. Aroma remembers it for the next time you add the same thing.
+- The shopping list can be sent as text, and a list pasted line by line becomes an item per line.
+- A long press on a recipe, and the menu on its page, add it to a cookbook.
+- The recipes open with your cookbooks.
+
+**Better**
+- The filter holds every choice in one sheet, all in sight, and says how many recipes it shows.
+- The collapsed head of a page leaves more room around its buttons.
+- Spacing and type follow the same rules on every screen.
+
+**Fixed**
+- A sheet's shadow no longer stays on the page for a moment after the sheet has closed.
+- With larger text, fields keep their size and the button in the password field sits in the middle of its end.
+- Links that run onto a second line keep their first letters.
+
 ## 0.9.0 – 2026-11-25
 
 **New**
