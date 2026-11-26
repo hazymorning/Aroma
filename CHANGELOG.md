@@ -2,7 +2,7 @@
 
 ## 1.0.0 – 2026-11-26
 
-This is the first full version of Aroma. It is now what it set out to be: a recipe app for Mealie that's nice to look at and that the household enjoys enough to actually use.
+This is the first proper version of Aroma. It's now the app it was meant to be.
 
 ## 0.9.0 – 2026-11-25
 
