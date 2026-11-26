@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A closed cookbook with a plus on its cover, drawn as the other glyphs that add something are. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:autoMirrored="false"
+    android:tint="?attr/colorControlNormal"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M5.25,18 V6.25 A2,2 0 0 1 7.25,4.25 H18.75 V19.75 H7 A1.75,1.75 0 0 1 7,16.25 H18.75 M12,8 V12.5 M9.75,10.25 H14.25"
+        android:fillColor="#00000000"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

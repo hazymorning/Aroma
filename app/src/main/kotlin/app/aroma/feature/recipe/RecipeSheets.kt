@@ -53,12 +53,14 @@ import app.aroma.ui.components.hideThen
 import app.aroma.ui.components.mealTypeLabel
 import app.aroma.ui.components.ratingTouchInset
 import app.aroma.ui.components.rememberFullSheetState
+import app.aroma.ui.components.styledMeasure
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxPadding
 import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.RowHeight
 import app.aroma.ui.theme.Space
+import app.aroma.ui.theme.TABULAR
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -157,19 +159,25 @@ fun AddToListSheet(
     }
 }
 
-/** An ingredient to take along or leave out; what stays at home reads a shade softer. */
+/**
+ * An ingredient to take along or leave out, set as the list sets it: the amount in sage with tabular
+ * figures, held to its unit, then the item, its note in second ink. What stays at home reads a shade
+ * softer, its amount too.
+ */
 @Composable
 private fun IngredientChoice(line: IngredientLine, checked: Boolean, onToggle: () -> Unit) {
-    val color by animateColorAsState(
-        if (checked) AromaTheme.colors.ink else AromaTheme.colors.inkSecondary,
-        tween(Motion.STATE),
-        label = "ingredientChoice",
-    )
-    val noteColor = AromaTheme.colors.inkSecondary
+    val colors = AromaTheme.colors
+    val color by animateColorAsState(if (checked) colors.ink else colors.inkSecondary, tween(Motion.STATE), label = "ingredientChoice")
+    val amount by animateColorAsState(if (checked) colors.accent else colors.inkSecondary, tween(Motion.STATE), label = "ingredientAmount")
+    val noteColor = colors.inkSecondary
     val text =
-        remember(line, noteColor) {
+        remember(line, amount, noteColor) {
             buildAnnotatedString {
-                append(listOf(line.measureText(), line.text).filter { it.isNotBlank() }.joinToString(" "))
+                if (line.hasMeasure) {
+                    withStyle(SpanStyle(color = amount, fontFeatureSettings = TABULAR)) { append(styledMeasure(line)) }
+                    if (line.text.isNotBlank()) append(' ')
+                }
+                append(line.text)
                 line.note?.takeIf { it.isNotBlank() }?.let { note ->
                     if (length > 0) append(", ")
                     withStyle(SpanStyle(color = noteColor)) { append(note) }
@@ -184,7 +192,8 @@ private fun IngredientChoice(line: IngredientLine, checked: Boolean, onToggle: (
                 .toggleable(checked, role = Role.Checkbox, onValueChange = { onToggle() })
                 .padding(horizontal = PageMargin, vertical = Space.s12),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.s16),
+        // As far from its tick as an item of the shopping list and an ingredient are from theirs.
+        horizontalArrangement = Arrangement.spacedBy(Space.s12),
     ) {
         CheckCircle(checked)
         Text(text, style = AromaTheme.type.body, color = color)
@@ -222,14 +231,15 @@ fun PlanSheet(
                     else -> shortDayLabel(date, locale)
                 }
             }
-        ChoiceGroup(stringResource(R.string.plan_day)) {
+        // The groups keep the rhythm of the other sheets of choices: 12 dp more under the title, 24 dp apart.
+        ChoiceGroup(stringResource(R.string.plan_day), Modifier.padding(top = Space.s12)) {
             SelectionRow(
                 options = dayLabels,
                 selectedIndex = days.indexOfFirst { it.toEpochDay() == chosenDay },
                 onSelect = { chosenDay = days[it].toEpochDay() },
             )
         }
-        ChoiceGroup(stringResource(R.string.plan_meal), Modifier.padding(top = Space.s16, bottom = Space.s16)) {
+        ChoiceGroup(stringResource(R.string.plan_meal), Modifier.padding(top = Space.s24, bottom = Space.s8)) {
             SelectionRow(
                 options = MealType.entries.map { mealTypeLabel(it) },
                 selectedIndex = MealType.entries.indexOf(chosenType),

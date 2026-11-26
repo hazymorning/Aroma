@@ -94,6 +94,73 @@ class ShoppingScreenTest {
         assertEquals(list to milk.id, deleted.listId to deleted.item.id)
     }
 
+    @Test
+    fun `a list pasted line by line becomes an item per line`() {
+        val list = mealie.addList("Wocheneinkauf", "Milch")
+        val shopping = open()
+
+        shopping.onNewItemChange("Eier\n\n  Brot \nÄpfel")
+        shopping.addItem()
+
+        screen.until { mealie.items(list).size == 4 }
+        assertEquals(listOf("Milch", "Eier", "Brot", "Äpfel"), mealie.items(list).map { it.note })
+        assertEquals("", shopping.state.value.newItem)
+    }
+
+    @Test
+    fun `everything is ticked off at once, and one undo puts it all back`() {
+        val list = mealie.addList("Wocheneinkauf", "Milch", "Eier", "Brot", checked = setOf("Brot"))
+        val shopping = open()
+        val messages = screen.collect(shopping.events)
+
+        shopping.checkAll()
+        screen.until { messages.isNotEmpty() }
+        val ticked = messages.single() as ShoppingEvent.CheckedAll
+        assertEquals("what was done already stays out of it", 2, ticked.ids.size)
+        screen.until { mealie.items(list).all { it.checked } }
+
+        shopping.undoChecks(ticked)
+        screen.until { mealie.items(list).count { it.checked } == 1 }
+        assertTrue(mealie.items(list).named("Brot").checked)
+    }
+
+    @Test
+    fun `an item ticked a moment ago is put back with everything else`() {
+        val list = mealie.addList("Wocheneinkauf", "Milch", "Eier", checked = setOf("Eier"))
+        val shopping = open()
+        val milk = shopping.items().first { it.note == "Milch" }
+
+        shopping.toggle(milk)
+        shopping.putAllBack()
+
+        screen.awaitState(shopping.state) { state -> state.settlingChecks.isEmpty() && state.list?.items?.none { it.checked } == true }
+        screen.until { mealie.items(list).none { it.checked } }
+    }
+
+    @Test
+    fun `clearing what is done says how much went, and undo brings it back`() {
+        val list = mealie.addList("Wocheneinkauf", "Milch", "Eier", "Brot", checked = setOf("Eier", "Brot"))
+        val shopping = open()
+        val messages = screen.collect(shopping.events)
+
+        shopping.clearChecked()
+        screen.until { messages.isNotEmpty() }
+        val cleared = messages.single() as ShoppingEvent.Cleared
+        assertEquals(2, cleared.items.size)
+        screen.until { mealie.items(list).size == 1 }
+
+        shopping.undoClear(cleared)
+        screen.until { mealie.items(list).size == 3 }
+        assertEquals(
+            listOf("Brot", "Eier"),
+            mealie
+                .items(list)
+                .filter { it.checked }
+                .map { it.note }
+                .sorted(),
+        )
+    }
+
     private fun open(): ShoppingViewModel {
         val shopping = screen.shopping()
         screen.awaitState(shopping.state) { it.list?.items?.isNotEmpty() == true }

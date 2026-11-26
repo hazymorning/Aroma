@@ -1,19 +1,24 @@
 package app.aroma.feature.recipes
 
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -29,8 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.Cookbook
 import app.aroma.core.model.CookbookCover
@@ -43,7 +46,8 @@ import app.aroma.core.model.RecipeSummary
 import app.aroma.data.AromaError
 import app.aroma.ui.components.AromaBottomSheet
 import app.aroma.ui.components.AromaPullToRefreshBox
-import app.aroma.ui.components.ChoiceRow
+import app.aroma.ui.components.CarouselCardWidth
+import app.aroma.ui.components.CookbookCard
 import app.aroma.ui.components.EmptyState
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.GroupHead
@@ -53,12 +57,14 @@ import app.aroma.ui.components.LargeHeader
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.OfflineNotice
 import app.aroma.ui.components.PillField
+import app.aroma.ui.components.PrimaryButton
 import app.aroma.ui.components.RecipeGrid
-import app.aroma.ui.components.RecipeRow
+import app.aroma.ui.components.SEPARATOR
 import app.aroma.ui.components.ScrollToTopOnReselect
+import app.aroma.ui.components.SectionTitle
 import app.aroma.ui.components.Segment
 import app.aroma.ui.components.SegmentGap
-import app.aroma.ui.components.SelectionRow
+import app.aroma.ui.components.SheetFooter
 import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.TextAction
 import app.aroma.ui.components.TopBar
@@ -68,13 +74,18 @@ import app.aroma.ui.components.mealLabel
 import app.aroma.ui.components.recipeGridSkeletons
 import app.aroma.ui.components.rememberFullSheetState
 import app.aroma.ui.components.rememberHeaderState
+import app.aroma.ui.components.rememberTitleLines
 import app.aroma.ui.components.requestWhenAttached
 import app.aroma.ui.components.scrolledBeneath
+import app.aroma.ui.theme.ContentMaxWidth
 import app.aroma.ui.theme.EndSpace
+import app.aroma.ui.theme.GridColumnGap
 import app.aroma.ui.theme.HeaderGap
+import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.PageMargin
+import app.aroma.ui.theme.SectionGap
+import app.aroma.ui.theme.SectionTitleGap
 import app.aroma.ui.theme.Space
-import app.aroma.ui.theme.TouchTarget
 import java.time.LocalTime
 
 data class RecipeFilter(
@@ -139,9 +150,15 @@ data class RecipesUiState(
             OrganizerKind.Tag -> tags
         }
 
-    /** Whether anything beyond the kind of dish narrows or orders the library: what the filter's dot says. */
-    val filtersOtherThanMeal: Boolean
-        get() = filter.copy(meal = null).hasFiltersOrSort
+    /**
+     * Whether the household's cookbooks lead the library, as a shelf above all its recipes: while
+     * nothing is searched or narrowed, so that what matches comes first once something is.
+     */
+    val showsCookbooks: Boolean
+        get() = cookbooks.isNotEmpty() && filter.query.isBlank() && !filter.hasFilters && (error == null || recipes.isNotEmpty())
+
+    /** The categories or tags to narrow by, without those named for a kind of dish, which has a choice of its own. */
+    fun choices(kind: OrganizerKind): List<Organizer> = options(kind).filterNot { organizer -> Meal.entries.any { it.matches(organizer) } }
 }
 
 data class RecipesActions(
@@ -167,10 +184,10 @@ data class RecipesActions(
 private val MealsOfTheDay: Set<Meal> = (0..23).mapTo(mutableSetOf()) { Meal.at(LocalTime.of(it, 0)) }
 
 /**
- * The library, for finding something to cook: its count under the title, a search, the kinds of
- * dish as a row of words, and every recipe below as cards. The filter sheet holds the rest: the
- * order, quick dishes, saved ones, categories, tags and the household's cookbooks. Adding a recipe
- * is in the head.
+ * The library, for finding something to cook: its count under the title, with what narrows it, and
+ * a search. While nothing is searched or narrowed, the household's cookbooks lead it as a shelf of
+ * covers, then all its recipes follow as cards. The filter, one level down in a sheet, holds the kind
+ * of dish, quick dishes, saved ones, categories, tags and the order. Adding a recipe is in the head.
  */
 @Composable
 fun RecipesScreen(
@@ -181,7 +198,6 @@ fun RecipesScreen(
     onFocusSearchConsume: () -> Unit = {},
 ) {
     var filtering by rememberSaveable { mutableStateOf(false) }
-    var organizers by rememberSaveable { mutableStateOf<OrganizerKind?>(null) }
     val list = rememberLazyListState()
     ScrollToTopOnReselect(list)
     val searchFocus = remember { FocusRequester() }
@@ -197,7 +213,12 @@ fun RecipesScreen(
     val header = rememberHeaderState()
     val barInset = LocalBottomBarInset.current
     val headActions: @Composable () -> Unit = {
-        IconButton(R.drawable.ic_sliders, stringResource(R.string.recipes_filter), { filtering = true }, dot = state.filtersOtherThanMeal)
+        IconButton(
+            R.drawable.ic_sliders,
+            stringResource(R.string.recipes_filter),
+            { filtering = true },
+            dot = state.filter.hasFiltersOrSort,
+        )
         IconButton(R.drawable.ic_add, stringResource(R.string.recipes_add), actions.onAddRecipe)
     }
     Box(modifier.fillMaxSize()) {
@@ -217,6 +238,18 @@ fun RecipesScreen(
                 contentPadding = PaddingValues(bottom = barInset + EndSpace),
                 header = {
                     item(key = "header") { Header(state, actions, header, searchFocus, headActions) }
+                    if (state.showsCookbooks) {
+                        item(key = "cookbooks") { CookbookShelf(state.cookbooks, actions.onOpenCookbook, Modifier.animateOpenRow(this)) }
+                        item(key = "allRecipes") {
+                            SectionTitle(
+                                stringResource(R.string.recipes_all),
+                                Modifier
+                                    .animateOpenRow(this)
+                                    .widthIn(max = ContentMaxWidth)
+                                    .padding(top = SectionGap, bottom = SectionTitleGap),
+                            )
+                        }
+                    }
                     body(state, actions)
                 },
             )
@@ -229,23 +262,7 @@ fun RecipesScreen(
             actions = { headActions() },
         )
     }
-    if (filtering) {
-        FilterSheet(
-            state = state,
-            actions = actions,
-            onOrganizers = { organizers = it },
-            onDismiss = { filtering = false },
-        )
-    }
-    organizers?.let { kind ->
-        OrganizerFilterSheet(
-            kind = kind,
-            options = state.options(kind),
-            selected = state.filter.selected(kind),
-            onToggle = { actions.onToggleOrganizer(kind, it) },
-            onDismiss = { organizers = null },
-        )
-    }
+    if (filtering) FilterSheet(state = state, actions = actions, onDismiss = { filtering = false })
 }
 
 private fun LazyListScope.body(state: RecipesUiState, actions: RecipesActions) {
@@ -296,7 +313,10 @@ private fun LazyListScope.body(state: RecipesUiState, actions: RecipesActions) {
     }
 }
 
-/** The title with the library's count, the search 16 dp under it, and the kinds of dish 12 dp under that. */
+/**
+ * The title with the library's count and what narrows it, "12 Rezepte · Abendessen, Schnell", and the
+ * search 16 dp under it.
+ */
 @Composable
 private fun Header(
     state: RecipesUiState,
@@ -305,12 +325,14 @@ private fun Header(
     searchFocus: FocusRequester?,
     headActions: @Composable () -> Unit,
 ) {
-    val meals = state.meals
+    val count = state.total?.let { total -> pluralStringResource(R.plurals.recipe_count, total, total) }
+    val narrowed = narrowedBy(state.filter).joinToString(", ").takeIf { it.isNotEmpty() }
+    val subtitle = listOfNotNull(count, narrowed).joinToString(SEPARATOR).takeIf { it.isNotEmpty() }
     Column(Modifier.padding(bottom = HeaderGap)) {
         LargeHeader(
             title = stringResource(R.string.nav_recipes),
             state = header,
-            subtitle = state.total?.let { total -> { Subtitle(pluralStringResource(R.plurals.recipe_count, total, total)) } },
+            subtitle = subtitle?.let { { Subtitle(it) } },
             actions = { headActions() },
         )
         PillField(
@@ -320,91 +342,154 @@ private fun Header(
             focusRequester = searchFocus,
             modifier = Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
         )
-        SelectionRow(
-            options = listOf(stringResource(R.string.recipes_all_kinds)) + meals.map { mealLabel(it) },
-            selectedIndex = state.filter.meal?.let { meals.indexOf(it) + 1 } ?: 0,
-            onSelect = { index ->
-                if (index == 0) state.filter.meal?.let(actions.onToggleMeal) else actions.onToggleMeal(meals[index - 1])
-            },
-            modifier = Modifier.padding(top = Space.s12 - (TouchTarget - SegmentPill) / 2),
-        )
         if (state.isOffline) OfflineNotice(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s12))
     }
 }
 
-/** The pill of a chosen kind of dish, to set the row 12 dp under the search by the pill rather than by its target. */
-private val SegmentPill = 36.dp
+/** What narrows the library, in the words the filter uses for it: the kind of dish first, then the rest as chosen. */
+@Composable
+private fun narrowedBy(filter: RecipeFilter): List<String> {
+    val quick = stringResource(R.string.recipes_quick)
+    val saved = stringResource(R.string.recipes_saved)
+    val longAgo = stringResource(R.string.recipes_long_ago)
+    val meal = filter.meal?.let { mealLabel(it) }
+    return listOfNotNull(meal, quick.takeIf { filter.quick }, saved.takeIf { filter.favoritesOnly }, longAgo.takeIf { filter.longAgo }) +
+        filter.categories.map { it.name } +
+        filter.tags.map { it.name }
+}
 
 /**
- * Everything that narrows or orders the library beyond the kind of dish, one level down: the order,
- * quick dishes and saved ones, categories and tags, and the household's cookbooks, which each open
- * their own page.
+ * The household's cookbooks as a shelf of covers that scrolls sideways, as Home's ideas do: each opens
+ * its own page.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FilterSheet(state: RecipesUiState, actions: RecipesActions, onOrganizers: (OrganizerKind) -> Unit, onDismiss: () -> Unit) {
-    val sheetState = rememberFullSheetState()
-    val scope = rememberCoroutineScope()
-    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(R.string.recipes_filter), sheetState = sheetState) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = Space.s24),
+private fun CookbookShelf(cookbooks: List<CookbookCover>, onOpen: (Cookbook) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.widthIn(max = ContentMaxWidth)) {
+        SectionTitle(stringResource(R.string.recipes_cookbooks), Modifier.padding(bottom = SectionTitleGap))
+        // A cookbook's name is short as a rule: the covers keep no more lines than the longest takes.
+        val lines = rememberTitleLines(cookbooks.map { it.cookbook.name }, CarouselCardWidth, least = 1)
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = PageMargin),
+            horizontalArrangement = Arrangement.spacedBy(GridColumnGap),
         ) {
-            GroupHead(stringResource(R.string.sort_title), Modifier.padding(horizontal = PageMargin))
-            SelectionRow(
-                options = RecipeSort.entries.map { stringResource(it.labelRes()) },
-                selectedIndex = RecipeSort.entries.indexOf(state.filter.sort),
-                onSelect = { actions.onSortChange(RecipeSort.entries[it]) },
-            )
-            GroupHead(stringResource(R.string.recipes_narrow), Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16))
-            FlowRow(
-                Modifier.padding(horizontal = PageMargin),
-                horizontalArrangement = Arrangement.spacedBy(SegmentGap),
-            ) {
-                Segment(stringResource(R.string.recipes_quick), state.filter.quick, actions.onToggleQuick)
-                Segment(stringResource(R.string.recipes_saved), state.filter.favoritesOnly, actions.onToggleFavorites)
-                Segment(stringResource(R.string.recipes_long_ago), state.filter.longAgo, actions.onToggleLongAgo)
-            }
-            listOf(OrganizerKind.Category, OrganizerKind.Tag).filter { state.options(it).isNotEmpty() }.forEach { kind ->
-                val chosen = state.filter.selected(kind)
-                ChoiceRow(
-                    label = stringResource(kind.labelRes()),
-                    chosen = false,
-                    description = chosen.takeIf { it.isNotEmpty() }?.joinToString(", ") { it.name },
-                    modifier = Modifier.clickable(role = Role.Button) { scope.hideThen(sheetState) { onOrganizers(kind) } },
-                )
-            }
-            if (state.cookbooks.isNotEmpty()) {
-                GroupHead(
-                    stringResource(R.string.recipes_cookbooks),
-                    Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
-                )
-                state.cookbooks.forEach { cover ->
-                    RecipeRow(
-                        title = cover.cookbook.name,
-                        image = cover.photo,
-                        onClick = {
-                            scope.hideThen(sheetState) {
-                                onDismiss()
-                                actions.onOpenCookbook(cover.cookbook)
-                            }
-                        },
-                        meta = listOf(pluralStringResource(R.plurals.recipe_count, cover.recipeCount, cover.recipeCount)),
-                        fallbackIcon = R.drawable.ic_recipes,
-                        modifier = Modifier.padding(horizontal = PageMargin, vertical = Space.s8),
-                    )
-                }
-            }
-            if (state.filter.hasFiltersOrSort) {
-                TextAction(
-                    stringResource(R.string.recipes_clear_filters),
-                    onClick = actions.onResetFilters,
-                    modifier = Modifier.padding(start = PageMargin, top = Space.s16),
+            items(cookbooks, key = { it.cookbook.id }) { cover ->
+                CookbookCard(
+                    cover = cover,
+                    onClick = { onOpen(cover.cookbook) },
+                    titleLines = lines,
+                    modifier = Modifier.width(CarouselCardWidth),
                 )
             }
         }
     }
+}
+
+/**
+ * What narrows the library and how it is ordered, one level down, in the groups and words of the
+ * sheet that files a recipe: the kind of dish, quick dishes and saved ones, categories and tags, and
+ * the order, every choice in sight. Each holds at once; the list behind the sheet follows, and the
+ * button at the foot says how many recipes it holds now and shows them. While anything is chosen,
+ * resetting stands at the end of the title.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FilterSheet(state: RecipesUiState, actions: RecipesActions, onDismiss: () -> Unit) {
+    val sheetState = rememberFullSheetState()
+    val scope = rememberCoroutineScope()
+    val filter = state.filter
+    val meals = state.meals
+    AromaBottomSheet(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.recipes_filter),
+        sheetState = sheetState,
+        titleAction = {
+            AnimatedVisibility(visible = filter.hasFiltersOrSort, enter = fadeIn(Motion.edge()), exit = fadeOut(Motion.edge())) {
+                TextAction(stringResource(R.string.recipes_reset), onClick = actions.onResetFilters)
+            }
+        },
+    ) {
+        Column(
+            Modifier
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState())
+                .padding(top = Space.s12, bottom = Space.s8),
+        ) {
+            FilterGroup(stringResource(R.string.organizers_meal)) {
+                Chips(Modifier.selectableGroup()) {
+                    Segment(stringResource(R.string.recipes_all_kinds), filter.meal == null, { filter.meal?.let(actions.onToggleMeal) })
+                    meals.forEach { meal ->
+                        Segment(mealLabel(meal), filter.meal == meal, {
+                            if (filter.meal !=
+                                meal
+                            ) {
+                                actions.onToggleMeal(meal)
+                            }
+                        })
+                    }
+                }
+            }
+            FilterGroup(stringResource(R.string.recipes_narrow), Modifier.padding(top = Space.s24)) {
+                Chips {
+                    Segment(stringResource(R.string.recipes_quick), filter.quick, actions.onToggleQuick)
+                    Segment(stringResource(R.string.recipes_saved), filter.favoritesOnly, actions.onToggleFavorites)
+                    Segment(stringResource(R.string.recipes_long_ago), filter.longAgo, actions.onToggleLongAgo)
+                }
+            }
+            listOf(OrganizerKind.Category, OrganizerKind.Tag).forEach { kind ->
+                val options = state.choices(kind)
+                if (options.isNotEmpty()) {
+                    val chosen = filter.selected(kind)
+                    FilterGroup(stringResource(kind.labelRes()), Modifier.padding(top = Space.s24)) {
+                        Chips {
+                            options.forEach { option ->
+                                Segment(option.name, chosen.any { it.id == option.id }, { actions.onToggleOrganizer(kind, option) })
+                            }
+                        }
+                    }
+                }
+            }
+            FilterGroup(stringResource(R.string.sort_title), Modifier.padding(top = Space.s24)) {
+                Chips(Modifier.selectableGroup()) {
+                    RecipeSort.entries.forEach { sort ->
+                        Segment(stringResource(sort.labelRes()), filter.sort == sort, {
+                            if (filter.sort !=
+                                sort
+                            ) {
+                                actions.onSortChange(sort)
+                            }
+                        })
+                    }
+                }
+            }
+        }
+        SheetFooter {
+            PrimaryButton(
+                text =
+                    state.total?.let { total -> pluralStringResource(R.plurals.recipes_show, total, total) }
+                        ?: stringResource(R.string.recipes_show_all),
+                onClick = { scope.hideThen(sheetState, onDismiss) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/** A group of the filter: its head on the margin over its choices, which start on the margin too. */
+@Composable
+private fun FilterGroup(label: String, modifier: Modifier = Modifier, choices: @Composable () -> Unit) {
+    Column(modifier) {
+        GroupHead(label, Modifier.padding(horizontal = PageMargin))
+        choices()
+    }
+}
+
+/**
+ * A group's choices as words on the sage wash once chosen, wrapping onto as many lines as they need,
+ * so that every one is in sight. Where one alone may be chosen, [modifier] makes them one group.
+ */
+@Composable
+private fun Chips(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    FlowRow(modifier.padding(horizontal = PageMargin), horizontalArrangement = Arrangement.spacedBy(SegmentGap)) { content() }
 }
 
 private fun OrganizerKind.labelRes() =
@@ -421,27 +506,3 @@ private fun RecipeSort.labelRes() =
         RecipeSort.LastMade -> R.string.sort_last_made
         RecipeSort.Random -> R.string.sort_random
     }
-
-/** The categories or tags to narrow by, any number of them. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun OrganizerFilterSheet(
-    kind: OrganizerKind,
-    options: List<Organizer>,
-    selected: Set<Organizer>,
-    onToggle: (Organizer) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AromaBottomSheet(onDismissRequest = onDismiss, title = stringResource(kind.labelRes())) {
-        LazyColumn(contentPadding = PaddingValues(bottom = Space.s16)) {
-            items(options, key = { it.id }) { option ->
-                val checked = selected.any { it.id == option.id }
-                ChoiceRow(
-                    label = option.name,
-                    chosen = checked,
-                    modifier = Modifier.toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle(option) }),
-                )
-            }
-        }
-    }
-}

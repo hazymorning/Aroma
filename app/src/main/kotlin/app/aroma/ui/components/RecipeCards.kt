@@ -1,6 +1,7 @@
 package app.aroma.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -29,6 +31,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.aroma.R
+import app.aroma.core.model.CookbookCover
 import app.aroma.core.model.ImageSize
 import app.aroma.core.model.RecipeImage
 import app.aroma.core.model.RecipeSummary
@@ -102,21 +105,63 @@ fun RecipeCard(
 }
 
 /**
- * How many lines the longest of [names] takes on a card [width] wide, at least two and at most
- * three: cards side by side keep this many for their names, so their meta lines stand on one line.
+ * A cookbook as a card, as a recipe stands in a row of them: the photo of its newest recipe, 4:5
+ * with 14 dp corners, its name under it, and under that how many recipes it holds beside a book's
+ * glyph, which tells it from a recipe. Pressing shrinks the card a little and tints its photo.
  */
 @Composable
-fun rememberTitleLines(names: List<String>, width: Dp): Int {
+fun CookbookCard(cover: CookbookCover, onClick: () -> Unit, modifier: Modifier = Modifier, titleLines: Int = MIN_TITLE_LINES) {
+    val interaction = remember { MutableInteractionSource() }
+    val count = pluralStringResource(R.plurals.recipe_count, cover.recipeCount, cover.recipeCount)
+    Column(
+        modifier =
+            modifier
+                .pressScale(interaction)
+                .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick),
+    ) {
+        RecipeImage(
+            image = cover.photo,
+            size = ImageSize.Medium,
+            shape = AromaTheme.shapes.cardImage,
+            fallbackIcon = R.drawable.ic_recipes,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(CARD_PHOTO)
+                    .indication(interaction, PressTint),
+        )
+        Spacer(Modifier.height(Space.s8))
+        Text(
+            text = cover.cookbook.name,
+            style = AromaTheme.type.cardTitle,
+            minLines = titleLines.coerceIn(1, MAX_TITLE_LINES),
+            maxLines = MAX_TITLE_LINES,
+            overflow = TextOverflow.Ellipsis,
+        )
+        MetaLine(items = listOf(count), icon = R.drawable.ic_recipes, modifier = Modifier.padding(top = Space.s4))
+    }
+}
+
+/** How wide a card stands in a row that scrolls sideways: the third is cut by the edge, so the row reads as more. */
+val CarouselCardWidth: Dp = 148.dp
+
+/**
+ * How many lines the longest of [names] takes on a card [width] wide, at least [least], two unless
+ * said otherwise, and at most three: cards side by side keep this many for their names, so their
+ * meta lines stand on one line.
+ */
+@Composable
+fun rememberTitleLines(names: List<String>, width: Dp, least: Int = MIN_TITLE_LINES): Int {
     val measurer = rememberTextMeasurer()
     val style = AromaTheme.type.cardTitle
     val widthPx = with(LocalDensity.current) { width.roundToPx() }
-    return remember(names, widthPx, style) {
-        if (widthPx <= 0) return@remember MIN_TITLE_LINES
+    return remember(names, widthPx, style, least) {
+        if (widthPx <= 0) return@remember least
         val widest = Constraints(maxWidth = widthPx)
         names
             .maxOfOrNull { name ->
                 measurer.measure(name.breakable(), style, maxLines = MAX_TITLE_LINES, constraints = widest).lineCount
-            }?.coerceIn(MIN_TITLE_LINES, MAX_TITLE_LINES) ?: MIN_TITLE_LINES
+            }?.coerceIn(least, MAX_TITLE_LINES) ?: least
     }
 }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0 – 2026-11-26
+
+This is the first proper version of Aroma. It's now the app it was meant to be.
+
 ## 0.9.0 – 2026-11-25
 
 **New**

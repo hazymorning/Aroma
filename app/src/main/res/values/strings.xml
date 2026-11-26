@@ -155,6 +155,7 @@
     <string name="recipe_bake_time">Baking</string>
     <string name="recipe_total_time">Total</string>
     <string name="recipe_add_to_list">Add to shopping list</string>
+    <string name="recipe_add_to_cookbook">Add to cookbook</string>
     <string name="recipe_tools">Equipment</string>
     <string name="recipe_rate">Rate this recipe</string>
     <string name="recipe_multiplier">Amount ×%1$s</string>
@@ -217,13 +218,20 @@
     <string name="recipes_add">Add recipe</string>
     <string name="recipes_filter">Filter</string>
     <string name="recipes_all_kinds">All</string>
-    <string name="recipes_narrow">Show</string>
+    <string name="recipes_narrow">Narrow to</string>
     <string name="recipes_saved">Saved</string>
     <string name="recipes_long_ago">Not cooked in a while</string>
     <string name="recipes_quick">Quick</string>
     <string name="recipes_categories">Categories</string>
     <string name="recipes_tags">Tags</string>
     <string name="recipes_clear_filters">Clear filters</string>
+    <string name="recipes_reset">Reset</string>
+    <string name="recipes_all">All recipes</string>
+    <string name="recipes_show_all">Show recipes</string>
+    <plurals name="recipes_show">
+        <item quantity="one">Show %1$d recipe</item>
+        <item quantity="other">Show %1$d recipes</item>
+    </plurals>
     <string name="recipes_empty_title">No recipes yet</string>
     <string name="recipes_no_results_title">Nothing found</string>
     <string name="recipes_meal_empty_title">No recipes for this meal yet</string>
@@ -310,7 +318,6 @@
     <!-- Shopping -->
     <string name="shopping_mode_on">Start shopping mode</string>
     <string name="shopping_mode_off">Leave shopping mode</string>
-    <string name="shopping_mode_hint">Large text, and the screen stays on.</string>
     <string name="shopping_add_hint">Add an item</string>
     <string name="shopping_add">Add</string>
     <plurals name="shopping_open">
@@ -341,10 +348,38 @@
         <item quantity="one">%1$d change will sync once you’re online.</item>
         <item quantity="other">%1$d changes will sync once you’re online.</item>
     </plurals>
+    <string name="shopping_check_all">Check off everything</string>
+    <string name="shopping_put_back_all">Put everything back</string>
+    <string name="shopping_order_aisles">Order the aisles</string>
+    <string name="shopping_order_aisles_hint">Drag them into the order of your shop.</string>
+    <string name="shopping_share">Share the list</string>
+    <string name="shopping_aisle">Aisle</string>
+    <string name="shopping_aisle_hint">Aroma remembers the aisle for the next time you add it.</string>
+    <string name="shopping_all_in_basket">Everything is in the basket.</string>
+    <string name="shopping_in_basket">%1$d of %2$d in the basket</string>
+    <string name="shopping_move_up">Move up</string>
+    <string name="shopping_move_down">Move down</string>
+    <string name="shopping_drag_hint">Drag to move</string>
+    <plurals name="shopping_checked_all">
+        <item quantity="one">%1$d item checked off</item>
+        <item quantity="other">%1$d items checked off</item>
+    </plurals>
+    <plurals name="shopping_put_back">
+        <item quantity="one">%1$d item put back</item>
+        <item quantity="other">%1$d items put back</item>
+    </plurals>
+    <plurals name="shopping_cleared">
+        <item quantity="one">%1$d item removed</item>
+        <item quantity="other">%1$d items removed</item>
+    </plurals>
 
     <!-- Cookbooks -->
     <string name="collection_cookbook">Cookbook</string>
     <string name="cookbook_empty_title">This cookbook is empty</string>
+    <string name="cookbooks_none">No cookbooks yet</string>
+    <string name="cookbook_holds_all">Holds every recipe</string>
+    <string name="cookbook_by_rule">Mealie fills it by its rules</string>
+    <string name="cookbooks_offline">Cookbooks can be changed once Mealie answers again.</string>
 
     <!-- Timeline -->
     <string name="timeline_made_this">%1$s made this</string>

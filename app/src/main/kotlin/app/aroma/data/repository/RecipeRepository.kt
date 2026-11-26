@@ -694,6 +694,12 @@ class RecipeRepository(
                 Loadable(covers, loadable.isRefreshing, loadable.error)
             }
 
+    /** Whether the cookbook [cookbookId] holds the recipe [recipeId], as Mealie reads the cookbook's rule. */
+    suspend fun cookbookHolds(cookbookId: String, recipeId: String): Boolean =
+        mealieCall {
+            sessions.api().recipes(page = 1, perPage = 1, cookbook = cookbookId, queryFilter = idsFilter(listOf(recipeId)))
+        }.total > 0
+
     /**
      * Keeps a copy of every recipe for offline use: fetches new and changed ones a few at a time
      * and forgets the ones deleted or renamed on the server. Notes which recipes each cookbook holds,

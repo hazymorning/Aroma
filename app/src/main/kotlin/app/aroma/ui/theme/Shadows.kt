@@ -3,12 +3,16 @@ package app.aroma.ui.theme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.platform.LocalGraphicsContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -69,5 +73,30 @@ fun Modifier.layeredShadow(layers: List<ShadowLayer>, shape: Shape = RectangleSh
             this.alpha = layer.opacity * alpha()
             offset = Offset(0f, layer.offsetY.toPx())
         }
+    }
+}
+
+/**
+ * [layeredShadow] for what is drawn further down than it is laid out, as a sheet is: the shadow stands
+ * [top] pixels lower and fades with [alpha]. Both are read while drawing, so the shadow moves and
+ * fades with every frame without composing anew or blurring its shape again.
+ */
+@Composable
+fun Modifier.layeredShadow(layers: List<ShadowLayer>, shape: Shape, top: () -> Float, alpha: () -> Float): Modifier {
+    val shadows = LocalGraphicsContext.current.shadowContext
+    val shadowColor = AromaTheme.colors.shadow
+    val painters =
+        remember(layers, shape, shadowColor, shadows) {
+            layers.map { layer ->
+                shadows.createDropShadowPainter(
+                    shape,
+                    Shadow(radius = layer.blur, color = shadowColor, alpha = layer.opacity, offset = DpOffset(0.dp, layer.offsetY)),
+                )
+            }
+        }
+    return drawBehind {
+        val shown = alpha()
+        if (shown <= 0f) return@drawBehind
+        translate(top = top()) { painters.forEach { painter -> with(painter) { draw(size, alpha = shown) } } }
     }
 }

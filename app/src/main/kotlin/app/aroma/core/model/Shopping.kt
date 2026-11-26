@@ -17,9 +17,14 @@ data class ShoppingItem(
     val recipeNames: List<String>,
 )
 
+/**
+ * A shopping list: its items, and the household's aisles in the order the list keeps them, as ids
+ * ([labelOrder]) and with their names ([labels]), to sort the items by and to file one under.
+ */
 data class ShoppingList(
     val id: String,
     val name: String,
     val items: List<ShoppingItem>,
     val labelOrder: List<String>,
+    val labels: List<ShoppingLabel> = emptyList(),
 )

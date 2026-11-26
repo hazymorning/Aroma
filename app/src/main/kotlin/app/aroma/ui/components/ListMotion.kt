@@ -30,13 +30,13 @@ import app.aroma.ui.theme.Motion
  * How the rows of a lazy list come, go and make room; the rows need stable keys. A new row fades in
  * where it lands while the rows after it glide aside. A row that leaves holds still while the rows
  * after it glide over it, and fades only once it is nearly covered, so a card made of several rows
- * closes without a gap.
+ * closes without a gap. A row a finger holds does not [glide]: it stays under the finger.
  */
-fun Modifier.animateRow(scope: LazyItemScope): Modifier =
+fun Modifier.animateRow(scope: LazyItemScope, glides: Boolean = true): Modifier =
     with(scope) {
         animateItem(
             fadeInSpec = tween(Motion.STATE, easing = Motion.Decelerate),
-            placementSpec = tween(Motion.STATE, easing = Motion.Decelerate),
+            placementSpec = if (glides) tween(Motion.STATE, easing = Motion.Decelerate) else null,
             fadeOutSpec = tween(Motion.EDGE, delayMillis = Motion.EDGE),
         )
     }

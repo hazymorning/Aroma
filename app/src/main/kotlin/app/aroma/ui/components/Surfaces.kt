@@ -18,12 +18,14 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -54,6 +56,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -94,6 +97,8 @@ import kotlinx.coroutines.launch
  * name as the title ([titleStyle]) is set as a recipe's name. Controls on it take the bars' tonal
  * fill. The content is already clear of the navigation bar and the keyboard. The back gesture draws
  * the sheet down after the finger, where Material would shrink it, and once let go it slides away.
+ * Its shadow goes with it and fades as it leaves, so the page is clear the moment the sheet has gone.
+ * A [titleAction], a text action that undoes what the sheet chose, stands at the end of the title.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,6 +109,7 @@ fun AromaBottomSheet(
     sheetState: SheetState = rememberFullSheetState(),
     titleStyle: TextStyle = AromaTheme.type.labelLarge,
     meta: (@Composable () -> Unit)? = null,
+    titleAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = AromaTheme.colors
@@ -115,7 +121,7 @@ fun AromaBottomSheet(
         modifier =
             modifier
                 .graphicsLayer { translationY = back.value * follow.toPx() }
-                .layeredShadow(AromaTheme.shadows.sheet, AromaTheme.shapes.sheet),
+                .sheetShadow(sheetState),
         sheetState = sheetState,
         shape = AromaTheme.shapes.sheet,
         containerColor = colors.bar,
@@ -137,15 +143,27 @@ fun AromaBottomSheet(
     ) {
         SheetBackHandler(sheetState, back, onDismissRequest)
         CompositionLocalProvider(LocalTonalFill provides colors.surfaceOnBar) {
-            Column(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s4, bottom = Space.s16)) {
-                Text(
-                    text = title,
-                    style = titleStyle,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.semantics { heading() },
-                )
-                if (meta != null) Box(Modifier.padding(top = Space.s4)) { meta() }
+            Row(Modifier.padding(start = PageMargin, end = PageMargin, top = Space.s4, bottom = Space.s16)) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = titleStyle,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    if (meta != null) Box(Modifier.padding(top = Space.s4)) { meta() }
+                }
+                if (titleAction != null) {
+                    // The action's 48 dp target reaches above and below the title's line without making the head taller.
+                    val line = with(LocalDensity.current) { titleStyle.lineHeight.toDp() }
+                    Box(
+                        Modifier
+                            .padding(start = Space.s16)
+                            .height(line)
+                            .wrapContentHeight(unbounded = true),
+                    ) { titleAction() }
+                }
             }
             content()
         }
@@ -153,6 +171,43 @@ fun AromaBottomSheet(
 }
 
 private val HandleWidth = 32.dp
+
+/**
+ * The sheet's shadow, where the sheet is. Material lays a sheet out at the top of its window and
+ * draws it further down, so a shadow set on the sheet itself would darken the top of the page
+ * instead, at once as the sheet opened and until its window closed, well after the sheet had gone.
+ * This one stands at the sheet's top edge as it moves, and fades over the sheet's last
+ * [SheetShadowFade] on screen, so it comes and goes with the sheet and the dimming.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun Modifier.sheetShadow(state: SheetState): Modifier {
+    // Where a hidden sheet's top stands: on the window's bottom edge, the foot of the room Material gives it.
+    val floor = remember { SheetFloor() }
+    val fade = with(LocalDensity.current) { SheetShadowFade.toPx() }
+    return layout { measurable, constraints ->
+        floor.y = constraints.maxHeight.toFloat()
+        val placeable = measurable.measure(constraints)
+        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }.layeredShadow(
+        AromaTheme.shadows.sheet,
+        AromaTheme.shapes.sheet,
+        top = { state.topOrNull() ?: floor.y },
+        alpha = { ((floor.y - (state.topOrNull() ?: floor.y)) / fade).coerceIn(0f, 1f) },
+    )
+}
+
+/** The bottom edge of the room a sheet is laid out in, kept from layout for drawing. */
+private class SheetFloor {
+    var y = 0f
+}
+
+/** Where the sheet's top stands now, or null before it has been placed. */
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SheetState.topOrNull(): Float? = runCatching { requireOffset() }.getOrNull()
+
+/** How much of a sheet still shows when its shadow has all but faded, as it leaves; about as far as the shadow reaches. */
+private val SheetShadowFade = Space.s48
 
 /** How much a sheet or a dialog dims the page under it: the dark needs more to stand apart. */
 private val AromaColors.scrimAlpha: Float get() = if (isDark) 0.6f else 0.32f

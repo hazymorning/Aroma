@@ -184,6 +184,7 @@ data class RecipeActions(
     val onDelete: () -> Unit = {},
     val onRework: (translate: Boolean) -> Unit = {},
     val onOrganize: () -> Unit = {},
+    val onAddToCookbook: () -> Unit = {},
     val onRetry: () -> Unit = {},
 )
 
@@ -394,7 +395,10 @@ private fun RecipeHead(
             Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = PageMargin - IconButtonReach, vertical = Space.s4),
+                // In the row the collapsed head will have, so the buttons stay where they are as it comes.
+                .height(TopBarHeight)
+                .padding(horizontal = PageMargin - IconButtonReach),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(R.drawable.ic_arrow_back, stringResource(R.string.action_back), actions.onBack, place = IconButtonPlace.Photo)
             Spacer(Modifier.weight(1f))
@@ -441,7 +445,7 @@ private fun SaveButton(saved: Boolean, onToggle: () -> Unit, place: IconButtonPl
     )
 }
 
-/** What manages the recipe, and is not needed to cook it: editing, filing, rating, reworking, sharing and deleting. */
+/** What manages the recipe, and is not needed to cook it: editing, filing, cookbooks, rating, reworking, sharing and deleting. */
 @Composable
 private fun MoreMenu(actions: RecipeActions, menu: PageMenu, place: IconButtonPlace) {
     var open by remember { mutableStateOf(false) }
@@ -454,6 +458,7 @@ private fun MoreMenu(actions: RecipeActions, menu: PageMenu, place: IconButtonPl
         AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             AromaMenuItem(stringResource(R.string.action_edit), R.drawable.ic_edit, { choose(actions.onEdit) })
             AromaMenuItem(stringResource(R.string.organizers_title), R.drawable.ic_tag, { choose(actions.onOrganize) })
+            AromaMenuItem(stringResource(R.string.recipe_add_to_cookbook), R.drawable.ic_book_add, { choose(actions.onAddToCookbook) })
             AromaMenuItem(stringResource(R.string.recipe_rate), R.drawable.ic_star, { choose(menu.onRate) })
             menu.onRework?.let { AromaMenuItem(stringResource(R.string.recipe_rework), R.drawable.ic_sparkle, { choose(it) }) }
             AromaMenuItem(stringResource(R.string.action_share), R.drawable.ic_share, { choose(actions.onShare) })
@@ -974,7 +979,8 @@ private fun Notes(notes: List<RecipeNote>, modifier: Modifier = Modifier) {
         notes.forEachIndexed { index, note ->
             Column(Modifier.padding(start = PageMargin, end = PageMargin, top = if (index == 0) 0.dp else Space.s24)) {
                 if (note.title.isNotBlank()) {
-                    Text(note.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = Space.s4))
+                    // As far over its words as a step's title stands over the step's.
+                    Text(note.title, style = AromaTheme.type.label, modifier = Modifier.padding(bottom = EyebrowGap))
                 }
                 Text(text = rememberRichText(note.text), style = AromaTheme.type.body)
             }

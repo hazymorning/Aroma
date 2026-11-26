@@ -38,18 +38,30 @@ shapes at least 3 : 1 against their ground.
   their edge, so a light one does not melt into the paper. A recipe's photo at the head of its page
   is shaded at the top, so the status bar and the buttons read on it.
 - **Bars.** Navigation bar 80 dp (16 above the pill, 12 below the label), labels grow to 130 %.
-  Action bars have 16 dp all around their buttons. The collapsed head is 56 dp.
+  Action bars have 16 dp all around their buttons. The collapsed head is 64 dp, so its circles keep
+  12 dp of air above and below and never crowd its foot.
 - **Icons.** Aroma draws its own on a 24 dp grid, in 1.5 dp strokes with round ends, and a new one
   is drawn the same way, so they stay one set. A chosen tab's icon has 2 dp strokes. An icon that
   stands alone and takes a tap stands on a circle, so it reads as a button: 40 dp on the page, on
   photos and in the heads, 48 in the bottom bars and 56 beside cook mode's taller buttons, always in
-  a 48 dp target. The heads keep 40: a 48 dp circle would leave 4 dp of air in the 56 dp collapsed
-  head, and the back button keeps one size and place as the head collapses. Icons in a button with
-  words, a row or a line of meta have no circle of their own.
+  a 48 dp target. A field's button stands in the middle of the field's round end, as far from the
+  end as from the top and the foot, and a field of one line stays 48 dp as long as its line fits
+  in it. The heads keep 40, with 12 dp of air above and below in the 64 dp collapsed head,
+  and the back button keeps one size and place as the head collapses: over a recipe's photo, its
+  buttons stand in the row the collapsed head will have. Icons in a button with words, a row or a
+  line of meta have no circle of their own.
 - **Actions.** A screen has at most one primary button, in ink, for its main action. A screen
   without one, such as the plan or the shopping list, has none rather than one made up for it. What
   manages a thing rather than uses it waits a level down, in the ⋯ menu, a sheet or the editor, so
-  pages stay calm and nothing is lost.
+  pages stay calm and nothing is lost. On a sheet of choices, the way to undo them all, such as
+  resetting the filter, stands at the end of its title while there is anything to undo. A change to
+  many things at once, such as ticking off a whole list, says what it did and offers to undo it.
+- **Modes.** Cook mode and shopping mode are pages of their own, over the bars: a close button in
+  the head, large type and large targets, the screen kept on, and nothing to remove or edit by
+  mistake. Shopping mode keeps every row where it stood as shopping began: a row ticked off is
+  struck through in its place, the aisle's name stays at the top while its rows go by, and the head
+  counts what is in the basket, in words and in a fine sage bar. Once all of it is, "Done" stands at
+  the foot.
 - **States.** Emptiness is quiet: one line and its action, no picture, never taller than what it
   stands for. Where the two do not fit on one line, the action moves under the words instead of
   squeezing them. A page that cannot load says so the same way, with "Try again". An error of a
@@ -72,18 +84,21 @@ shapes at least 3 : 1 against their ground.
 - **Motion.** 150 ms for edges, 250 ms for a change of state and the selection pill, 220 ms for a
   page: the old page fades out, the new one fades in and drifts a few dp into place. The back
   gesture plays the same under the finger, and the tab bar comes and goes with its page. Nothing
-  zooms, grows or travels between screens. Sheets follow the back gesture down. Menus, snackbars
-  and dialogs fade in and drift 8 dp into place, and Material's parts settle on springs that never
-  overshoot. Content scrolls into a soft 16 dp edge under the status bar, and the collapsed head
-  fades in with its paper. A skeleton shows only after 150 ms and fades out as the content fades
-  in. A new look dissolves in 250 ms. Cards and boxes give way to 0.98 when pressed and tint with
-  ink at 6 %, and a quick tap shows the whole press. With the system's animations off, pages only
-  cross-fade.
+  zooms, grows or travels between screens. Sheets follow the back gesture down. A sheet's shadow
+  goes with it and fades as it leaves, so the page is clear the moment the sheet has gone. Menus,
+  snackbars and dialogs fade in and drift 8 dp into place, and Material's parts settle on springs
+  that never overshoot. Content scrolls into a soft 16 dp edge under the status bar, and the
+  collapsed head fades in with its paper. A skeleton shows only after 150 ms and fades out as the
+  content fades in. A new look dissolves in 250 ms. Cards and boxes give way to 0.98 when pressed
+  and tint with ink at 6 %, and a quick tap shows the whole press. With the system's animations
+  off, pages only cross-fade.
 - **Motion in a page.** A change happens where it is. A figure that changes rolls 40 % of its line,
   up as it counts up and down as it counts down, and the words around it stand still. A label that
   changes in its place fades out before the new one fades in. A row that comes fades in where it
   lands while the rows after it glide aside, or, outside a list, opens its room as it fades in. A row
-  that goes fades, then gives its room up. A tick fades with its circle. A switch's knob glides and
+  that goes fades, then gives its room up. A row held a moment rises out of its box a step lighter,
+  with the soft shadow of what floats, and follows the finger; the rows it passes glide aside, and
+  let go, it settles into its place. A tick fades with its circle. A switch's knob glides and
   its track takes on its colour. A row that scrolls sideways fades out over the margin where more of
   it lies beyond. A recipe's photo slides away at half the page's pace. A week swiped sideways
   follows the finger, held back, and springs back where letting go would not turn it. A timer's dial

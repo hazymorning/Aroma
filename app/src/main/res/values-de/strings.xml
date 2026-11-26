@@ -153,6 +153,7 @@
     <string name="recipe_bake_time">Backen</string>
     <string name="recipe_total_time">Gesamt</string>
     <string name="recipe_add_to_list">Auf die Einkaufsliste</string>
+    <string name="recipe_add_to_cookbook">Zu Kochbuch hinzufügen</string>
     <string name="recipe_tools">Utensilien</string>
     <string name="recipe_rate">Rezept bewerten</string>
     <string name="recipe_multiplier">Menge ×%1$s</string>
@@ -214,13 +215,20 @@
     <string name="recipes_add">Rezept hinzufügen</string>
     <string name="recipes_filter">Filter</string>
     <string name="recipes_all_kinds">Alle</string>
-    <string name="recipes_narrow">Zeigen</string>
+    <string name="recipes_narrow">Eingrenzen auf</string>
     <string name="recipes_saved">Gemerkt</string>
     <string name="recipes_long_ago">Lange nicht gekocht</string>
     <string name="recipes_quick">Schnell</string>
     <string name="recipes_categories">Kategorien</string>
     <string name="recipes_tags">Schlagwörter</string>
     <string name="recipes_clear_filters">Filter zurücksetzen</string>
+    <string name="recipes_reset">Zurücksetzen</string>
+    <string name="recipes_all">Alle Rezepte</string>
+    <string name="recipes_show_all">Rezepte zeigen</string>
+    <plurals name="recipes_show">
+        <item quantity="one">%1$d Rezept zeigen</item>
+        <item quantity="other">%1$d Rezepte zeigen</item>
+    </plurals>
     <string name="recipes_empty_title">Noch keine Rezepte</string>
     <string name="recipes_no_results_title">Nichts gefunden</string>
     <string name="recipes_meal_empty_title">Noch keine Rezepte für diese Mahlzeit</string>
@@ -307,7 +315,6 @@
     <!-- Shopping -->
     <string name="shopping_mode_on">Einkaufsmodus starten</string>
     <string name="shopping_mode_off">Einkaufsmodus beenden</string>
-    <string name="shopping_mode_hint">Große Schrift, der Bildschirm bleibt an.</string>
     <string name="shopping_add_hint">Artikel hinzufügen</string>
     <string name="shopping_add">Hinzufügen</string>
     <plurals name="shopping_open">
@@ -338,10 +345,38 @@
         <item quantity="one">%1$d Änderung wird übertragen, sobald du online bist.</item>
         <item quantity="other">%1$d Änderungen werden übertragen, sobald du online bist.</item>
     </plurals>
+    <string name="shopping_check_all">Alles abhaken</string>
+    <string name="shopping_put_back_all">Alles zurücklegen</string>
+    <string name="shopping_order_aisles">Gänge sortieren</string>
+    <string name="shopping_order_aisles_hint">Zieh sie in die Reihenfolge deines Ladens.</string>
+    <string name="shopping_share">Liste teilen</string>
+    <string name="shopping_aisle">Gang</string>
+    <string name="shopping_aisle_hint">Aroma merkt sich den Gang für das nächste Mal, wenn du den Artikel hinzufügst.</string>
+    <string name="shopping_all_in_basket">Alles ist im Korb.</string>
+    <string name="shopping_in_basket">%1$d von %2$d im Korb</string>
+    <string name="shopping_move_up">Nach oben</string>
+    <string name="shopping_move_down">Nach unten</string>
+    <string name="shopping_drag_hint">Ziehen zum Verschieben</string>
+    <plurals name="shopping_checked_all">
+        <item quantity="one">%1$d Artikel abgehakt</item>
+        <item quantity="other">%1$d Artikel abgehakt</item>
+    </plurals>
+    <plurals name="shopping_put_back">
+        <item quantity="one">%1$d Artikel zurückgelegt</item>
+        <item quantity="other">%1$d Artikel zurückgelegt</item>
+    </plurals>
+    <plurals name="shopping_cleared">
+        <item quantity="one">%1$d Artikel entfernt</item>
+        <item quantity="other">%1$d Artikel entfernt</item>
+    </plurals>
 
     <!-- Cookbooks -->
     <string name="collection_cookbook">Kochbuch</string>
     <string name="cookbook_empty_title">Dieses Kochbuch ist leer</string>
+    <string name="cookbooks_none">Noch keine Kochbücher</string>
+    <string name="cookbook_holds_all">Enthält alle Rezepte</string>
+    <string name="cookbook_by_rule">Mealie füllt es nach seinen Regeln</string>
+    <string name="cookbooks_offline">Kochbücher lassen sich ändern, sobald Mealie wieder antwortet.</string>
 
     <!-- Timeline -->
     <string name="timeline_made_this">%1$s hat das gekocht</string>

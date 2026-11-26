@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,6 +39,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -44,6 +48,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import app.aroma.R
 import app.aroma.core.model.ShoppingItem
+import app.aroma.core.model.ShoppingLabel
 import app.aroma.core.model.ShoppingList
 import app.aroma.core.model.ShoppingListInfo
 import app.aroma.data.AromaError
@@ -58,9 +63,9 @@ import app.aroma.ui.components.EmptyState
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.HeaderState
 import app.aroma.ui.components.IconButton
-import app.aroma.ui.components.KeepScreenOn
 import app.aroma.ui.components.LabeledTextField
 import app.aroma.ui.components.LargeHeader
+import app.aroma.ui.components.ListReorder
 import app.aroma.ui.components.LocalBottomBarInset
 import app.aroma.ui.components.MetaLine
 import app.aroma.ui.components.OfflineNotice
@@ -72,10 +77,12 @@ import app.aroma.ui.components.SkeletonLine
 import app.aroma.ui.components.Subtitle
 import app.aroma.ui.components.TonalBox
 import app.aroma.ui.components.TopBar
+import app.aroma.ui.components.TopBarHeight
 import app.aroma.ui.components.animateOpenRow
 import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
 import app.aroma.ui.components.rememberHeaderState
+import app.aroma.ui.components.rememberListReorder
 import app.aroma.ui.components.requestWhenAttached
 import app.aroma.ui.components.scrolledBeneath
 import app.aroma.ui.components.skeletonRow
@@ -105,8 +112,19 @@ data class ShoppingActions(
     val onAddItem: () -> Unit = {},
     val onToggle: (ShoppingItem) -> Unit = {},
     val onDelete: (ShoppingItem) -> Unit = {},
-    val onRenameItem: (ShoppingItem, String) -> Unit = { _, _ -> },
+    /** New text for an item, where it changed, and the aisle it belongs in, or none. */
+    val onEditItem: (ShoppingItem, String?, ShoppingLabel?) -> Unit = { _, _, _ -> },
+    /** The open items of one aisle, by id, in the order they were moved into. */
+    val onReorder: (List<String>) -> Unit = {},
+    /** The list's aisles, by id, in the order of the shop. */
+    val onOrderAisles: (List<String>) -> Unit = {},
+    val onCheckAll: () -> Unit = {},
+    val onPutAllBack: () -> Unit = {},
     val onClearChecked: () -> Unit = {},
+    /** The list as text, to send to someone. */
+    val onShare: (String) -> Unit = {},
+    /** Opens shopping mode for the list shown. */
+    val onShop: () -> Unit = {},
     val onSelectList: (String) -> Unit = {},
     val onCreateList: (String) -> Unit = {},
     val onRenameList: (String) -> Unit = {},
@@ -115,12 +133,14 @@ data class ShoppingActions(
     val onRefresh: () -> Unit = {},
 )
 
-private enum class ShoppingDialog { Create, Rename, Delete, Lists }
+private enum class ShoppingDialog { Create, Rename, Delete, Lists, Aisles }
 
 /**
  * The shopping list: its open items by aisle, a box per aisle, and what is in the basket folded
- * away under "Done". The head adds an item and opens the list's menu, where shopping mode, the
- * other lists and the list's own changes are. With [focusAdd], ready to add: the field shown, the
+ * away under "Done". The head opens shopping mode, adds an item and opens the list's menu, where the
+ * changes to the whole list are: ticking everything off or putting it back, the order of the aisles,
+ * sending the list, the other lists and the list itself. An item held a moment moves within its
+ * aisle with the finger, or opens to be edited. With [focusAdd], ready to add: the field shown, the
  * cursor in it and the keyboard up.
  */
 @Composable
@@ -133,15 +153,12 @@ fun ShoppingScreen(
     onFocusAddConsume: () -> Unit = {},
 ) {
     var dialog by rememberSaveable { mutableStateOf<ShoppingDialog?>(null) }
-    // By id, so the dialog survives rotation and closes by itself once its item is gone.
+    // By id, so the sheet survives rotation and closes by itself once its item is gone.
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
-    var shoppingMode by rememberSaveable { mutableStateOf(false) }
     var adding by rememberSaveable { mutableStateOf(false) }
     var showDone by rememberSaveable { mutableStateOf(false) }
-    // Shopping mode keeps the screen awake, so the list stays readable between shelves.
-    KeepScreenOn(shoppingMode)
-    // Another list, or shopping mode with its larger rows, is another page rather than an edit of this one.
-    val listState = key(state.list?.id, shoppingMode) { rememberLazyListState() }
+    // Another list is another page rather than an edit of this one.
+    val listState = key(state.list?.id) { rememberLazyListState() }
     ScrollToTopOnReselect(listState)
     val header = rememberHeaderState()
     val addFocus = remember { FocusRequester() }
@@ -149,7 +166,6 @@ fun ShoppingScreen(
     val consumeFocusAdd by rememberUpdatedState(onFocusAddConsume)
     LaunchedEffect(focusAdd) {
         if (focusAdd) {
-            shoppingMode = false
             adding = true
             // The field shows once a list does, as an item of the list under its head, laid out a frame later.
             snapshotFlow { current.list != null }.first { it }
@@ -162,23 +178,65 @@ fun ShoppingScreen(
     LaunchedEffect(adding) {
         if (adding) addFocus.requestWhenAttached()
     }
+    // The order an aisle is being dragged into, by its items' ids, until the list has it.
+    var dragged by remember { mutableStateOf<List<String>?>(null) }
     // Grouped here, not in the list's builder, which runs again on every keystroke in the add field.
-    val groups = remember(state.list) { state.list?.grouped() }
+    val groups = remember(state.list, dragged) { state.list?.grouped()?.inOrder(dragged) }
+    val haptics = LocalHapticFeedback.current
+    val barInset = LocalBottomBarInset.current
+    val reorder =
+        rememberListReorder(
+            list = listState,
+            onMove = { from, to ->
+                val section = groups?.sections?.firstOrNull { section -> section.items.any { rowKey(it) == from } }
+                if (section != null) {
+                    val ids = section.items.map { it.id }
+                    val moved = ids.moved(ids.indexOf((from as String).removePrefix(OPEN)), ids.indexOf((to as String).removePrefix(OPEN)))
+                    dragged = moved
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                }
+            },
+            canMove = { from, to -> groups?.sameAisle(from, to) == true },
+            startEdge = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + TopBarHeight,
+            endEdge = barInset,
+        )
+    // The list has the new order, or changed otherwise: it is shown as it is again.
+    LaunchedEffect(state.list) { if (reorder.held == null) dragged = null }
+    val onDrop = {
+        val order = dragged
+        val before =
+            order?.let { ids ->
+                state.list
+                    ?.grouped()
+                    ?.sections
+                    ?.firstOrNull { s -> s.items.any { it.id == ids.first() } }
+            }
+        if (order != null && before != null && before.items.map { it.id } != order) actions.onReorder(order)
+    }
     val title = stringResource(R.string.nav_shopping)
+    val locale = currentLocale()
+    val other = stringResource(R.string.shopping_other)
     val headActions: @Composable () -> Unit = {
-        if (state.list != null) {
+        val list = state.list
+        if (list != null) {
+            IconButton(R.drawable.ic_cart, stringResource(R.string.shopping_mode_on), onClick = actions.onShop)
             IconButton(R.drawable.ic_add, stringResource(R.string.shopping_add_hint), onClick = { adding = !adding })
             ListMenu(
-                shoppingMode = shoppingMode,
-                canSwitch = state.lists.size > 1,
-                canClear = groups?.checked?.isNotEmpty() == true,
-                onShoppingMode = { shoppingMode = !shoppingMode },
+                choices =
+                    MenuChoices(
+                        canSwitch = state.lists.size > 1,
+                        canCheckAll = groups?.sections?.isNotEmpty() == true,
+                        canPutBack = groups?.checked?.isNotEmpty() == true,
+                        canOrderAisles = list.labels.size > 1,
+                    ),
+                onCheckAll = actions.onCheckAll,
+                onPutBack = actions.onPutAllBack,
                 onClear = actions.onClearChecked,
+                onShare = { groups?.let { actions.onShare(shareText(list.name, it, other, locale)) } },
                 openDialog = { dialog = it },
             )
         }
     }
-    val barInset = LocalBottomBarInset.current
     Box(modifier.fillMaxSize()) {
         AromaPullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
             LazyColumn(
@@ -192,11 +250,11 @@ fun ShoppingScreen(
                         .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets(bottom = barInset))),
             ) {
                 item(key = "header") {
-                    Header(state = state, groups = groups, header = header, shoppingMode = shoppingMode, headActions = headActions)
+                    Header(state = state, groups = groups, header = header, headActions = headActions)
                 }
                 // The field and the quiet lines under the head are rows of their own, so the list glides
                 // aside as they come and back as they go.
-                if (state.list != null && (adding || state.newItem.isNotEmpty()) && !shoppingMode) {
+                if (state.list != null && (adding || state.newItem.isNotEmpty())) {
                     item(key = "add") { AddField(state, addFocus, actions, Modifier.animateRow(this)) }
                 }
                 if (state.isOffline || state.pendingChanges > 0) {
@@ -207,11 +265,12 @@ fun ShoppingScreen(
                     state = state,
                     groups = groups,
                     actions = actions,
-                    large = shoppingMode,
                     showDone = showDone,
                     onShowDone = { showDone = it },
                     onEdit = { editingId = it.id },
                     onCreateList = { dialog = ShoppingDialog.Create },
+                    reorder = reorder,
+                    onDrop = onDrop,
                 )
             }
         }
@@ -237,18 +296,47 @@ fun ShoppingScreen(
         actions = actions,
         onDismiss = { dialog = null },
     )
-    state.list?.items?.firstOrNull { it.id == editingId }?.let { item ->
-        val locale = currentLocale()
-        NameDialog(
-            title = stringResource(R.string.shopping_edit_item),
-            initial = itemLine(item, locale).toPlainText(),
-            onConfirm = {
-                actions.onRenameItem(item, it)
-                editingId = null
-            },
-            onDismiss = { editingId = null },
-        )
+    state.list?.let { list ->
+        list.items.firstOrNull { it.id == editingId }?.let { item ->
+            ItemSheet(
+                item = item,
+                aisles = list.labels,
+                onSave = { text, aisle -> actions.onEditItem(item, text, aisle) },
+                onDismiss = { editingId = null },
+            )
+        }
     }
+}
+
+/** The prefix of an open item's row key ([rowKey]). */
+private const val OPEN = "open-"
+
+/** Whether the rows keyed [from] and [to] are open items of one aisle, so one can move past the other. */
+private fun ShoppingGroups.sameAisle(from: Any, to: Any): Boolean {
+    val aisle = sections.firstOrNull { section -> section.items.any { rowKey(it) == from } } ?: return false
+    return aisle.items.any { rowKey(it) == to }
+}
+
+/** These groups with the aisle that holds [order] in that order, while it is dragged into it. */
+private fun ShoppingGroups.inOrder(order: List<String>?): ShoppingGroups {
+    if (order.isNullOrEmpty()) return this
+    val rank = order.withIndex().associate { (index, id) -> id to index }
+    return copy(
+        sections =
+            sections.map { section ->
+                if (section.items.none { it.id in rank }) {
+                    section
+                } else {
+                    section.copy(
+                        items =
+                            section.items.sortedBy {
+                                rank[it.id]
+                                    ?: Int.MAX_VALUE
+                            },
+                    )
+                }
+            },
+    )
 }
 
 @Composable
@@ -304,6 +392,10 @@ private fun ShoppingDialogs(dialog: ShoppingDialog?, state: ShoppingUiState, act
             )
         }
 
+        ShoppingDialog.Aisles -> {
+            AislesSheet(aisles = state.list?.labels.orEmpty(), onOrder = actions.onOrderAisles, onDismiss = onDismiss)
+        }
+
         null -> {}
     }
 }
@@ -312,11 +404,12 @@ private fun LazyListScope.body(
     state: ShoppingUiState,
     groups: ShoppingGroups?,
     actions: ShoppingActions,
-    large: Boolean,
     showDone: Boolean,
     onShowDone: (Boolean) -> Unit,
     onEdit: (ShoppingItem) -> Unit,
     onCreateList: () -> Unit,
+    reorder: ListReorder,
+    onDrop: () -> Unit,
 ) {
     when {
         state.isLoading -> {
@@ -339,19 +432,13 @@ private fun LazyListScope.body(
         }
 
         else -> {
-            shoppingSections(groups, state, actions, large, showDone, onShowDone, onEdit)
+            shoppingSections(groups, state, actions, showDone, onShowDone, onEdit, reorder, onDrop)
         }
     }
 }
 
 @Composable
-private fun Header(
-    state: ShoppingUiState,
-    groups: ShoppingGroups?,
-    header: HeaderState,
-    shoppingMode: Boolean,
-    headActions: @Composable () -> Unit,
-) {
+private fun Header(state: ShoppingUiState, groups: ShoppingGroups?, header: HeaderState, headActions: @Composable () -> Unit) {
     val list = state.list
     val open = groups?.sections?.sumOf { it.items.size } ?: 0
     LargeHeader(
@@ -361,13 +448,7 @@ private fun Header(
             list?.let {
                 {
                     val count = pluralStringResource(R.plurals.shopping_open, open, open)
-                    Subtitle(
-                        when {
-                            shoppingMode -> stringResource(R.string.shopping_mode_hint)
-                            state.lists.size > 1 -> "${list.name}$SEPARATOR$count"
-                            else -> count
-                        },
-                    )
+                    Subtitle(if (state.lists.size > 1) "${list.name}$SEPARATOR$count" else count)
                 }
             },
         actions = { headActions() },
@@ -396,11 +477,11 @@ private fun AddField(state: ShoppingUiState, addFocus: FocusRequester, actions: 
     )
 }
 
-/** That the list is the offline copy, and how many changes wait to be sent, in quiet lines. */
+/** That the list is the offline copy, and how many changes wait to be sent, in quiet lines 12 dp under the head, as on every page. */
 @Composable
 private fun SyncStatus(offline: Boolean, pendingChanges: Int, modifier: Modifier = Modifier) {
     Column(
-        modifier.padding(start = PageMargin, end = PageMargin, top = Space.s16),
+        modifier.padding(start = PageMargin, end = PageMargin, top = Space.s12),
         verticalArrangement = Arrangement.spacedBy(Space.s4),
     ) {
         if (offline) OfflineNotice()
@@ -408,14 +489,25 @@ private fun SyncStatus(offline: Boolean, pendingChanges: Int, modifier: Modifier
     }
 }
 
-/** The list's menu: shopping mode, the other lists, the list itself, and clearing what is done. */
+/** Which of the list's changes its menu offers: only those that would change something. */
+private data class MenuChoices(
+    val canSwitch: Boolean,
+    val canCheckAll: Boolean,
+    val canPutBack: Boolean,
+    val canOrderAisles: Boolean,
+)
+
+/**
+ * The list's menu: changes to the whole list first, ticking everything off, putting it back,
+ * clearing what is done, the order of the aisles and sending it, then the lists themselves.
+ */
 @Composable
 private fun ListMenu(
-    shoppingMode: Boolean,
-    canSwitch: Boolean,
-    canClear: Boolean,
-    onShoppingMode: () -> Unit,
+    choices: MenuChoices,
+    onCheckAll: () -> Unit,
+    onPutBack: () -> Unit,
     onClear: () -> Unit,
+    onShare: () -> Unit,
     openDialog: (ShoppingDialog) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
@@ -426,17 +518,32 @@ private fun ListMenu(
     Box {
         IconButton(R.drawable.ic_more_horiz, stringResource(R.string.action_more), onClick = { open = true })
         AromaDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            AromaMenuItem(
-                stringResource(if (shoppingMode) R.string.shopping_mode_off else R.string.shopping_mode_on),
-                R.drawable.ic_cart,
-                onClick = { choose(onShoppingMode) },
-            )
-            if (canSwitch) {
+            if (choices.canCheckAll) {
+                AromaMenuItem(stringResource(R.string.shopping_check_all), R.drawable.ic_done_all, onClick = {
+                    choose(onCheckAll)
+                })
+            }
+            if (choices.canPutBack) {
+                AromaMenuItem(stringResource(R.string.shopping_put_back_all), R.drawable.ic_put_back, onClick = { choose(onPutBack) })
+                AromaMenuItem(stringResource(R.string.shopping_clear_done), R.drawable.ic_delete, onClick = { choose(onClear) })
+            }
+            if (choices.canOrderAisles) {
+                AromaMenuItem(stringResource(R.string.shopping_order_aisles), R.drawable.ic_reorder, onClick = {
+                    choose { openDialog(ShoppingDialog.Aisles) }
+                })
+            }
+            if (choices.canCheckAll) {
+                AromaMenuItem(
+                    stringResource(R.string.shopping_share),
+                    R.drawable.ic_share,
+                    onClick = { choose(onShare) },
+                )
+            }
+            if (choices.canSwitch) {
                 AromaMenuItem(stringResource(R.string.shopping_switch_list), R.drawable.ic_basket, onClick = {
                     choose { openDialog(ShoppingDialog.Lists) }
                 })
             }
-            if (canClear) AromaMenuItem(stringResource(R.string.shopping_clear_done), R.drawable.ic_done_all, onClick = { choose(onClear) })
             AromaMenuItem(
                 stringResource(R.string.shopping_create_list),
                 R.drawable.ic_add,
@@ -457,7 +564,7 @@ private fun ListMenu(
     }
 }
 
-/** A name for a list or the text of an item, typed into one field. Saving needs something to save. */
+/** A name for a list, typed into one field. Saving needs something to save. */
 @Composable
 private fun NameDialog(title: String, initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
     var text by rememberSaveable { mutableStateOf(initial) }

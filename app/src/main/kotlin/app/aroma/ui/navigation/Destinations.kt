@@ -66,6 +66,7 @@ import app.aroma.feature.mealplan.MealPlanEvent
 import app.aroma.feature.mealplan.MealPlanScreen
 import app.aroma.feature.mealplan.MealPlanViewModel
 import app.aroma.feature.recipe.AddToListSheet
+import app.aroma.feature.recipe.CookbookSheet
 import app.aroma.feature.recipe.OrganizerSheet
 import app.aroma.feature.recipe.PlanSheet
 import app.aroma.feature.recipe.RecipeActions
@@ -88,6 +89,7 @@ import app.aroma.feature.settings.SettingsScreen
 import app.aroma.feature.settings.SettingsViewModel
 import app.aroma.feature.shopping.ShoppingActions
 import app.aroma.feature.shopping.ShoppingEvent
+import app.aroma.feature.shopping.ShoppingModeScreen
 import app.aroma.feature.shopping.ShoppingScreen
 import app.aroma.feature.shopping.ShoppingViewModel
 import app.aroma.ui.appContainer
@@ -242,6 +244,8 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
     val lists by vm.shoppingLists.collectAsStateWithLifecycle()
     val preferredList by vm.preferredListId.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
     RecipeFeedback(vm, snackbar)
     when (menu.sheet) {
         RecipeMenuSheet.Actions -> {
@@ -253,6 +257,15 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
                 onShop = {
                     vm.loadShoppingLists()
                     menu.sheet = RecipeMenuSheet.Shop
+                },
+                onCookbook = {
+                    // Filing is saved in Mealie as it is chosen, so it waits for Mealie to answer.
+                    if (state.isOffline) {
+                        scope.launch { snackbar.showSnackbar(resources.getString(R.string.cookbooks_offline)) }
+                    } else {
+                        vm.loadCookbooks()
+                        menu.sheet = RecipeMenuSheet.Cookbooks
+                    }
                 },
                 onToggleFavorite = vm::toggleFavorite,
                 onShare = { vm.shareText()?.let { shareText(context, it) } },
@@ -290,6 +303,11 @@ fun RecipeMenu(menu: RecipeMenuState, nav: NavController, snackbar: SnackbarHost
                 // A recipe that could not be loaded has nothing to add.
                 LaunchedEffect(state.error) { menu.sheet = null }
             }
+        }
+
+        RecipeMenuSheet.Cookbooks -> {
+            val cookbooks by vm.cookbooks.collectAsStateWithLifecycle()
+            CookbookSheet(choices = cookbooks, onToggle = vm::toggleCookbook, onDismiss = { menu.sheet = null })
         }
 
         null -> {}
@@ -360,7 +378,19 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
     val scope = rememberCoroutineScope()
     val resources = LocalResources.current
     RecipeFeedback(vm, snackbar, onDelete = { nav.popBackStack() })
-    LaunchedEffect(sheet) { if (sheet == RecipeMenuSheet.Shop) vm.loadShoppingLists() }
+    LaunchedEffect(sheet) {
+        when (sheet) {
+            RecipeMenuSheet.Shop -> {
+                vm.loadShoppingLists()
+            }
+
+            RecipeMenuSheet.Cookbooks -> {
+                vm.loadCookbooks()
+            }
+
+            else -> {}
+        }
+    }
     LaunchedEffect(organizing) { if (organizing) vm.loadOrganizers() }
     val reworked = rework?.outcome
     LaunchedEffect(reworked) { if (reworked != null) vm.onReworkShown(reworked) }
@@ -396,6 +426,13 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                         scope.launch { snackbar.showSnackbar(resources.getString(R.string.organizers_offline)) }
                     } else {
                         organizing = true
+                    }
+                },
+                onAddToCookbook = {
+                    if (state.isOffline) {
+                        scope.launch { snackbar.showSnackbar(resources.getString(R.string.cookbooks_offline)) }
+                    } else {
+                        sheet = RecipeMenuSheet.Cookbooks
                     }
                 },
                 onRetry = vm::load,
@@ -439,6 +476,11 @@ fun RecipeDestination(slug: String, nav: NavController, snackbar: SnackbarHostSt
                 },
                 onDismiss = { sheet = null },
             )
+        }
+
+        sheet == RecipeMenuSheet.Cookbooks -> {
+            val cookbooks by vm.cookbooks.collectAsStateWithLifecycle()
+            CookbookSheet(choices = cookbooks, onToggle = vm::toggleCookbook, onDismiss = { sheet = null })
         }
     }
 }
@@ -565,10 +607,11 @@ fun MealPlanDestination(nav: NavController, snackbar: SnackbarHostState, focus: 
 
 /** The shopping tab; [request] asks once for a widget's list, and with its "+" for the field that adds to it. */
 @Composable
-fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -> Unit) {
+fun ShoppingDestination(nav: NavController, request: LaunchRequest.Shopping?, onRequestConsume: () -> Unit) {
     val vm = aromaViewModel { ShoppingViewModel(shopping, settings, connection, mealPlans) }
     val state by vm.state.collectAsStateWithLifecycle()
     val resources = LocalResources.current
+    val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     // Kept here, not saved: rotation, a restored process or coming back to the tab never asks again.
     var focusAdd by remember { mutableStateOf(false) }
@@ -587,6 +630,22 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
                     // A second deletion replaces this snackbar instead of queueing behind it.
                     snackbar.currentSnackbarData?.dismiss()
                     showUndo(snackbar, resources, R.string.shopping_item_deleted, SnackbarDuration.Short) { vm.undoDelete(event) }
+                }
+
+                is ShoppingEvent.Cleared -> {
+                    snackbar.currentSnackbarData?.dismiss()
+                    val message = resources.getQuantityString(R.plurals.shopping_cleared, event.items.size, event.items.size)
+                    showUndo(snackbar, resources, message) { vm.undoClear(event) }
+                }
+
+                is ShoppingEvent.CheckedAll -> {
+                    snackbar.currentSnackbarData?.dismiss()
+                    val words = if (event.checked) R.plurals.shopping_checked_all else R.plurals.shopping_put_back
+                    showUndo(
+                        snackbar,
+                        resources,
+                        resources.getQuantityString(words, event.ids.size, event.ids.size),
+                    ) { vm.undoChecks(event) }
                 }
 
                 is ShoppingEvent.Failed -> {
@@ -612,8 +671,15 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
                 onAddItem = vm::addItem,
                 onToggle = vm::toggle,
                 onDelete = vm::delete,
-                onRenameItem = vm::rename,
+                onEditItem = vm::editItem,
+                onReorder = vm::reorder,
+                onOrderAisles = vm::orderAisles,
+                onCheckAll = vm::checkAll,
+                onPutAllBack = vm::putAllBack,
                 onClearChecked = vm::clearChecked,
+                onShare = { shareText(context, it) },
+                // A second tap while shopping mode opens does not open it twice.
+                onShop = { state.list?.id?.let { nav.navigate(ShoppingModeRoute(it)) { launchSingleTop = true } } },
                 onSelectList = vm::select,
                 onCreateList = { vm.createList(it) },
                 onRenameList = vm::renameList,
@@ -624,6 +690,21 @@ fun ShoppingDestination(request: LaunchRequest.Shopping?, onRequestConsume: () -
         focusAdd = focusAdd,
         onFocusAddConsume = { focusAdd = false },
     )
+}
+
+/** Shopping mode for list [listId], over everything else, until it is closed. */
+@Composable
+fun ShoppingModeDestination(listId: String, nav: NavController) {
+    val vm = aromaViewModel { ShoppingViewModel(shopping, settings, connection, initialList = listId) }
+    val state by vm.state.collectAsStateWithLifecycle()
+    val resources = LocalResources.current
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(vm) {
+        vm.events.collect { event ->
+            if (event is ShoppingEvent.Failed) launch { snackbar.showSnackbar(resources.getString(event.error.titleRes())) }
+        }
+    }
+    ShoppingModeScreen(state = state, onToggle = vm::toggle, onClose = { nav.popBackStack() }, snackbar = snackbar)
 }
 
 /** The add screen; [shared] is a recipe's text or photos another app shared, taken once, as [onSharedConsume] tells. */
@@ -768,11 +849,19 @@ private fun CoroutineScope.showUndo(
     @StringRes message: Int,
     duration: SnackbarDuration = SnackbarDuration.Long,
     undo: () -> Unit,
+) = showUndo(snackbar, resources, resources.getString(message), duration, undo)
+
+private fun CoroutineScope.showUndo(
+    snackbar: SnackbarHostState,
+    resources: Resources,
+    message: String,
+    duration: SnackbarDuration = SnackbarDuration.Long,
+    undo: () -> Unit,
 ) {
     launch {
         val result =
             snackbar.showSnackbar(
-                message = resources.getString(message),
+                message = message,
                 actionLabel = resources.getString(R.string.action_undo),
                 duration = duration,
             )

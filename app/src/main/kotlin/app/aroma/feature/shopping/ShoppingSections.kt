@@ -6,10 +6,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,16 +26,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -55,6 +61,7 @@ import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import app.aroma.R
 import app.aroma.core.format.IngredientFormatter
 import app.aroma.core.format.IngredientLine
@@ -66,6 +73,7 @@ import app.aroma.ui.components.CheckCircle
 import app.aroma.ui.components.CheckSize
 import app.aroma.ui.components.EmptyState
 import app.aroma.ui.components.GroupHead
+import app.aroma.ui.components.ListReorder
 import app.aroma.ui.components.RollingText
 import app.aroma.ui.components.Separator
 import app.aroma.ui.components.SwipeToRemove
@@ -74,6 +82,7 @@ import app.aroma.ui.components.TextAction
 import app.aroma.ui.components.TonalBoxPart
 import app.aroma.ui.components.animateRow
 import app.aroma.ui.components.currentLocale
+import app.aroma.ui.components.liftedShape
 import app.aroma.ui.components.styledMeasure
 import app.aroma.ui.theme.AromaTheme
 import app.aroma.ui.theme.BoxPadding
@@ -82,7 +91,9 @@ import app.aroma.ui.theme.Motion
 import app.aroma.ui.theme.PageMargin
 import app.aroma.ui.theme.Space
 import app.aroma.ui.theme.TouchTarget
+import app.aroma.ui.theme.layeredShadow
 import java.util.Locale
+import kotlin.math.abs
 
 /** Open items grouped by label, in the order chosen in Mealie; unlabeled items come last. */
 data class ShoppingSection(val label: ShoppingLabel?, val items: List<ShoppingItem>)
@@ -90,19 +101,27 @@ data class ShoppingSection(val label: ShoppingLabel?, val items: List<ShoppingIt
 data class ShoppingGroups(val sections: List<ShoppingSection>, val checked: List<ShoppingItem>)
 
 fun ShoppingList.grouped(): ShoppingGroups {
-    val open = items.filterNot { it.checked }
-    val order = labelOrder.withIndex().associate { (index, id) -> id to index }
-    val sections =
-        open
-            .groupBy { it.label?.id }
-            .map { (_, groupItems) -> ShoppingSection(groupItems.first().label, groupItems.sortedBy { it.position }) }
-            .sortedWith(
-                compareBy<ShoppingSection> { it.label == null }
-                    .thenBy { section -> section.label?.let { order[it.id] } ?: Int.MAX_VALUE }
-                    .thenBy { it.label?.name?.lowercase() },
-            )
     val checked = items.filter { it.checked }.sortedBy { it.position }
-    return ShoppingGroups(sections, checked)
+    return ShoppingGroups(aisles(items.filterNot { it.checked }), checked)
+}
+
+/**
+ * The aisles as shopping goes through them: what there was to buy as it began ([session]) stays in
+ * its place, ticked off or not, and what was added since joins it.
+ */
+fun ShoppingList.shoppingAisles(session: Set<String>): List<ShoppingSection> = aisles(items.filter { it.id in session || !it.checked })
+
+/** [shown] by aisle, in the order chosen in Mealie, each by its place; what has no aisle comes last. */
+private fun ShoppingList.aisles(shown: List<ShoppingItem>): List<ShoppingSection> {
+    val order = labelOrder.withIndex().associate { (index, id) -> id to index }
+    return shown
+        .groupBy { it.label?.id }
+        .map { (_, groupItems) -> ShoppingSection(groupItems.first().label, groupItems.sortedBy { it.position }) }
+        .sortedWith(
+            compareBy<ShoppingSection> { it.label == null }
+                .thenBy { section -> section.label?.let { order[it.id] } ?: Int.MAX_VALUE }
+                .thenBy { it.label?.name?.lowercase() },
+        )
 }
 
 // Instrument Sans's own strikeout stroke, in ems: its top sits 0.3 above the baseline and it is 0.04 thick.
@@ -114,16 +133,19 @@ private val TextEdge: Dp = BoxPadding + CheckSize + Space.s12
 
 /**
  * The open items, a box per aisle under the aisle's name, then what is done, folded under "Done (n)"
- * until it is opened. A list without items says so in one line, with the way to fill it.
+ * until it is opened. A list without items says so in one line, with the way to fill it. Held a
+ * moment, an open item lifts out of its box and moves within its aisle with the finger ([reorder]);
+ * let go where it was, it opens to be edited ([onEdit]). [onDrop] follows every letting go.
  */
 internal fun LazyListScope.shoppingSections(
     groups: ShoppingGroups,
     state: ShoppingUiState,
     actions: ShoppingActions,
-    large: Boolean,
     showDone: Boolean,
     onShowDone: (Boolean) -> Unit,
     onEdit: (ShoppingItem) -> Unit,
+    reorder: ListReorder? = null,
+    onDrop: () -> Unit = {},
 ) {
     if (groups.sections.isEmpty()) {
         item(key = "empty") {
@@ -150,7 +172,7 @@ internal fun LazyListScope.shoppingSections(
                         .padding(start = PageMargin, end = PageMargin, top = if (index == 0) 0.dp else Space.s24, bottom = Space.s12),
             )
         }
-        itemRows(section.items, state, actions, large, onEdit)
+        itemRows(section.items, state, actions, onEdit, reorder, onDrop)
     }
     if (groups.checked.isNotEmpty()) {
         item(key = "done", contentType = "done") {
@@ -162,9 +184,12 @@ internal fun LazyListScope.shoppingSections(
                 modifier = Modifier.animateRow(this).paperGround(),
             )
         }
-        if (showDone) itemRows(groups.checked, state, actions, large, onEdit)
+        if (showDone) itemRows(groups.checked, state, actions, onEdit, reorder = null, onDrop = onDrop)
     }
 }
+
+/** The key of an item's row: a row keyed by where it stands leaves its group as it is ticked off or back. */
+internal fun rowKey(item: ShoppingItem): String = (if (item.checked) "done-" else "open-") + item.id
 
 /**
  * The page's paper under a row that stands open on it, an aisle's name or the head of what is done,
@@ -177,39 +202,110 @@ private fun Modifier.paperGround(): Modifier = fillMaxWidth().background(AromaTh
 /**
  * The rows of one box, a separator between each two, inset to their text. A row keyed by where it
  * stands leaves its group and fades in at the new one when it is ticked off or back, rather than
- * sliding across the list over the rows between.
+ * sliding across the list over the rows between. A row lifted by a finger leaves its place in the
+ * box empty and floats over the others with the soft shadow of what floats, its corners rounding
+ * as it rises; the separators beside the empty place give way.
  */
 private fun LazyListScope.itemRows(
     items: List<ShoppingItem>,
     state: ShoppingUiState,
     actions: ShoppingActions,
-    large: Boolean,
     onEdit: (ShoppingItem) -> Unit,
+    reorder: ListReorder?,
+    onDrop: () -> Unit,
 ) {
-    itemsIndexed(
-        items,
-        key = { _, item -> (if (item.checked) "done-" else "open-") + item.id },
-        contentType = { _, _ -> "item" },
-    ) { index, item ->
+    itemsIndexed(items, key = { _, item -> rowKey(item) }, contentType = { _, _ -> "item" }) { index, item ->
+        val key = rowKey(item)
+        val lifted = reorder?.isLifted(key) == true
+        val lift by animateFloatAsState(if (reorder?.held == key) 1f else 0f, Motion.state(), label = "rowLift")
+        val part = BoxPart.of(index, items.size)
+        val besideHeld = reorder?.held?.let { held -> held == key || (index > 0 && held == rowKey(items[index - 1])) } == true
         TonalBoxPart(
-            part = BoxPart.of(index, items.size),
+            part = part,
+            clip = !lifted,
             modifier =
                 Modifier
-                    .animateRow(this)
+                    .animateRow(this, glides = !lifted)
+                    .zIndex(if (lifted) 1f else 0f)
                     .padding(horizontal = PageMargin),
         ) {
-            if (index > 0) Separator(start = TextEdge)
-            SwipeToRemove(onRemove = { actions.onDelete(item) }) {
-                ItemRow(
-                    item = item,
-                    checked = state.isChecked(item),
-                    large = large,
-                    onToggle = { actions.onToggle(item) },
-                    onEdit = { onEdit(item) },
-                    onDelete = { actions.onDelete(item) },
-                )
+            if (index > 0) Separator(start = TextEdge, modifier = Modifier.graphicsLayer { alpha = if (besideHeld) 0f else 1f })
+            val shape = part.liftedShape(lift)
+            Box(
+                Modifier
+                    .graphicsLayer { translationY = reorder?.shift(key) ?: 0f }
+                    .then(if (lifted) Modifier.layeredShadow(AromaTheme.shadows.menu, shape) { lift }.clip(shape) else Modifier),
+            ) {
+                SwipeToRemove(onRemove = { actions.onDelete(item) }) {
+                    ItemRow(
+                        item = item,
+                        // Lifted, it rises a step lighter than the box it leaves, in the light and in the dark.
+                        ground = lerp(AromaTheme.colors.surface, AromaTheme.colors.surfaceInBox, lift),
+                        checked = state.isChecked(item),
+                        onToggle = { actions.onToggle(item) },
+                        onEdit = { onEdit(item) },
+                        onDelete = { actions.onDelete(item) },
+                        moves = if (reorder != null) rememberMoves(items, index, actions.onReorder) else emptyList(),
+                        modifier = Modifier.holdToMove(key, reorder, onEdit = { onEdit(item) }, onDrop = onDrop),
+                    )
+                }
             }
         }
+    }
+}
+
+/** For TalkBack, moving an item up or down its aisle by one place, as dragging it would. */
+@Composable
+private fun rememberMoves(items: List<ShoppingItem>, index: Int, onReorder: (List<String>) -> Unit): List<CustomAccessibilityAction> {
+    val up = stringResource(R.string.shopping_move_up)
+    val down = stringResource(R.string.shopping_move_down)
+    return remember(items, index, up, down, onReorder) {
+        val ids = items.map { it.id }
+        buildList {
+            if (index > 0) add(CustomAccessibilityAction(up) { onReorder(ids.moved(index, index - 1)).let { true } })
+            if (index < ids.lastIndex) add(CustomAccessibilityAction(down) { onReorder(ids.moved(index, index + 1)).let { true } })
+        }
+    }
+}
+
+/** [this] with the element at [from] taken out and put in at [to]. */
+internal fun <T> List<T>.moved(from: Int, to: Int): List<T> = toMutableList().apply { add(to, removeAt(from)) }
+
+/**
+ * Held a moment, the row lifts and follows the finger, as [reorder] moves it; let go where it was,
+ * it is edited instead ([onEdit]). [onDrop] follows every letting go. Without [reorder], holding
+ * the row only edits it.
+ */
+@Composable
+private fun Modifier.holdToMove(key: Any, reorder: ListReorder?, onEdit: () -> Unit, onDrop: () -> Unit): Modifier {
+    val haptics = LocalHapticFeedback.current
+    val slop = LocalViewConfiguration.current.touchSlop
+    val edit by rememberUpdatedState(onEdit)
+    val drop by rememberUpdatedState(onDrop)
+    val mover by rememberUpdatedState(reorder)
+    return pointerInput(key) {
+        var moved = 0f
+        detectDragGesturesAfterLongPress(
+            onDragStart = {
+                moved = 0f
+                mover?.lift(key)
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            },
+            onDrag = { change, amount ->
+                change.consume()
+                moved += abs(amount.x) + abs(amount.y)
+                mover?.drag(amount.y)
+            },
+            onDragEnd = {
+                mover?.drop()
+                drop()
+                if (moved < slop) edit()
+            },
+            onDragCancel = {
+                mover?.drop()
+                drop()
+            },
+        )
     }
 }
 
@@ -268,17 +364,19 @@ private const val HALF_TURN = 180f
 /**
  * One item: the tick, then the amount in sage and the item in body text, and the recipes it is for
  * under it. Ticking draws the tick, fades the line to tertiary ink and strikes it through; the row
- * leaves for "Done" a moment later. A long press edits it, a swipe removes it.
+ * leaves for "Done" a moment later. Held, it moves or is edited, as [modifier] has it; a swipe removes it.
+ * TalkBack offers the same as actions: editing, the [moves] up and down its aisle, and removing.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ItemRow(
     item: ShoppingItem,
+    ground: Color,
     checked: Boolean,
-    large: Boolean,
     onToggle: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    moves: List<CustomAccessibilityAction>,
+    modifier: Modifier = Modifier,
 ) {
     val colors = AromaTheme.colors
     val locale = currentLocale()
@@ -290,31 +388,26 @@ private fun ItemRow(
     LaunchedEffect(checked) { strike.animateTo(if (checked) 1f else 0f, Motion.state()) }
     val haptics = LocalHapticFeedback.current
     val stateLabel = stringResource(if (checked) R.string.shopping_checked else R.string.shopping_unchecked)
+    val editLabel = stringResource(R.string.shopping_edit_item)
     val deleteLabel = stringResource(R.string.action_delete)
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 // Opaque, so the swipe's field only shows where the row has moved away.
-                .background(AromaTheme.colors.surface)
-                .combinedClickable(
-                    role = Role.Checkbox,
-                    onLongClickLabel = stringResource(R.string.shopping_edit_item),
-                    onLongClick = onEdit,
-                    onClick = {
-                        haptics.performHapticFeedback(if (checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
-                        onToggle()
-                    },
-                ).semantics(mergeDescendants = true) {
+                .background(ground)
+                // The hold comes after the tap in the chain, so it sees the finger first: a hold that is let go is no tap.
+                .clickable(role = Role.Checkbox) {
+                    haptics.performHapticFeedback(if (checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
+                    onToggle()
+                }.then(modifier)
+                .semantics(mergeDescendants = true) {
                     toggleableState = ToggleableState(checked)
                     stateDescription = stateLabel
                     customActions =
-                        listOf(
-                            CustomAccessibilityAction(deleteLabel) {
-                                onDelete()
-                                true
-                            },
-                        )
+                        listOf(CustomAccessibilityAction(editLabel) { onEdit().let { true } }) +
+                        moves +
+                        CustomAccessibilityAction(deleteLabel) { onDelete().let { true } }
                 }.heightIn(min = RowMin)
                 .padding(horizontal = BoxPadding, vertical = Space.s12),
         verticalAlignment = Alignment.CenterVertically,
@@ -322,12 +415,7 @@ private fun ItemRow(
         CheckCircle(checked)
         Spacer(Modifier.width(Space.s12))
         Column(Modifier.weight(1f)) {
-            StruckText(
-                text = text,
-                style = if (large) AromaTheme.type.cookStep else AromaTheme.type.body,
-                color = ink,
-                progress = { strike.value },
-            )
+            StruckText(text = text, style = AromaTheme.type.body, color = ink, progress = { strike.value })
             if (item.recipeNames.isNotEmpty()) {
                 Text(
                     text = stringResource(R.string.shopping_for_recipe, item.recipeNames.joinToString(", ")),
@@ -344,7 +432,7 @@ private val RowMin = 56.dp
 
 /** Text with a strikethrough drawn from the start of its first line, [progress] of the way to the end of its last. */
 @Composable
-private fun StruckText(text: AnnotatedString, style: TextStyle, color: Color, progress: () -> Float) {
+internal fun StruckText(text: AnnotatedString, style: TextStyle, color: Color, progress: () -> Float) {
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         text = text,
@@ -388,7 +476,7 @@ internal fun itemLine(item: ShoppingItem, locale: Locale): IngredientLine =
     }
 
 /** "300 ml milk": the amount in sage with tabular figures, then the item. */
-private fun itemText(line: IngredientLine, amountColor: Color): AnnotatedString =
+internal fun itemText(line: IngredientLine, amountColor: Color): AnnotatedString =
     buildAnnotatedString {
         if (line.hasMeasure) {
             withStyle(SpanStyle(color = amountColor, fontFeatureSettings = "tnum")) { append(styledMeasure(line)) }

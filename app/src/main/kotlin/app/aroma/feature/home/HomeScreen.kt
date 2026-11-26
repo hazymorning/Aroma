@@ -67,6 +67,7 @@ import app.aroma.data.AromaError
 import app.aroma.data.settings.HomeSection
 import app.aroma.ui.components.AromaPullToRefreshBox
 import app.aroma.ui.components.BoxHeader
+import app.aroma.ui.components.CarouselCardWidth
 import app.aroma.ui.components.ErrorState
 import app.aroma.ui.components.IconButton
 import app.aroma.ui.components.IconButtonReach
@@ -725,7 +726,7 @@ private fun ShoppingBox(open: Int, onOpen: () -> Unit, modifier: Modifier = Modi
     }
 }
 
-/** Ideas for today: a carousel of cards 148 dp wide, the third cut by the edge so the row reads as more. */
+/** Ideas for today: a carousel of cards, the third cut by the edge so the row reads as more. */
 @Composable
 private fun Ideas(recipes: List<RecipeSummary>, actions: HomeActions, onShowAll: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.padding(top = SectionGap)) {
@@ -752,8 +753,6 @@ private fun Ideas(recipes: List<RecipeSummary>, actions: HomeActions, onShowAll:
         }
     }
 }
-
-private val CarouselCardWidth = 148.dp
 
 /** Quick ones: three rows of recipes on the table in half an hour. */
 @Composable
@@ -861,9 +860,11 @@ private fun RatePrompt(toRate: RateReminder, actions: HomeActions) {
                 Spacer(Modifier.width(Space.s16))
                 // The words keep clear of the close button; the stars may pass under it, so five fit on a small phone.
                 Column(Modifier.weight(1f)) {
+                    // The eyebrow over the recipe's name, as today's box sets its own.
                     Text(
                         text = stringResource(R.string.cook_rate_question),
-                        style = AromaTheme.type.bodySmall,
+                        style = AromaTheme.type.label,
+                        color = AromaTheme.colors.inkSecondary,
                         modifier = Modifier.padding(end = TouchTarget, bottom = EyebrowGap),
                     )
                     Text(

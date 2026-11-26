@@ -47,29 +47,54 @@ class RecipesScreenTest {
     }
 
     @Test
-    fun `every filter and order but a meal lights the filter's dot`() {
-        mealie.addRecipe("Linsensuppe", categories = listOf("Abendessen"), tags = listOf("Vegan"))
+    fun `every filter and order lights the filter's dot, the kind of dish too`() {
+        mealie.addRecipe("Linsensuppe", categories = listOf("Abendessen", "Suppen"), tags = listOf("Vegan"))
         val library = screen.recipes()
         val loaded = screen.awaitState(library.state) { it.categories.isNotEmpty() && it.tags.isNotEmpty() }
-        assertFalse(loaded.filtersOtherThanMeal)
+        assertFalse(loaded.filter.hasFiltersOrSort)
 
         val filters: Map<String, RecipesViewModel.() -> Unit> =
             mapOf(
+                "a meal" to { toggleMeal(Meal.Dinner) },
                 "favourites" to { toggleFavorites() },
                 "quick" to { toggleQuick() },
                 "cooked long ago" to { toggleLongAgo() },
-                "a category" to { toggleOrganizer(OrganizerKind.Category, loaded.categories.single()) },
+                "a category" to { toggleOrganizer(OrganizerKind.Category, loaded.categories.first { it.name == "Suppen" }) },
                 "a tag" to { toggleOrganizer(OrganizerKind.Tag, loaded.tags.single()) },
                 "another order" to { setSort(RecipeSort.Name) },
             )
         filters.forEach { (filter, choose) ->
             library.choose()
-            assertTrue(filter, library.state.value.filtersOtherThanMeal)
+            assertTrue(filter, library.state.value.filter.hasFiltersOrSort)
             library.resetFilters()
-            assertFalse(filter, library.state.value.filtersOtherThanMeal)
+            assertFalse(filter, library.state.value.filter.hasFiltersOrSort)
         }
-        library.toggleMeal(Meal.Dinner)
-        assertFalse("a meal", library.state.value.filtersOtherThanMeal)
+    }
+
+    @Test
+    fun `the filter offers the categories that are no kind of dish, which have a choice of their own`() {
+        mealie.addRecipe("Linsensuppe", categories = listOf("Abendessen", "Suppen"))
+        val library = screen.recipes()
+        val loaded = screen.awaitState(library.state) { it.categories.size == 2 }
+
+        assertEquals(listOf("Suppen"), loaded.choices(OrganizerKind.Category).map { it.name })
+    }
+
+    @Test
+    fun `the cookbooks lead the library while nothing is searched or narrowed`() {
+        val soup = mealie.addRecipe("Linsensuppe", totalTime = "PT20M")
+        mealie.addCookbook("Suppen", soup)
+        val library = screen.recipes()
+        screen.awaitState(library.state) { it.cookbooks.isNotEmpty() && it.recipes.isNotEmpty() }
+        assertTrue(library.state.value.showsCookbooks)
+
+        library.toggleQuick()
+        assertFalse("narrowed", library.state.value.showsCookbooks)
+        library.resetFilters()
+        library.setSort(RecipeSort.Name)
+        assertTrue("ordered only", library.state.value.showsCookbooks)
+        library.onQueryChange("Linsen")
+        assertFalse("searched", library.state.value.showsCookbooks)
     }
 
     @Test

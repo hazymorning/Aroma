@@ -14,6 +14,7 @@ import app.aroma.MainActivity
 import app.aroma.R
 import app.aroma.checkNotificationPermission
 import app.aroma.data.settings.inAppLanguage
+import app.aroma.ui.components.SEPARATOR
 
 object TimerNotifications {
     private const val CHANNEL = "timers"
@@ -45,7 +46,7 @@ object TimerNotifications {
                 .Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_timer)
                 .setContentTitle(context.inAppLanguage().getString(R.string.timer_finished_title))
-                .setContentText(listOf(recipeName, label).filter { it.isNotBlank() }.joinToString(" · "))
+                .setContentText(listOf(recipeName, label).filter { it.isNotBlank() }.joinToString(SEPARATOR))
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
