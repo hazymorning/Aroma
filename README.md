@@ -6,7 +6,7 @@
 <br>
 <br>
 
-Aroma is an Android app for Mealie, available in English and German. It's designed like a cookbook and draws on years of using other recipe apps.
+Aroma is an Android app for Mealie, available in English and German. It's designed like a cookbook and builds on years of using other recipe apps.
 
 <br>
 
