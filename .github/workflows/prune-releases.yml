@@ -2,7 +2,8 @@ name: Prune releases
 
 # Started by hand (Actions > Prune releases > Run workflow): deletes every release but the newest
 # few, so the releases page and the update check only offer what is current. Their tags stay, so
-# an old version can still be found and published again.
+# an old version can still be found and published again, unless "tags" is ticked: then every tag
+# that no release stands on any more goes too.
 on:
   workflow_dispatch:
     inputs:
@@ -10,6 +11,10 @@ on:
         description: How many of the newest releases to keep
         required: true
         default: "3"
+      tags:
+        description: Also delete every tag that no release stands on any more
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -39,4 +44,18 @@ jobs:
             while read -r tag; do
               echo "Deleting the release $tag"
               gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes
+            done
+
+      - name: Delete the tags left without a release
+        if: inputs.tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          kept=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName')
+          gh api "repos/$GITHUB_REPOSITORY/tags" --paginate --jq '.[].name' |
+            while read -r tag; do
+              if ! grep -qxF "$tag" <<< "$kept"; then
+                echo "Deleting the tag $tag"
+                gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$tag"
+              fi
             done
