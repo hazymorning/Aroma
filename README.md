@@ -23,13 +23,14 @@ Aroma is an Android app for Mealie, available in English and German. It's design
 
 <br>
 
-- Cooking mode with step-by-step instructions and timers
-- Ingredients and amounts shown in each step
-- Recipe suggestions based on the time of day
-- Add recipes from other apps via the share menu
-- Clean up or translate recipes with AI
-- Offline access to your recipes
-- Widgets for the meal plan and shopping list
+- Home shows what's planned and ideas that suit the time of day
+- Cooking mode goes one step at a time in large type and shows what each step needs
+- Timers start from a step and ring even when the screen is off
+- Shopping mode keeps every row in place while you tick things off
+- Amounts in metric or US units, however the recipe was written
+- Recipes from social media posts through the share menu
+- Widgets for the meal plan and the shopping list
+- Recipes, the meal plan and the shopping list also work offline
 
 </details>
 <details>
